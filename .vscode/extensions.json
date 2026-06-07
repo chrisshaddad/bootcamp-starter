@@ -2,6 +2,7 @@
   "recommendations": [
     "esbenp.prettier-vscode",
     "bradlc.vscode-tailwindcss",
-    "Prisma.prisma"
+    "Prisma.prisma",
+    "eamodio.gitlens"
   ]
 }
