@@ -5,14 +5,14 @@
     "build": {
       "dependsOn": ["^build", "^db:generate", "^db:build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": [".next/**", "!.next/cache/**"],
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"],
       "env": ["DATABASE_URL", "REDIS_URL", "NODE_ENV", "NEXT_PUBLIC_API_URL"]
     },
     "lint": {
-      "dependsOn": ["^lint"]
+      "dependsOn": ["^lint", "^build", "^db:generate", "^db:build"]
     },
     "check-types": {
-      "dependsOn": ["^check-types"]
+      "dependsOn": ["^check-types", "^build", "^db:generate", "^db:build"]
     },
     "dev": {
       "dependsOn": ["^db:generate", "^db:build"],
@@ -45,6 +45,7 @@
       "cache": false
     },
     "db:build": {
+      "dependsOn": ["db:generate"],
       "cache": false
     }
   }

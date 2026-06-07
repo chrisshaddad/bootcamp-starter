@@ -1,0 +1,13 @@
+# Build output
+**/dist/
+**/build/
+**/.next/
+**/.turbo/
+
+# Auto-generated
+packages/database/src/generated/
+apps/web/next-env.d.ts
+
+# Lockfile / vendored
+package-lock.json
+node_modules/
