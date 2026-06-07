@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx turbo run db:generate
+
+      - name: Build contracts
+        run: npx tsc -p packages/contracts
+
+      - name: Lint
+        run: npx turbo run lint
+
+      - name: Type check
+        run: npx turbo run check-types
+
+      - name: Format check
+        run: npm run format:check

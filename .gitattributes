@@ -1,0 +1,34 @@
+# Normalize all text files to LF on checkin AND check out as LF on every OS.
+# Without this, Windows students get CRLF line endings on checkout (because
+# Git's `core.autocrlf` defaults to `true` on Windows), which breaks Prettier's
+# format check, Prisma's schema parser, and any shell script we ship.
+*           text=auto eol=lf
+
+# Explicit text files (belt + suspenders for tools that don't trust `text=auto`).
+*.ts        text eol=lf
+*.tsx       text eol=lf
+*.js        text eol=lf
+*.json      text eol=lf
+*.md        text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.css       text eol=lf
+*.html      text eol=lf
+*.prisma    text eol=lf
+*.sql       text eol=lf
+*.sh        text eol=lf
+*.env*      text eol=lf
+Dockerfile  text eol=lf
+
+# Binary files — never touched by Git's text/eol logic.
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.ico       binary
+*.webp      binary
+*.woff      binary
+*.woff2     binary
+*.ttf       binary
+*.otf       binary
+*.pdf       binary

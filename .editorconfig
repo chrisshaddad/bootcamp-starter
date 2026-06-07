@@ -1,0 +1,20 @@
+# https://editorconfig.org
+# IDE-agnostic formatting. Read natively by VS Code, Cursor, WebStorm, Vim, etc.
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 2
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Markdown intentionally preserves trailing spaces (line breaks).
+[*.md]
+trim_trailing_whitespace = false
+
+# Makefiles require tabs.
+[Makefile]
+indent_style = tab
