@@ -35,8 +35,12 @@ npm run services:init
 # Install
 npm install
 
-# First-time DB setup (prompts for migration name — use "init")
-npx turbo run db:migrate
+# Generate the Prisma client (creates the generated types under packages/database)
+# Only needed on first run, then it's reran on the project startup
+npx turbo run db:generate
+
+# Apply the initial migration to your database
+npx turbo run db:deploy
 
 # Optional: seed a super-admin + sample organizations
 npx turbo run db:seed
