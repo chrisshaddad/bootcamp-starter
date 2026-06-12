@@ -6,6 +6,17 @@ Instructions for AI coding assistants (Claude Code, Cursor, Codex, Aider, etc.) 
 
 A generic full-stack bootcamp starter on Turborepo. Multi-tenant auth (orgs + roles) is pre-wired; everything domain-specific is left for the student to build.
 
+## Current build: Gym Management System
+
+We are building a multi-tenant gym management system on this starter (each gym = an `Organization`, gym manager = `ORG_ADMIN`, gym customer = a staff-managed `Member`).
+
+**Before writing any feature code, read [`docs/gym-management-plan.md`](docs/gym-management-plan.md).** It is the source of truth for the data model, the work breakdown, and ownership.
+
+Key rules for this build:
+
+- The database schema lands **first** as Phase 0 (one shared migration) and is **frozen** afterward. Feature workstreams do **not** edit `packages/database/prisma/schema.prisma` or create migrations.
+- Work is split into three independent end-to-end features (A: Members/Plans/Subscriptions, B: Sessions/Bookings, C: Check-ins/Dashboard). Build your assigned feature end-to-end (contracts → API → web) within its own folders; only append to the shared files noted in the plan.
+
 ## Stack
 
 - **`apps/api`** — NestJS 11 on port 3001
