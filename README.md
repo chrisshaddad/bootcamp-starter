@@ -68,8 +68,6 @@ npm run dev
 
 If you use Claude Code, Cursor, Codex, or another AI coding assistant: read [`AGENTS.md`](AGENTS.md) — it documents the conventions and rules every contributor (human or AI) should follow when working in this repo.
 
-Non-trivial features start with a short spec under [`specs/`](specs/). See [`specs/README.md`](specs/README.md) for why and when.
-
 The shadcn MCP server is pre-configured in `.vscode/mcp.json` if you want your AI assistant to add UI components directly.
 
 ## Quality gates
