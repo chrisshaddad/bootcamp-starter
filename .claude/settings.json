@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e 'let d=\"\";process.stdin.on(\"data\",c=>d+=c).on(\"end\",()=>{let a=false;try{a=JSON.parse(d||\"{}\").stop_hook_active}catch(e){};if(a)return;process.stdout.write(JSON.stringify({decision:\"block\",reason:\"Reminder: if you completed or advanced a feature phase this turn, update the matching docs/progress/PROGRESS-*.md file (status, dev, date, note) and the docs/PROGRESS.md overview row before finishing. See the Definition of Done in AGENTS.md. If no phase work happened, ignore this and stop.\"}))})'",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

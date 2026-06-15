@@ -8,12 +8,15 @@ High-level overview of the main models, what they represent, and how they connec
 
 ```mermaid
 erDiagram
-    Organization ||--o{ Member : "has"
-    Organization ||--o{ MembershipPlan : "defines"
-    Organization ||--o{ Subscription : "owns"
-    Organization ||--o{ GymSession : "schedules"
-    Organization ||--o{ SessionBooking : "owns"
-    Organization ||--o{ CheckIn : "owns"
+    Gym ||--o{ Member : "has"
+    Gym ||--o{ MembershipPlan : "defines"
+    Gym ||--o{ Subscription : "owns"
+    Gym ||--o{ GymSession : "schedules"
+    Gym ||--o{ SessionBooking : "owns"
+    Gym ||--o{ CheckIn : "owns"
+    Gym ||--o{ User : "employs/serves"
+
+    User ||--o| Member : "logs in as"
 
     Member ||--o{ Subscription : "has"
     Member ||--o{ SessionBooking : "books"
@@ -24,15 +27,21 @@ erDiagram
     GymSession ||--o{ SessionBooking : "has"
 ```
 
+> **Naming:** `Gym` is the starter's `Organization` tenant model, renamed to be
+> domain-specific. The FK on every owned model is `gymId`.
+
 ---
 
 ## Models
 
-**Organization**
-Represents a gym. This is the top-level tenant — all data below is scoped to it. Already exists in the starter; we add `maxCapacity` to track the gym's building limit.
+**Gym**
+Represents a gym. This is the top-level tenant — all data below is scoped to it via `gymId`. It is the starter's `Organization` model **renamed to `Gym`** to be domain-specific; we add `maxCapacity` to track the gym's building limit.
+
+**User**
+A login account (magic-link auth). Roles: `SUPER_ADMIN` (platform), `ORG_ADMIN` (one gym's manager), and `MEMBER` (a gym customer's login). A `MEMBER` user is linked 1:1 to a `Member` record (see below).
 
 **Member**
-A gym customer, created and managed by gym staff. Members do not log in — they are records representing real-world customers. Each member belongs to one gym.
+A gym customer, created and managed by gym staff. A member can be **invited to a read-only self-service login**: the invite provisions a linked `User` (role `MEMBER`, scoped to the gym) and the member's `userId` points at it (null until invited). Once invited, the customer can sign in to a member portal to track their own subscriptions and bookings and browse available plans. Each member belongs to one gym.
 
 **MembershipPlan**
 A reusable plan template defined by the gym (e.g. "Monthly", "Annual"). Stores the duration and price. When a subscription is created, the plan's price is snapshotted onto it so historical records stay accurate even if the plan changes.
@@ -47,4 +56,6 @@ A scheduled class or activity inside the gym (e.g. "Yoga — Monday 9am"). Has a
 A registration linking a member to a session. Enforces the session's capacity (no overbooking) and uniqueness (a member can't book the same session twice). Status tracks whether the member showed up (booked → checked-in) or cancelled.
 
 **CheckIn**
-A gym-wide entry/exit log. When a member enters the building they get a check-in record; when they leave, `checkedOutAt` is set. The count of open check-ins (no checkout yet) is the live occupancy shown on the dashboard.
+A gym-wide entry/exit log. A check-in record is created either by an admin manually, or by the member **scanning a QR code** the admin displays at the entrance (the member's phone opens `/checkin?token=…` and the portal records it). When they leave, `checkedOutAt` is set. The count of open check-ins (no checkout yet) is the live occupancy shown on the dashboard.
+
+> The QR codes use a **rotating short-lived token kept in Redis** (refreshed every ~30–60s so a screenshot can't be reused). These tokens are ephemeral infrastructure, **not** a database model — there is no schema entity for them.
