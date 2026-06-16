@@ -1,13 +1,22 @@
 'use client';
 
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useUser } from '@/hooks/use-auth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function DashboardPage() {
+  const router = useRouter();
   const { user, isLoading } = useUser();
 
-  if (isLoading) {
+  useEffect(() => {
+    if (!isLoading && user?.role === 'SUPER_ADMIN') {
+      router.replace('/admin');
+    }
+  }, [isLoading, user?.role, router]);
+
+  if (isLoading || user?.role === 'SUPER_ADMIN') {
     return (
       <div className="space-y-6">
         <Skeleton className="h-8 w-48" />
