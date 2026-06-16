@@ -1,6 +1,6 @@
-# Bootcamp Starter
+# Coordly
 
-A generic full-stack starter for bootcamp projects. Multi-tenant auth scaffolding is wired in; build your features on top.
+Member and event management for organizations — built on the Bootcamp Starter stack. Multi-tenant auth, org scaffolding, and role-based portals are pre-wired; domain features expand from there.
 
 ## What's included
 
@@ -10,16 +10,39 @@ A generic full-stack starter for bootcamp projects. Multi-tenant auth scaffoldin
 | Web         | Next.js 16 (App Router), React 19, Tailwind v4, shadcn/ui, SWR     |
 | Database    | PostgreSQL 18 via Prisma                                           |
 | Queue       | Redis + BullMQ                                                     |
-| Email (dev) | Mailpit                                                            |
+| Email (dev) | Mailpit (captures magic-link emails locally)                       |
 | Build       | Turborepo                                                          |
 | AI guidance | Single [`AGENTS.md`](AGENTS.md) for Claude / Cursor / Codex / etc. |
 
 Pre-built: cookie-based magic-link auth, multi-tenant organization model (`SUPER_ADMIN` / `ORG_ADMIN` / `MEMBER` roles), BullMQ-backed email sending.
 
+### Coordly features
+
+| Area                                      | Status      | Routes / notes                                |
+| ----------------------------------------- | ----------- | --------------------------------------------- |
+| Admin hub (stats + placeholders)          | Active      | `/admin` — super admin only                   |
+| Coordly members (profiles, roles)         | Active      | `/members` — super admin + org admin          |
+| Events (list, detail, upcoming filter)    | Active      | `/events`, `/events/[id]`                     |
+| Event sign-up (auth members as attendees) | Active      | Detail page → **Sign up to attend**           |
+| Announcements, groups                     | Coming soon | —                                             |
+| Full attendance logging / history         | Coming soon | Basic registration exists via `EventAttendee` |
+
+### Three roles in the event system
+
+| Role          | Who                               | Can do                                                        |
+| ------------- | --------------------------------- | ------------------------------------------------------------- |
+| **Presenter** | Coordly `Member` (domain record)  | Listed on an event via `presenterId`                          |
+| **Attendee**  | Auth `User` with role `MEMBER`    | View upcoming events, sign up via `POST /events/:id/register` |
+| **Manager**   | Auth `ORG_ADMIN` or `SUPER_ADMIN` | List members/events; cannot sign up as attendees              |
+
+Coordly **members** (`Member` model) are separate from auth **users** (`User` model). Presenters are always Coordly members; attendees are always auth users.
+
+Super admins land on `/admin` after login. Org admins use `/dashboard` plus `/members` and `/events`. Auth members use `/dashboard` and `/events` (defaults to upcoming events).
+
 ## Prerequisites
 
 - [Node.js 24.11.1](https://nodejs.org/) (matches `.nvmrc` — use `nvm`/`mise`/`fnm`)
-- [Docker](https://www.docker.com/)
+- [Docker Desktop](https://www.docker.com/) — must be **running** before `npm run services:init`
 
 ## Quick start
 
@@ -29,29 +52,63 @@ cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.example apps/web/.env
 cp packages/database/.env.example packages/database/.env
 
-# Start postgres + redis + mailpit
+# Start postgres + redis + mailpit (requires Docker Desktop)
 npm run services:init
 
 # Install
 npm install
 
-# Generate the Prisma client (creates the generated types under packages/database)
-# Only needed on first run, then it's reran on the project startup
+# Generate the Prisma client (first run / after schema changes)
 npx turbo run db:generate
 
-# Apply the initial migration to your database
+# Apply migrations to your database
 npx turbo run db:deploy
 
-# Optional: seed a super-admin + sample organizations
+# Seed users, organizations, and Coordly sample data (idempotent — safe to re-run)
 npx turbo run db:seed
 
 # Run web + api together
 npm run dev
 ```
 
-- Web: <http://localhost:3000>
-- API: <http://localhost:3001>
-- Mailpit: <http://localhost:8025>
+| Service                   | URL                     |
+| ------------------------- | ----------------------- |
+| Web                       | <http://localhost:3000> |
+| API                       | <http://localhost:3001> |
+| Mailpit (dev email inbox) | <http://localhost:8025> |
+
+## Sign in (magic link)
+
+There are no passwords. In development, sign-in links are **not** sent to a real inbox — they are captured by **Mailpit**.
+
+1. Open <http://localhost:3000/login>
+2. Enter a **seeded** email (see below) and click **Send Magic Link**
+3. Open **Mailpit** at <http://localhost:8025>
+4. Open the newest message and click the sign-in link (`/auth/verify?token=...`)
+5. You are redirected into the app with a session cookie (`bootcamp_starter_session`)
+
+Links expire after **15 minutes**. Request a new one from the login page if needed.
+
+If Mailpit is empty, check that Docker is running, Redis is up (BullMQ sends the email job), and you used an email that exists in the seed data. The API always returns success from the login form even for unknown emails (to avoid account enumeration).
+
+### Seeded accounts
+
+| Role        | Email                            | After login                         | Try this                                 |
+| ----------- | -------------------------------- | ----------------------------------- | ---------------------------------------- |
+| Super Admin | `admin@bootcamp-starter.local`   | `/admin`                            | Platform-wide members & events           |
+| Org Admin   | `admin@techcorp.example.com`     | `/dashboard`, `/members`, `/events` | Manage TechCorp members/events           |
+| Org Admin   | `admin@greenenergy.example.com`  | `/dashboard`, `/members`, `/events` | Manage Green Energy members/events       |
+| Member      | `member@techcorp.example.com`    | `/dashboard`, `/events`             | Sign up for upcoming TechCorp events     |
+| Member      | `member@greenenergy.example.com` | `/dashboard`, `/events`             | Sign up for upcoming Green Energy events |
+
+More seeded auth users: [`packages/database/prisma/seeders/seedUsers.ts`](packages/database/prisma/seeders/seedUsers.ts). Coordly domain members and events (with `startsAt` dates): [`packages/database/prisma/seeders/seedCoordly.ts`](packages/database/prisma/seeders/seedCoordly.ts).
+
+### Event sign-up flow (auth members)
+
+1. Log in as `member@techcorp.example.com`
+2. Open **Events** — list defaults to **Upcoming**
+3. Click an event → **Sign up to attend**
+4. Status changes to **Registered**; past events cannot be signed up for
 
 ## Monorepo layout
 
@@ -83,10 +140,10 @@ If you want a pre-push check locally, run those three commands yourself or use `
 ## Database
 
 ```bash
-npx turbo run db:migrate   # Create + apply a new migration
+npx turbo run db:migrate   # Create + apply a new migration (--name required)
 npx turbo run db:deploy    # Apply pending migrations (no new ones)
 npx turbo run db:reset     # Drop, recreate, re-migrate, re-seed (destructive)
-npx turbo run db:seed      # Run seeders
+npx turbo run db:seed      # Run seeders (idempotent)
 npx turbo run db:generate  # Regenerate Prisma client
 ```
 
@@ -94,7 +151,11 @@ Schema lives at [packages/database/prisma/schema.prisma](packages/database/prism
 
 ## Troubleshooting
 
+- **Docker / `services:init` fails** — start Docker Desktop and wait until it is fully running, then retry `npm run services:init`.
+- **`db:seed` fails with unique constraint on email** — seeders are idempotent; pull latest. If stuck, run `npx turbo run db:reset` (wipes local data).
 - **Port already in use** — postgres uses :5433, redis :6380, mailpit :8025/:1025. Stop the conflicting process or change ports in `docker-compose.yml`.
+- **No magic link in Mailpit** — confirm `MAILPIT_URL="http://localhost:8025"` in `apps/api/.env`, Redis is running, and the email matches a seeded user exactly.
+- **Can't sign up for an event** — only auth `MEMBER` users can register; event must be upcoming (`startsAt` in the future) and in your organization.
 - **`@repo/contracts` types not found** — run `npx tsc -p packages/contracts` once.
 - **Prisma client out of date** — `npx turbo run db:generate`.
-- **Docker volume cruft** — `docker compose down -v && npm run services:init` (wipes local DB data).
+- **Docker volume cruft** — `docker compose down -v && npm run services:init` (wipes local DB data; re-run `db:deploy` and `db:seed`).
