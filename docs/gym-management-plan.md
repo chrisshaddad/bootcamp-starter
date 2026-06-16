@@ -28,10 +28,13 @@ We are **renaming the starter's generic `Organization` tenant to `Gym`** (model
 
 Key decisions:
 
-- **Customers = `Member` records** (staff create/manage). A member can be
-  **invited to a read-only self-service login**: the invite provisions a linked
-  `User` (role `MEMBER`, scoped to the gym) and sends a magic link, so customers
-  can sign in to track their own subscriptions and bookings and browse plans.
+- **Customers = `Member` records** (staff create/manage). After adding a member,
+  the admin **always invites them to the member portal**: the invite provisions a
+  linked `User` (role `MEMBER`, scoped to the gym) and sends a magic link.
+  `Member.email` is required (not nullable) because the magic-link invite has no
+  target without it. `Member.userId` is nullable at the DB level (null until the
+  invite is sent) but portal access is not optional — every member is expected to
+  be invited so they can track their own subscriptions, bookings, and browse plans.
 - **Capacity tracker = both** gym-wide live occupancy AND per-session registration.
 - **Plans = reusable catalog** per gym; subscriptions reference a plan.
 - **Database-first, then parallel end-to-end features.** A **team of three**
@@ -71,6 +74,17 @@ The reference slice to mirror throughout is the renamed `gyms` feature (was
   Guard with `@Roles('ORG_ADMIN')` (or `@Roles('MEMBER')` for the member portal),
   read tenant via `@CurrentUser().gymId`. Use NestJS `Logger`, throw
   `NotFoundException`/`BadRequestException` — never `console.log`.
+- **Swagger (required on every controller/endpoint):** docs are served at
+  `http://localhost:3001/docs`. Every controller must have `@ApiTags('resource-name')`
+  (matching the tag in `main.ts`) and `@ApiCookieAuth('session-cookie')`. Every
+  route handler must have `@ApiOperation({ summary })`, `@ApiResponse` for every
+  possible status code (200/201 success, 400 validation, 401 unauthenticated,
+  403 wrong role, 404 not found), `@ApiParam` for each path param, `@ApiQuery`
+  for each query param, and `@ApiBody({ schema: { ... } })` for request bodies
+  (describe shape as inline JSON schema — bodies are Zod-validated, not class-based,
+  so describe them manually). See the Swagger section in `AGENTS.md` for the full
+  decorator table and example. A phase is **not done** if its endpoints are missing
+  Swagger decorators.
 - **Web:** server components by default; `'use client'` only when needed. Pages
   under `app/(authenticated)/`. One SWR hook per resource in `hooks/`
   (mirror `hooks/use-gyms.ts`). API calls via `lib/api.ts`
@@ -94,12 +108,12 @@ enum SubscriptionStatus  { ACTIVE EXPIRED CANCELLED        @@schema("public") }
 enum GymSessionStatus    { SCHEDULED CANCELLED COMPLETED   @@schema("public") }
 enum BookingStatus       { BOOKED CHECKED_IN CANCELLED     @@schema("public") }
 
-model Member {            // Feature A — gym customer (optional self-service login)
+model Member {            // Feature A — gym customer (always invited to the member portal)
   id String @id @default(uuid())
   gymId String
-  userId String? @unique  // linked login account (null until invited; role MEMBER)
+  userId String? @unique  // linked login account (null until invite is sent; role MEMBER)
   name String
-  email String?
+  email String            // required — used for magic-link portal invite
   phoneNumber String?
   dateOfBirth DateTime?
   status MemberStatus @default(ACTIVE)
@@ -265,7 +279,8 @@ merge before the next.
 **Phase A1 — Members (admin CRUD).**
 - *Contracts:* `members/` (`member.response.ts`, `member-list.response.ts`,
   `member-create.request.ts`, `member-update.request.ts`,
-  `member-status.schema.ts`).
+  `member-status.schema.ts`). `member-create.request.ts` must include `email` as a
+  required field (not optional) — it is needed for the portal invite in A4.
 - *API:* `MembersModule` (`GET /members?status=`, `GET /members/:id`,
   `POST /members`, `PATCH /members/:id`). **Every query filtered by `gymId`** from
   `@CurrentUser()`; `findOne` uses `findFirst({ where: { id, gymId } })`.

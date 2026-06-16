@@ -60,6 +60,59 @@ Three roles: `SUPER_ADMIN` (platform), `ORG_ADMIN` (one gym), `MEMBER` (regular 
 
 **Every Prisma query on a tenant-scoped model must filter by `gymId`.** No exceptions. Even `findUnique` should be `findFirst({ where: { id, gymId } })`. Cross-tenant leakage is the #1 security bug in multi-tenant SaaS.
 
+### Swagger API documentation (`apps/api`)
+
+Every controller and endpoint **must** be decorated for Swagger. The docs are served at `http://localhost:3001/docs`.
+
+Required decorators — apply these on every new controller/endpoint, no exceptions:
+
+| Scope | Decorator | Where |
+|---|---|---|
+| Controller class | `@ApiTags('resource-name')` | matches the tag registered in `main.ts` |
+| Controller class | `@ApiCookieAuth('session-cookie')` | all protected controllers |
+| Endpoint method | `@ApiOperation({ summary: '...', description?: '...' })` | every route handler |
+| Endpoint method | `@ApiResponse({ status: 200\|201, description: '...', schema: { ... } })` | success response |
+| Endpoint method | `@ApiResponse({ status: 400, description: 'Validation error' })` | when body/query is validated |
+| Endpoint method | `@ApiResponse({ status: 401, description: 'Not authenticated' })` | all auth-guarded routes |
+| Endpoint method | `@ApiResponse({ status: 403, description: 'Insufficient role' })` | when `@Roles(...)` is used |
+| Endpoint method | `@ApiResponse({ status: 404, description: 'Resource not found' })` | when `NotFoundException` can be thrown |
+| Path param | `@ApiParam({ name: 'id', type: String, description: '...' })` | every `:param` |
+| Query param | `@ApiQuery({ name: '...', required: false, description: '...' })` | every `@Query()` |
+| Request body | `@ApiBody({ schema: { ... } })` | every `@Body()` — describe shape inline as JSON schema |
+
+**Import all Swagger decorators from `@nestjs/swagger`.** Do not import from any other package.
+
+Example (ORG_ADMIN-scoped endpoint):
+
+```ts
+@ApiTags('members')
+@ApiCookieAuth('session-cookie')
+@Controller('members')
+export class MembersController {
+
+  @Post()
+  @Roles('ORG_ADMIN')
+  @ApiOperation({ summary: 'Create a member', description: 'Creates a new gym member scoped to the caller's gym.' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['name'],
+      properties: {
+        name:        { type: 'string', example: 'Jane Doe' },
+        email:       { type: 'string', format: 'email', example: 'jane@example.com' },
+        phoneNumber: { type: 'string', example: '+1-555-0100' },
+        dateOfBirth: { type: 'string', format: 'date-time' },
+      },
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Member created' })
+  @ApiResponse({ status: 400, description: 'Validation error' })
+  @ApiResponse({ status: 401, description: 'Not authenticated' })
+  @ApiResponse({ status: 403, description: 'Insufficient role' })
+  async create(@Body() dto: MemberCreateRequest, @CurrentUser() user: User) { ... }
+}
+```
+
 ### NestJS (`apps/api`)
 
 - One folder per feature: `src/<feature>/<feature>.{controller,service,module}.ts`. Register the module in `app.module.ts`.

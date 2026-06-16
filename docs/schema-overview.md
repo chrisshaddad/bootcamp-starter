@@ -41,7 +41,7 @@ Represents a gym. This is the top-level tenant — all data below is scoped to i
 A login account (magic-link auth). Roles: `SUPER_ADMIN` (platform), `ORG_ADMIN` (one gym's manager), and `MEMBER` (a gym customer's login). A `MEMBER` user is linked 1:1 to a `Member` record (see below).
 
 **Member**
-A gym customer, created and managed by gym staff. A member can be **invited to a read-only self-service login**: the invite provisions a linked `User` (role `MEMBER`, scoped to the gym) and the member's `userId` points at it (null until invited). Once invited, the customer can sign in to a member portal to track their own subscriptions and bookings and browse available plans. Each member belongs to one gym.
+A gym customer, created and managed by gym staff. `email` is **required** on every member (not nullable) because after adding a member the gym admin always invites them to the portal via magic-link. The invite provisions a linked `User` (role `MEMBER`, scoped to the gym) and the member's `userId` points at it (`null` until the invite is sent). Once the magic link is used, the customer can sign in to a member portal to track their own subscriptions, bookings, and browse available plans. Each member belongs to one gym.
 
 **MembershipPlan**
 A reusable plan template defined by the gym (e.g. "Monthly", "Annual"). Stores the duration and price. When a subscription is created, the plan's price is snapshotted onto it so historical records stay accurate even if the plan changes.
