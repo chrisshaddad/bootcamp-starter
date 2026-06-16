@@ -55,14 +55,32 @@ npm run dev
 
 ## Monorepo layout
 
-| Path                         | Description                                |
-| ---------------------------- | ------------------------------------------ |
-| `apps/api`                   | NestJS backend                             |
-| `apps/web`                   | Next.js frontend                           |
-| `packages/database`          | Prisma schema, client, migrations, seeders |
-| `packages/contracts`         | Zod schemas shared by api + web            |
-| `packages/eslint-config`     | Shared ESLint config                       |
-| `packages/typescript-config` | Shared TypeScript configs                  |
+| Path                         | Description                                            |
+| ---------------------------- | ------------------------------------------------------ |
+| `apps/api`                   | NestJS backend                                         |
+| `apps/web`                   | Next.js frontend                                       |
+| `packages/database`          | Prisma schema, client, migrations, seeders             |
+| `packages/contracts`         | Zod schemas shared by api + web                        |
+| `packages/eslint-config`     | Shared ESLint config                                   |
+| `packages/typescript-config` | Shared TypeScript configs                              |
+| `prototype`                  | Standalone Margin frontend prototype (not a workspace) |
+
+## Frontend prototype
+
+[`prototype/`](prototype) holds a **frontend-only, mock-data prototype** of the product — landing page,
+auth/onboarding, a profitability dashboard, items/expenses/members management, and an AI-insights chat —
+for sharing the intended UX with the team before the real build. It is **self-contained**: its own
+dependencies, **not** a workspace, and excluded from `turbo`/CI, so it can't affect the main app. Run it
+on its own port:
+
+```bash
+cd prototype
+npm install
+npm run dev        # http://localhost:3002 (web is :3000, api :3001)
+```
+
+See [`prototype/README.md`](prototype/README.md) and the spec docs in
+[`prototype/docs/`](prototype/docs) (`SPEC.md`, `CONTEXT.md`, `DESIGN.md`).
 
 ## Working with AI assistants
 

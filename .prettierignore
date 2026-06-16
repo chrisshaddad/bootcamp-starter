@@ -11,3 +11,6 @@ apps/web/next-env.d.ts
 # Lockfile / vendored
 package-lock.json
 node_modules/
+
+# Standalone frontend prototype — self-contained, not part of the monorepo gates
+prototype/

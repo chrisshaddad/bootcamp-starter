@@ -1,0 +1,223 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  /* Font families */
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  /* Semantic color mappings (resolved from :root below) */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* ---- Margin brand scales (dark-tuned, direct values) ---- */
+  /* Primary — violet. base is the brand color; 600/700 = hover/pressed; 100–400 = light accents */
+  --color-primary-base: #7c4dff;
+  --color-primary-700: #5b30d6;
+  --color-primary-600: #6a3df0;
+  --color-primary-400: #936bff;
+  --color-primary-300: #b49dff;
+  --color-primary-200: #d6ccff;
+  --color-primary-100: #ebe5ff;
+  --color-primary-soft: #17132b; /* faint violet surface for selected/active fills on dark */
+
+  /* Accent — cyan. The secondary brand pop for highlights, charts, links */
+  --color-accent-base: #22d3ee;
+  --color-accent-400: #4fddf2;
+  --color-accent-300: #8ae9f7;
+  --color-accent-100: #c7f4fb;
+
+  /* Alert — success */
+  --color-success: #34d39a;
+  --color-success-dark: #22b07e;
+  --color-success-light: #6fe3bc;
+
+  /* Alert — warning */
+  --color-warning: #fbbf24;
+  --color-warning-dark: #e0a415;
+  --color-warning-light: #fcd063;
+
+  /* Alert — error */
+  --color-error: #f4506a;
+  --color-error-dark: #d63b55;
+  --color-error-light: #f98298;
+
+  /* Greyscale — cool/violet-tinted, monotonic (50 lightest → 900 darkest) */
+  --color-gray-50: #f5f4fa;
+  --color-gray-100: #e8e6f2;
+  --color-gray-200: #cfccdf;
+  --color-gray-300: #aba7c2;
+  --color-gray-400: #847fa0;
+  --color-gray-500: #635e80;
+  --color-gray-600: #4a4663;
+  --color-gray-700: #322f45;
+  --color-gray-800: #201d2e;
+  --color-gray-900: #14111e;
+
+  /* Border radius scale */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+}
+
+/*
+ * Dark-only prototype: the dark palette lives in :root so first paint is dark
+ * regardless of the html class. `class="dark"` is still set on <html> so any
+ * `dark:` utility variants and theme-aware libs (sonner) resolve correctly.
+ */
+:root {
+  --radius: 0.75rem;
+
+  --background: #0b0a12;
+  --foreground: #eceaf5;
+
+  --card: #16141f;
+  --card-foreground: #eceaf5;
+
+  --popover: #1a1726;
+  --popover-foreground: #eceaf5;
+
+  --primary: #7c4dff;
+  --primary-foreground: #ffffff;
+
+  --secondary: #221f30;
+  --secondary-foreground: #eceaf5;
+
+  --muted: #1c1a28;
+  --muted-foreground: #9a95b5;
+
+  --accent: #1e1b2e;
+  --accent-foreground: #eceaf5;
+
+  --destructive: #f4506a;
+
+  --border: #29263b;
+  --input: #2a2740;
+  --ring: #7c4dff;
+
+  --chart-1: #7c4dff;
+  --chart-2: #22d3ee;
+  --chart-3: #e879f9;
+  --chart-4: #34d39a;
+  --chart-5: #fbbf24;
+
+  --sidebar: #100e18;
+  --sidebar-foreground: #c9c5dc;
+  --sidebar-primary: #7c4dff;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1c1930;
+  --sidebar-accent-foreground: #eceaf5;
+  --sidebar-border: #221e33;
+  --sidebar-ring: #7c4dff;
+}
+
+/* Keep .dark identical so `dark:` variant lookups stay consistent with :root */
+.dark {
+  --background: #0b0a12;
+  --foreground: #eceaf5;
+  --card: #16141f;
+  --card-foreground: #eceaf5;
+  --popover: #1a1726;
+  --popover-foreground: #eceaf5;
+  --primary: #7c4dff;
+  --primary-foreground: #ffffff;
+  --secondary: #221f30;
+  --secondary-foreground: #eceaf5;
+  --muted: #1c1a28;
+  --muted-foreground: #9a95b5;
+  --accent: #1e1b2e;
+  --accent-foreground: #eceaf5;
+  --destructive: #f4506a;
+  --border: #29263b;
+  --input: #2a2740;
+  --ring: #7c4dff;
+  --chart-1: #7c4dff;
+  --chart-2: #22d3ee;
+  --chart-3: #e879f9;
+  --chart-4: #34d39a;
+  --chart-5: #fbbf24;
+  --sidebar: #100e18;
+  --sidebar-foreground: #c9c5dc;
+  --sidebar-primary: #7c4dff;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1c1930;
+  --sidebar-accent-foreground: #eceaf5;
+  --sidebar-border: #221e33;
+  --sidebar-ring: #7c4dff;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    /* subtle violet glow so the dark canvas isn't flat */
+    background-image:
+      radial-gradient(60rem 60rem at 85% -10%, rgba(124, 77, 255, 0.08), transparent 60%),
+      radial-gradient(50rem 50rem at -10% 110%, rgba(34, 211, 238, 0.05), transparent 55%);
+    background-attachment: fixed;
+  }
+}
+
+/* Thin, theme-tinted scrollbars */
+@layer base {
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--gray-700, #322f45);
+    background-clip: padding-box;
+  }
+}
