@@ -19,8 +19,10 @@ import {
 import {
   magicLinkRequestSchema,
   magicLinkVerifyRequestSchema,
+  registerRequestSchema,
   type MagicLinkRequest,
   type MagicLinkVerifyRequest,
+  type RegisterRequest,
   type UserResponse,
 } from '@repo/contracts';
 import type { User } from '@repo/db';
@@ -31,6 +33,14 @@ const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  @Public()
+  @Post('register')
+  @HttpCode(HttpStatus.CREATED)
+  @UsePipes(new ZodValidationPipe(registerRequestSchema))
+  async register(@Body() body: RegisterRequest) {
+    return this.authService.register(body.organizationName, body.name, body.email);
+  }
 
   @Public()
   @Post('magic-link')

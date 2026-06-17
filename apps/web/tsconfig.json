@@ -1,5 +1,5 @@
 {
-  "extends": "@repo/typescript-config/nextjs.json",
+  "extends": "../../packages/typescript-config/nextjs.json",
   "compilerOptions": {
     "plugins": [
       {
@@ -12,7 +12,11 @@
       "@/utils/*": ["lib/utils/*"],
       "@/ui/*": ["components/ui/*"],
       "@/lib/*": ["lib/*"],
-      "@/hooks/*": ["hooks/*"]
+      "@/hooks/*": ["hooks/*"],
+      "@repo/contracts": ["../../packages/contracts/dist/index"],
+      "@repo/contracts/*": ["../../packages/contracts/dist/*"],
+      "@repo/db": ["../../packages/database/dist/index"],
+      "@repo/db/*": ["../../packages/database/dist/*"]
     }
   },
   "include": [

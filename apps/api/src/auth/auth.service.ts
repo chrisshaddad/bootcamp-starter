@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import * as crypto from 'crypto';
@@ -130,6 +130,56 @@ export class AuthService {
         role: magicLink.user.role,
       },
     };
+  }
+
+  /**
+   * Register a new organization and admin user
+   */
+  async register(
+    organizationName: string,
+    name: string,
+    email: string,
+  ): Promise<{ success: boolean }> {
+    const normalizedEmail = email.toLowerCase();
+
+    // Check if user already exists
+    const existing = await this.prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+    if (existing) {
+      throw new ConflictException('An account with this email already exists');
+    }
+
+    // Create user and organization in a transaction.
+    // Circular FK: org needs createdById (user), user needs organizationId (org).
+    // Resolution: create user first (no org), create org with createdById, then link user.
+    const user = await this.prisma.$transaction(async (tx) => {
+      const newUser = await tx.user.create({
+        data: {
+          email: normalizedEmail,
+          name,
+          role: 'ORG_ADMIN',
+        },
+      });
+
+      const org = await tx.organization.create({
+        data: {
+          name: organizationName,
+          status: 'ACTIVE', // auto-approve: no super admin exists yet
+          createdById: newUser.id,
+        },
+      });
+
+      return tx.user.update({
+        where: { id: newUser.id },
+        data: { organizationId: org.id },
+      });
+    });
+
+    this.logger.log(`Registered new org "${organizationName}" with admin ${user.id}`);
+
+    // Immediately send them a magic link to log in
+    return this.requestMagicLink(normalizedEmail);
   }
 
   /**

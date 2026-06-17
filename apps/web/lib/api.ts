@@ -68,4 +68,20 @@ export async function apiPatch<T>(
   return res.json();
 }
 
-export { API_URL };
+export async function apiDelete<T>(endpoint: string): Promise<T> {
+  const res = await fetch(`${API_URL}${endpoint}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    const error = await res
+      .json()
+      .catch(() => ({ message: 'An error occurred' }));
+    throw new ApiError(res.status, error.message || 'An error occurred');
+  }
+
+  // 204 No Content — DELETE endpoints may return no body
+  if (res.status === 204) return undefined as T;
+  return res.json();
+}

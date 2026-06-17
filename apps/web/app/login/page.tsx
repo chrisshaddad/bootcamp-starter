@@ -1,13 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import Image from 'next/image';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { magicLinkRequestSchema, type MagicLinkRequest } from '@repo/contracts';
-import { useAuth } from '@/hooks/use-auth';
+import { useAuth, useUser } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,7 +16,18 @@ import { ApiError } from '@/lib/api';
 
 export default function LoginPage() {
   const { requestMagicLink } = useAuth();
+  const { isAuthenticated, isLoading } = useUser({ redirectOnUnauthenticated: false });
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Redirect already-authenticated users to dashboard (or the originally requested page)
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      const redirect = searchParams.get('redirect') ?? '/dashboard';
+      router.replace(redirect);
+    }
+  }, [isAuthenticated, isLoading, router, searchParams]);
 
   const {
     register,
@@ -43,11 +55,13 @@ export default function LoginPage() {
     }
   };
 
+  // Show nothing while checking auth state to avoid a flash of the login form
+  if (isLoading) return null;
+
   return (
     <div className="flex min-h-screen bg-white">
       {/* Left Panel - Hero Section */}
       <div className="relative hidden w-1/2 bg-gray-900 lg:flex lg:flex-col lg:justify-end">
-        {/* Background Image */}
         <div className="relative flex-1">
           <Image
             src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1200&q=80"
@@ -58,9 +72,7 @@ export default function LoginPage() {
           />
         </div>
 
-        {/* Content Section with green top border */}
         <div className="flex flex-col gap-6 border-t-[5px] border-primary-base bg-gray-900 px-12.5 pb-15 pt-10">
-          {/* Logo */}
           <div className="flex items-center gap-2.5">
             <div className="flex h-6 w-6 items-center justify-center">
               <span className="text-2xl text-primary-base">✦</span>
@@ -70,12 +82,10 @@ export default function LoginPage() {
             </span>
           </div>
 
-          {/* Headline */}
           <h1 className="text-5xl font-bold leading-[1.2] tracking-[-0.5px] text-white">
             Build your next project on a solid foundation.
           </h1>
 
-          {/* Subtext */}
           <p className="text-lg leading-normal text-white">
             A generic full-stack starter for your bootcamp project.
           </p>
@@ -84,15 +94,12 @@ export default function LoginPage() {
 
       {/* Right Panel - Login Form */}
       <div className="relative flex w-full flex-col justify-between lg:w-1/2">
-        {/* Form Section */}
         <div className="flex flex-1 items-center justify-center px-6 py-12">
           <div className="flex w-full max-w-120 flex-col items-center gap-8">
-            {/* Title */}
             <h2 className="w-full text-center text-2xl font-bold leading-[1.3] text-gray-900">
               Login first to your account
             </h2>
 
-            {/* Form */}
             <form
               onSubmit={handleSubmit(onSubmit)}
               className="w-78.75 space-y-6"
@@ -133,14 +140,12 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            {/* Info Text */}
             <p className="text-center text-sm font-medium leading-[1.6] text-gray-500">
               We&apos;ll send you a magic link to sign in instantly.
               <br />
               No password required.
             </p>
 
-            {/* Register Link */}
             <p className="text-center text-sm font-medium leading-[1.6]">
               <span className="text-gray-500">
                 Don&apos;t have a organization?{' '}
@@ -152,7 +157,6 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Footer */}
         <footer className="px-6 py-6">
           <div className="flex flex-wrap items-center justify-center gap-2.5 text-sm font-medium leading-[1.6]">
             <span className="text-gray-500">

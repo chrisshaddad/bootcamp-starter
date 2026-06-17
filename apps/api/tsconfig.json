@@ -1,8 +1,17 @@
 {
-  "extends": "@repo/typescript-config/nestjs.json",
+  "extends": "../../packages/typescript-config/nestjs.json",
   "compilerOptions": {
     "outDir": "./dist",
     "baseUrl": "./",
-    "incremental": true
+    "incremental": true,
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "resolvePackageJsonExports": false,
+    "paths": {
+      "@repo/contracts": ["../../packages/contracts/dist/index"],
+      "@repo/contracts/*": ["../../packages/contracts/dist/*"],
+      "@repo/db": ["../../packages/database/dist/index"],
+      "@repo/db/*": ["../../packages/database/dist/*"]
+    }
   }
 }

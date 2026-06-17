@@ -22,7 +22,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${manrope.variable} font-sans antialiased`}>
+      <body className={`${manrope.variable} dark font-sans antialiased`}>
         <SWRProvider>
           {children}
           <Toaster richColors position="top-right" />

@@ -182,37 +182,50 @@ a {
 }
 
 .dark {
-  --background: #111827;
-  --foreground: #fafafa;
-  --card: #1f2937;
-  --card-foreground: #fafafa;
-  --popover: #1f2937;
-  --popover-foreground: #fafafa;
-  --primary: #27a376;
+  /* Margin purple-on-dark design system — exact tokens from prototype/docs/DESIGN.md */
+  --background: #0B0A12;
+  --foreground: #ECEAF5;
+  --card: #16141F;
+  --card-foreground: #ECEAF5;
+  --popover: #1A1726;
+  --popover-foreground: #ECEAF5;
+  --primary: #7C4DFF;
   --primary-foreground: #ffffff;
-  --secondary: #ffd023;
-  --secondary-foreground: #111827;
-  --muted: #323b49;
-  --muted-foreground: #a0aec0;
-  --accent: #0ba259;
-  --accent-foreground: #ffffff;
-  --destructive: #e03137;
-  --border: #323b49;
-  --input: #323b49;
-  --ring: #27a376;
-  --chart-1: #55c790;
-  --chart-2: #ffde65;
-  --chart-3: #2f78ee;
-  --chart-4: #8c62ff;
-  --chart-5: #fe964a;
-  --sidebar: #1f2937;
-  --sidebar-foreground: #fafafa;
-  --sidebar-primary: #27a376;
+  --secondary: #221F30;
+  --secondary-foreground: #ECEAF5;
+  --muted: #1C1A28;
+  --muted-foreground: #9A95B5;
+  --accent: #22D3EE;
+  --accent-foreground: #0B0A12;
+  --destructive: #F4506A;
+  --border: #29263B;
+  --input: #2A2740;
+  --ring: #7C4DFF;
+  --chart-1: #7C4DFF;
+  --chart-2: #22D3EE;
+  --chart-3: #E879F9;
+  --chart-4: #34D39A;
+  --chart-5: #FBBF24;
+  --sidebar: #09080F;
+  --sidebar-foreground: #ECEAF5;
+  --sidebar-primary: #7C4DFF;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #323b49;
-  --sidebar-accent-foreground: #55c790;
-  --sidebar-border: #323b49;
-  --sidebar-ring: #27a376;
+  --sidebar-accent: #17132B;
+  --sidebar-accent-foreground: #ECEAF5;
+  --sidebar-border: #29263B;
+  --sidebar-ring: #7C4DFF;
+  /* Extended palette */
+  --color-primary-base: #7C4DFF;
+  --color-primary-600: #6A3DF0;
+  --color-primary-400: #936BFF;
+  --color-primary-300: #B49BFF;
+  --color-primary-200: #D5C7FF;
+  --color-primary-100: #EBE5FF;
+  --color-primary-soft: #17132B;
+  --color-accent-base: #22D3EE;
+  --color-success: #34D39A;
+  --color-warning: #FBBF24;
+  --color-error: #F4506A;
 }
 
 @layer base {
@@ -221,6 +234,12 @@ a {
   }
   body {
     @apply bg-background text-foreground;
+  }
+  /* Margin dark canvas — two faint radial glows so it never reads as flat black */
+  .dark body {
+    background-image:
+      radial-gradient(ellipse 60% 40% at 80% 5%, rgba(124,77,255,0.08) 0%, transparent 70%),
+      radial-gradient(ellipse 50% 35% at 10% 95%, rgba(34,211,238,0.06) 0%, transparent 70%);
   }
 
   /* Heading Styles - Manrope Bold */

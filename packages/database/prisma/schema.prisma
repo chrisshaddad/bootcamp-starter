@@ -11,23 +11,94 @@ datasource db {
   schemas  = ["public", "private"]
 }
 
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
 enum UserRole {
   SUPER_ADMIN // Manages all organizations (can also accept org registrations)
-  ORG_ADMIN // Manages a single organization (can also invite members to their org)
+  ORG_ADMIN   // Manages a single organization (can also invite members to their org)
   MEMBER
 
   @@schema("public")
 }
 
 enum OrganizationStatus {
-  PENDING // Awaiting super admin approval
-  ACTIVE // Approved and operational
-  REJECTED // Denied by super admin
+  PENDING   // Awaiting super admin approval
+  ACTIVE    // Approved and operational
+  REJECTED  // Denied by super admin
   SUSPENDED
   INACTIVE
 
   @@schema("public")
 }
+
+enum RecurrenceType {
+  NONE
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+
+  @@schema("public")
+}
+
+enum ImportStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  PARTIAL
+
+  @@schema("public")
+}
+
+enum ImportType {
+  EXPENSES
+  SALES
+  PRODUCTS
+
+  @@schema("public")
+}
+
+enum GoalType {
+  REVENUE
+  GROSS_PROFIT
+  NET_PROFIT
+  EXPENSE_LIMIT
+
+  @@schema("public")
+}
+
+enum GoalPeriod {
+  MONTHLY
+  QUARTERLY
+  YEARLY
+
+  @@schema("public")
+}
+
+enum AlertStatus {
+  ACTIVE
+  TRIGGERED
+  RESOLVED
+  DISMISSED
+
+  @@schema("public")
+}
+
+enum InsightType {
+  PROFITABILITY
+  EXPENSE
+  REVENUE
+  GOAL
+
+  @@schema("public")
+}
+
+// ---------------------------------------------------------------------------
+// Core / Auth Models
+// ---------------------------------------------------------------------------
 
 model User {
   id             String   @id @default(uuid())
@@ -35,7 +106,7 @@ model User {
   isConfirmed    Boolean  @default(false)
   name           String
   role           UserRole @default(MEMBER)
-  organizationId String? // null for SUPER_ADMIN users
+  organizationId String?  // null for SUPER_ADMIN users
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -45,6 +116,12 @@ model User {
   organization          Organization?  @relation("OrganizationMembers", fields: [organizationId], references: [id], onDelete: SetNull)
   createdOrganization   Organization?  @relation("OrganizationCreator")
   approvedOrganizations Organization[] @relation("OrganizationApprover")
+
+  // Margin — authored records
+  expenses Expense[] @relation("ExpenseCreator")
+  sales    Sale[]    @relation("SaleCreator")
+  imports  Import[]  @relation("ImportCreator")
+  goals    Goal[]    @relation("GoalCreator")
 
   @@index([organizationId])
   @@schema("public")
@@ -111,13 +188,241 @@ model Organization {
   approvedById String?
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
-  approvedAt   DateTime? // When super admin approved
+  approvedAt   DateTime?          // When super admin approved
 
   createdBy  User   @relation("OrganizationCreator", fields: [createdById], references: [id])
   approvedBy User?  @relation("OrganizationApprover", fields: [approvedById], references: [id])
   users      User[] @relation("OrganizationMembers")
 
+  // Margin relations
+  products          Product[]
+  expenseCategories ExpenseCategory[]
+  expenses          Expense[]
+  sales             Sale[]
+  imports           Import[]
+  goals             Goal[]
+  alerts            Alert[]
+  aiInsights        AiInsight[]
+
   @@index([approvedById])
   @@index([status])
+  @@schema("public")
+}
+
+// ---------------------------------------------------------------------------
+// Margin — Products
+// ---------------------------------------------------------------------------
+
+model Product {
+  id             String   @id @default(uuid())
+  organizationId String
+  name           String
+  description    String?  @db.Text
+  unitPrice      Decimal  @db.Decimal(12, 2)
+  unitCost       Decimal? @db.Decimal(12, 2)
+  sku            String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  sales        Sale[]
+
+  @@index([organizationId])
+  @@schema("public")
+}
+
+// ---------------------------------------------------------------------------
+// Margin — Expenses
+// ---------------------------------------------------------------------------
+
+model ExpenseCategory {
+  id             String   @id @default(uuid())
+  organizationId String
+  name           String
+  description    String?
+  color          String?  @default("#6366f1")
+  isDefault      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  expenses     Expense[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@schema("public")
+}
+
+model Expense {
+  id             String         @id @default(uuid())
+  organizationId String
+  categoryId     String?
+  createdById    String
+  description    String
+  amount         Decimal        @db.Decimal(12, 2)
+  date           DateTime       @db.Date
+  recurrence     RecurrenceType @default(NONE)
+  notes          String?        @db.Text
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  category     ExpenseCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  createdBy    User             @relation("ExpenseCreator", fields: [createdById], references: [id])
+
+  @@index([organizationId])
+  @@index([categoryId])
+  @@index([createdById])
+  @@index([date])
+  @@schema("public")
+}
+
+// ---------------------------------------------------------------------------
+// Margin — Sales
+// ---------------------------------------------------------------------------
+
+model Sale {
+  id             String         @id @default(uuid())
+  organizationId String
+  productId      String?
+  createdById    String
+  description    String?
+  quantity       Decimal        @default(1) @db.Decimal(12, 4)
+  unitPrice      Decimal        @db.Decimal(12, 2)
+  unitCost       Decimal?       @db.Decimal(12, 2)
+  date           DateTime       @db.Date
+  recurrence     RecurrenceType @default(NONE)
+  notes          String?        @db.Text
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  product      Product?     @relation(fields: [productId], references: [id], onDelete: SetNull)
+  createdBy    User         @relation("SaleCreator", fields: [createdById], references: [id])
+
+  @@index([organizationId])
+  @@index([productId])
+  @@index([createdById])
+  @@index([date])
+  @@schema("public")
+}
+
+// ---------------------------------------------------------------------------
+// Margin — Imports
+// ---------------------------------------------------------------------------
+
+model Import {
+  id             String       @id @default(uuid())
+  organizationId String
+  createdById    String
+  type           ImportType
+  status         ImportStatus @default(PENDING)
+  fileName       String
+  fileUrl        String?
+  rowCount       Int          @default(0)
+  successCount   Int          @default(0)
+  errorCount     Int          @default(0)
+  columnMapping  Json?        // { fileColumn: appField }
+  errorSummary   String?      @db.Text
+  processedAt    DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User         @relation("ImportCreator", fields: [createdById], references: [id])
+  rows         ImportRow[]
+
+  @@index([organizationId])
+  @@index([createdById])
+  @@index([status])
+  @@schema("public")
+}
+
+model ImportRow {
+  id        String   @id @default(uuid())
+  importId  String
+  rowNumber Int
+  rawData   Json
+  status    String   @default("pending") // "pending" | "success" | "error"
+  errorMsg  String?
+  entityId  String?  // ID of the created Expense or Sale on success
+  createdAt DateTime @default(now())
+
+  import Import @relation(fields: [importId], references: [id], onDelete: Cascade)
+
+  @@index([importId])
+  @@schema("public")
+}
+
+// ---------------------------------------------------------------------------
+// Margin — Goals & Alerts
+// ---------------------------------------------------------------------------
+
+model Goal {
+  id             String     @id @default(uuid())
+  organizationId String
+  createdById    String
+  type           GoalType
+  period         GoalPeriod
+  targetAmount   Decimal    @db.Decimal(12, 2)
+  startDate      DateTime   @db.Date
+  endDate        DateTime   @db.Date
+  description    String?
+  isActive       Boolean    @default(true)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User         @relation("GoalCreator", fields: [createdById], references: [id])
+  alerts       Alert[]
+
+  @@index([organizationId])
+  @@index([createdById])
+  @@schema("public")
+}
+
+model Alert {
+  id             String      @id @default(uuid())
+  organizationId String
+  goalId         String?
+  status         AlertStatus @default(ACTIVE)
+  title          String
+  message        String      @db.Text
+  thresholdPct   Decimal?    @db.Decimal(5, 2) // e.g. 80.00 = alert when 80% of goal reached
+  triggeredAt    DateTime?
+  resolvedAt     DateTime?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  goal         Goal?        @relation(fields: [goalId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([goalId])
+  @@index([status])
+  @@schema("public")
+}
+
+// ---------------------------------------------------------------------------
+// Margin — AI Insights
+// ---------------------------------------------------------------------------
+
+model AiInsight {
+  id             String      @id @default(uuid())
+  organizationId String
+  type           InsightType
+  title          String
+  summary        String      @db.Text
+  recommendations Json       // string[]
+  metrics        Json        // key-value metrics used as context (model never does arithmetic)
+  periodStart    DateTime    @db.Date
+  periodEnd      DateTime    @db.Date
+  createdAt      DateTime    @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([type])
   @@schema("public")
 }

@@ -12,9 +12,9 @@ export default function DashboardLayout({
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset>
+      <SidebarInset className="bg-background">
         <TopNavbar />
-        <main className="flex-1 bg-gray-50 p-6">{children}</main>
+        <main className="flex-1 bg-background p-6">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   );

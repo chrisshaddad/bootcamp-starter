@@ -23,7 +23,7 @@ interface UseUserReturn {
 }
 
 // Routes where we should NOT redirect on 401
-const AUTH_ROUTES = ['/login', '/auth'];
+const AUTH_ROUTES = ['/login', '/auth', '/register'];
 
 function isAuthRoute(pathname: string): boolean {
   return AUTH_ROUTES.some(
@@ -62,7 +62,8 @@ export function useUser(options: UseUserOptions = {}): UseUserReturn {
 }
 
 export function useAuth() {
-  const { mutate } = useUser();
+  const { mutate } = useUser({ redirectOnUnauthenticated: false });
+  const router = useRouter();
 
   const requestMagicLink = useCallback(async (data: MagicLinkRequest) => {
     return apiPost<{ success: boolean }>('/auth/magic-link', data);
@@ -81,9 +82,15 @@ export function useAuth() {
   );
 
   const logout = useCallback(async () => {
-    await apiPost<{ success: boolean }>('/auth/logout');
-    mutate();
-  }, [mutate]);
+    try {
+      await apiPost<{ success: boolean }>('/auth/logout');
+    } catch {
+      // Session may already be invalid — continue with client-side cleanup
+    }
+    // Clear SWR cache and navigate immediately — don't rely on the 401 effect
+    await mutate(undefined, { revalidate: false });
+    router.replace('/login');
+  }, [mutate, router]);
 
   return {
     requestMagicLink,
