@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { EventCalendar } from '@/components/event-calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Calendar, ShieldX } from 'lucide-react';
@@ -90,6 +91,10 @@ export default function EventsPage() {
     upcoming: upcomingFilter,
   });
 
+  const { events: calendarEvents, isLoading: calendarLoading } = useEvents({
+    enabled: canAccess,
+  });
+
   if (userLoading) {
     return <LoadingSkeleton />;
   }
@@ -125,6 +130,18 @@ export default function EventsPage() {
           </SelectContent>
         </Select>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Calendar
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <EventCalendar events={calendarEvents} isLoading={calendarLoading} />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
