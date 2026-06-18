@@ -2,6 +2,8 @@
 
 A generic full-stack starter for bootcamp projects. Multi-tenant auth scaffolding is wired in; build your features on top.
 
+test
+
 ## What's included
 
 | Layer       | Tech                                                               |
