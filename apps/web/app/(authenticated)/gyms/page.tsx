@@ -1,7 +1,7 @@
 'use client';
 
 import { useUser } from '@/hooks/use-auth';
-import { useOrganizations } from '@/hooks/use-organizations';
+import { useGyms } from '@/hooks/use-gyms';
 import { useRouter } from 'next/navigation';
 import {
   Table,
@@ -22,15 +22,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Building2, ShieldX } from 'lucide-react';
 import { useState } from 'react';
-import type { OrganizationStatus } from '@repo/contracts';
+import type { GymStatus } from '@repo/contracts';
 
-type StatusFilter =
-  | 'all'
-  | 'PENDING'
-  | 'ACTIVE'
-  | 'REJECTED'
-  | 'SUSPENDED'
-  | 'INACTIVE';
+type StatusFilter = 'all' | GymStatus;
 
 const STATUS_LABELS: Record<string, string> = {
   PENDING: 'Pending',
@@ -65,7 +59,7 @@ function ForbiddenPage() {
       <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
       <p className="text-gray-500 text-center max-w-md">
         You don&apos;t have permission to access this page. Only Super Admins
-        can manage organizations.
+        can manage gyms.
       </p>
     </div>
   );
@@ -85,7 +79,7 @@ function LoadingSkeleton() {
   );
 }
 
-export default function OrganizationsPage() {
+export default function GymsPage() {
   const router = useRouter();
   const { user, isLoading: userLoading } = useUser();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -93,13 +87,12 @@ export default function OrganizationsPage() {
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
 
   const {
-    organizations,
+    gyms,
     total,
-    isLoading: orgsLoading,
+    isLoading: gymsLoading,
     error,
-  } = useOrganizations({
-    status:
-      statusFilter === 'all' ? undefined : (statusFilter as OrganizationStatus),
+  } = useGyms({
+    status: statusFilter === 'all' ? undefined : (statusFilter as GymStatus),
     enabled: isSuperAdmin,
   });
 
@@ -107,19 +100,17 @@ export default function OrganizationsPage() {
     return <LoadingSkeleton />;
   }
 
-  // Show 403 for non-super admins
   if (user?.role !== 'SUPER_ADMIN') {
     return <ForbiddenPage />;
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Organizations</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Gyms</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Manage organization registrations and approvals
+            Manage gym registrations and approvals
           </p>
         </div>
         <div className="flex items-center gap-4">
@@ -142,12 +133,11 @@ export default function OrganizationsPage() {
         </div>
       </div>
 
-      {/* Organizations Table */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Building2 className="h-5 w-5" />
-            Organizations
+            Gyms
             {total !== undefined && (
               <span className="text-sm font-normal text-gray-500">
                 ({total} total)
@@ -156,7 +146,7 @@ export default function OrganizationsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {orgsLoading ? (
+          {gymsLoading ? (
             <div className="space-y-2">
               {[...Array(5)].map((_, i) => (
                 <Skeleton key={i} className="h-14 w-full" />
@@ -164,17 +154,17 @@ export default function OrganizationsPage() {
             </div>
           ) : error ? (
             <div className="py-10 text-center text-red-500">
-              Failed to load organizations
+              Failed to load gyms
             </div>
-          ) : !organizations?.length ? (
+          ) : !gyms?.length ? (
             <div className="py-10 text-center text-gray-500">
-              No organizations found
+              No gyms found
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Organization</TableHead>
+                  <TableHead>Gym</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Created By</TableHead>
                   <TableHead>Members</TableHead>
@@ -182,42 +172,42 @@ export default function OrganizationsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {organizations.map((org) => (
+                {gyms.map((gym) => (
                   <TableRow
-                    key={org.id}
+                    key={gym.id}
                     className="cursor-pointer"
-                    onClick={() => router.push(`/organizations/${org.id}`)}
+                    onClick={() => router.push(`/gyms/${gym.id}`)}
                   >
                     <TableCell>
                       <div>
                         <div className="font-medium text-gray-900">
-                          {org.name}
+                          {gym.name}
                         </div>
-                        {org.website && (
+                        {gym.website && (
                           <div className="text-sm text-gray-500">
-                            {org.website}
+                            {gym.website}
                           </div>
                         )}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <StatusBadge status={org.status} />
+                      <StatusBadge status={gym.status} />
                     </TableCell>
                     <TableCell>
                       <div>
                         <div className="text-sm text-gray-900">
-                          {org.createdBy.name}
+                          {gym.createdBy.name}
                         </div>
                         <div className="text-xs text-gray-500">
-                          {org.createdBy.email}
+                          {gym.createdBy.email}
                         </div>
                       </div>
                     </TableCell>
                     <TableCell className="text-gray-600">
-                      {org._count.users}
+                      {gym._count.users}
                     </TableCell>
                     <TableCell className="text-gray-500 text-sm">
-                      {new Date(org.createdAt).toLocaleDateString()}
+                      {new Date(gym.createdAt).toLocaleDateString()}
                     </TableCell>
                   </TableRow>
                 ))}

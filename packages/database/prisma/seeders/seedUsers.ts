@@ -8,32 +8,32 @@ const SUPER_ADMINS: Prisma.UserCreateManyInput[] = [
   // Add more super admins as needed
 ];
 
-// Org admins - these will be linked to organizations in seedOrganizations.ts
-// The order here matches the order in seedOrganizations.ts
+// Gym admins - these will be linked to gyms in seedGyms.ts
+// The order here matches the order in seedGyms.ts
 const ORG_ADMINS: Prisma.UserCreateManyInput[] = [
   {
-    email: 'admin@techcorp.example.com',
+    email: 'admin@ironpeak.example.com',
     name: 'Sarah Chen',
   },
   {
-    email: 'admin@greenenergy.example.com',
-    name: 'Michael Green',
+    email: 'admin@flexzone.example.com',
+    name: 'Michael Torres',
   },
   {
-    email: 'admin@healthfirst.example.com',
+    email: 'admin@mountainwellness.example.com',
     name: 'Dr. Emily Watson',
   },
   {
-    email: 'admin@urbanconstruction.example.com',
-    name: 'Robert Martinez',
+    email: 'admin@cityboxing.example.com',
+    name: 'Roberto Martinez',
   },
   {
-    email: 'admin@fraudulent.example.com',
-    name: 'John Suspicious',
+    email: 'admin@velocitysports.example.com',
+    name: 'Jake Williams',
   },
   {
-    email: 'admin@datasync.example.com',
-    name: 'Anna Data',
+    email: 'admin@profitraining.example.com',
+    name: 'Anna Davis',
   },
 ];
 
