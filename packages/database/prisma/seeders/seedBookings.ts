@@ -79,7 +79,9 @@ export async function seedBookings(prisma: PrismaClient) {
 
   let count = 0;
   for (const booking of BOOKINGS) {
-    const gym = await prisma.gym.findFirst({ where: { name: booking.gymName } });
+    const gym = await prisma.gym.findFirst({
+      where: { name: booking.gymName },
+    });
     if (!gym) {
       console.warn(`  Warning: Gym "${booking.gymName}" not found. Skipping.`);
       continue;

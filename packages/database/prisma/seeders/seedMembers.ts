@@ -152,7 +152,9 @@ export async function seedMembers(prisma: PrismaClient) {
     });
 
     const portalNote = linkedUserId ? ' (portal enabled)' : '';
-    console.log(`  Created member: ${member.name} (${member.gymName})${portalNote}`);
+    console.log(
+      `  Created member: ${member.name} (${member.gymName})${portalNote}`,
+    );
     count++;
   }
 

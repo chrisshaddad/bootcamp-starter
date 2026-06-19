@@ -66,7 +66,9 @@ export async function seedCheckIns(prisma: PrismaClient) {
 
   let count = 0;
   for (const checkIn of CHECK_INS) {
-    const gym = await prisma.gym.findFirst({ where: { name: checkIn.gymName } });
+    const gym = await prisma.gym.findFirst({
+      where: { name: checkIn.gymName },
+    });
     if (!gym) {
       console.warn(`  Warning: Gym "${checkIn.gymName}" not found. Skipping.`);
       continue;
@@ -91,7 +93,9 @@ export async function seedCheckIns(prisma: PrismaClient) {
       },
     });
 
-    const outNote = checkIn.checkedOutAt ? `→ ${checkIn.checkedOutAt.toISOString()}` : '→ still in';
+    const outNote = checkIn.checkedOutAt
+      ? `→ ${checkIn.checkedOutAt.toISOString()}`
+      : '→ still in';
     console.log(
       `  Created check-in: ${checkIn.memberEmail} at ${checkIn.checkedInAt.toISOString()} ${outNote}`,
     );

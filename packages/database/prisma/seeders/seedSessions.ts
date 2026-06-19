@@ -47,7 +47,8 @@ const SESSIONS: SessionSeed[] = [
   {
     gymName: 'FlexZone Gym',
     title: 'CrossFit WOD',
-    description: 'Workout of the day — scaled options available for all abilities.',
+    description:
+      'Workout of the day — scaled options available for all abilities.',
     instructorEmail: 'carlos.diaz@flexzone.example.com',
     startsAt: new Date('2026-06-22T10:00:00Z'),
     endsAt: new Date('2026-06-22T11:00:00Z'),
@@ -71,7 +72,9 @@ export async function seedSessions(prisma: PrismaClient) {
 
   let count = 0;
   for (const session of SESSIONS) {
-    const gym = await prisma.gym.findFirst({ where: { name: session.gymName } });
+    const gym = await prisma.gym.findFirst({
+      where: { name: session.gymName },
+    });
     if (!gym) {
       console.warn(`  Warning: Gym "${session.gymName}" not found. Skipping.`);
       continue;

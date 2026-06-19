@@ -31,7 +31,8 @@ const PLANS: PlanSeed[] = [
   {
     gymName: 'Iron Peak Fitness',
     name: 'Annual',
-    description: 'Full-year membership at the best value. Includes personal training consultation.',
+    description:
+      'Full-year membership at the best value. Includes personal training consultation.',
     durationDays: 365,
     price: 39999, // $399.99
     isActive: true,

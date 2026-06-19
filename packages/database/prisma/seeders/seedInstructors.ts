@@ -82,7 +82,9 @@ export async function seedInstructors(prisma: PrismaClient) {
       },
     });
 
-    console.log(`  Created instructor: ${instructor.name} (${instructor.gymName})`);
+    console.log(
+      `  Created instructor: ${instructor.name} (${instructor.gymName})`,
+    );
     count++;
   }
 

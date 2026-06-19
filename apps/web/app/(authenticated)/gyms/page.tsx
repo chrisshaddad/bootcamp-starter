@@ -157,9 +157,7 @@ export default function GymsPage() {
               Failed to load gyms
             </div>
           ) : !gyms?.length ? (
-            <div className="py-10 text-center text-gray-500">
-              No gyms found
-            </div>
+            <div className="py-10 text-center text-gray-500">No gyms found</div>
           ) : (
             <Table>
               <TableHeader>

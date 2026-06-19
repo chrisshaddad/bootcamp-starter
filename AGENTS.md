@@ -11,6 +11,7 @@ A generic full-stack bootcamp starter on Turborepo. Multi-tenant auth (orgs + ro
 We are building a multi-tenant gym management system on this starter (each gym = a `Gym` — the starter's `Organization` tenant renamed in Phase 0 — gym manager = `ORG_ADMIN`, gym customer = a `Member` that staff can invite to a read-only self-service login as a `MEMBER` user).
 
 **Before writing any feature code:**
+
 1. Read [`docs/PROGRESS.md`](docs/PROGRESS.md) **first** for the project map, then the per-feature file you're working in under [`docs/progress/`](docs/progress/) (`PROGRESS-A.md` / `-B.md` / `-C.md` / `-phase0.md`) for live phase status. It is the team's shared memory; don't re-implement a phase already marked ✅, and continue an 🟡 in-progress phase rather than restarting. Status is split one file per feature so parallel work doesn't cause merge conflicts — **edit only your own feature's file** (plus your single row in the `PROGRESS.md` overview).
 2. Read [`docs/gym-management-plan.md`](docs/gym-management-plan.md) — source of truth for the data model, the work breakdown, internal phases, and ownership.
 
@@ -66,19 +67,19 @@ Every controller and endpoint **must** be decorated for Swagger. The docs are se
 
 Required decorators — apply these on every new controller/endpoint, no exceptions:
 
-| Scope | Decorator | Where |
-|---|---|---|
-| Controller class | `@ApiTags('resource-name')` | matches the tag registered in `main.ts` |
-| Controller class | `@ApiCookieAuth('session-cookie')` | all protected controllers |
-| Endpoint method | `@ApiOperation({ summary: '...', description?: '...' })` | every route handler |
-| Endpoint method | `@ApiResponse({ status: 200\|201, description: '...', schema: { ... } })` | success response |
-| Endpoint method | `@ApiResponse({ status: 400, description: 'Validation error' })` | when body/query is validated |
-| Endpoint method | `@ApiResponse({ status: 401, description: 'Not authenticated' })` | all auth-guarded routes |
-| Endpoint method | `@ApiResponse({ status: 403, description: 'Insufficient role' })` | when `@Roles(...)` is used |
-| Endpoint method | `@ApiResponse({ status: 404, description: 'Resource not found' })` | when `NotFoundException` can be thrown |
-| Path param | `@ApiParam({ name: 'id', type: String, description: '...' })` | every `:param` |
-| Query param | `@ApiQuery({ name: '...', required: false, description: '...' })` | every `@Query()` |
-| Request body | `@ApiBody({ schema: { ... } })` | every `@Body()` — describe shape inline as JSON schema |
+| Scope            | Decorator                                                                 | Where                                                  |
+| ---------------- | ------------------------------------------------------------------------- | ------------------------------------------------------ |
+| Controller class | `@ApiTags('resource-name')`                                               | matches the tag registered in `main.ts`                |
+| Controller class | `@ApiCookieAuth('session-cookie')`                                        | all protected controllers                              |
+| Endpoint method  | `@ApiOperation({ summary: '...', description?: '...' })`                  | every route handler                                    |
+| Endpoint method  | `@ApiResponse({ status: 200\|201, description: '...', schema: { ... } })` | success response                                       |
+| Endpoint method  | `@ApiResponse({ status: 400, description: 'Validation error' })`          | when body/query is validated                           |
+| Endpoint method  | `@ApiResponse({ status: 401, description: 'Not authenticated' })`         | all auth-guarded routes                                |
+| Endpoint method  | `@ApiResponse({ status: 403, description: 'Insufficient role' })`         | when `@Roles(...)` is used                             |
+| Endpoint method  | `@ApiResponse({ status: 404, description: 'Resource not found' })`        | when `NotFoundException` can be thrown                 |
+| Path param       | `@ApiParam({ name: 'id', type: String, description: '...' })`             | every `:param`                                         |
+| Query param      | `@ApiQuery({ name: '...', required: false, description: '...' })`         | every `@Query()`                                       |
+| Request body     | `@ApiBody({ schema: { ... } })`                                           | every `@Body()` — describe shape inline as JSON schema |
 
 **Import all Swagger decorators from `@nestjs/swagger`.** Do not import from any other package.
 

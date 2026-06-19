@@ -9,12 +9,12 @@
 
 **Owner:** _unassigned_ · **Status: 0 / 4 done — ⬜ Not started.**
 
-| Phase | Scope | Dev | Status | Date | Notes / PR |
-| ----- | ----- | --- | ------ | ---- | ---------- |
-| B0 | Instructors CRUD + `GET /instructors/available` (overlap detection) | — | ⬜ | — | — |
-| B1 | Sessions admin schedule (CRUD + cancel, `_count.bookings`, instructor dropdown) | — | ⬜ | — | — |
-| B2 | Bookings + per-session capacity (reject full/duplicate) | — | ⬜ | — | — |
-| B3 | Member "My bookings" portal view (`GET /me/bookings`) — needs A4 shell | — | ⬜ | — | — |
+| Phase | Scope                                                                           | Dev | Status | Date | Notes / PR |
+| ----- | ------------------------------------------------------------------------------- | --- | ------ | ---- | ---------- |
+| B0    | Instructors CRUD + `GET /instructors/available` (overlap detection)             | —   | ⬜     | —    | —          |
+| B1    | Sessions admin schedule (CRUD + cancel, `_count.bookings`, instructor dropdown) | —   | ⬜     | —    | —          |
+| B2    | Bookings + per-session capacity (reject full/duplicate)                         | —   | ⬜     | —    | —          |
+| B3    | Member "My bookings" portal view (`GET /me/bookings`) — needs A4 shell          | —   | ⬜     | —    | —          |
 
 > B0 must be ✅ before starting B1 — sessions reference `instructorId` and the
 > "Add session" dialog calls the availability endpoint.
@@ -22,7 +22,9 @@
 > A4 is ✅ (check [`PROGRESS-A.md`](PROGRESS-A.md)).
 
 ## Decisions & deviations
+
 _(none yet)_
 
 ## Notes for the next agent
+
 _(none yet)_

@@ -21,8 +21,8 @@ async function cleanup(db: PrismaClient) {
   await db.membershipPlan.deleteMany();
   await db.instructor.deleteMany();
   await db.member.deleteMany();
-  await db.gym.deleteMany();    // sets User.gymId → NULL via SET NULL
-  await db.user.deleteMany();   // cascades UserProfile, Session, MagicLink
+  await db.gym.deleteMany(); // sets User.gymId → NULL via SET NULL
+  await db.user.deleteMany(); // cascades UserProfile, Session, MagicLink
   console.log('Cleanup complete.');
 }
 
@@ -38,7 +38,7 @@ async function main() {
 
   // Domain models in dependency order
   await seedInstructors(prisma);
-  await seedMembers(prisma);   // creates MEMBER User accounts for portal testing
+  await seedMembers(prisma); // creates MEMBER User accounts for portal testing
   await seedPlans(prisma);
   await seedSubscriptions(prisma);
   await seedSessions(prisma);
