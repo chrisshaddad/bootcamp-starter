@@ -160,12 +160,26 @@ model Subscription {      // Feature A — a member's subscription period
   @@index([gymId]) @@index([memberId]) @@index([planId]) @@index([endDate]) @@schema("public")
 }
 
+model Instructor {         // Feature B — gym instructor/trainer
+  id String @id @default(uuid())
+  gymId String
+  name String
+  email String?
+  specialization String?
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  gym Gym @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  gymSessions GymSession[]
+  @@index([gymId]) @@schema("public")
+}
+
 model GymSession {        // Feature B — a scheduled class/session
   id String @id @default(uuid())
   gymId String
   title String
   description String?
-  instructor String?
+  instructorId String?    // nullable — session can be unassigned; SetNull on instructor delete
   startsAt DateTime
   endsAt DateTime
   capacity Int
@@ -173,8 +187,9 @@ model GymSession {        // Feature B — a scheduled class/session
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   gym Gym @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  instructor Instructor? @relation(fields: [instructorId], references: [id], onDelete: SetNull)
   bookings SessionBooking[]
-  @@index([gymId]) @@index([startsAt]) @@schema("public")
+  @@index([gymId]) @@index([startsAt]) @@index([instructorId]) @@schema("public")
 }
 
 model SessionBooking {    // Feature B — member registered for a session
@@ -206,10 +221,10 @@ model CheckIn {           // Feature C — gym-wide live occupancy
 On the renamed `Gym` model (was `Organization`), add `maxCapacity Int?` (gym-wide
 building limit) and the back-relations: `members Member[]`,
 `membershipPlans MembershipPlan[]`, `subscriptions Subscription[]`,
-`gymSessions GymSession[]`, `sessionBookings SessionBooking[]`,
-`checkIns CheckIn[]`. On `User`, add the back-relation `member Member?` (a member's
-optional login account). `User.organizationId` is renamed to `User.gymId` as part
-of the Phase 0 rename.
+`instructors Instructor[]`, `gymSessions GymSession[]`,
+`sessionBookings SessionBooking[]`, `checkIns CheckIn[]`. On `User`, add the
+back-relation `member Member?` (a member's optional login account).
+`User.organizationId` is renamed to `User.gymId` as part of the Phase 0 rename.
 
 ---
 
@@ -238,11 +253,12 @@ workstream ever needs to touch `schema.prisma`.
 - Migrate once: `npx turbo run db:migrate -- --name gym_rename_and_schema`, then
   `npx turbo run db:generate`.
 - **Seed data** (`packages/database/prisma/seeders/`): rename
-  `seedOrganizations.ts` → `seedGyms.ts`; add `seedMembers`, `seedPlans`,
-  `seedSubscriptions`, `seedSessions`, `seedBookings`, `seedCheckIns` (mirror
-  `seedGyms.ts`), register them in `seeders/index.ts`. Give some seeded members a
-  linked `User` (role `MEMBER`, scoped to the gym) so member login is testable
-  end-to-end. `console.*` is allowed in seeders.
+  `seedOrganizations.ts` → `seedGyms.ts`; add `seedInstructors`, `seedMembers`,
+  `seedPlans`, `seedSubscriptions`, `seedSessions`, `seedBookings`, `seedCheckIns`
+  (mirror `seedGyms.ts`), register them in `seeders/index.ts`. Seed instructors
+  first (before sessions) since sessions reference `instructorId`. Give some seeded
+  members a linked `User` (role `MEMBER`, scoped to the gym) so member login is
+  testable end-to-end. `console.*` is allowed in seeders.
 - **Exit criteria:** `npx turbo run db:migrate` + `db:generate` + `db:seed`
   succeed; the renamed `gyms` slice type-checks; `@repo/db` exports the new model
   types. Merge to the shared branch.
@@ -333,24 +349,45 @@ on — see B3 / C3.)*
   lands on the portal, sees only their own subscriptions + the active plans, and
   **cannot** reach admin routes or another gym's data.
 
-## Feature B — Sessions, Schedules + per-session capacity (Owner 2)
+## Feature B — Instructors + Sessions, Schedules + per-session capacity (Owner 2)
 
-Scheduled classes, the schedule view, member registration, the per-session
-capacity tracker, and the member's "My bookings" portal view. Build in order.
+Instructor management, scheduled classes, the schedule view, member registration,
+the per-session capacity tracker, and the member's "My bookings" portal view.
+Build in order — B0 must be done before B1 since sessions reference instructors.
+
+**Phase B0 — Instructors (admin CRUD + availability).**
+- *Contracts:* `instructors/` (`instructor.response.ts`, `instructor-list.response.ts`,
+  `instructor-create.request.ts` — `name` required, `email`/`specialization` optional;
+  `instructor-update.request.ts`).
+- *API:* `InstructorsModule` (`GET /instructors`, `GET /instructors/:id`,
+  `POST /instructors`, `PATCH /instructors/:id`). Add **`GET /instructors/available`**
+  with query params `startsAt` and `endsAt` — returns instructors who have **no**
+  existing session where `session.startsAt < endsAt AND session.endsAt > startsAt`
+  (overlap detection). Scoped by `gymId`, `@Roles('ORG_ADMIN')`.
+  Register in `app.module.ts`.
+- *Web:* `instructors/page.tsx` (list + "Add instructor" dialog + deactivate).
+  Hook `use-instructors.ts`. Add **"Instructors"** nav item (above "Schedule").
+- *Test:* create instructors; deactivate one; confirm `GET /instructors/available`
+  excludes instructors with overlapping sessions. **Green before B1.**
 
 **Phase B1 — Sessions (admin schedule).**
 - *Contracts:* `sessions/` (response / list / create / update; create takes
-  `title`, optional `description`/`instructor`, `startsAt`, `endsAt`, `capacity`;
-  list & detail include `bookedCount` from Prisma `_count`).
+  `title`, optional `description`, `instructorId` (optional FK), `startsAt`,
+  `endsAt`, `capacity`; list & detail include `bookedCount` from Prisma `_count`
+  and the nested `instructor` object).
 - *API:* `SessionsModule` (`GET /sessions` with date-range filter,
   `GET /sessions/:id`, `POST /sessions`, `PATCH /sessions/:id`,
-  `PATCH /sessions/:id/cancel`; validate `endsAt > startsAt`). Reads include
-  `_count.bookings`. Scoped by `gymId`, `@Roles('ORG_ADMIN')`.
-- *Web:* `sessions/page.tsx` (schedule grouped by day + "Add session" dialog),
-  `sessions/[id]/page.tsx` (detail; capacity bar shows `0/capacity` for now).
-  Hook `use-sessions.ts`. Add **"Schedule"** nav item.
-- *Test:* create sessions and see them ordered by day; `endsAt > startsAt`
-  enforced; cancel a session. **Green before B2.**
+  `PATCH /sessions/:id/cancel`; validate `endsAt > startsAt`; if `instructorId`
+  provided, verify it belongs to the gym). Reads include `_count.bookings` and
+  `instructor`. Scoped by `gymId`, `@Roles('ORG_ADMIN')`.
+- *Web:* `sessions/page.tsx` (schedule grouped by day + "Add session" dialog —
+  instructor field calls `GET /instructors/available?startsAt=&endsAt=` once both
+  times are set and shows a dropdown of available instructors only),
+  `sessions/[id]/page.tsx` (detail with instructor name + capacity bar shows
+  `0/capacity` for now). Hook `use-sessions.ts`. Add **"Schedule"** nav item.
+- *Test:* create sessions with and without an instructor; confirm the availability
+  dropdown excludes busy instructors; `endsAt > startsAt` enforced; cancel a
+  session. **Green before B2.**
 
 **Phase B2 — Bookings + per-session capacity.** *(Grouped: capacity enforcement is
 only meaningful alongside bookings, so they ship together.)*
@@ -446,7 +483,7 @@ next).
 | Feature | Owner | Internal phases (build in order)                              | Own folders                                                   | Shared files (append) |
 | ------- | ----- | ------------------------------------------------------------- | ------------------------------------------------------------- | --------------------- |
 | **A**   | 1     | A1 Members · A2 Plans · A3 Subscriptions · A4 Invite + portal shell | `members/`, `plans/`, `subscriptions/`, `me/` (contracts+api), `app/(member)/` shell | `app.module.ts`, `app-sidebar.tsx`, `contracts/index.ts`, `seeders/index.ts`, `proxy.ts` |
-| **B**   | 2     | B1 Sessions · B2 Bookings + capacity · B3 My-bookings view    | `sessions/`, `bookings/` (contracts+api+web) + `me/bookings` + portal "My bookings" page | same shared files |
+| **B**   | 2     | B0 Instructors + availability · B1 Sessions · B2 Bookings + capacity · B3 My-bookings view | `instructors/`, `sessions/`, `bookings/` (contracts+api+web) + `me/bookings` + portal "My bookings" page | same shared files |
 | **C**   | 3     | C1 Check-ins · C2 Dashboard + settings · C3 QR check-in       | `checkins/`, `dashboard/` (contracts+api+web) + portal `checkin` page | same shared files + `dashboard/page.tsx`, `settings/page.tsx` |
 
 **Balanced ≈ 3 ÷ 3:** each owner ships ~3 admin/back-end slices **plus** the
@@ -462,6 +499,8 @@ before feature work begins.
 - A1 is the root — B's bookings and C's check-ins both reference members, so **A1
   lands before B2/C1 can be fully tested** (build against seeded members until
   then).
+- **B0 (Instructors) must be done before B1 (Sessions)** — sessions reference
+  `instructorId` and the "Add session" dialog calls the availability endpoint.
 - B3 and C3 (the member portal pages) depend on the **A4 portal shell**, so A4
   lands before they merge.
 - **QR check-in (C3)** uses A4's `MePortalModule`. Owners 1 and 3 share the token

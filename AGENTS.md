@@ -123,18 +123,20 @@ export class MembersController {
 - Async work goes through BullMQ. See `src/mail/` for the canonical pattern: constants → module → service → processor.
 - Errors: throw NestJS exceptions (`NotFoundException`, `UnauthorizedException`, `BadRequestException`). Don't return error envelopes.
 - Logging: every service uses NestJS's `Logger` (`private readonly logger = new Logger(MyService.name)`). **Never `console.log` in `apps/api/src/`.** `console.*` is fine in CLI scripts under `packages/database/prisma/seeders/` because they're one-shot scripts, not the running server.
+- JSDoc: add a one-line `/** ... */` JSDoc comment above every public method in services and controllers (e.g. `/** Get all gyms with optional status filter */`). Keep it to one line — describe what the method does, not how.
 
 ### Next.js (`apps/web`)
 
 - Default to server components. Add `'use client'` only when you need state, effects, hooks, or browser APIs.
 - Protected routes go under `app/(authenticated)/`. The `proxy.ts` middleware short-circuits unauthed access.
-- Data fetching = SWR hooks under `hooks/`, one per resource. Type with `@repo/contracts` types. See `hooks/use-gyms.ts` (renamed from `use-organizations.ts` in Phase 0) for the pattern.
+- Data fetching = SWR hooks under `hooks/`, one per resource. Type with `@repo/contracts` types. See `hooks/use-gyms.ts` (renamed from `use-organizations.ts` in Phase 0) for the pattern. Add a one-line `/** ... */` JSDoc above each exported hook function.
 - API calls go through `lib/api.ts`. Errors become `ApiError` instances — catch in submit handlers and toast.
 - Forms = `react-hook-form` + `zodResolver(<schema from contracts>)`. See `app/login/page.tsx`.
 - UI primitives live in `components/ui/` and come from shadcn. **Don't hand-edit them.** Use `npx shadcn@latest add <component>` or the shadcn MCP server (configured in `.vscode/mcp.json`).
 - Tailwind v4. Use the design tokens (`primary-base`, `primary-100`, `gray-*`, `error`) defined in `globals.css`.
 - Error / loading UX: `app/loading.tsx`, `app/error.tsx`, `app/not-found.tsx` provide global defaults. Add route-scoped versions under any segment (e.g., `app/(authenticated)/projects/error.tsx`) when a specific area needs different treatment.
 - Don't leave `console.log` in committed code. Use `console.error` for unexpected failures you want surfaced (the `app/error.tsx` boundary already does this); for everything else, surface to the user via `toast`.
+- Build only what the current phase specifies — don't add UI, hooks, or API calls for a future phase even if you can see it's coming.
 
 ### Prisma (`packages/database`)
 
