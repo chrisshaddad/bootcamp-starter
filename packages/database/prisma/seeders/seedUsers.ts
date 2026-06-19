@@ -1,4 +1,8 @@
-import { PrismaClient, Prisma, UserRole } from '../../src/generated/prisma/client';
+import {
+  PrismaClient,
+  Prisma,
+  UserRole,
+} from '../../src/generated/prisma/client';
 
 const SUPER_ADMINS: Prisma.UserCreateManyInput[] = [
   {

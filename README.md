@@ -18,16 +18,16 @@ Pre-built: cookie-based magic-link auth, multi-tenant organization model (`SUPER
 
 ### Coordly features
 
-| Area                                      | Status      | Routes / notes                                              |
-| ----------------------------------------- | ----------- | ----------------------------------------------------------- |
-| Admin hub (stats + placeholders)          | Active      | `/admin` — super admin only                                 |
-| Organizations (approve / reject)          | Active      | `/organizations` — super admin only                         |
-| Coordly members (username + role, list)   | Active      | `/members` — super admin + org admin; read-only, no create  |
-| Events (list, detail, upcoming filter)    | Active      | `/events`, `/events/[id]`; read-only, no create             |
-| Event sign-up (auth members as attendees) | Active      | Detail page → **Sign up to attend**                         |
-| Settings                                  | Coming soon | `/settings` — placeholder                                   |
-| Announcements, groups                     | Coming soon | —                                                           |
-| Full attendance logging / history         | Coming soon | Basic registration exists via `EventAttendee`               |
+| Area                                      | Status      | Routes / notes                                             |
+| ----------------------------------------- | ----------- | ---------------------------------------------------------- |
+| Admin hub (stats + placeholders)          | Active      | `/admin` — super admin only                                |
+| Organizations (approve / reject)          | Active      | `/organizations` — super admin only                        |
+| Coordly members (username + role, list)   | Active      | `/members` — super admin + org admin; read-only, no create |
+| Events (list, detail, upcoming filter)    | Active      | `/events`, `/events/[id]`; read-only, no create            |
+| Event sign-up (auth members as attendees) | Active      | Detail page → **Sign up to attend**                        |
+| Settings                                  | Coming soon | `/settings` — placeholder                                  |
+| Announcements, groups                     | Coming soon | —                                                          |
+| Full attendance logging / history         | Coming soon | Basic registration exists via `EventAttendee`              |
 
 ### Roles
 
@@ -37,11 +37,11 @@ Coordly uses **two separate role systems**. Do not conflate them.
 
 Stored on the `User` model. Controls portal access and API authorization.
 
-| Role           | Scope              | Portal access                                      |
-| -------------- | ------------------ | -------------------------------------------------- |
-| `SUPER_ADMIN`  | Platform-wide      | `/admin`, `/organizations`, `/members`, `/events`  |
-| `ORG_ADMIN`    | One organization   | `/dashboard`, `/members`, `/events`                |
-| `MEMBER`       | One organization   | `/dashboard`, `/events` (list defaults to upcoming)|
+| Role          | Scope            | Portal access                                       |
+| ------------- | ---------------- | --------------------------------------------------- |
+| `SUPER_ADMIN` | Platform-wide    | `/admin`, `/organizations`, `/members`, `/events`   |
+| `ORG_ADMIN`   | One organization | `/dashboard`, `/members`, `/events`                 |
+| `MEMBER`      | One organization | `/dashboard`, `/events` (list defaults to upcoming) |
 
 Super admins are redirected from `/dashboard` to `/admin` after login. Org admins and auth members stay on `/dashboard`.
 
@@ -49,10 +49,10 @@ Super admins are redirected from `/dashboard` to `/admin` after login. Org admin
 
 Stored on the `Member` model. These are **not** login accounts — org-scoped records with a `username` used for presenters and member lists.
 
-| Role     | Purpose                                      |
-| -------- | -------------------------------------------- |
-| `ADMIN`  | Coordly member with admin role in the org    |
-| `MEMBER` | Regular Coordly member in the org            |
+| Role     | Purpose                                   |
+| -------- | ----------------------------------------- |
+| `ADMIN`  | Coordly member with admin role in the org |
+| `MEMBER` | Regular Coordly member in the org         |
 
 A person may exist as both an auth `User` (e.g. `member@techcorp.example.com`) and a Coordly `Member` (e.g. username `alee`) — they are separate records.
 
@@ -60,7 +60,7 @@ A person may exist as both an auth `User` (e.g. `member@techcorp.example.com`) a
 
 | Role          | Backed by                         | Can do                                                        |
 | ------------- | --------------------------------- | ------------------------------------------------------------- |
-| **Presenter** | Coordly `Member` (`presenterId`)  | Listed on an event; assigned in seed data / future create UI   |
+| **Presenter** | Coordly `Member` (`presenterId`)  | Listed on an event; assigned in seed data / future create UI  |
 | **Attendee**  | Auth `User` with role `MEMBER`    | View upcoming events, sign up via `POST /events/:id/register` |
 | **Manager**   | Auth `ORG_ADMIN` or `SUPER_ADMIN` | List members/events; **cannot** sign up as attendees          |
 

@@ -40,8 +40,7 @@ function groupEventsByDate(events: Event[]): Map<string, Event[]> {
   }
   for (const [, dayEvents] of map) {
     dayEvents.sort(
-      (a, b) =>
-        new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime(),
+      (a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime(),
     );
   }
   return map;
@@ -127,10 +126,7 @@ export function EventCalendar({
   );
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
 
-  const eventsByDate = useMemo(
-    () => groupEventsByDate(events ?? []),
-    [events],
-  );
+  const eventsByDate = useMemo(() => groupEventsByDate(events ?? []), [events]);
 
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
@@ -144,11 +140,15 @@ export function EventCalendar({
     : null;
 
   function goToPreviousMonth() {
-    setViewDate((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1));
+    setViewDate(
+      (current) => new Date(current.getFullYear(), current.getMonth() - 1, 1),
+    );
   }
 
   function goToNextMonth() {
-    setViewDate((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1));
+    setViewDate(
+      (current) => new Date(current.getFullYear(), current.getMonth() + 1, 1),
+    );
   }
 
   function goToToday() {
@@ -167,11 +167,19 @@ export function EventCalendar({
 
   if (isLoading) {
     return (
-      <div className={cn('overflow-hidden rounded-xl border border-gray-300', className)}>
+      <div
+        className={cn(
+          'overflow-hidden rounded-xl border border-gray-300',
+          className,
+        )}
+      >
         <Skeleton className="h-14 rounded-none" />
         <div className="grid grid-cols-7 gap-px bg-gray-300 p-px">
           {Array.from({ length: 35 }).map((_, i) => (
-            <Skeleton key={i} className="aspect-square rounded-none bg-gray-100" />
+            <Skeleton
+              key={i}
+              className="aspect-square rounded-none bg-gray-100"
+            />
           ))}
         </div>
       </div>
@@ -255,8 +263,11 @@ export function EventCalendar({
                   hasEvents &&
                     'cursor-pointer hover:bg-primary-100 focus-visible:ring-2 focus-visible:ring-primary-base focus-visible:outline-none',
                   !hasEvents && 'cursor-default',
-                  isSelected && 'bg-primary-100 ring-2 ring-inset ring-primary-base',
-                  isToday && !isSelected && 'ring-2 ring-inset ring-secondary-base',
+                  isSelected &&
+                    'bg-primary-100 ring-2 ring-inset ring-primary-base',
+                  isToday &&
+                    !isSelected &&
+                    'ring-2 ring-inset ring-secondary-base',
                 )}
               >
                 <span
@@ -322,7 +333,9 @@ export function EventCalendar({
                   onClick={() => handleEventClick(event.id)}
                   className="hover:bg-primary-100 focus-visible:ring-primary-base w-full rounded-lg border border-gray-200 bg-gray-50 p-3 text-left transition-colors focus-visible:ring-2 focus-visible:outline-none"
                 >
-                  <p className="font-semibold text-gray-900">{event.eventName}</p>
+                  <p className="font-semibold text-gray-900">
+                    {event.eventName}
+                  </p>
                   <p className="mt-1 flex items-center gap-1.5 text-sm text-gray-600">
                     <Clock className="size-3.5 shrink-0" />
                     {formatEventTime(event.startsAt)}

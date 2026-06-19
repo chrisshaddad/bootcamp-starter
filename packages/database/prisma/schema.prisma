@@ -49,9 +49,9 @@ model User {
   sessions              Session[]
   magicLinks            MagicLink[]
   profile               UserProfile?
-  organization          Organization?  @relation("OrganizationMembers", fields: [organizationId], references: [id], onDelete: SetNull)
-  createdOrganization   Organization?  @relation("OrganizationCreator")
-  approvedOrganizations Organization[] @relation("OrganizationApprover")
+  organization          Organization?   @relation("OrganizationMembers", fields: [organizationId], references: [id], onDelete: SetNull)
+  createdOrganization   Organization?   @relation("OrganizationCreator")
+  approvedOrganizations Organization[]  @relation("OrganizationApprover")
   eventAttendees        EventAttendee[]
 
   @@index([organizationId])
@@ -121,8 +121,8 @@ model Organization {
   updatedAt    DateTime           @updatedAt
   approvedAt   DateTime? // When super admin approved
 
-  createdBy  User     @relation("OrganizationCreator", fields: [createdById], references: [id])
-  approvedBy User?    @relation("OrganizationApprover", fields: [approvedById], references: [id])
+  createdBy      User            @relation("OrganizationCreator", fields: [createdById], references: [id])
+  approvedBy     User?           @relation("OrganizationApprover", fields: [approvedById], references: [id])
   users          User[]          @relation("OrganizationMembers")
   members        Member[]
   events         Event[]
