@@ -155,7 +155,7 @@ On create, set `organizationId` from `@CurrentUser()` or from the parent record 
 - Validate every request body / query with `ZodValidationPipe` from `src/common/pipes/`. Schemas come from `@repo/contracts`.
 - Database access only through `PrismaService` (`src/database/prisma.service.ts`, extends `PrismaClient`). Never `new PrismaClient()` outside `packages/database`.
 - Routes are protected by default (global `AuthGuard`). Use `@Public()` to opt out, `@Roles(...)` to restrict by role, `@CurrentUser()` to get the calling user.
-- Cookie-based sessions (`bootcamp_starter_session`, `HttpOnly`, 30-day TTL). Magic-link auth only — no passwords.
+- Cookie-based sessions (`bootcamp_starter_session`, `HttpOnly`, 7-day TTL). Magic-link auth only — no passwords.
 - Async work goes through BullMQ. See `src/mail/` for the canonical pattern: constants → module → service → processor.
 - Errors: throw NestJS exceptions (`NotFoundException`, `UnauthorizedException`, `BadRequestException`, `ForbiddenException`). Don't return error envelopes.
 - Logging: every service uses NestJS's `Logger` (`private readonly logger = new Logger(MyService.name)`). **Never `console.log` in `apps/api/src/`.** `console.*` is fine in CLI scripts under `packages/database/prisma/seeders/`.

@@ -68,6 +68,12 @@ const EVENTS: EventSeed[] = [
     startsAt: daysFromNow(-7),
   },
   {
+    eventName: 'Renewable Energy Seminar',
+    presenterUsername: 'mchen',
+    organizationName: 'Green Energy Partners',
+    startsAt: daysFromNow(10),
+  },
+  {
     eventName: 'Data Analytics Bootcamp',
     presenterUsername: 'tpatel',
     organizationName: 'DataSync Analytics',

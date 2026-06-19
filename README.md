@@ -18,26 +18,53 @@ Pre-built: cookie-based magic-link auth, multi-tenant organization model (`SUPER
 
 ### Coordly features
 
-| Area                                      | Status      | Routes / notes                                |
-| ----------------------------------------- | ----------- | --------------------------------------------- |
-| Admin hub (stats + placeholders)          | Active      | `/admin` — super admin only                   |
-| Coordly members (profiles, roles)         | Active      | `/members` — super admin + org admin          |
-| Events (list, detail, upcoming filter)    | Active      | `/events`, `/events/[id]`                     |
-| Event sign-up (auth members as attendees) | Active      | Detail page → **Sign up to attend**           |
-| Announcements, groups                     | Coming soon | —                                             |
-| Full attendance logging / history         | Coming soon | Basic registration exists via `EventAttendee` |
+| Area                                      | Status      | Routes / notes                                              |
+| ----------------------------------------- | ----------- | ----------------------------------------------------------- |
+| Admin hub (stats + placeholders)          | Active      | `/admin` — super admin only                                 |
+| Organizations (approve / reject)          | Active      | `/organizations` — super admin only                         |
+| Coordly members (username + role, list)   | Active      | `/members` — super admin + org admin; read-only, no create  |
+| Events (list, detail, upcoming filter)    | Active      | `/events`, `/events/[id]`; read-only, no create             |
+| Event sign-up (auth members as attendees) | Active      | Detail page → **Sign up to attend**                         |
+| Settings                                  | Coming soon | `/settings` — placeholder                                   |
+| Announcements, groups                     | Coming soon | —                                                           |
+| Full attendance logging / history         | Coming soon | Basic registration exists via `EventAttendee`               |
 
-### Three roles in the event system
+### Roles
 
-| Role          | Who                               | Can do                                                        |
+Coordly uses **two separate role systems**. Do not conflate them.
+
+#### Auth roles (`User.role` — who can log in)
+
+Stored on the `User` model. Controls portal access and API authorization.
+
+| Role           | Scope              | Portal access                                      |
+| -------------- | ------------------ | -------------------------------------------------- |
+| `SUPER_ADMIN`  | Platform-wide      | `/admin`, `/organizations`, `/members`, `/events`  |
+| `ORG_ADMIN`    | One organization   | `/dashboard`, `/members`, `/events`                |
+| `MEMBER`       | One organization   | `/dashboard`, `/events` (list defaults to upcoming)|
+
+Super admins are redirected from `/dashboard` to `/admin` after login. Org admins and auth members stay on `/dashboard`.
+
+#### Coordly member roles (`Member.role` — domain records)
+
+Stored on the `Member` model. These are **not** login accounts — org-scoped records with a `username` used for presenters and member lists.
+
+| Role     | Purpose                                      |
+| -------- | -------------------------------------------- |
+| `ADMIN`  | Coordly member with admin role in the org    |
+| `MEMBER` | Regular Coordly member in the org            |
+
+A person may exist as both an auth `User` (e.g. `member@techcorp.example.com`) and a Coordly `Member` (e.g. username `alee`) — they are separate records.
+
+#### Event participation (how roles interact at events)
+
+| Role          | Backed by                         | Can do                                                        |
 | ------------- | --------------------------------- | ------------------------------------------------------------- |
-| **Presenter** | Coordly `Member` (domain record)  | Listed on an event via `presenterId`                          |
+| **Presenter** | Coordly `Member` (`presenterId`)  | Listed on an event; assigned in seed data / future create UI   |
 | **Attendee**  | Auth `User` with role `MEMBER`    | View upcoming events, sign up via `POST /events/:id/register` |
-| **Manager**   | Auth `ORG_ADMIN` or `SUPER_ADMIN` | List members/events; cannot sign up as attendees              |
+| **Manager**   | Auth `ORG_ADMIN` or `SUPER_ADMIN` | List members/events; **cannot** sign up as attendees          |
 
-Coordly **members** (`Member` model) are separate from auth **users** (`User` model). Presenters are always Coordly members; attendees are always auth users.
-
-Super admins land on `/admin` after login. Org admins use `/dashboard` plus `/members` and `/events`. Auth members use `/dashboard` and `/events` (defaults to upcoming events).
+Presenters are always Coordly `Member` records. Attendees are always auth `User` records (`EventAttendee`).
 
 ## Prerequisites
 
@@ -85,9 +112,9 @@ There are no passwords. In development, sign-in links are **not** sent to a real
 2. Enter a **seeded** email (see below) and click **Send Magic Link**
 3. Open **Mailpit** at <http://localhost:8025>
 4. Open the newest message and click the sign-in link (`/auth/verify?token=...`)
-5. You are redirected into the app with a session cookie (`bootcamp_starter_session`)
+5. You are redirected to `/dashboard` with a session cookie (`bootcamp_starter_session`); super admins are then sent to `/admin`
 
-Links expire after **15 minutes**. Request a new one from the login page if needed.
+Magic links expire after **15 minutes**. Sessions last **7 days**. Request a new link from the login page if needed.
 
 If Mailpit is empty, check that Docker is running, Redis is up (BullMQ sends the email job), and you used an email that exists in the seed data. The API always returns success from the login form even for unknown emails (to avoid account enumeration).
 
