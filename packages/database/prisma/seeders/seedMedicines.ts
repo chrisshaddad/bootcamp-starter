@@ -3,8 +3,22 @@ import { PrismaClient } from '../../src/generated/prisma/client';
 
 const MEDICINE_COUNT = 40;
 
-const MEDICINE_TYPES = ['Tablet', 'Capsule', 'Syrup', 'Cream', 'Drops', 'Injection'];
-const MEDICINE_FORMS = ['Tablet', 'Capsule', 'Oral Solution', 'Topical Cream', 'Eye Drops', 'Ampoule'];
+const MEDICINE_TYPES = [
+  'Tablet',
+  'Capsule',
+  'Syrup',
+  'Cream',
+  'Drops',
+  'Injection',
+];
+const MEDICINE_FORMS = [
+  'Tablet',
+  'Capsule',
+  'Oral Solution',
+  'Topical Cream',
+  'Eye Drops',
+  'Ampoule',
+];
 
 function buildBrandName() {
   return `${faker.word.adjective()} ${faker.word.noun()} ${faker.word.noun()}`;
