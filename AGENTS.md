@@ -67,19 +67,19 @@ Every controller and endpoint **must** be decorated for Swagger. The docs are se
 
 Required decorators — apply these on every new controller/endpoint, no exceptions:
 
-| Scope            | Decorator                                                                 | Where                                                  |
-| ---------------- | ------------------------------------------------------------------------- | ------------------------------------------------------ |
-| Controller class | `@ApiTags('resource-name')`                                               | matches the tag registered in `main.ts`                |
-| Controller class | `@ApiCookieAuth('session-cookie')`                                        | all protected controllers                              |
-| Endpoint method  | `@ApiOperation({ summary: '...', description?: '...' })`                  | every route handler                                    |
-| Endpoint method  | `@ApiResponse({ status: 200\|201, description: '...', schema: { ... } })` | success response                                       |
-| Endpoint method  | `@ApiResponse({ status: 400, description: 'Validation error' })`          | when body/query is validated                           |
-| Endpoint method  | `@ApiResponse({ status: 401, description: 'Not authenticated' })`         | all auth-guarded routes                                |
-| Endpoint method  | `@ApiResponse({ status: 403, description: 'Insufficient role' })`         | when `@Roles(...)` is used                             |
-| Endpoint method  | `@ApiResponse({ status: 404, description: 'Resource not found' })`        | when `NotFoundException` can be thrown                 |
-| Path param       | `@ApiParam({ name: 'id', type: String, description: '...' })`             | every `:param`                                         |
+| Scope            | Decorator                                                                 | Where                                                                                     |
+| ---------------- | ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Controller class | `@ApiTags('resource-name')`                                               | matches the tag registered in `main.ts`                                                   |
+| Controller class | `@ApiCookieAuth('session-cookie')`                                        | all protected controllers                                                                 |
+| Endpoint method  | `@ApiOperation({ summary: '...', description?: '...' })`                  | every route handler                                                                       |
+| Endpoint method  | `@ApiResponse({ status: 200\|201, description: '...', schema: { ... } })` | success response                                                                          |
+| Endpoint method  | `@ApiResponse({ status: 400, description: 'Validation error' })`          | when body/query is validated                                                              |
+| Endpoint method  | `@ApiResponse({ status: 401, description: 'Not authenticated' })`         | all auth-guarded routes                                                                   |
+| Endpoint method  | `@ApiResponse({ status: 403, description: 'Insufficient role' })`         | when `@Roles(...)` is used                                                                |
+| Endpoint method  | `@ApiResponse({ status: 404, description: 'Resource not found' })`        | when `NotFoundException` can be thrown                                                    |
+| Path param       | `@ApiParam({ name: 'id', type: String, description: '...' })`             | every `:param`                                                                            |
 | Query param      | `@ApiQuery({ name: '...', required: false, description: '...' })`         | every `@Query()` — add `enum: MY_ENUM` for enum params, `type: Number` for numeric params |
-| Request body     | `@ApiBody({ schema: { ... } })`                                           | every `@Body()` — describe shape inline as JSON schema |
+| Request body     | `@ApiBody({ schema: { ... } })`                                           | every `@Body()` — describe shape inline as JSON schema                                    |
 
 **Import all Swagger decorators from `@nestjs/swagger`.** Do not import from any other package.
 
@@ -94,8 +94,8 @@ Example (ORG_ADMIN-scoped endpoint):
 export const memberSchema = {
   type: 'object',
   properties: {
-    id:    { type: 'string', format: 'uuid' },
-    name:  { type: 'string' },
+    id: { type: 'string', format: 'uuid' },
+    name: { type: 'string' },
     email: { type: 'string', format: 'email' },
   },
 };
