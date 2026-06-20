@@ -78,14 +78,33 @@ Required decorators — apply these on every new controller/endpoint, no excepti
 | Endpoint method  | `@ApiResponse({ status: 403, description: 'Insufficient role' })`         | when `@Roles(...)` is used                             |
 | Endpoint method  | `@ApiResponse({ status: 404, description: 'Resource not found' })`        | when `NotFoundException` can be thrown                 |
 | Path param       | `@ApiParam({ name: 'id', type: String, description: '...' })`             | every `:param`                                         |
-| Query param      | `@ApiQuery({ name: '...', required: false, description: '...' })`         | every `@Query()`                                       |
+| Query param      | `@ApiQuery({ name: '...', required: false, description: '...' })`         | every `@Query()` — add `enum: MY_ENUM` for enum params, `type: Number` for numeric params |
 | Request body     | `@ApiBody({ schema: { ... } })`                                           | every `@Body()` — describe shape inline as JSON schema |
 
 **Import all Swagger decorators from `@nestjs/swagger`.** Do not import from any other package.
 
+**Shared swagger constants:** if two or more endpoints in the same feature share schema shapes (e.g. a `memberSchema` object reused in list + detail responses), extract them to `<feature>.swagger.ts` in the same folder and import from there. Do not duplicate inline.
+
+**`@ApiResponse` must always include `schema:`** on 200/201 responses — a description-only response tells consumers nothing. This is the most commonly missed rule.
+
 Example (ORG_ADMIN-scoped endpoint):
 
 ```ts
+// members.swagger.ts  ← extract shared shapes here
+export const memberSchema = {
+  type: 'object',
+  properties: {
+    id:    { type: 'string', format: 'uuid' },
+    name:  { type: 'string' },
+    email: { type: 'string', format: 'email' },
+  },
+};
+```
+
+```ts
+// members.controller.ts
+import { memberSchema } from './members.swagger';
+
 @ApiTags('members')
 @ApiCookieAuth('session-cookie')
 @Controller('members')
@@ -93,7 +112,7 @@ export class MembersController {
 
   @Post()
   @Roles('ORG_ADMIN')
-  @ApiOperation({ summary: 'Create a member', description: 'Creates a new gym member scoped to the caller's gym.' })
+  @ApiOperation({ summary: 'Create a member', description: 'Creates a new gym member scoped to the caller\'s gym.' })
   @ApiBody({
     schema: {
       type: 'object',
@@ -106,7 +125,7 @@ export class MembersController {
       },
     },
   })
-  @ApiResponse({ status: 201, description: 'Member created' })
+  @ApiResponse({ status: 201, description: 'Member created', schema: memberSchema })
   @ApiResponse({ status: 400, description: 'Validation error' })
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   @ApiResponse({ status: 403, description: 'Insufficient role' })
@@ -118,12 +137,15 @@ export class MembersController {
 
 - One folder per feature: `src/<feature>/<feature>.{controller,service,module}.ts`. Register the module in `app.module.ts`.
 - Validate every request body / query with `ZodValidationPipe` from `src/common/pipes/`. Schemas come from `@repo/contracts`.
+- Query param pipes: use NestJS built-in pipes for primitive query params — `ParseEnumPipe` for enums, `ParseIntPipe` for integers, `DefaultValuePipe` for defaults. Example: `@Query('status', new ParseEnumPipe(MyEnum, { optional: true })) status?: MyEnum` and `@Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number`. Never pass raw query strings to services.
 - Database access only through `DatabaseService` (extends `PrismaClient`). Never `new PrismaClient()` outside `packages/database`.
 - Routes are protected by default (global `AuthGuard`). Use `@Public()` to opt out, `@Roles(...)` to restrict by role, `@CurrentUser()` to get the calling user.
 - Cookie-based sessions (`bootcamp_starter_session`, `HttpOnly`, 30-day TTL). Magic-link auth only — no passwords.
 - Async work goes through BullMQ. See `src/mail/` for the canonical pattern: constants → module → service → processor.
 - Errors: throw NestJS exceptions (`NotFoundException`, `UnauthorizedException`, `BadRequestException`). Don't return error envelopes.
-- Logging: every service uses NestJS's `Logger` (`private readonly logger = new Logger(MyService.name)`). **Never `console.log` in `apps/api/src/`.** `console.*` is fine in CLI scripts under `packages/database/prisma/seeders/` because they're one-shot scripts, not the running server.
+- HTTP status codes: POST endpoints that create a resource must use `@HttpCode(201)`. NestJS defaults all handlers to 200 — never rely on the default for creation endpoints.
+- Controllers stay thin: no Prisma queries, no business logic, no conditional branching in controllers. A controller method should only call one service method and return its result. All logic lives in the service.
+- Logging: add `private readonly logger = new Logger(MyService.name)` **only if you call `this.logger` at least once** in that service. Never add it speculatively. **Never `console.log` in `apps/api/src/`.** `console.*` is fine in CLI scripts under `packages/database/prisma/seeders/`.
 - JSDoc: add a one-line `/** ... */` JSDoc comment above every public method in services and controllers (e.g. `/** Get all gyms with optional status filter */`). Keep it to one line — describe what the method does, not how.
 
 ### Next.js (`apps/web`)

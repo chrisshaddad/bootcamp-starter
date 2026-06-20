@@ -1,12 +1,10 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import type { GymStatus } from '@repo/db';
 import type { GymListResponse, GymDetailResponse } from '@repo/contracts';
 
 @Injectable()
 export class GymsService {
-  private readonly logger = new Logger(GymsService.name);
-
   constructor(private readonly prisma: PrismaService) {}
 
   /** Get all gyms with optional status filter */

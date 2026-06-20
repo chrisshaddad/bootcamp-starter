@@ -498,10 +498,9 @@ next).
 | **C**   | 3     | C1 Check-ins · C2 Dashboard + settings · C3 QR check-in                                    | `checkins/`, `dashboard/` (contracts+api+web) + portal `checkin` page                                    | same shared files + `dashboard/page.tsx`, `settings/page.tsx`                            |
 
 **Balanced ≈ 3 ÷ 3:** each owner ships ~3 admin/back-end slices **plus** the
-member-facing view for their own domain. The shared \*\*`app/(member)/` portal shell
-
-- role redirect is built once in A4\*\* by Owner 1; Owners 2 and 3 add their single
-  portal page (B3 / C3) into it.
+member-facing view for their own domain. The shared **`app/(member)/` portal shell
+and role redirect is built once in A4** by Owner 1; Owners 2 and 3 add their single
+portal page (B3 / C3) into it.
 
 **Phase 0 rename** is a one-time foundation step owned by the schema owner
 (`Organization`→`Gym`, `organizationId`→`gymId`); the whole team rebases on it
