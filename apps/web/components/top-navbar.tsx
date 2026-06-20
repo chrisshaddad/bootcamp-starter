@@ -23,19 +23,21 @@ export function TopNavbar() {
 
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
 
-  const getInitials = (name?: string | null, email?: string) => {
-    if (name) {
-      const parts = name.split(' ').filter(Boolean);
-      if (parts.length >= 2 && parts[0] && parts[1]) {
-        return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase();
-      }
-      return name.charAt(0).toUpperCase();
+  const getInitials = (
+    firstName?: string | null,
+    lastName?: string | null,
+    email?: string,
+  ) => {
+    if (firstName || lastName) {
+      return `${firstName?.charAt(0) ?? ''}${lastName?.charAt(0) ?? ''}`.toUpperCase();
     }
     return email?.charAt(0).toUpperCase() || 'U';
   };
 
   const getDisplayName = () => {
-    if (user?.name) return user.name;
+    if (user?.firstName || user?.lastName) {
+      return [user.firstName, user.lastName].filter(Boolean).join(' ');
+    }
     if (user?.email) return user.email.split('@')[0];
     return 'User';
   };
@@ -70,7 +72,7 @@ export function TopNavbar() {
               <Avatar className="h-8 w-8">
                 <AvatarImage src={undefined} />
                 <AvatarFallback className="bg-primary-base text-sm font-medium text-white">
-                  {getInitials(user?.name, user?.email)}
+                  {getInitials(user?.firstName, user?.lastName, user?.email)}
                 </AvatarFallback>
               </Avatar>
               <div className="hidden text-left md:block">
