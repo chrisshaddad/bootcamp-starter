@@ -21,8 +21,8 @@ export default function DashboardPage() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">
           Welcome,{' '}
-          {user?.profile?.firstName ||
-            user?.name ||
+          {user?.firstName ||
+            [user?.firstName, user?.lastName].filter(Boolean).join(' ') ||
             user?.email?.split('@')[0] ||
             'User'}
           !

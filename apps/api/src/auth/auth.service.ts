@@ -67,7 +67,7 @@ export class AuthService {
     await this.mailQueue.add(MAIL_JOBS.SEND_MAGIC_LINK, {
       email: user.email,
       magicLink: magicLinkUrl,
-      userName: user.name,
+      userName: `${user.firstName} ${user.lastName}`,
     });
 
     this.logger.log(`Magic link queued for user ${user.id}`);
@@ -80,7 +80,13 @@ export class AuthService {
    */
   async verifyMagicLink(token: string): Promise<{
     sessionId: string;
-    user: { id: string; email: string; name: string; role: string };
+    user: {
+      id: string;
+      email: string;
+      firstName: string;
+      lastName: string;
+      role: string;
+    };
   }> {
     // Find the magic link
     const magicLink = await this.prisma.magicLink.findUnique({
@@ -108,14 +114,6 @@ export class AuthService {
       data: { usedAt: new Date() },
     });
 
-    // Confirm user email if not already confirmed
-    if (!magicLink.user.isConfirmed) {
-      await this.prisma.user.update({
-        where: { id: magicLink.user.id },
-        data: { isConfirmed: true },
-      });
-    }
-
     // Create session
     const sessionId = await this.sessionService.createSession(magicLink.userId);
 
@@ -126,7 +124,8 @@ export class AuthService {
       user: {
         id: magicLink.user.id,
         email: magicLink.user.email,
-        name: magicLink.user.name,
+        firstName: magicLink.user.firstName,
+        lastName: magicLink.user.lastName,
         role: magicLink.user.role,
       },
     };
@@ -151,10 +150,9 @@ export class AuthService {
     return {
       id: user.id,
       email: user.email,
-      name: user.name,
+      firstName: user.firstName,
+      lastName: user.lastName,
       role: user.role,
-      organizationId: user.organizationId,
-      isConfirmed: user.isConfirmed,
     };
   }
 }
