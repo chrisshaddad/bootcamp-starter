@@ -8,7 +8,7 @@ interface ProcessFileJobData {
   importId: string;
   organizationId: string;
   createdById: string;
-  type: 'EXPENSES' | 'SALES' | 'PRODUCTS';
+  type: 'EXPENSES' | 'SALES' | 'PRODUCTS' | 'SERVICES';
   fileContent?: string; // base64 CSV
   columnMapping: Record<string, string>;
   reprocess?: boolean;
@@ -109,6 +109,12 @@ export class ImportsProcessor extends WorkerHost {
             await this.prisma.importRow.update({
               where: { id: dbRow.id },
               data: { status: 'success', entityId: product.id },
+            });
+          } else if (type === 'SERVICES') {
+            const service = await this.createService(mapped, organizationId);
+            await this.prisma.importRow.update({
+              where: { id: dbRow.id },
+              data: { status: 'success', entityId: service.id },
             });
           } else {
             const sale = await this.createSale(
@@ -326,6 +332,53 @@ export class ImportsProcessor extends WorkerHost {
         date,
         recurrence: (data.recurrence as 'NONE') || 'NONE',
         notes: data.notes || null,
+      },
+    });
+  }
+
+  private async createService(
+    data: Record<string, string>,
+    organizationId: string,
+  ) {
+    if (!data.name) throw new Error('Missing required field: name');
+    if (!data.unitPrice) throw new Error('Missing required field: unitPrice');
+
+    const unitPrice = parseFloat(data.unitPrice.replace(/[^0-9.-]/g, ''));
+    if (isNaN(unitPrice) || unitPrice < 0) {
+      throw new Error(`Invalid unitPrice: ${data.unitPrice}`);
+    }
+
+    const unitCost = data.unitCost
+      ? parseFloat(data.unitCost.replace(/[^0-9.-]/g, ''))
+      : null;
+
+    // Upsert by name so re-imports don't create duplicates
+    const existing = await this.prisma.service.findFirst({
+      where: { organizationId, name: { equals: data.name.trim(), mode: 'insensitive' } },
+    });
+
+    if (existing) {
+      return this.prisma.service.update({
+        where: { id: existing.id },
+        data: {
+          unitPrice: unitPrice.toFixed(2),
+          ...(unitCost !== null && { unitCost: unitCost.toFixed(2) }),
+          ...(data.description && { description: data.description }),
+          ...(data.sku && { sku: data.sku }),
+          isActive: true,
+        },
+      });
+    }
+
+    return this.prisma.service.create({
+      data: {
+        organizationId,
+        name: data.name.trim(),
+        description: data.description || null,
+        unitPrice: unitPrice.toFixed(2),
+        unitCost: unitCost !== null ? unitCost.toFixed(2) : null,
+        sku: data.sku || null,
+        isActive: true,
       },
     });
   }

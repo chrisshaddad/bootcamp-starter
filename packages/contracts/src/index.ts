@@ -5,6 +5,7 @@ export * from './organizations';
 
 // Margin
 export * from './products';
+export * from './services';
 export * from './expense-categories';
 export * from './expenses';
 export * from './sales';

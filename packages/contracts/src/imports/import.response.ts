@@ -8,7 +8,7 @@ export const importStatusSchema = z.enum([
   'PARTIAL',
 ]);
 
-export const importTypeSchema = z.enum(['EXPENSES', 'SALES', 'PRODUCTS']);
+export const importTypeSchema = z.enum(['EXPENSES', 'SALES', 'PRODUCTS', 'SERVICES']);
 
 export const importResponseSchema = z.object({
   id: z.uuid(),

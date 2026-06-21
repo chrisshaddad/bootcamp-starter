@@ -10,6 +10,7 @@ import { DatabaseModule } from './database/database.module';
 
 // Margin feature modules
 import { ProductsModule } from './products/products.module';
+import { ServicesModule } from './services/services.module';
 import { ExpenseCategoriesModule } from './expense-categories/expense-categories.module';
 import { ExpensesModule } from './expenses/expenses.module';
 import { SalesModule } from './sales/sales.module';
@@ -34,6 +35,7 @@ import { AiInsightsModule } from './ai-insights/ai-insights.module';
     OrganizationsModule,
     // Margin
     ProductsModule,
+    ServicesModule,
     ExpenseCategoriesModule,
     ExpensesModule,
     SalesModule,

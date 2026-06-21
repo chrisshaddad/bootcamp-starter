@@ -24,3 +24,11 @@ export const SALE_IMPORT_FIELDS = [
   'recurrence',
   'notes',
 ] as const;
+
+export const SERVICE_IMPORT_FIELDS = [
+  'name',
+  'description',
+  'unitPrice',
+  'unitCost',
+  'sku',
+] as const;

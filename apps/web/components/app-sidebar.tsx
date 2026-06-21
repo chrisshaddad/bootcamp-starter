@@ -10,6 +10,7 @@ import {
   TrendingUp,
   Receipt,
   Package,
+  Briefcase,
   Upload,
   Target,
   Sparkles,
@@ -40,6 +41,7 @@ interface NavItem {
 const orgNavItems: NavItem[] = [
   { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
   { title: 'Products', url: '/products', icon: Package },
+  { title: 'Services', url: '/services', icon: Briefcase },
   { title: 'Sales', url: '/sales', icon: TrendingUp },
   { title: 'Expenses', url: '/expenses', icon: Receipt },
   { title: 'Goals', url: '/goals', icon: Target },
