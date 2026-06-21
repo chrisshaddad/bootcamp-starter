@@ -165,7 +165,7 @@ export default function GymsPage() {
                   <TableHead>Gym</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Created By</TableHead>
-                  <TableHead>Members</TableHead>
+                  <TableHead>Users</TableHead>
                   <TableHead>Registered</TableHead>
                 </TableRow>
               </TableHeader>

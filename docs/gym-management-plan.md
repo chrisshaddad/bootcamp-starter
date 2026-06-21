@@ -289,8 +289,27 @@ workstream ever needs to touch `schema.prisma`.
 ## Feature A — Members + Plans + Subscriptions (Owner 1)
 
 Gym customers, the plan catalog, subscription period tracking, plus the member
-portal foundation. Build the four phases **in order** — each is build → test →
+portal foundation. Build the five phases **in order** — each is build → test →
 merge before the next.
+
+**Phase A0 — Gym self-registration (public form + approval flow).**
+
+- _Contracts:_ `gyms/gym-register.request.ts` — `name` (required), `ownerName`
+  (required), `email` (required), `description` (optional), `website` (optional).
+  Export schema + type; update `gyms/index.ts` and `packages/contracts/src/index.ts`.
+- _API:_ on `GymsModule`, add **`POST /gyms/register`** decorated with `@Public()`
+  (unauthenticated). In a single transaction: create a `User` (`role: ORG_ADMIN`,
+  `isConfirmed: false`), create a `Gym` (`status: PENDING`, `createdById: user.id`),
+  update `user.gymId = gym.id`. Queue a magic-link email to the owner so they can
+  log in once approved. Return `201` with `{ message, gymId }`. Use
+  `BadRequestException` if the email is already taken.
+- _Web:_ `app/register/page.tsx` — public page (outside the authenticated shell),
+  a simple form with gym name, owner name, email, optional description + website.
+  On success show a confirmation message ("Your registration is pending approval").
+  Add a "Register your gym" link on the login page.
+- _Test:_ submit the form → gym appears in the SUPER_ADMIN `/gyms` list with status
+  PENDING → SUPER_ADMIN approves → gym status flips to ACTIVE and the owner can log
+  in via magic link. Confirm duplicate email is rejected. **Green before A1.**
 
 **Phase A1 — Members (admin CRUD).**
 
@@ -368,12 +387,14 @@ Build in order — B0 must be done before B1 since sessions reference instructor
   `POST /instructors`, `PATCH /instructors/:id`). Add **`GET /instructors/available`**
   with query params `startsAt` and `endsAt` — returns instructors who have **no**
   existing session where `session.startsAt < endsAt AND session.endsAt > startsAt`
-  (overlap detection). Scoped by `gymId`, `@Roles('ORG_ADMIN')`.
+  (overlap detection). Also filter `isActive: true` on the instructor and exclude
+  sessions with status `CANCELLED` from the overlap check — a cancelled session
+  must not block the slot. Scoped by `gymId`, `@Roles('ORG_ADMIN')`.
   Register in `app.module.ts`.
 - _Web:_ `instructors/page.tsx` (list + "Add instructor" dialog + deactivate).
   Hook `use-instructors.ts`. Add **"Instructors"** nav item (above "Schedule").
 - _Test:_ create instructors; deactivate one; confirm `GET /instructors/available`
-  excludes instructors with overlapping sessions. **Green before B1.**
+  excludes inactive instructors and instructors with overlapping non-cancelled sessions. **Green before B1.**
 
 **Phase B1 — Sessions (admin schedule).**
 
@@ -491,11 +512,11 @@ Three owners, **one feature each, built end-to-end** (admin + member-facing view
 Within a feature, build the internal phases **in order** (build → test → merge →
 next).
 
-| Feature | Owner | Internal phases (build in order)                                                           | Own folders                                                                                              | Shared files (append)                                                                    |
-| ------- | ----- | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| **A**   | 1     | A1 Members · A2 Plans · A3 Subscriptions · A4 Invite + portal shell                        | `members/`, `plans/`, `subscriptions/`, `me/` (contracts+api), `app/(member)/` shell                     | `app.module.ts`, `app-sidebar.tsx`, `contracts/index.ts`, `seeders/index.ts`, `proxy.ts` |
-| **B**   | 2     | B0 Instructors + availability · B1 Sessions · B2 Bookings + capacity · B3 My-bookings view | `instructors/`, `sessions/`, `bookings/` (contracts+api+web) + `me/bookings` + portal "My bookings" page | same shared files                                                                        |
-| **C**   | 3     | C1 Check-ins · C2 Dashboard + settings · C3 QR check-in                                    | `checkins/`, `dashboard/` (contracts+api+web) + portal `checkin` page                                    | same shared files + `dashboard/page.tsx`, `settings/page.tsx`                            |
+| Feature | Owner | Internal phases (build in order)                                                           | Own folders                                                                                                                           | Shared files (append)                                                                    |
+| ------- | ----- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| **A**   | 1     | A0 Gym registration · A1 Members · A2 Plans · A3 Subscriptions · A4 Invite + portal shell  | `gyms/gym-register.request.ts`, `members/`, `plans/`, `subscriptions/`, `me/` (contracts+api), `app/(member)/` shell, `app/register/` | `app.module.ts`, `app-sidebar.tsx`, `contracts/index.ts`, `seeders/index.ts`, `proxy.ts` |
+| **B**   | 2     | B0 Instructors + availability · B1 Sessions · B2 Bookings + capacity · B3 My-bookings view | `instructors/`, `sessions/`, `bookings/` (contracts+api+web) + `me/bookings` + portal "My bookings" page                              | same shared files                                                                        |
+| **C**   | 3     | C1 Check-ins · C2 Dashboard + settings · C3 QR check-in                                    | `checkins/`, `dashboard/` (contracts+api+web) + portal `checkin` page                                                                 | same shared files + `dashboard/page.tsx`, `settings/page.tsx`                            |
 
 **Balanced ≈ 3 ÷ 3:** each owner ships ~3 admin/back-end slices **plus** the
 member-facing view for their own domain. The shared **`app/(member)/` portal shell

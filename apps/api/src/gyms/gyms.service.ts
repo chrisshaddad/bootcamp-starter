@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import type { GymStatus } from '@repo/db';
 import type { GymListResponse, GymDetailResponse } from '@repo/contracts';
@@ -14,6 +18,8 @@ export class GymsService {
     limit?: number;
   }): Promise<GymListResponse> {
     const { status, page = 1, limit = 20 } = options;
+    if (page < 1) throw new BadRequestException('page must be >= 1');
+    if (limit < 1) throw new BadRequestException('limit must be >= 1');
     const skip = (page - 1) * limit;
 
     const where = status ? { status } : {};

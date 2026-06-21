@@ -88,6 +88,7 @@ export async function seedGyms(prisma: PrismaClient) {
     throw new Error('No super admin found. Seed super admins first.');
   }
 
+  let count = 0;
   for (const gym of GYMS) {
     const gymAdmin = await prisma.user.findUnique({
       where: { email: gym.adminEmail },
@@ -125,7 +126,8 @@ export async function seedGyms(prisma: PrismaClient) {
     console.log(
       `  Created gym: ${gym.name} (${gym.status}) - Admin: ${gymAdmin.email}`,
     );
+    count++;
   }
 
-  console.log(`Gyms seeded: ${GYMS.length} total`);
+  console.log(`Gyms seeded: ${count} total`);
 }

@@ -25,7 +25,11 @@ import type {
   GymDetailResponse,
   GymActionResponse,
 } from '@repo/contracts';
-import { GYM_STATUS_ENUM, gymUserSchema, gymDetailSchema } from './gyms.swagger';
+import {
+  GYM_STATUS_ENUM,
+  gymUserSchema,
+  gymDetailSchema,
+} from './gyms.swagger';
 
 @ApiTags('gyms')
 @ApiCookieAuth('session-cookie')
@@ -35,10 +39,28 @@ export class GymsController {
 
   @Get()
   @Roles('SUPER_ADMIN')
-  @ApiOperation({ summary: 'List all gyms', description: 'Returns a paginated list of all gyms. SUPER_ADMIN only.' })
-  @ApiQuery({ name: 'status', required: false, enum: GYM_STATUS_ENUM, description: 'Filter by gym status' })
-  @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number (default 1, min 1)' })
-  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Page size (default 20, min 1)' })
+  @ApiOperation({
+    summary: 'List all gyms',
+    description: 'Returns a paginated list of all gyms. SUPER_ADMIN only.',
+  })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    enum: GYM_STATUS_ENUM,
+    description: 'Filter by gym status',
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Page number (default 1, min 1)',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Page size (default 20, min 1)',
+  })
   @ApiResponse({
     status: 200,
     description: 'Paginated list of gyms',
@@ -56,7 +78,10 @@ export class GymsController {
               website: { type: 'string', nullable: true },
               createdAt: { type: 'string', format: 'date-time' },
               createdBy: gymUserSchema,
-              _count: { type: 'object', properties: { users: { type: 'number' } } },
+              _count: {
+                type: 'object',
+                properties: { users: { type: 'number' } },
+              },
             },
           },
         },
@@ -64,10 +89,12 @@ export class GymsController {
       },
     },
   })
+  @ApiResponse({ status: 400, description: 'Validation error' })
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   @ApiResponse({ status: 403, description: 'Insufficient role' })
   async findAll(
-    @Query('status', new ParseEnumPipe(GymStatus, { optional: true })) status?: GymStatus,
+    @Query('status', new ParseEnumPipe(GymStatus, { optional: true }))
+    status?: GymStatus,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit?: number,
   ): Promise<GymListResponse> {
@@ -78,7 +105,11 @@ export class GymsController {
   @Roles('SUPER_ADMIN')
   @ApiOperation({ summary: 'Get a gym by ID' })
   @ApiParam({ name: 'id', type: String, description: 'Gym UUID' })
-  @ApiResponse({ status: 200, description: 'Gym detail', schema: gymDetailSchema })
+  @ApiResponse({
+    status: 200,
+    description: 'Gym detail',
+    schema: gymDetailSchema,
+  })
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   @ApiResponse({ status: 403, description: 'Insufficient role' })
   @ApiResponse({ status: 404, description: 'Gym not found' })
