@@ -17,7 +17,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Plus, Trash2, Pencil, Briefcase, Search, X } from 'lucide-react';
+import { Plus, Trash2, Pencil, Briefcase } from 'lucide-react';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { toast } from 'sonner';
 import {
@@ -172,26 +172,16 @@ export default function ServicesPage() {
         </Dialog>
       </div>
 
+      {/* Search */}
+      <Input
+        placeholder="Search services…"
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        className="max-w-sm"
+      />
+
+      {/* List */}
       <Card className="border-border bg-card shadow-sm">
-        <div className="border-b border-border px-6 py-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search services by name, description, or SKU..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-10"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-        </div>
         <CardContent className="p-0">
           {isLoading ? (
             <div className="space-y-3 p-6">
