@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { LogOut, ChevronDown } from 'lucide-react';
+import { LogOut, ChevronDown, UserCircle2 } from 'lucide-react';
 import { useAuth, useUser } from '@/hooks/use-auth';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import {
@@ -35,13 +35,9 @@ export function TopNavbar() {
     )?.[1] ?? 'Margin';
 
   const initials = user?.name
-    ? user.name
-        .split(' ')
-        .map((p) => p[0])
-        .join('')
-        .slice(0, 2)
-        .toUpperCase()
-    : (user?.email?.[0]?.toUpperCase() ?? '?');
+    ? user.name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase()
+    : user?.email?.[0]?.toUpperCase() ?? '?';
+  const avatarUrl = user?.profile?.avatarUrl;
 
   return (
     <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-6">
@@ -58,9 +54,17 @@ export function TopNavbar() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors hover:bg-secondary">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-                {initials}
-              </div>
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt="Profile picture"
+                  className="h-7 w-7 rounded-full object-cover ring-2 ring-border"
+                />
+              ) : (
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                  {initials}
+                </div>
+              )}
               <div className="hidden text-left md:block">
                 <p className="text-sm font-medium text-foreground leading-tight">
                   {user?.name ?? user?.email?.split('@')[0] ?? 'User'}

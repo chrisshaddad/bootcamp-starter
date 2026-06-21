@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  Logger,
-  NotFoundException,
-  ConflictException,
-} from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ConflictException, UnauthorizedException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import * as crypto from 'crypto';
@@ -205,6 +200,10 @@ export class AuthService {
       return null;
     }
 
+    const profile = await this.prisma.userProfile.findUnique({
+      where: { userId: user.id },
+    });
+
     return {
       id: user.id,
       email: user.email,
@@ -212,6 +211,103 @@ export class AuthService {
       role: user.role,
       organizationId: user.organizationId,
       isConfirmed: user.isConfirmed,
+      profile: profile
+        ? {
+            firstName: null,
+            lastName: null,
+            phone: profile.phoneNumber,
+            avatarUrl: profile.profilePictureUrl,
+            dateOfBirth: profile.dateOfBirth
+              ? profile.dateOfBirth.toISOString()
+              : null,
+            bio: profile.bio,
+            street1: profile.street1,
+            street2: profile.street2,
+            city: profile.city,
+            state: profile.state,
+            postalCode: profile.postalCode,
+            country: profile.country,
+          }
+        : null,
+    };
+  }
+
+  /**
+   * Update user profile information
+   */
+  async updateProfile(sessionId: string, data: any): Promise<any> {
+    const user = await this.sessionService.validateSession(sessionId);
+    if (!user) {
+      throw new UnauthorizedException('Invalid or expired session');
+    }
+
+    const {
+      phoneNumber,
+      bio,
+      street1,
+      street2,
+      city,
+      state,
+      postalCode,
+      country,
+      name,
+      profilePictureUrl,
+    } = data;
+
+    // Update user name if provided
+    if (name !== undefined) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { name },
+      });
+    }
+
+    // Build update object for userProfile
+    const updateData: any = {};
+    if (phoneNumber !== undefined) updateData.phoneNumber = phoneNumber;
+    if (profilePictureUrl !== undefined) updateData.profilePictureUrl = profilePictureUrl;
+    if (bio !== undefined) updateData.bio = bio;
+    if (street1 !== undefined) updateData.street1 = street1;
+    if (street2 !== undefined) updateData.street2 = street2;
+    if (city !== undefined) updateData.city = city;
+    if (state !== undefined) updateData.state = state;
+    if (postalCode !== undefined) updateData.postalCode = postalCode;
+    if (country !== undefined) updateData.country = country;
+
+    // Upsert user profile with address/contact info
+    const userProfile = await this.prisma.userProfile.upsert({
+      where: { userId: user.id },
+      update: updateData,
+      create: {
+        userId: user.id,
+        ...updateData,
+      },
+      include: { user: true },
+    });
+
+    return {
+      id: userProfile.user.id,
+      email: userProfile.user.email,
+      name: userProfile.user.name,
+      role: userProfile.user.role,
+      organizationId: userProfile.user.organizationId,
+      isConfirmed: userProfile.user.isConfirmed,
+      profile: {
+        firstName: null,
+        lastName: null,
+        phone: userProfile.phoneNumber,
+        avatarUrl: userProfile.profilePictureUrl,
+        dateOfBirth: userProfile.dateOfBirth
+          ? userProfile.dateOfBirth.toISOString()
+          : null,
+        bio: userProfile.bio,
+        street1: userProfile.street1,
+        street2: userProfile.street2,
+        city: userProfile.city,
+        state: userProfile.state,
+        postalCode: userProfile.postalCode,
+        country: userProfile.country,
+      },
     };
   }
 }

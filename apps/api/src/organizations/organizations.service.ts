@@ -207,4 +207,64 @@ export class OrganizationsService {
 
     return organization;
   }
+
+  /**
+   * Update organization details (name, description, website)
+   */
+  async update(
+    id: string,
+    data: {
+      name?: string;
+      description?: string | null;
+      website?: string | null;
+    },
+  ): Promise<OrganizationDetailResponse> {
+    const existing = await this.prisma.organization.findUnique({
+      where: { id },
+    });
+
+    if (!existing) {
+      throw new NotFoundException(`Organization with ID ${id} not found`);
+    }
+
+    const organization = await this.prisma.organization.update({
+      where: { id },
+      data: {
+        ...(data.name !== undefined && { name: data.name }),
+        ...(data.description !== undefined && { description: data.description }),
+        ...(data.website !== undefined && { website: data.website }),
+      },
+      select: {
+        id: true,
+        name: true,
+        status: true,
+        description: true,
+        website: true,
+        createdAt: true,
+        updatedAt: true,
+        approvedAt: true,
+        createdBy: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+          },
+        },
+        approvedBy: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+          },
+        },
+        _count: {
+          select: {
+            users: true,
+          },
+        },
+      },
+    });
+
+    return organization;
+  }
 }

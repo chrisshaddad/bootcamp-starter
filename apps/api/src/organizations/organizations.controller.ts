@@ -1,11 +1,22 @@
-import { Controller, Get, Param, Patch, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Query,
+  Body,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { OrganizationsService } from './organizations.service';
+import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { Roles, CurrentUser } from '../auth/decorators';
 import type { User, OrganizationStatus } from '@repo/db';
-import type {
-  OrganizationListResponse,
-  OrganizationDetailResponse,
-  OrganizationActionResponse,
+import {
+  organizationUpdateRequestSchema,
+  type OrganizationListResponse,
+  type OrganizationDetailResponse,
+  type OrganizationActionResponse,
+  type OrganizationUpdateRequest,
 } from '@repo/contracts';
 
 @Controller('organizations')
@@ -27,9 +38,31 @@ export class OrganizationsController {
   }
 
   @Get(':id')
-  @Roles('SUPER_ADMIN')
-  async findOne(@Param('id') id: string): Promise<OrganizationDetailResponse> {
+  @Roles('SUPER_ADMIN', 'ORG_ADMIN')
+  async findOne(
+    @Param('id') id: string,
+    @CurrentUser() user: User,
+  ): Promise<OrganizationDetailResponse> {
+    // ORG_ADMIN can only access their own organization details
+    if (user.role === 'ORG_ADMIN' && user.organizationId !== id) {
+      throw new UnauthorizedException('Unauthorized');
+    }
     return this.organizationsService.findOne(id);
+  }
+
+  @Patch(':id')
+  @Roles('ORG_ADMIN', 'SUPER_ADMIN')
+  async update(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(organizationUpdateRequestSchema))
+    body: OrganizationUpdateRequest,
+    @CurrentUser() user: User,
+  ): Promise<OrganizationDetailResponse> {
+    // ORG_ADMIN can only update their own organization
+    if (user.role === 'ORG_ADMIN' && user.organizationId !== id) {
+      throw new Error('Unauthorized');
+    }
+    return this.organizationsService.update(id, body);
   }
 
   @Patch(':id/approve')
