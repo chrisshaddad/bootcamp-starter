@@ -11,6 +11,7 @@ erDiagram
     Gym ||--o{ Member : "has"
     Gym ||--o{ MembershipPlan : "defines"
     Gym ||--o{ Subscription : "owns"
+    Gym ||--o{ Instructor : "employs"
     Gym ||--o{ GymSession : "schedules"
     Gym ||--o{ SessionBooking : "owns"
     Gym ||--o{ CheckIn : "owns"
@@ -23,6 +24,8 @@ erDiagram
     Member ||--o{ CheckIn : "logs"
 
     MembershipPlan ||--o{ Subscription : "referenced by"
+
+    Instructor ||--o{ GymSession : "leads"
 
     GymSession ||--o{ SessionBooking : "has"
 ```
@@ -49,8 +52,11 @@ A reusable plan template defined by the gym (e.g. "Monthly", "Annual"). Stores t
 **Subscription**
 A membership period assigned to a member, referencing a plan. Tracks the start date, computed end date, and status (active / expired / cancelled). This is the core of the subscription tracking feature.
 
+**Instructor**
+A gym trainer or class leader, managed by the gym admin. Scoped to a gym. When scheduling a session, the admin selects from instructors who are **available** (no overlapping session) at the chosen time slot — preventing double-booking. Can be deactivated without deleting historical sessions.
+
 **GymSession**
-A scheduled class or activity inside the gym (e.g. "Yoga — Monday 9am"). Has a start time, end time, instructor, and a capacity limit. Status moves from scheduled → completed or cancelled.
+A scheduled class or activity inside the gym (e.g. "Yoga — Monday 9am"). Has a start time, end time, optional `instructorId` FK (nullable — a session can exist without an assigned instructor), and a capacity limit. Status moves from scheduled → completed or cancelled.
 
 **SessionBooking**
 A registration linking a member to a session. Enforces the session's capacity (no overbooking) and uniqueness (a member can't book the same session twice). Status tracks whether the member showed up (booked → checked-in) or cancelled.

@@ -11,6 +11,7 @@ A generic full-stack bootcamp starter on Turborepo. Multi-tenant auth (orgs + ro
 We are building a multi-tenant gym management system on this starter (each gym = a `Gym` — the starter's `Organization` tenant renamed in Phase 0 — gym manager = `ORG_ADMIN`, gym customer = a `Member` that staff can invite to a read-only self-service login as a `MEMBER` user).
 
 **Before writing any feature code:**
+
 1. Read [`docs/PROGRESS.md`](docs/PROGRESS.md) **first** for the project map, then the per-feature file you're working in under [`docs/progress/`](docs/progress/) (`PROGRESS-A.md` / `-B.md` / `-C.md` / `-phase0.md`) for live phase status. It is the team's shared memory; don't re-implement a phase already marked ✅, and continue an 🟡 in-progress phase rather than restarting. Status is split one file per feature so parallel work doesn't cause merge conflicts — **edit only your own feature's file** (plus your single row in the `PROGRESS.md` overview).
 2. Read [`docs/gym-management-plan.md`](docs/gym-management-plan.md) — source of truth for the data model, the work breakdown, internal phases, and ownership.
 
@@ -66,25 +67,44 @@ Every controller and endpoint **must** be decorated for Swagger. The docs are se
 
 Required decorators — apply these on every new controller/endpoint, no exceptions:
 
-| Scope | Decorator | Where |
-|---|---|---|
-| Controller class | `@ApiTags('resource-name')` | matches the tag registered in `main.ts` |
-| Controller class | `@ApiCookieAuth('session-cookie')` | all protected controllers |
-| Endpoint method | `@ApiOperation({ summary: '...', description?: '...' })` | every route handler |
-| Endpoint method | `@ApiResponse({ status: 200\|201, description: '...', schema: { ... } })` | success response |
-| Endpoint method | `@ApiResponse({ status: 400, description: 'Validation error' })` | when body/query is validated |
-| Endpoint method | `@ApiResponse({ status: 401, description: 'Not authenticated' })` | all auth-guarded routes |
-| Endpoint method | `@ApiResponse({ status: 403, description: 'Insufficient role' })` | when `@Roles(...)` is used |
-| Endpoint method | `@ApiResponse({ status: 404, description: 'Resource not found' })` | when `NotFoundException` can be thrown |
-| Path param | `@ApiParam({ name: 'id', type: String, description: '...' })` | every `:param` |
-| Query param | `@ApiQuery({ name: '...', required: false, description: '...' })` | every `@Query()` |
-| Request body | `@ApiBody({ schema: { ... } })` | every `@Body()` — describe shape inline as JSON schema |
+| Scope            | Decorator                                                                 | Where                                                                                     |
+| ---------------- | ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Controller class | `@ApiTags('resource-name')`                                               | matches the tag registered in `main.ts`                                                   |
+| Controller class | `@ApiCookieAuth('session-cookie')`                                        | all protected controllers                                                                 |
+| Endpoint method  | `@ApiOperation({ summary: '...', description?: '...' })`                  | every route handler                                                                       |
+| Endpoint method  | `@ApiResponse({ status: 200\|201, description: '...', schema: { ... } })` | success response                                                                          |
+| Endpoint method  | `@ApiResponse({ status: 400, description: 'Validation error' })`          | when body/query is validated                                                              |
+| Endpoint method  | `@ApiResponse({ status: 401, description: 'Not authenticated' })`         | all auth-guarded routes                                                                   |
+| Endpoint method  | `@ApiResponse({ status: 403, description: 'Insufficient role' })`         | when `@Roles(...)` is used                                                                |
+| Endpoint method  | `@ApiResponse({ status: 404, description: 'Resource not found' })`        | when `NotFoundException` can be thrown                                                    |
+| Path param       | `@ApiParam({ name: 'id', type: String, description: '...' })`             | every `:param`                                                                            |
+| Query param      | `@ApiQuery({ name: '...', required: false, description: '...' })`         | every `@Query()` — add `enum: MY_ENUM` for enum params, `type: Number` for numeric params |
+| Request body     | `@ApiBody({ schema: { ... } })`                                           | every `@Body()` — describe shape inline as JSON schema                                    |
 
 **Import all Swagger decorators from `@nestjs/swagger`.** Do not import from any other package.
+
+**Shared swagger constants:** if two or more endpoints in the same feature share schema shapes (e.g. a `memberSchema` object reused in list + detail responses), extract them to `<feature>.swagger.ts` in the same folder and import from there. Do not duplicate inline.
+
+**`@ApiResponse` must always include `schema:`** on 200/201 responses — a description-only response tells consumers nothing. This is the most commonly missed rule.
 
 Example (ORG_ADMIN-scoped endpoint):
 
 ```ts
+// members.swagger.ts  ← extract shared shapes here
+export const memberSchema = {
+  type: 'object',
+  properties: {
+    id: { type: 'string', format: 'uuid' },
+    name: { type: 'string' },
+    email: { type: 'string', format: 'email' },
+  },
+};
+```
+
+```ts
+// members.controller.ts
+import { memberSchema } from './members.swagger';
+
 @ApiTags('members')
 @ApiCookieAuth('session-cookie')
 @Controller('members')
@@ -92,7 +112,7 @@ export class MembersController {
 
   @Post()
   @Roles('ORG_ADMIN')
-  @ApiOperation({ summary: 'Create a member', description: 'Creates a new gym member scoped to the caller's gym.' })
+  @ApiOperation({ summary: 'Create a member', description: 'Creates a new gym member scoped to the caller\'s gym.' })
   @ApiBody({
     schema: {
       type: 'object',
@@ -105,7 +125,7 @@ export class MembersController {
       },
     },
   })
-  @ApiResponse({ status: 201, description: 'Member created' })
+  @ApiResponse({ status: 201, description: 'Member created', schema: memberSchema })
   @ApiResponse({ status: 400, description: 'Validation error' })
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   @ApiResponse({ status: 403, description: 'Insufficient role' })
@@ -117,24 +137,29 @@ export class MembersController {
 
 - One folder per feature: `src/<feature>/<feature>.{controller,service,module}.ts`. Register the module in `app.module.ts`.
 - Validate every request body / query with `ZodValidationPipe` from `src/common/pipes/`. Schemas come from `@repo/contracts`.
+- Query param pipes: use NestJS built-in pipes for primitive query params — `ParseEnumPipe` for enums, `ParseIntPipe` for integers, `DefaultValuePipe` for defaults. Example: `@Query('status', new ParseEnumPipe(MyEnum, { optional: true })) status?: MyEnum` and `@Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number`. Never pass raw query strings to services.
 - Database access only through `DatabaseService` (extends `PrismaClient`). Never `new PrismaClient()` outside `packages/database`.
 - Routes are protected by default (global `AuthGuard`). Use `@Public()` to opt out, `@Roles(...)` to restrict by role, `@CurrentUser()` to get the calling user.
 - Cookie-based sessions (`bootcamp_starter_session`, `HttpOnly`, 30-day TTL). Magic-link auth only — no passwords.
 - Async work goes through BullMQ. See `src/mail/` for the canonical pattern: constants → module → service → processor.
 - Errors: throw NestJS exceptions (`NotFoundException`, `UnauthorizedException`, `BadRequestException`). Don't return error envelopes.
-- Logging: every service uses NestJS's `Logger` (`private readonly logger = new Logger(MyService.name)`). **Never `console.log` in `apps/api/src/`.** `console.*` is fine in CLI scripts under `packages/database/prisma/seeders/` because they're one-shot scripts, not the running server.
+- HTTP status codes: POST endpoints that create a resource must use `@HttpCode(201)`. NestJS defaults all handlers to 200 — never rely on the default for creation endpoints.
+- Controllers stay thin: no Prisma queries, no business logic, no conditional branching in controllers. A controller method should only call one service method and return its result. All logic lives in the service.
+- Logging: add `private readonly logger = new Logger(MyService.name)` **only if you call `this.logger` at least once** in that service. Never add it speculatively. **Never `console.log` in `apps/api/src/`.** `console.*` is fine in CLI scripts under `packages/database/prisma/seeders/`.
+- JSDoc: add a one-line `/** ... */` JSDoc comment above every public method in services and controllers (e.g. `/** Get all gyms with optional status filter */`). Keep it to one line — describe what the method does, not how.
 
 ### Next.js (`apps/web`)
 
 - Default to server components. Add `'use client'` only when you need state, effects, hooks, or browser APIs.
 - Protected routes go under `app/(authenticated)/`. The `proxy.ts` middleware short-circuits unauthed access.
-- Data fetching = SWR hooks under `hooks/`, one per resource. Type with `@repo/contracts` types. See `hooks/use-gyms.ts` (renamed from `use-organizations.ts` in Phase 0) for the pattern.
+- Data fetching = SWR hooks under `hooks/`, one per resource. Type with `@repo/contracts` types. See `hooks/use-gyms.ts` (renamed from `use-organizations.ts` in Phase 0) for the pattern. Add a one-line `/** ... */` JSDoc above each exported hook function.
 - API calls go through `lib/api.ts`. Errors become `ApiError` instances — catch in submit handlers and toast.
 - Forms = `react-hook-form` + `zodResolver(<schema from contracts>)`. See `app/login/page.tsx`.
 - UI primitives live in `components/ui/` and come from shadcn. **Don't hand-edit them.** Use `npx shadcn@latest add <component>` or the shadcn MCP server (configured in `.vscode/mcp.json`).
 - Tailwind v4. Use the design tokens (`primary-base`, `primary-100`, `gray-*`, `error`) defined in `globals.css`.
 - Error / loading UX: `app/loading.tsx`, `app/error.tsx`, `app/not-found.tsx` provide global defaults. Add route-scoped versions under any segment (e.g., `app/(authenticated)/projects/error.tsx`) when a specific area needs different treatment.
 - Don't leave `console.log` in committed code. Use `console.error` for unexpected failures you want surfaced (the `app/error.tsx` boundary already does this); for everything else, surface to the user via `toast`.
+- Build only what the current phase specifies — don't add UI, hooks, or API calls for a future phase even if you can see it's coming.
 
 ### Prisma (`packages/database`)
 

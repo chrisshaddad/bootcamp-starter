@@ -16,7 +16,7 @@ export const userResponseSchema = z.object({
   email: z.email(),
   name: z.string().nullable(),
   role: userRoleSchema,
-  organizationId: z.uuid().nullable(),
+  gymId: z.uuid().nullable(),
   isConfirmed: z.boolean(),
   profile: userProfileSchema.nullable().optional(),
 });

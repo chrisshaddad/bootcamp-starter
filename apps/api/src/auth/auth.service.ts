@@ -153,7 +153,7 @@ export class AuthService {
       email: user.email,
       name: user.name,
       role: user.role,
-      organizationId: user.organizationId,
+      gymId: user.gymId,
       isConfirmed: user.isConfirmed,
     };
   }

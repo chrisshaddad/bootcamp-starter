@@ -5,7 +5,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { MailModule } from './mail/mail.module';
-import { OrganizationsModule } from './organizations/organizations.module';
+import { GymsModule } from './gyms/gyms.module';
 import { DatabaseModule } from './database/database.module';
 
 @Module({
@@ -19,7 +19,7 @@ import { DatabaseModule } from './database/database.module';
     DatabaseModule,
     AuthModule,
     MailModule,
-    OrganizationsModule,
+    GymsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

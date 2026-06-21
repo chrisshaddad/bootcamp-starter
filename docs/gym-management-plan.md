@@ -20,11 +20,11 @@ We are **renaming the starter's generic `Organization` tenant to `Gym`** (model
 (`SUPER_ADMIN`, `ORG_ADMIN`, `MEMBER`) are unchanged. This rename lands in Phase 0
 (see below). The natural mapping onto the multi-tenant model:
 
-| Gym concept            | Starter concept                                  |
-| ---------------------- | ------------------------------------------------ |
-| A gym (its own data)   | `Gym` (renamed from `Organization`; tenant-scoped)|
-| Gym manager/owner      | `User` with role `ORG_ADMIN`                     |
-| Gym customer           | **`Member` model**, optionally linked to a login `User` (role `MEMBER`) |
+| Gym concept          | Starter concept                                                         |
+| -------------------- | ----------------------------------------------------------------------- |
+| A gym (its own data) | `Gym` (renamed from `Organization`; tenant-scoped)                      |
+| Gym manager/owner    | `User` with role `ORG_ADMIN`                                            |
+| Gym customer         | **`Member` model**, optionally linked to a login `User` (role `MEMBER`) |
 
 Key decisions:
 
@@ -160,12 +160,26 @@ model Subscription {      // Feature A — a member's subscription period
   @@index([gymId]) @@index([memberId]) @@index([planId]) @@index([endDate]) @@schema("public")
 }
 
+model Instructor {         // Feature B — gym instructor/trainer
+  id String @id @default(uuid())
+  gymId String
+  name String
+  email String?
+  specialization String?
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  gym Gym @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  gymSessions GymSession[]
+  @@index([gymId]) @@schema("public")
+}
+
 model GymSession {        // Feature B — a scheduled class/session
   id String @id @default(uuid())
   gymId String
   title String
   description String?
-  instructor String?
+  instructorId String?    // nullable — session can be unassigned; SetNull on instructor delete
   startsAt DateTime
   endsAt DateTime
   capacity Int
@@ -173,8 +187,9 @@ model GymSession {        // Feature B — a scheduled class/session
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   gym Gym @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  instructor Instructor? @relation(fields: [instructorId], references: [id], onDelete: SetNull)
   bookings SessionBooking[]
-  @@index([gymId]) @@index([startsAt]) @@schema("public")
+  @@index([gymId]) @@index([startsAt]) @@index([instructorId]) @@schema("public")
 }
 
 model SessionBooking {    // Feature B — member registered for a session
@@ -206,17 +221,17 @@ model CheckIn {           // Feature C — gym-wide live occupancy
 On the renamed `Gym` model (was `Organization`), add `maxCapacity Int?` (gym-wide
 building limit) and the back-relations: `members Member[]`,
 `membershipPlans MembershipPlan[]`, `subscriptions Subscription[]`,
-`gymSessions GymSession[]`, `sessionBookings SessionBooking[]`,
-`checkIns CheckIn[]`. On `User`, add the back-relation `member Member?` (a member's
-optional login account). `User.organizationId` is renamed to `User.gymId` as part
-of the Phase 0 rename.
+`instructors Instructor[]`, `gymSessions GymSession[]`,
+`sessionBookings SessionBooking[]`, `checkIns CheckIn[]`. On `User`, add the
+back-relation `member Member?` (a member's optional login account).
+`User.organizationId` is renamed to `User.gymId` as part of the Phase 0 rename.
 
 ---
 
 ## Phase 0 — Database foundation (do FIRST, merge before feature work)
 
 **One person owns this; the whole team rebases on it before starting.** Land the
-rename *and* the *entire* schema above in a single migration so no feature
+rename _and_ the _entire_ schema above in a single migration so no feature
 workstream ever needs to touch `schema.prisma`.
 
 - **Rename `Organization` → `Gym`** (do this first, in the same migration): model
@@ -238,11 +253,12 @@ workstream ever needs to touch `schema.prisma`.
 - Migrate once: `npx turbo run db:migrate -- --name gym_rename_and_schema`, then
   `npx turbo run db:generate`.
 - **Seed data** (`packages/database/prisma/seeders/`): rename
-  `seedOrganizations.ts` → `seedGyms.ts`; add `seedMembers`, `seedPlans`,
-  `seedSubscriptions`, `seedSessions`, `seedBookings`, `seedCheckIns` (mirror
-  `seedGyms.ts`), register them in `seeders/index.ts`. Give some seeded members a
-  linked `User` (role `MEMBER`, scoped to the gym) so member login is testable
-  end-to-end. `console.*` is allowed in seeders.
+  `seedOrganizations.ts` → `seedGyms.ts`; add `seedInstructors`, `seedMembers`,
+  `seedPlans`, `seedSubscriptions`, `seedSessions`, `seedBookings`, `seedCheckIns`
+  (mirror `seedGyms.ts`), register them in `seeders/index.ts`. Seed instructors
+  first (before sessions) since sessions reference `instructorId`. Give some seeded
+  members a linked `User` (role `MEMBER`, scoped to the gym) so member login is
+  testable end-to-end. `console.*` is allowed in seeders.
 - **Exit criteria:** `npx turbo run db:migrate` + `db:generate` + `db:seed`
   succeed; the renamed `gyms` slice type-checks; `@repo/db` exports the new model
   types. Merge to the shared branch.
@@ -273,106 +289,156 @@ workstream ever needs to touch `schema.prisma`.
 ## Feature A — Members + Plans + Subscriptions (Owner 1)
 
 Gym customers, the plan catalog, subscription period tracking, plus the member
-portal foundation. Build the four phases **in order** — each is build → test →
+portal foundation. Build the five phases **in order** — each is build → test →
 merge before the next.
 
+**Phase A0 — Gym self-registration (public form + approval flow).**
+
+- _Contracts:_ `gyms/gym-register.request.ts` — `name` (required), `ownerName`
+  (required), `email` (required), `description` (optional), `website` (optional).
+  Export schema + type; update `gyms/index.ts` and `packages/contracts/src/index.ts`.
+- _API:_ on `GymsModule`, add **`POST /gyms/register`** decorated with `@Public()`
+  (unauthenticated). In a single transaction: create a `User` (`role: ORG_ADMIN`,
+  `isConfirmed: false`), create a `Gym` (`status: PENDING`, `createdById: user.id`),
+  update `user.gymId = gym.id`. Queue a magic-link email to the owner so they can
+  log in once approved. Return `201` with `{ message, gymId }`. Use
+  `BadRequestException` if the email is already taken.
+- _Web:_ `app/register/page.tsx` — public page (outside the authenticated shell),
+  a simple form with gym name, owner name, email, optional description + website.
+  On success show a confirmation message ("Your registration is pending approval").
+  Add a "Register your gym" link on the login page.
+- _Test:_ submit the form → gym appears in the SUPER_ADMIN `/gyms` list with status
+  PENDING → SUPER_ADMIN approves → gym status flips to ACTIVE and the owner can log
+  in via magic link. Confirm duplicate email is rejected. **Green before A1.**
+
 **Phase A1 — Members (admin CRUD).**
-- *Contracts:* `members/` (`member.response.ts`, `member-list.response.ts`,
+
+- _Contracts:_ `members/` (`member.response.ts`, `member-list.response.ts`,
   `member-create.request.ts`, `member-update.request.ts`,
   `member-status.schema.ts`). `member-create.request.ts` must include `email` as a
   required field (not optional) — it is needed for the portal invite in A4.
-- *API:* `MembersModule` (`GET /members?status=`, `GET /members/:id`,
+- _API:_ `MembersModule` (`GET /members?status=`, `GET /members/:id`,
   `POST /members`, `PATCH /members/:id`). **Every query filtered by `gymId`** from
   `@CurrentUser()`; `findOne` uses `findFirst({ where: { id, gymId } })`.
   `@Roles('ORG_ADMIN')`, `ZodValidationPipe`. Register in `app.module.ts`.
-- *Web:* `members/page.tsx` (table + "Add member" dialog), `members/[id]/page.tsx`
+- _Web:_ `members/page.tsx` (table + "Add member" dialog), `members/[id]/page.tsx`
   (detail + edit). Hook `use-members.ts` (mirror `use-gyms.ts`). Add **"Members"**
   nav item.
-- *Test:* create / list / filter / edit a member; confirm a second gym's admin
+- _Test:_ create / list / filter / edit a member; confirm a second gym's admin
   sees none of it (tenant isolation). **Green before A2.**
 
 **Phase A2 — Plans (admin catalog).**
-- *Contracts:* `plans/` (response / list / create / update).
-- *API:* `PlansModule` (`GET/POST/PATCH /plans`), scoped by `gymId`.
-- *Web:* `plans/page.tsx` (manage catalog). Hook `use-plans.ts`. Add **"Plans"**
+
+- _Contracts:_ `plans/` (response / list / create / update).
+- _API:_ `PlansModule` (`GET/POST/PATCH /plans`), scoped by `gymId`.
+- _Web:_ `plans/page.tsx` (manage catalog). Hook `use-plans.ts`. Add **"Plans"**
   nav item.
-- *Test:* create / edit / deactivate a plan; prices display correctly (cents →
+- _Test:_ create / edit / deactivate a plan; prices display correctly (cents →
   formatted). **Green before A3.**
 
 **Phase A3 — Subscriptions.**
-- *Contracts:* `subscriptions/` (response / list; `subscription-create.request.ts`
+
+- _Contracts:_ `subscriptions/` (response / list; `subscription-create.request.ts`
   takes `memberId`, `planId`, `startDate` — API computes `endDate`, snapshots
   `price`).
-- *API:* `SubscriptionsModule` (`GET /members/:memberId/subscriptions`,
+- _API:_ `SubscriptionsModule` (`GET /members/:memberId/subscriptions`,
   `POST /subscriptions`, `PATCH /subscriptions/:id/cancel`). On create, validate
   the plan belongs to the gym, compute `endDate = startDate + plan.durationDays`,
   snapshot `price`. Scoped by `gymId`.
-- *Web:* a **Subscriptions** panel on `members/[id]/page.tsx` (history + "Add
+- _Web:_ a **Subscriptions** panel on `members/[id]/page.tsx` (history + "Add
   subscription" dialog showing the computed end date). Hook `use-subscriptions.ts`.
-- *Test:* assign a subscription, confirm the end date is computed and price
+- _Test:_ assign a subscription, confirm the end date is computed and price
   snapshotted; cancel one. **Green before A4.**
 
-**Phase A4 — Member invite + portal foundation (member login).** *(This is the
+**Phase A4 — Member invite + portal foundation (member login).** _(This is the
 distributed member-portal slice for A, and the shared shell other features build
-on — see B3 / C3.)*
-- *Contracts:* `me/` (`me-overview.response.ts`: member profile + active
+on — see B3 / C3.)_
+
+- _Contracts:_ `me/` (`me-overview.response.ts`: member profile + active
   subscription summary; reuse subscription/plan response schemas for the lists).
-- *API:* on `MembersModule`, add **`POST /members/:id/invite`** — provisions a
+- _API:_ on `MembersModule`, add **`POST /members/:id/invite`** — provisions a
   `User` (role `MEMBER`, same `gymId`) for the member's `email`, links
   `Member.userId`, queues a magic link via the existing mail queue (requires
   `email`, rejects if already invited). New `MePortalModule` (`@Roles('MEMBER')`)
   resolving the caller via
   `prisma.member.findFirst({ where: { userId: user.id, gymId } })`:
   `GET /me/profile`, `GET /me/subscriptions`, `GET /me/plans` (active catalog).
-- *Web:* add an **"Invite to portal"** action on `members/[id]/page.tsx`. Build
+- _Web:_ add an **"Invite to portal"** action on `members/[id]/page.tsx`. Build
   the **`app/(member)/` route group** (layout + member sidebar, role-gated to
   `MEMBER`), the **role-aware redirect** in `proxy.ts` (`MEMBER` → portal home,
   `ORG_ADMIN`/`SUPER_ADMIN` → `/dashboard`), and member pages: portal **home**,
   **"My subscriptions"**, **"Available plans"**, profile. Hook `use-me.ts`.
-- *Test:* invite a member → magic link arrives (Mailpit :8025) → member logs in,
+- _Test:_ invite a member → magic link arrives (Mailpit :8025) → member logs in,
   lands on the portal, sees only their own subscriptions + the active plans, and
   **cannot** reach admin routes or another gym's data.
 
-## Feature B — Sessions, Schedules + per-session capacity (Owner 2)
+## Feature B — Instructors + Sessions, Schedules + per-session capacity (Owner 2)
 
-Scheduled classes, the schedule view, member registration, the per-session
-capacity tracker, and the member's "My bookings" portal view. Build in order.
+Instructor management, scheduled classes, the schedule view, member registration,
+the per-session capacity tracker, and the member's "My bookings" portal view.
+Build in order — B0 must be done before B1 since sessions reference instructors.
+
+**Phase B0 — Instructors (admin CRUD + availability).**
+
+- _Contracts:_ `instructors/` (`instructor.response.ts`, `instructor-list.response.ts`,
+  `instructor-create.request.ts` — `name` required, `email`/`specialization` optional;
+  `instructor-update.request.ts`).
+- _API:_ `InstructorsModule` (`GET /instructors`, `GET /instructors/:id`,
+  `POST /instructors`, `PATCH /instructors/:id`). Add **`GET /instructors/available`**
+  with query params `startsAt` and `endsAt` — returns instructors who have **no**
+  existing session where `session.startsAt < endsAt AND session.endsAt > startsAt`
+  (overlap detection). Also filter `isActive: true` on the instructor and exclude
+  sessions with status `CANCELLED` from the overlap check — a cancelled session
+  must not block the slot. Scoped by `gymId`, `@Roles('ORG_ADMIN')`.
+  Register in `app.module.ts`.
+- _Web:_ `instructors/page.tsx` (list + "Add instructor" dialog + deactivate).
+  Hook `use-instructors.ts`. Add **"Instructors"** nav item (above "Schedule").
+- _Test:_ create instructors; deactivate one; confirm `GET /instructors/available`
+  excludes inactive instructors and instructors with overlapping non-cancelled sessions. **Green before B1.**
 
 **Phase B1 — Sessions (admin schedule).**
-- *Contracts:* `sessions/` (response / list / create / update; create takes
-  `title`, optional `description`/`instructor`, `startsAt`, `endsAt`, `capacity`;
-  list & detail include `bookedCount` from Prisma `_count`).
-- *API:* `SessionsModule` (`GET /sessions` with date-range filter,
-  `GET /sessions/:id`, `POST /sessions`, `PATCH /sessions/:id`,
-  `PATCH /sessions/:id/cancel`; validate `endsAt > startsAt`). Reads include
-  `_count.bookings`. Scoped by `gymId`, `@Roles('ORG_ADMIN')`.
-- *Web:* `sessions/page.tsx` (schedule grouped by day + "Add session" dialog),
-  `sessions/[id]/page.tsx` (detail; capacity bar shows `0/capacity` for now).
-  Hook `use-sessions.ts`. Add **"Schedule"** nav item.
-- *Test:* create sessions and see them ordered by day; `endsAt > startsAt`
-  enforced; cancel a session. **Green before B2.**
 
-**Phase B2 — Bookings + per-session capacity.** *(Grouped: capacity enforcement is
-only meaningful alongside bookings, so they ship together.)*
-- *Contracts:* `bookings/` (booking response / list;
+- _Contracts:_ `sessions/` (response / list / create / update; create takes
+  `title`, optional `description`, `instructorId` (optional FK), `startsAt`,
+  `endsAt`, `capacity`; list & detail include `bookedCount` from Prisma `_count`
+  and the nested `instructor` object).
+- _API:_ `SessionsModule` (`GET /sessions` with date-range filter,
+  `GET /sessions/:id`, `POST /sessions`, `PATCH /sessions/:id`,
+  `PATCH /sessions/:id/cancel`; validate `endsAt > startsAt`; if `instructorId`
+  provided, verify it belongs to the gym). Reads include `_count.bookings` and
+  `instructor`. Scoped by `gymId`, `@Roles('ORG_ADMIN')`.
+- _Web:_ `sessions/page.tsx` (schedule grouped by day + "Add session" dialog —
+  instructor field calls `GET /instructors/available?startsAt=&endsAt=` once both
+  times are set and shows a dropdown of available instructors only),
+  `sessions/[id]/page.tsx` (detail with instructor name + capacity bar shows
+  `0/capacity` for now). Hook `use-sessions.ts`. Add **"Schedule"** nav item.
+- _Test:_ create sessions with and without an instructor; confirm the availability
+  dropdown excludes busy instructors; `endsAt > startsAt` enforced; cancel a
+  session. **Green before B2.**
+
+**Phase B2 — Bookings + per-session capacity.** _(Grouped: capacity enforcement is
+only meaningful alongside bookings, so they ship together.)_
+
+- _Contracts:_ `bookings/` (booking response / list;
   `booking-create.request.ts` = `sessionId`, `memberId`).
-- *API:* `BookingsModule` (`POST /bookings` — reject if **full or duplicate** via
+- _API:_ `BookingsModule` (`POST /bookings` — reject if **full or duplicate** via
   `BadRequestException`; `PATCH /bookings/:id/cancel`;
   `PATCH /bookings/:id/check-in`). Scoped by `gymId`.
-- *Web:* on `sessions/[id]/page.tsx`, wire the **capacity bar**
+- _Web:_ on `sessions/[id]/page.tsx`, wire the **capacity bar**
   (`bookedCount/capacity`), the "Register member" control, and the roster with
   cancel / check-in. Hook `use-bookings.ts`.
-- *Test:* book members up to capacity; confirm over-capacity and duplicate
+- _Test:_ book members up to capacity; confirm over-capacity and duplicate
   bookings are rejected; cancel frees a slot and the bar updates. **Green before
   B3.**
 
-**Phase B3 — Member "My bookings" view (portal).** *(Distributed member-portal
-slice for B; drops into the `app/(member)/` shell from A4.)*
-- *API:* on `MePortalModule`, add `GET /me/bookings` (caller's own bookings,
+**Phase B3 — Member "My bookings" view (portal).** _(Distributed member-portal
+slice for B; drops into the `app/(member)/` shell from A4.)_
+
+- _API:_ on `MePortalModule`, add `GET /me/bookings` (caller's own bookings,
   scoped to their `member.id` + `gymId`).
-- *Web:* a **"My bookings"** page in the `app/(member)/` portal listing the
+- _Web:_ a **"My bookings"** page in the `app/(member)/` portal listing the
   member's upcoming/past sessions. Extend `use-me.ts` (or `use-my-bookings.ts`).
-- *Test:* a logged-in member sees only their own bookings; another gym's data
+- _Test:_ a logged-in member sees only their own bookings; another gym's data
   never appears.
 
 ## Feature C — Check-ins, live occupancy + Gym Dashboard (Owner 3)
@@ -384,45 +450,48 @@ schema directly (use seeded data, including a seeded linked `User` for C3). Buil
 in order.
 
 **Phase C1 — Check-ins (manual) + live occupancy.**
-- *Contracts:* `checkins/` (check-in response / list; manual create takes
+
+- _Contracts:_ `checkins/` (check-in response / list; manual create takes
   `memberId`).
-- *API:* `CheckInsModule` (`POST /checkins` — **manual admin check-in** by
+- _API:_ `CheckInsModule` (`POST /checkins` — **manual admin check-in** by
   `memberId`, kept as the fallback path; `PATCH /checkins/:id/checkout`;
   `GET /checkins/active`). Scoped by `gymId`, `@Roles('ORG_ADMIN')`.
-- *Web:* `checkins/page.tsx` (currently-in members with check-out + manual "Check
+- _Web:_ `checkins/page.tsx` (currently-in members with check-out + manual "Check
   in member" control). Hook `use-checkins.ts`. Add **"Check-ins"** nav item.
-- *Test:* check members in / out manually and watch the active-occupancy count
+- _Test:_ check members in / out manually and watch the active-occupancy count
   move. **Green before C2.**
 
 **Phase C2 — Dashboard + gym settings.**
-- *Contracts:* `dashboard/` (`dashboard-stats.response.ts`: `totalMembers`,
+
+- _Contracts:_ `dashboard/` (`dashboard-stats.response.ts`: `totalMembers`,
   `totalActiveMembers`, `expiringSoon` count+list, `currentOccupancy`,
   `maxCapacity`); a gym-settings update request for `maxCapacity`.
-- *API:* `DashboardModule` (`GET /dashboard/stats` — scoped aggregates: active
+- _API:_ `DashboardModule` (`GET /dashboard/stats` — scoped aggregates: active
   members = distinct members with `Subscription status=ACTIVE AND endDate >= now`;
   expiring soon = subscriptions with `endDate` in [now, now+30d];
   `currentOccupancy = count(CheckIn where checkedOutAt null)`; gym `maxCapacity`);
   `PATCH /gym/settings` to set `maxCapacity`. Scoped by `gymId`.
-- *Web:* rebuild `app/(authenticated)/dashboard/page.tsx` with stat `Card`s —
+- _Web:_ rebuild `app/(authenticated)/dashboard/page.tsx` with stat `Card`s —
   **Total active members**, **Expiring soon** (list/link), and a **Capacity
   Tracker** card (`currentOccupancy / maxCapacity` progress bar that warns near
   capacity); set `maxCapacity` on `settings/page.tsx`. Hook `use-dashboard.ts`.
-- *Test:* dashboard numbers match seeded data; expiring-soon list is correct;
+- _Test:_ dashboard numbers match seeded data; expiring-soon list is correct;
   setting `maxCapacity` updates the tracker. **Green before C3.**
 
-**Phase C3 — QR check-in (admin issues, member scans).** *(Spans the admin side
+**Phase C3 — QR check-in (admin issues, member scans).** _(Spans the admin side
 here and the member side; drops the member `checkin` page into the `app/(member)/`
-shell from A4. Coordinate the token contract + Redis key format with Owner 1.)*
-- *Contracts:* `checkins/checkin-qr-token.response.ts` = `{ token, expiresAt }`
+shell from A4. Coordinate the token contract + Redis key format with Owner 1.)_
+
+- _Contracts:_ `checkins/checkin-qr-token.response.ts` = `{ token, expiresAt }`
   (admin display); `me/checkin-scan.request.ts` = `{ token }` (member scan).
-- *API:* on `CheckInsModule`, add **`GET /checkins/qr-token`** — issues a
+- _API:_ on `CheckInsModule`, add **`GET /checkins/qr-token`** — issues a
   **rotating short-lived token** for the gym, stored in **Redis** keyed by `gymId`
   with a ~30-60s TTL (a screenshot can't be reused later; no DB model, so Phase 0
   stays frozen). On `MePortalModule` (from A4), add **`POST /me/checkins`** — body
   `{ token }`: validate against Redis (exists, not expired, resolves to the
   **caller's own `gymId`**), then create a `CheckIn` for the caller's `member.id`
   (reject a duplicate open check-in). Never trust a client-supplied member id.
-- *Web:* admin **"Check-in QR"** screen `checkins/qr/page.tsx` that polls
+- _Web:_ admin **"Check-in QR"** screen `checkins/qr/page.tsx` that polls
   `GET /checkins/qr-token` and renders the token as a QR encoding
   `${APP_URL}/checkin?token=<token>` (use a QR generator such as `qrcode`;
   auto-refresh before each expiry). Member **`app/(member)/checkin/page.tsx`**
@@ -430,7 +499,7 @@ shell from A4. Coordinate the token contract + Redis key format with Owner 1.)*
   expired, ask staff to refresh". Member scans with their **phone's native camera**
   (no in-app scanner); if not logged in, `proxy.ts` routes them through magic-link
   login and back.
-- *Test:* open the admin QR screen and confirm it rotates; scan with a phone (or
+- _Test:_ open the admin QR screen and confirm it rotates; scan with a phone (or
   paste the encoded URL) and confirm a check-in is recorded for that member and
   live occupancy increments; confirm an expired/forged token is rejected and a
   member can't check into another gym.
@@ -443,15 +512,15 @@ Three owners, **one feature each, built end-to-end** (admin + member-facing view
 Within a feature, build the internal phases **in order** (build → test → merge →
 next).
 
-| Feature | Owner | Internal phases (build in order)                              | Own folders                                                   | Shared files (append) |
-| ------- | ----- | ------------------------------------------------------------- | ------------------------------------------------------------- | --------------------- |
-| **A**   | 1     | A1 Members · A2 Plans · A3 Subscriptions · A4 Invite + portal shell | `members/`, `plans/`, `subscriptions/`, `me/` (contracts+api), `app/(member)/` shell | `app.module.ts`, `app-sidebar.tsx`, `contracts/index.ts`, `seeders/index.ts`, `proxy.ts` |
-| **B**   | 2     | B1 Sessions · B2 Bookings + capacity · B3 My-bookings view    | `sessions/`, `bookings/` (contracts+api+web) + `me/bookings` + portal "My bookings" page | same shared files |
-| **C**   | 3     | C1 Check-ins · C2 Dashboard + settings · C3 QR check-in       | `checkins/`, `dashboard/` (contracts+api+web) + portal `checkin` page | same shared files + `dashboard/page.tsx`, `settings/page.tsx` |
+| Feature | Owner | Internal phases (build in order)                                                           | Own folders                                                                                                                           | Shared files (append)                                                                    |
+| ------- | ----- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| **A**   | 1     | A0 Gym registration · A1 Members · A2 Plans · A3 Subscriptions · A4 Invite + portal shell  | `gyms/gym-register.request.ts`, `members/`, `plans/`, `subscriptions/`, `me/` (contracts+api), `app/(member)/` shell, `app/register/` | `app.module.ts`, `app-sidebar.tsx`, `contracts/index.ts`, `seeders/index.ts`, `proxy.ts` |
+| **B**   | 2     | B0 Instructors + availability · B1 Sessions · B2 Bookings + capacity · B3 My-bookings view | `instructors/`, `sessions/`, `bookings/` (contracts+api+web) + `me/bookings` + portal "My bookings" page                              | same shared files                                                                        |
+| **C**   | 3     | C1 Check-ins · C2 Dashboard + settings · C3 QR check-in                                    | `checkins/`, `dashboard/` (contracts+api+web) + portal `checkin` page                                                                 | same shared files + `dashboard/page.tsx`, `settings/page.tsx`                            |
 
 **Balanced ≈ 3 ÷ 3:** each owner ships ~3 admin/back-end slices **plus** the
 member-facing view for their own domain. The shared **`app/(member)/` portal shell
-+ role redirect is built once in A4** by Owner 1; Owners 2 and 3 add their single
+and role redirect is built once in A4** by Owner 1; Owners 2 and 3 add their single
 portal page (B3 / C3) into it.
 
 **Phase 0 rename** is a one-time foundation step owned by the schema owner
@@ -459,9 +528,12 @@ portal page (B3 / C3) into it.
 before feature work begins.
 
 **Cross-feature ordering & soft dependencies:**
+
 - A1 is the root — B's bookings and C's check-ins both reference members, so **A1
   lands before B2/C1 can be fully tested** (build against seeded members until
   then).
+- **B0 (Instructors) must be done before B1 (Sessions)** — sessions reference
+  `instructorId` and the "Add session" dialog calls the availability endpoint.
 - B3 and C3 (the member portal pages) depend on the **A4 portal shell**, so A4
   lands before they merge.
 - **QR check-in (C3)** uses A4's `MePortalModule`. Owners 1 and 3 share the token

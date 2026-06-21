@@ -1,7 +1,7 @@
 'use client';
 
 import { useUser } from '@/hooks/use-auth';
-import { useOrganization } from '@/hooks/use-organizations';
+import { useGym } from '@/hooks/use-gyms';
 import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -62,7 +62,7 @@ function ForbiddenPage() {
       <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
       <p className="text-gray-500 text-center max-w-md">
         You don&apos;t have permission to access this page. Only Super Admins
-        can manage organizations.
+        can manage gyms.
       </p>
     </div>
   );
@@ -101,7 +101,7 @@ function InfoRow({
   );
 }
 
-export default function OrganizationDetailPage() {
+export default function GymDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { user, isLoading: userLoading } = useUser();
@@ -110,26 +110,25 @@ export default function OrganizationDetailPage() {
   const [showApproveDialog, setShowApproveDialog] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
 
-  const orgId = params.id as string;
+  const gymId = params.id as string;
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
 
   const {
-    organization: org,
-    isLoading: orgLoading,
+    gym,
+    isLoading: gymLoading,
     error,
     approve,
     reject,
-  } = useOrganization(orgId, { enabled: isSuperAdmin });
+  } = useGym(gymId, { enabled: isSuperAdmin });
 
   const handleApprove = async () => {
     setIsApproving(true);
     try {
       await approve();
-      toast.success('Organization approved successfully');
+      toast.success('Gym approved successfully');
       setShowApproveDialog(false);
-    } catch (err) {
-      toast.error('Failed to approve organization');
-      console.error(err);
+    } catch {
+      toast.error('Failed to approve gym');
     } finally {
       setIsApproving(false);
     }
@@ -139,21 +138,19 @@ export default function OrganizationDetailPage() {
     setIsRejecting(true);
     try {
       await reject();
-      toast.success('Organization rejected');
+      toast.success('Gym rejected');
       setShowRejectDialog(false);
-    } catch (err) {
-      toast.error('Failed to reject organization');
-      console.error(err);
+    } catch {
+      toast.error('Failed to reject gym');
     } finally {
       setIsRejecting(false);
     }
   };
 
-  if (userLoading || orgLoading) {
+  if (userLoading || gymLoading) {
     return <LoadingSkeleton />;
   }
 
-  // Show 403 for non-super admins
   if (user?.role !== 'SUPER_ADMIN') {
     return <ForbiddenPage />;
   }
@@ -161,7 +158,7 @@ export default function OrganizationDetailPage() {
   if (error) {
     return (
       <div className="py-10 text-center">
-        <div className="text-red-500 mb-4">Failed to load organization</div>
+        <div className="text-red-500 mb-4">Failed to load gym</div>
         <Button variant="outline" onClick={() => router.back()}>
           Go Back
         </Button>
@@ -169,10 +166,10 @@ export default function OrganizationDetailPage() {
     );
   }
 
-  if (!org) {
+  if (!gym) {
     return (
       <div className="py-10 text-center">
-        <div className="text-gray-500 mb-4">Organization not found</div>
+        <div className="text-gray-500 mb-4">Gym not found</div>
         <Button variant="outline" onClick={() => router.back()}>
           Go Back
         </Button>
@@ -180,31 +177,28 @@ export default function OrganizationDetailPage() {
     );
   }
 
-  const isPending = org.status === 'PENDING';
+  const isPending = gym.status === 'PENDING';
 
   return (
     <div className="space-y-6">
-      {/* Back Button */}
       <Button
         variant="ghost"
         size="sm"
         className="gap-2"
-        onClick={() => router.push('/organizations')}
+        onClick={() => router.push('/gyms')}
       >
         <ArrowLeft className="h-4 w-4" />
-        Back to Organizations
+        Back to Gyms
       </Button>
 
-      {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{org.name}</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{gym.name}</h1>
           <div className="mt-2">
-            <StatusBadge status={org.status} />
+            <StatusBadge status={gym.status} />
           </div>
         </div>
 
-        {/* Action Buttons (only for PENDING organizations) */}
         {isPending && (
           <div className="flex gap-3">
             <Button
@@ -226,35 +220,33 @@ export default function OrganizationDetailPage() {
         )}
       </div>
 
-      {/* Details Grid */}
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Organization Info */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <Building2 className="h-5 w-5" />
-              Organization Details
+              Gym Details
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            {org.description && (
+            {gym.description && (
               <div className="mb-4 p-3 bg-gray-50 rounded-lg">
                 <div className="text-sm text-gray-500 mb-1">Description</div>
-                <p className="text-sm text-gray-700">{org.description}</p>
+                <p className="text-sm text-gray-700">{gym.description}</p>
               </div>
             )}
             <InfoRow
               icon={Globe}
               label="Website"
               value={
-                org.website ? (
+                gym.website ? (
                   <a
-                    href={org.website}
+                    href={gym.website}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-blue-600 hover:underline"
                   >
-                    {org.website}
+                    {gym.website}
                   </a>
                 ) : (
                   <span className="text-gray-400">Not provided</span>
@@ -264,22 +256,22 @@ export default function OrganizationDetailPage() {
             <InfoRow
               icon={Users}
               label="Members"
-              value={`${org._count.users} user${org._count.users !== 1 ? 's' : ''}`}
+              value={`${gym._count.users} user${gym._count.users !== 1 ? 's' : ''}`}
             />
             <InfoRow
               icon={Calendar}
               label="Registered"
-              value={new Date(org.createdAt).toLocaleDateString('en-US', {
+              value={new Date(gym.createdAt).toLocaleDateString('en-US', {
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric',
               })}
             />
-            {org.approvedAt && (
+            {gym.approvedAt && (
               <InfoRow
                 icon={CheckCircle}
                 label="Approved"
-                value={new Date(org.approvedAt).toLocaleDateString('en-US', {
+                value={new Date(gym.approvedAt).toLocaleDateString('en-US', {
                   year: 'numeric',
                   month: 'long',
                   day: 'numeric',
@@ -289,7 +281,6 @@ export default function OrganizationDetailPage() {
           </CardContent>
         </Card>
 
-        {/* Creator & Approver Info */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
@@ -299,32 +290,30 @@ export default function OrganizationDetailPage() {
           </CardHeader>
           <CardContent className="pt-0">
             <div className="space-y-4">
-              {/* Created By */}
               <div className="p-4 bg-gray-50 rounded-lg">
                 <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">
                   Created By
                 </div>
                 <div className="font-medium text-gray-900">
-                  {org.createdBy.name}
+                  {gym.createdBy.name}
                 </div>
                 <div className="flex items-center gap-2 mt-1 text-sm text-gray-500">
                   <Mail className="h-4 w-4" />
-                  {org.createdBy.email}
+                  {gym.createdBy.email}
                 </div>
               </div>
 
-              {/* Approved By (if applicable) */}
-              {org.approvedBy ? (
+              {gym.approvedBy ? (
                 <div className="p-4 bg-green-50 rounded-lg">
                   <div className="text-xs text-green-600 uppercase tracking-wide mb-2">
                     Approved By
                   </div>
                   <div className="font-medium text-gray-900">
-                    {org.approvedBy.name}
+                    {gym.approvedBy.name}
                   </div>
                   <div className="flex items-center gap-2 mt-1 text-sm text-gray-500">
                     <Mail className="h-4 w-4" />
-                    {org.approvedBy.email}
+                    {gym.approvedBy.email}
                   </div>
                 </div>
               ) : isPending ? (
@@ -334,8 +323,8 @@ export default function OrganizationDetailPage() {
                     <span className="font-medium">Awaiting Approval</span>
                   </div>
                   <p className="mt-1 text-sm text-yellow-600">
-                    This organization is waiting for a super admin to review and
-                    approve the registration.
+                    This gym is waiting for a super admin to review and approve
+                    the registration.
                   </p>
                 </div>
               ) : null}
@@ -344,15 +333,14 @@ export default function OrganizationDetailPage() {
         </Card>
       </div>
 
-      {/* Approve Confirmation Dialog */}
       <Dialog open={showApproveDialog} onOpenChange={setShowApproveDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Approve Organization</DialogTitle>
+            <DialogTitle>Approve Gym</DialogTitle>
             <DialogDescription>
-              Are you sure you want to approve <strong>{org.name}</strong>? This
-              will allow the organization admin to start inviting members and
-              using the platform.
+              Are you sure you want to approve <strong>{gym.name}</strong>? This
+              will allow the gym admin to start inviting members and using the
+              platform.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -374,14 +362,13 @@ export default function OrganizationDetailPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Reject Confirmation Dialog */}
       <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reject Organization</DialogTitle>
+            <DialogTitle>Reject Gym</DialogTitle>
             <DialogDescription>
-              Are you sure you want to reject <strong>{org.name}</strong>? The
-              organization admin will not be able to use the platform.
+              Are you sure you want to reject <strong>{gym.name}</strong>? The
+              gym admin will not be able to use the platform.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
