@@ -88,14 +88,7 @@ export class AuthController {
   }
 
   @Get('me')
-  getCurrentUser(@CurrentUser() user: User): UserResponse {
-    return {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      gymId: user.gymId,
-      isConfirmed: user.isConfirmed,
-    };
+  async getCurrentUser(@CurrentUser() user: User): Promise<UserResponse> {
+    return this.authService.getMe(user.id);
   }
 }

@@ -22,8 +22,8 @@ interface UseUserReturn {
   mutate: () => void;
 }
 
-// Routes where we should NOT redirect on 401
-const AUTH_ROUTES = ['/login', '/auth'];
+// Routes where auth redirects should not fire
+const AUTH_ROUTES = ['/login', '/auth', '/suspended'];
 
 function isAuthRoute(pathname: string): boolean {
   return AUTH_ROUTES.some(
@@ -39,18 +39,20 @@ export function useUser(options: UseUserOptions = {}): UseUserReturn {
     '/auth/me',
   );
 
-  // Redirect to login if session is invalid (401 Unauthorized)
-  // Skip redirect if already on an auth route
   useEffect(() => {
-    if (
-      redirectOnUnauthenticated &&
-      error?.status === 401 &&
-      !isAuthRoute(pathname)
-    ) {
-      const loginUrl = `/login?redirect=${encodeURIComponent(pathname)}`;
-      router.replace(loginUrl);
+    if (isAuthRoute(pathname)) return;
+
+    // Session gone → redirect to login
+    if (redirectOnUnauthenticated && error?.status === 401) {
+      router.replace(`/login?redirect=${encodeURIComponent(pathname)}`);
+      return;
     }
-  }, [error, redirectOnUnauthenticated, router, pathname]);
+
+    // Gym suspended → redirect to suspended page
+    if (data?.gymStatus === 'SUSPENDED') {
+      router.replace('/suspended');
+    }
+  }, [data, error, redirectOnUnauthenticated, router, pathname]);
 
   return {
     user: data,
@@ -81,7 +83,11 @@ export function useAuth() {
   );
 
   const logout = useCallback(async () => {
-    await apiPost<{ success: boolean }>('/auth/logout');
+    try {
+      await apiPost<{ success: boolean }>('/auth/logout');
+    } catch {
+      // Logout is best-effort — always clear local session state regardless of server response
+    }
     mutate();
   }, [mutate]);
 

@@ -3,9 +3,12 @@ import { PrismaClient } from '../../src/generated/prisma/client';
 interface GymSeed {
   name: string;
   description: string;
+  phone: string;
+  address: string;
   website: string | null;
   maxCapacity: number | null;
   status: 'PENDING' | 'ACTIVE' | 'REJECTED' | 'SUSPENDED' | 'INACTIVE';
+  statusReason?: string;
   createdAt: Date;
   approvedAt?: Date;
   adminEmail: string;
@@ -16,6 +19,8 @@ const GYMS: GymSeed[] = [
     name: 'Iron Peak Fitness',
     description:
       'Premier strength and conditioning gym offering personal training, group classes, and state-of-the-art equipment.',
+    phone: '+1-555-0101',
+    address: '12 Barbell Ave, Chicago, IL 60601',
     website: 'https://ironpeak.example.com',
     maxCapacity: 150,
     status: 'ACTIVE',
@@ -27,6 +32,8 @@ const GYMS: GymSeed[] = [
     name: 'FlexZone Gym',
     description:
       'Modern functional fitness studio specialising in CrossFit, HIIT, and mobility training for all levels.',
+    phone: '+1-555-0102',
+    address: '88 Flex Street, Austin, TX 78701',
     website: 'https://flexzone.example.com',
     maxCapacity: 200,
     status: 'ACTIVE',
@@ -38,6 +45,8 @@ const GYMS: GymSeed[] = [
     name: 'Mountain Wellness Center',
     description:
       'Holistic wellness facility combining yoga, meditation, and gentle fitness for mind-body balance.',
+    phone: '+1-555-0103',
+    address: '5 Summit Road, Denver, CO 80202',
     website: 'https://mountainwellness.example.com',
     maxCapacity: null,
     status: 'PENDING',
@@ -48,6 +57,8 @@ const GYMS: GymSeed[] = [
     name: 'City Boxing Club',
     description:
       'Boxing and martial arts gym offering beginner-friendly classes through to competitive training.',
+    phone: '+1-555-0104',
+    address: '200 Ring Lane, New York, NY 10001',
     website: 'https://cityboxing.example.com',
     maxCapacity: null,
     status: 'PENDING',
@@ -57,20 +68,28 @@ const GYMS: GymSeed[] = [
   {
     name: 'Velocity Sports',
     description:
-      'Application rejected due to failure to provide verifiable business registration documents.',
+      'High-performance sports training facility focusing on speed, agility, and athletic conditioning.',
+    phone: '+1-555-0105',
+    address: '300 Sprint Blvd, Miami, FL 33101',
     website: null,
     maxCapacity: null,
     status: 'REJECTED',
+    statusReason:
+      'Unable to verify business registration documents submitted with the application.',
     createdAt: new Date('2025-12-10'),
     adminEmail: 'admin@velocitysports.example.com',
   },
   {
     name: 'ProFit Training',
     description:
-      'Boutique bodybuilding and powerlifting gym. Currently suspended pending facility safety inspection.',
+      'Boutique bodybuilding and powerlifting gym with specialised coaching and competition prep programs.',
+    phone: '+1-555-0106',
+    address: '74 Iron Court, Seattle, WA 98101',
     website: 'https://profitraining.example.com',
     maxCapacity: 80,
     status: 'SUSPENDED',
+    statusReason:
+      'Facility safety inspection flagged non-compliant emergency exit signage. Suspended pending remediation.',
     createdAt: new Date('2025-09-05'),
     approvedAt: new Date('2025-09-08'),
     adminEmail: 'admin@profitraining.example.com',
@@ -105,9 +124,12 @@ export async function seedGyms(prisma: PrismaClient) {
       data: {
         name: gym.name,
         description: gym.description,
+        phone: gym.phone,
+        address: gym.address,
         website: gym.website,
         maxCapacity: gym.maxCapacity,
         status: gym.status,
+        statusReason: gym.statusReason ?? null,
         createdAt: gym.createdAt,
         createdById: gymAdmin.id,
         approvedById:

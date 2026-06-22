@@ -17,7 +17,13 @@ interface SendInvitationJobData {
   invitationLink: string;
 }
 
-type MailJobData = SendMagicLinkJobData | SendInvitationJobData;
+interface SendGymPendingJobData {
+  email: string;
+  userName: string;
+  gymName: string;
+}
+
+type MailJobData = SendMagicLinkJobData | SendInvitationJobData | SendGymPendingJobData;
 
 @Processor(MAIL_QUEUE)
 export class MailProcessor extends WorkerHost {
@@ -36,6 +42,9 @@ export class MailProcessor extends WorkerHost {
         break;
       case MAIL_JOBS.SEND_INVITATION:
         await this.handleSendInvitation(job.data as SendInvitationJobData);
+        break;
+      case MAIL_JOBS.SEND_GYM_PENDING:
+        await this.handleSendGymPending(job.data as SendGymPendingJobData);
         break;
       default:
         this.logger.warn(`Unknown job type: ${job.name}`);
@@ -59,6 +68,26 @@ export class MailProcessor extends WorkerHost {
       this.logger.log(`Magic link email sent successfully to ${email}`);
     } else {
       this.logger.error(`Failed to send magic link email to ${email}`);
+      throw new Error(`Failed to send email to ${email}`);
+    }
+  }
+
+  private async handleSendGymPending(data: SendGymPendingJobData): Promise<void> {
+    const { email, userName, gymName } = data;
+
+    const text = `Hello ${userName},\n\nThank you for registering "${gymName}" on our platform.\n\nYour application is currently under review by our team. You will receive a login link once your gym has been approved.\n\nIf you have any questions, please contact support.`;
+
+    const success = await this.mailService.sendEmail({
+      to: email,
+      from: 'no-reply@bootcamp-starter.local',
+      subject: 'Gym registration received — pending approval',
+      text,
+    });
+
+    if (success) {
+      this.logger.log(`Gym pending email sent successfully to ${email}`);
+    } else {
+      this.logger.error(`Failed to send gym pending email to ${email}`);
       throw new Error(`Failed to send email to ${email}`);
     }
   }

@@ -1,11 +1,14 @@
 import {
+  Body,
   Controller,
   DefaultValuePipe,
   Get,
+  HttpCode,
   Param,
   ParseEnumPipe,
   ParseIntPipe,
   Patch,
+  Post,
   Query,
 } from '@nestjs/common';
 import {
@@ -15,16 +18,21 @@ import {
   ApiResponse,
   ApiParam,
   ApiQuery,
+  ApiBody,
 } from '@nestjs/swagger';
 import { GymsService } from './gyms.service';
-import { Roles, CurrentUser } from '../auth/decorators';
+import { Roles, CurrentUser, Public } from '../auth/decorators';
 import { GymStatus } from '@repo/db';
 import type { User } from '@repo/db';
 import type {
   GymListResponse,
   GymDetailResponse,
   GymActionResponse,
+  GymRegisterRequest,
+  GymReasonRequest,
 } from '@repo/contracts';
+import { gymRegisterRequestSchema, gymReasonRequestSchema } from '@repo/contracts';
+import { ZodValidationPipe } from '../common/pipes';
 import {
   GYM_STATUS_ENUM,
   gymUserSchema,
@@ -36,6 +44,47 @@ import {
 @Controller('gyms')
 export class GymsController {
   constructor(private readonly gymsService: GymsService) {}
+
+  @Post('register')
+  @Public()
+  @HttpCode(201)
+  @ApiOperation({
+    summary: 'Register a new gym',
+    description:
+      'Public endpoint. Creates the gym owner account and gym record (status PENDING), then queues a magic-link email to the owner.',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['name', 'ownerName', 'email', 'phone', 'address'],
+      properties: {
+        name: { type: 'string', example: 'Iron Paradise Gym' },
+        ownerName: { type: 'string', example: 'Jane Doe' },
+        email: { type: 'string', format: 'email', example: 'jane@ironparadise.com' },
+        phone: { type: 'string', example: '+1-555-0100' },
+        address: { type: 'string', example: '123 Main St, Springfield, IL 62701' },
+        description: { type: 'string', example: 'A premium fitness center.' },
+        website: { type: 'string', format: 'uri', example: 'https://ironparadise.com' },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Registration submitted — awaiting approval',
+    schema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string', example: 'Gym registration submitted. Check your email for a login link once approved.' },
+        gymId: { type: 'string', format: 'uuid' },
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Validation error or email already taken' })
+  async register(
+    @Body(new ZodValidationPipe(gymRegisterRequestSchema)) dto: GymRegisterRequest,
+  ): Promise<{ message: string; gymId: string }> {
+    return this.gymsService.register(dto);
+  }
 
   @Get()
   @Roles('SUPER_ADMIN')
@@ -147,6 +196,15 @@ export class GymsController {
   @Roles('SUPER_ADMIN')
   @ApiOperation({ summary: 'Reject a gym registration' })
   @ApiParam({ name: 'id', type: String, description: 'Gym UUID' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['reason'],
+      properties: {
+        reason: { type: 'string', example: 'Incomplete business information provided.' },
+      },
+    },
+  })
   @ApiResponse({
     status: 200,
     description: 'Gym rejected',
@@ -158,11 +216,74 @@ export class GymsController {
       },
     },
   })
+  @ApiResponse({ status: 400, description: 'Reason is required' })
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   @ApiResponse({ status: 403, description: 'Insufficient role' })
   @ApiResponse({ status: 404, description: 'Gym not found' })
-  async reject(@Param('id') id: string): Promise<GymActionResponse> {
-    const gym = await this.gymsService.reject(id);
+  async reject(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(gymReasonRequestSchema)) body: GymReasonRequest,
+  ): Promise<GymActionResponse> {
+    const gym = await this.gymsService.reject(id, body.reason);
     return { message: 'Gym rejected successfully', gym };
+  }
+
+  @Patch(':id/suspend')
+  @Roles('SUPER_ADMIN')
+  @ApiOperation({ summary: 'Suspend an active gym' })
+  @ApiParam({ name: 'id', type: String, description: 'Gym UUID' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['reason'],
+      properties: {
+        reason: { type: 'string', example: 'Violation of terms of service.' },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Gym suspended and owner sessions terminated',
+    schema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string', example: 'Gym suspended successfully' },
+        gym: gymDetailSchema,
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Reason is required' })
+  @ApiResponse({ status: 401, description: 'Not authenticated' })
+  @ApiResponse({ status: 403, description: 'Insufficient role' })
+  @ApiResponse({ status: 404, description: 'Gym not found' })
+  async suspend(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(gymReasonRequestSchema)) body: GymReasonRequest,
+  ): Promise<GymActionResponse> {
+    const gym = await this.gymsService.suspend(id, body.reason);
+    return { message: 'Gym suspended successfully', gym };
+  }
+
+  @Patch(':id/reactivate')
+  @Roles('SUPER_ADMIN')
+  @ApiOperation({ summary: 'Reactivate a suspended gym and send the owner a new login link' })
+  @ApiParam({ name: 'id', type: String, description: 'Gym UUID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Gym reactivated and login link sent to owner',
+    schema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string', example: 'Gym reactivated successfully' },
+        gym: gymDetailSchema,
+      },
+    },
+  })
+  @ApiResponse({ status: 401, description: 'Not authenticated' })
+  @ApiResponse({ status: 403, description: 'Insufficient role' })
+  @ApiResponse({ status: 404, description: 'Gym not found' })
+  async reactivate(@Param('id') id: string): Promise<GymActionResponse> {
+    const gym = await this.gymsService.reactivate(id);
+    return { message: 'Gym reactivated successfully', gym };
   }
 }

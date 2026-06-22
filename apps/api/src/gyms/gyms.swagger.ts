@@ -20,6 +20,7 @@ export const gymDetailSchema = {
     createdAt: { type: 'string', format: 'date-time' },
     updatedAt: { type: 'string', format: 'date-time' },
     approvedAt: { type: 'string', format: 'date-time', nullable: true },
+    statusReason: { type: 'string', nullable: true, description: 'Reason for REJECTED or SUSPENDED status' },
     createdBy: gymUserSchema,
     approvedBy: { ...gymUserSchema, nullable: true },
     _count: { type: 'object', properties: { users: { type: 'number' } } },

@@ -4,6 +4,10 @@ import { useUser } from '@/hooks/use-auth';
 import { useGym } from '@/hooks/use-gyms';
 import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { gymReasonRequestSchema, type GymReasonRequest } from '@repo/contracts';
+import { ApiError } from '@/lib/api';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,6 +20,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import {
   ArrowLeft,
   Building2,
@@ -27,6 +33,8 @@ import {
   XCircle,
   ShieldX,
   Clock,
+  Phone,
+  MapPin,
 } from 'lucide-react';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -41,7 +49,7 @@ const STATUS_COLORS: Record<string, string> = {
   PENDING: 'bg-yellow-100 text-yellow-800 border-yellow-200',
   ACTIVE: 'bg-green-100 text-green-800 border-green-200',
   REJECTED: 'bg-red-100 text-red-800 border-red-200',
-  SUSPENDED: 'bg-orange-100 text-orange-800 border-orange-200',
+  SUSPENDED: 'bg-orange/15 text-orange border-orange/30',
   INACTIVE: 'bg-gray-100 text-gray-800 border-gray-200',
 };
 
@@ -101,14 +109,34 @@ function InfoRow({
   );
 }
 
+function charCount(value: string): number {
+  return value.length;
+}
+
 export default function GymDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { user, isLoading: userLoading } = useUser();
   const [isApproving, setIsApproving] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
+  const [isSuspending, setIsSuspending] = useState(false);
+  const [isReactivating, setIsReactivating] = useState(false);
   const [showApproveDialog, setShowApproveDialog] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [showSuspendDialog, setShowSuspendDialog] = useState(false);
+
+  const rejectForm = useForm<GymReasonRequest>({
+    resolver: zodResolver(gymReasonRequestSchema),
+    defaultValues: { reason: '' },
+  });
+
+  const suspendForm = useForm<GymReasonRequest>({
+    resolver: zodResolver(gymReasonRequestSchema),
+    defaultValues: { reason: '' },
+  });
+
+  const rejectReasonValue = rejectForm.watch('reason');
+  const suspendReasonValue = suspendForm.watch('reason');
 
   const gymId = params.id as string;
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
@@ -119,6 +147,8 @@ export default function GymDetailPage() {
     error,
     approve,
     reject,
+    suspend,
+    reactivate,
   } = useGym(gymId, { enabled: isSuperAdmin });
 
   const handleApprove = async () => {
@@ -127,23 +157,58 @@ export default function GymDetailPage() {
       await approve();
       toast.success('Gym approved successfully');
       setShowApproveDialog(false);
-    } catch {
-      toast.error('Failed to approve gym');
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : 'Failed to approve gym',
+      );
     } finally {
       setIsApproving(false);
     }
   };
 
-  const handleReject = async () => {
+  const handleReject = rejectForm.handleSubmit(async (data) => {
     setIsRejecting(true);
     try {
-      await reject();
+      await reject(data.reason);
       toast.success('Gym rejected');
       setShowRejectDialog(false);
-    } catch {
-      toast.error('Failed to reject gym');
+      rejectForm.reset();
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : 'Failed to reject gym',
+      );
     } finally {
       setIsRejecting(false);
+    }
+  });
+
+  const handleSuspend = suspendForm.handleSubmit(async (data) => {
+    setIsSuspending(true);
+    try {
+      await suspend(data.reason);
+      toast.success('Gym suspended');
+      setShowSuspendDialog(false);
+      suspendForm.reset();
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : 'Failed to suspend gym',
+      );
+    } finally {
+      setIsSuspending(false);
+    }
+  });
+
+  const handleReactivate = async () => {
+    setIsReactivating(true);
+    try {
+      await reactivate();
+      toast.success('Gym reactivated');
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : 'Failed to reactivate gym',
+      );
+    } finally {
+      setIsReactivating(false);
     }
   };
 
@@ -158,7 +223,7 @@ export default function GymDetailPage() {
   if (error) {
     return (
       <div className="py-10 text-center">
-        <div className="text-red-500 mb-4">Failed to load gym</div>
+        <div className="text-error mb-4">Failed to load gym</div>
         <Button variant="outline" onClick={() => router.back()}>
           Go Back
         </Button>
@@ -178,6 +243,8 @@ export default function GymDetailPage() {
   }
 
   const isPending = gym.status === 'PENDING';
+  const isActive = gym.status === 'ACTIVE';
+  const isSuspended = gym.status === 'SUSPENDED';
 
   return (
     <div className="space-y-6">
@@ -191,6 +258,21 @@ export default function GymDetailPage() {
         Back to Gyms
       </Button>
 
+      {gym.statusReason && (isSuspended || gym.status === 'REJECTED') && (
+        <div
+          className={`rounded-lg border p-4 text-sm ${
+            isSuspended
+              ? 'border-orange/30 bg-orange/10 text-orange'
+              : 'border-red-200 bg-red-50 text-red-800'
+          }`}
+        >
+          <span className="font-medium">
+            {isSuspended ? 'Suspension reason: ' : 'Rejection reason: '}
+          </span>
+          {gym.statusReason}
+        </div>
+      )}
+
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{gym.name}</h1>
@@ -199,25 +281,47 @@ export default function GymDetailPage() {
           </div>
         </div>
 
-        {isPending && (
-          <div className="flex gap-3">
+        <div className="flex gap-3">
+          {isPending && (
+            <>
+              <Button
+                variant="outline"
+                className="gap-2 text-red-600 border-red-200 hover:bg-red-50"
+                onClick={() => setShowRejectDialog(true)}
+              >
+                <XCircle className="h-4 w-4" />
+                Reject
+              </Button>
+              <Button
+                className="gap-2 bg-green-600 hover:bg-green-700"
+                onClick={() => setShowApproveDialog(true)}
+              >
+                <CheckCircle className="h-4 w-4" />
+                Approve
+              </Button>
+            </>
+          )}
+          {isActive && (
             <Button
               variant="outline"
-              className="gap-2 text-red-600 border-red-200 hover:bg-red-50"
-              onClick={() => setShowRejectDialog(true)}
+              className="gap-2 text-orange border-orange/30 hover:bg-orange/10"
+              onClick={() => setShowSuspendDialog(true)}
             >
-              <XCircle className="h-4 w-4" />
-              Reject
+              <ShieldX className="h-4 w-4" />
+              Suspend
             </Button>
+          )}
+          {isSuspended && (
             <Button
               className="gap-2 bg-green-600 hover:bg-green-700"
-              onClick={() => setShowApproveDialog(true)}
+              onClick={handleReactivate}
+              disabled={isReactivating}
             >
               <CheckCircle className="h-4 w-4" />
-              Approve
+              {isReactivating ? 'Reactivating...' : 'Reactivate'}
             </Button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
@@ -235,6 +339,8 @@ export default function GymDetailPage() {
                 <p className="text-sm text-gray-700">{gym.description}</p>
               </div>
             )}
+            <InfoRow icon={Phone} label="Phone" value={gym.phone} />
+            <InfoRow icon={MapPin} label="Address" value={gym.address} />
             <InfoRow
               icon={Globe}
               label="Website"
@@ -362,31 +468,125 @@ export default function GymDetailPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
+      <Dialog
+        open={showRejectDialog}
+        onOpenChange={(open) => {
+          setShowRejectDialog(open);
+          if (!open) rejectForm.reset();
+        }}
+      >
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Reject Gym</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to reject <strong>{gym.name}</strong>? The
-              gym admin will not be able to use the platform.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowRejectDialog(false)}
-              disabled={isRejecting}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleReject}
-              disabled={isRejecting}
-            >
-              {isRejecting ? 'Rejecting...' : 'Reject'}
-            </Button>
-          </DialogFooter>
+          <form onSubmit={handleReject}>
+            <DialogHeader>
+              <DialogTitle>Reject Gym</DialogTitle>
+              <DialogDescription>
+                Provide a reason for rejecting <strong>{gym.name}</strong>. The
+                gym admin will be notified.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2 py-2">
+              <Label htmlFor="reject-reason">Reason</Label>
+              <Textarea
+                id="reject-reason"
+                placeholder="e.g. Incomplete business information provided."
+                className="field-sizing-fixed resize-none max-h-36 overflow-y-auto"
+                rows={3}
+                {...rejectForm.register('reason')}
+              />
+              {rejectForm.formState.errors.reason ? (
+                <p className="text-xs text-error">
+                  {rejectForm.formState.errors.reason.message}
+                </p>
+              ) : (
+                <div
+                  className={`text-xs text-right ${charCount(rejectReasonValue) > 500 ? 'text-error' : 'text-gray-400'}`}
+                >
+                  {charCount(rejectReasonValue)} / 500 characters
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setShowRejectDialog(false);
+                  rejectForm.reset();
+                }}
+                disabled={isRejecting}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="destructive"
+                disabled={isRejecting}
+              >
+                {isRejecting ? 'Rejecting...' : 'Reject'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={showSuspendDialog}
+        onOpenChange={(open) => {
+          setShowSuspendDialog(open);
+          if (!open) suspendForm.reset();
+        }}
+      >
+        <DialogContent>
+          <form onSubmit={handleSuspend}>
+            <DialogHeader>
+              <DialogTitle>Suspend Gym</DialogTitle>
+              <DialogDescription>
+                Provide a reason for suspending <strong>{gym.name}</strong>. The
+                owner&apos;s sessions will be terminated.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2 py-2">
+              <Label htmlFor="suspend-reason">Reason</Label>
+              <Textarea
+                id="suspend-reason"
+                placeholder="e.g. Violation of terms of service."
+                className="field-sizing-fixed resize-none max-h-36 overflow-y-auto"
+                rows={3}
+                {...suspendForm.register('reason')}
+              />
+              {suspendForm.formState.errors.reason ? (
+                <p className="text-xs text-error">
+                  {suspendForm.formState.errors.reason.message}
+                </p>
+              ) : (
+                <div
+                  className={`text-xs text-right ${charCount(suspendReasonValue) > 500 ? 'text-error' : 'text-gray-400'}`}
+                >
+                  {charCount(suspendReasonValue)} / 500 characters
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setShowSuspendDialog(false);
+                  suspendForm.reset();
+                }}
+                disabled={isSuspending}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="destructive"
+                disabled={isSuspending}
+              >
+                {isSuspending ? 'Suspending...' : 'Suspend'}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>
