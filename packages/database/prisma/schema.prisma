@@ -171,7 +171,7 @@ model Member {
   userId      String?      @unique // linked login account (null until invite is sent; role MEMBER)
   name        String
   email       String // required — used for magic-link portal invite
-  phoneNumber String?
+  phoneNumber String
   dateOfBirth DateTime?
   status      MemberStatus @default(ACTIVE)
   joinedAt    DateTime     @default(now())
@@ -184,6 +184,8 @@ model Member {
   bookings      SessionBooking[]
   checkIns      CheckIn[]
 
+  @@unique([gymId, email])
+  @@unique([gymId, phoneNumber])
   @@index([gymId])
   @@index([userId])
   @@schema("public")

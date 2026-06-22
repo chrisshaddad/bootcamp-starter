@@ -9,6 +9,7 @@ import {
   Settings,
   LogOut,
   Building2,
+  UserRound,
 } from 'lucide-react';
 import { useAuth, useUser } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
@@ -39,6 +40,11 @@ const orgNavItems: NavItem[] = [
     title: 'Dashboard',
     url: '/dashboard',
     icon: LayoutDashboard,
+  },
+  {
+    title: 'Members',
+    url: '/members',
+    icon: UserRound,
   },
 ];
 

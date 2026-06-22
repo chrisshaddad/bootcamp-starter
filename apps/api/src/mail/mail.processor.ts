@@ -23,7 +23,10 @@ interface SendGymPendingJobData {
   gymName: string;
 }
 
-type MailJobData = SendMagicLinkJobData | SendInvitationJobData | SendGymPendingJobData;
+type MailJobData =
+  | SendMagicLinkJobData
+  | SendInvitationJobData
+  | SendGymPendingJobData;
 
 @Processor(MAIL_QUEUE)
 export class MailProcessor extends WorkerHost {
@@ -72,7 +75,9 @@ export class MailProcessor extends WorkerHost {
     }
   }
 
-  private async handleSendGymPending(data: SendGymPendingJobData): Promise<void> {
+  private async handleSendGymPending(
+    data: SendGymPendingJobData,
+  ): Promise<void> {
     const { email, userName, gymName } = data;
 
     const text = `Hello ${userName},\n\nThank you for registering "${gymName}" on our platform.\n\nYour application is currently under review by our team. You will receive a login link once your gym has been approved.\n\nIf you have any questions, please contact support.`;
