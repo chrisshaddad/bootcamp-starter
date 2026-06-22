@@ -36,5 +36,5 @@
 ## Notes for the next agent
 
 - A0 ✅ merged. A1 is 🟡 built and passing CI gates.
-- **A1 end-to-end test needed before marking ✅:** log in as ORG_ADMIN → create a member (phone now required) → verify it appears in list → try duplicate email → expect 409 → try duplicate phone → expect 409 → filter by status → open detail → edit name/phone → deactivate → reactivate. Then log in as a _second_ gym's ORG_ADMIN and confirm that gym's member list is empty (tenant isolation).
+- **A1 end-to-end test needed before marking ✅:** log in as ORG*ADMIN → create a member (phone now required) → verify it appears in list → try duplicate email → expect 409 → try duplicate phone → expect 409 → filter by status → open detail → edit name/phone → deactivate → reactivate. Then log in as a \_second* gym's ORG_ADMIN and confirm that gym's member list is empty (tenant isolation).
 - Once A1 end-to-end test passes, mark A1 ✅ and move to A2 (Plans catalog).
