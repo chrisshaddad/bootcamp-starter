@@ -31,7 +31,7 @@ enum OrganizationStatus {
 
 enum MemberRole {
   ADMIN
-  MEMBER
+  PRESENTER
 
   @@schema("public")
 }
@@ -53,6 +53,7 @@ model User {
   createdOrganization   Organization?   @relation("OrganizationCreator")
   approvedOrganizations Organization[]  @relation("OrganizationApprover")
   eventAttendees        EventAttendee[]
+  orgMemberships        Member[]
 
   @@index([organizationId])
   @@schema("public")
@@ -136,16 +137,19 @@ model Organization {
 model Member {
   id             String     @id @default(uuid())
   username       String
-  role           MemberRole @default(MEMBER)
+  role           MemberRole @default(PRESENTER)
+  userId         String?    @unique
   organizationId String
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
 
+  user            User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
   organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   presentedEvents Event[]
 
   @@unique([organizationId, username])
   @@index([organizationId])
+  @@index([userId])
   @@schema("public")
 }
 

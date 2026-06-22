@@ -41,8 +41,8 @@ const ORG_ADMINS: Prisma.UserCreateManyInput[] = [
   },
 ];
 
-// Auth members — linked to organizations in seedOrganizations.ts
-const ORG_MEMBERS: Prisma.UserCreateManyInput[] = [
+// Regular users (not org Member records) — can sign up for events
+const ATTENDEE_USERS: Prisma.UserCreateManyInput[] = [
   {
     email: 'member@techcorp.example.com',
     name: 'Alex Rivera',
@@ -50,6 +50,10 @@ const ORG_MEMBERS: Prisma.UserCreateManyInput[] = [
   {
     email: 'member@greenenergy.example.com',
     name: 'Jordan Lee',
+  },
+  {
+    email: 'presenter@techcorp.example.com',
+    name: 'Alex Lee',
   },
 ];
 
@@ -89,6 +93,6 @@ export async function seedOrgAdmins(prisma: PrismaClient) {
   await upsertUsers(prisma, ORG_ADMINS, 'ORG_ADMIN', 'org admins');
 }
 
-export async function seedOrgMembers(prisma: PrismaClient) {
-  await upsertUsers(prisma, ORG_MEMBERS, 'MEMBER', 'org members');
+export async function seedAttendeeUsers(prisma: PrismaClient) {
+  await upsertUsers(prisma, ATTENDEE_USERS, 'MEMBER', 'attendee users');
 }

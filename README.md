@@ -18,20 +18,20 @@ Pre-built: cookie-based magic-link auth, multi-tenant organization model (`SUPER
 
 ### Coordly features
 
-| Area                                      | Status      | Routes / notes                                             |
-| ----------------------------------------- | ----------- | ---------------------------------------------------------- |
-| Admin hub (stats + placeholders)          | Active      | `/admin` — super admin only                                |
-| Organizations (approve / reject)          | Active      | `/organizations` — super admin only                        |
-| Coordly members (username + role, list)   | Active      | `/members` — super admin + org admin; read-only, no create |
-| Events (list, detail, upcoming filter)    | Active      | `/events`, `/events/[id]`; read-only, no create            |
-| Event sign-up (auth members as attendees) | Active      | Detail page → **Sign up to attend**                        |
-| Settings                                  | Coming soon | `/settings` — placeholder                                  |
-| Announcements, groups                     | Coming soon | —                                                          |
-| Full attendance logging / history         | Coming soon | Basic registration exists via `EventAttendee`              |
+| Area                                        | Status      | Routes / notes                                             |
+| ------------------------------------------- | ----------- | ---------------------------------------------------------- |
+| Admin hub (stats + placeholders)            | Active      | `/admin` — super admin only                                |
+| Organizations (approve / reject)            | Active      | `/organizations` — super admin only                        |
+| Coordly members (username + role, list)     | Active      | `/members` — super admin + org admin; read-only, no create |
+| Events (list, detail, upcoming filter)      | Active      | `/events`, `/events/[id]`; read-only, no create            |
+| Event sign-up (eligible users as attendees) | Active      | Detail page → **Sign up to attend**                        |
+| Settings                                    | Coming soon | `/settings` — placeholder                                  |
+| Announcements, groups                       | Coming soon | —                                                          |
+| Full attendance logging / history           | Coming soon | Basic registration exists via `EventAttendee`              |
 
 ### Roles
 
-Coordly uses **two separate role systems**. Do not conflate them.
+Coordly uses **two separate concepts**. Do not conflate them.
 
 #### Auth roles (`User.role` — who can log in)
 
@@ -43,28 +43,29 @@ Stored on the `User` model. Controls portal access and API authorization.
 | `ORG_ADMIN`   | One organization | `/dashboard`, `/members`, `/events`                 |
 | `MEMBER`      | One organization | `/dashboard`, `/events` (list defaults to upcoming) |
 
-Super admins are redirected from `/dashboard` to `/admin` after login. Org admins and auth members stay on `/dashboard`.
+Super admins are redirected from `/dashboard` to `/admin` after login. Org admins and regular users stay on `/dashboard`.
 
-#### Coordly member roles (`Member.role` — domain records)
+#### Organization members (`Member` — org staff)
 
-Stored on the `Member` model. These are **not** login accounts — org-scoped records with a `username` used for presenters and member lists.
+Stored on the `Member` model. These are **organization staff** — admins and presenters — not general attendees.
 
-| Role     | Purpose                                   |
-| -------- | ----------------------------------------- |
-| `ADMIN`  | Coordly member with admin role in the org |
-| `MEMBER` | Regular Coordly member in the org         |
+| Role        | Purpose                                                                |
+| ----------- | ---------------------------------------------------------------------- |
+| `ADMIN`     | Organization admin (often linked to an `ORG_ADMIN` login via `userId`) |
+| `PRESENTER` | Presenter who can be assigned to events                                |
 
-A person may exist as both an auth `User` (e.g. `member@techcorp.example.com`) and a Coordly `Member` (e.g. username `alee`) — they are separate records.
+A `Member` may optionally link to a `User` login (`Member.userId`). Org admins who manage members/events are `Member` records with role `ADMIN`.
 
-#### Event participation (how roles interact at events)
+#### Event participation
 
-| Role          | Backed by                         | Can do                                                        |
-| ------------- | --------------------------------- | ------------------------------------------------------------- |
-| **Presenter** | Coordly `Member` (`presenterId`)  | Listed on an event; assigned in seed data / future create UI  |
-| **Attendee**  | Auth `User` with role `MEMBER`    | View upcoming events, sign up via `POST /events/:id/register` |
-| **Manager**   | Auth `ORG_ADMIN` or `SUPER_ADMIN` | List members/events; **cannot** sign up as attendees          |
+| Role          | Backed by                                                                  | Can do                                                                 |
+| ------------- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| **Presenter** | `Member` with role `ADMIN` or `PRESENTER`                                  | Listed on an event via `presenterId`                                   |
+| **Attendee**  | `User` without an org `Member` row, or a `PRESENTER` not hosting the event | Sign up via `POST /events/:id/register`                                |
+| **Org admin** | `Member` with role `ADMIN`                                                 | Manage members/events; **cannot** sign up as attendees                 |
+| **Presenter** | `Member` with role `PRESENTER`                                             | Host assigned events; may sign up for other upcoming events in the org |
 
-Presenters are always Coordly `Member` records. Attendees are always auth `User` records (`EventAttendee`).
+Presenters are `Member` records. Attendees are `User` records (`EventAttendee`). Org admins cannot attend; presenters may attend events they are not hosting.
 
 ## Prerequisites
 
@@ -120,22 +121,25 @@ If Mailpit is empty, check that Docker is running, Redis is up (BullMQ sends the
 
 ### Seeded accounts
 
-| Role        | Email                            | After login                         | Try this                                 |
-| ----------- | -------------------------------- | ----------------------------------- | ---------------------------------------- |
-| Super Admin | `admin@bootcamp-starter.local`   | `/admin`                            | Platform-wide members & events           |
-| Org Admin   | `admin@techcorp.example.com`     | `/dashboard`, `/members`, `/events` | Manage TechCorp members/events           |
-| Org Admin   | `admin@greenenergy.example.com`  | `/dashboard`, `/members`, `/events` | Manage Green Energy members/events       |
-| Member      | `member@techcorp.example.com`    | `/dashboard`, `/events`             | Sign up for upcoming TechCorp events     |
-| Member      | `member@greenenergy.example.com` | `/dashboard`, `/events`             | Sign up for upcoming Green Energy events |
+| Role               | Email                            | After login                         | Try this                                                     |
+| ------------------ | -------------------------------- | ----------------------------------- | ------------------------------------------------------------ |
+| Super Admin        | `admin@bootcamp-starter.local`   | `/admin`                            | Platform-wide members & events                               |
+| Org Admin          | `admin@techcorp.example.com`     | `/dashboard`, `/members`, `/events` | Manage TechCorp; linked as org `Member` (cannot sign up)     |
+| Org Admin          | `admin@greenenergy.example.com`  | `/dashboard`, `/members`, `/events` | Manage Green Energy; linked as org `Member` (cannot sign up) |
+| User (attendee)    | `member@techcorp.example.com`    | `/dashboard`, `/events`             | Sign up for upcoming TechCorp events                         |
+| User (attendee)    | `member@greenenergy.example.com` | `/dashboard`, `/events`             | Sign up for upcoming Green Energy events                     |
+| Presenter (member) | `presenter@techcorp.example.com` | `/dashboard`, `/events`             | Hosts Team Sync; can sign up for other events                |
 
 More seeded auth users: [`packages/database/prisma/seeders/seedUsers.ts`](packages/database/prisma/seeders/seedUsers.ts). Coordly domain members and events (with `startsAt` dates): [`packages/database/prisma/seeders/seedCoordly.ts`](packages/database/prisma/seeders/seedCoordly.ts).
 
-### Event sign-up flow (auth members)
+### Event sign-up flow
 
-1. Log in as `member@techcorp.example.com`
-2. Open **Events** — list defaults to **Upcoming**
-3. Click an event → **Sign up to attend**
-4. Status changes to **Registered**; past events cannot be signed up for
+1. Log in as `member@techcorp.example.com` (no `Member` record) or `presenter@techcorp.example.com` (presents Team Sync only)
+2. Open **Events** — list defaults to **Upcoming** for regular users
+3. Click an event you are eligible for → **Sign up to attend**
+4. Status changes to **Registered**; past events and events you are hosting cannot be signed up for
+
+Org admins (e.g. `admin@techcorp.example.com`) are linked as `Member` ADMIN records and cannot sign up.
 
 ## Monorepo layout
 
@@ -182,7 +186,7 @@ Schema lives at [packages/database/prisma/schema.prisma](packages/database/prism
 - **`db:seed` fails with unique constraint on email** — seeders are idempotent; pull latest. If stuck, run `npx turbo run db:reset` (wipes local data).
 - **Port already in use** — postgres uses :5433, redis :6380, mailpit :8025/:1025. Stop the conflicting process or change ports in `docker-compose.yml`.
 - **No magic link in Mailpit** — confirm `MAILPIT_URL="http://localhost:8025"` in `apps/api/.env`, Redis is running, and the email matches a seeded user exactly.
-- **Can't sign up for an event** — only auth `MEMBER` users can register; event must be upcoming (`startsAt` in the future) and in your organization.
+- **Can't sign up for an event** — you must not be an org `ADMIN` member; presenters cannot sign up for events they host; the event must be upcoming and in your organization.
 - **`@repo/contracts` types not found** — run `npx tsc -p packages/contracts` once.
 - **Prisma client out of date** — `npx turbo run db:generate`.
 - **Docker volume cruft** — `docker compose down -v && npm run services:init` (wipes local DB data; re-run `db:deploy` and `db:seed`).

@@ -71,7 +71,7 @@ const ORGANIZATIONS: OrganizationSeed[] = [
   },
 ];
 
-const ORG_MEMBER_LINKS: { email: string; organizationName: string }[] = [
+const ORG_ATTENDEE_LINKS: { email: string; organizationName: string }[] = [
   {
     email: 'member@techcorp.example.com',
     organizationName: 'TechCorp Solutions',
@@ -79,6 +79,10 @@ const ORG_MEMBER_LINKS: { email: string; organizationName: string }[] = [
   {
     email: 'member@greenenergy.example.com',
     organizationName: 'Green Energy Partners',
+  },
+  {
+    email: 'presenter@techcorp.example.com',
+    organizationName: 'TechCorp Solutions',
   },
 ];
 
@@ -139,16 +143,18 @@ export async function seedOrganizations(prisma: PrismaClient) {
     );
   }
 
-  for (const link of ORG_MEMBER_LINKS) {
-    const member = await prisma.user.findUnique({
+  for (const link of ORG_ATTENDEE_LINKS) {
+    const attendee = await prisma.user.findUnique({
       where: { email: link.email },
     });
     const organization = await prisma.organization.findFirst({
       where: { name: link.organizationName },
     });
 
-    if (!member) {
-      console.warn(`  Warning: Org member ${link.email} not found. Skipping.`);
+    if (!attendee) {
+      console.warn(
+        `  Warning: Attendee user ${link.email} not found. Skipping.`,
+      );
       continue;
     }
 
@@ -159,19 +165,19 @@ export async function seedOrganizations(prisma: PrismaClient) {
       continue;
     }
 
-    if (member.organizationId === organization.id) {
+    if (attendee.organizationId === organization.id) {
       console.log(
-        `  Member ${link.email} already linked to ${link.organizationName}`,
+        `  Attendee ${link.email} already linked to ${link.organizationName}`,
       );
       continue;
     }
 
     await prisma.user.update({
-      where: { id: member.id },
+      where: { id: attendee.id },
       data: { organizationId: organization.id },
     });
 
-    console.log(`  Linked member ${link.email} to ${link.organizationName}`);
+    console.log(`  Linked attendee ${link.email} to ${link.organizationName}`);
   }
 
   console.log(`Organizations seeded: ${ORGANIZATIONS.length} total`);

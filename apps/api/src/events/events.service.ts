@@ -46,19 +46,89 @@ export class EventsService {
     return startsAt.getTime() > Date.now();
   }
 
-  private canUserRegister(
-    user: User,
-    event: { organizationId: string; startsAt: Date },
-  ): boolean {
-    if (user.role !== 'MEMBER') {
+  private async getOrgMembership(userId: string, organizationId: string) {
+    return this.prisma.member.findFirst({
+      where: { userId, organizationId },
+      select: { id: true, role: true },
+    });
+  }
+
+  private async evaluateRegistrationEligibility(
+    userId: string,
+    event: {
+      organizationId: string;
+      startsAt: Date;
+      presenterId: string | null;
+    },
+  ): Promise<boolean> {
+    if (!this.isUpcoming(event.startsAt)) {
       return false;
     }
 
-    if (!user.organizationId || user.organizationId !== event.organizationId) {
+    const membership = await this.getOrgMembership(
+      userId,
+      event.organizationId,
+    );
+
+    if (!membership) {
+      return true;
+    }
+
+    if (membership.role === 'ADMIN') {
       return false;
     }
 
-    return this.isUpcoming(event.startsAt);
+    if (membership.role === 'PRESENTER') {
+      return event.presenterId !== membership.id;
+    }
+
+    return false;
+  }
+
+  private async assertCanRegister(
+    userId: string,
+    event: {
+      organizationId: string;
+      startsAt: Date;
+      presenterId: string | null;
+    },
+  ): Promise<void> {
+    if (!this.isUpcoming(event.startsAt)) {
+      throw new BadRequestException(
+        'Registration is only available for upcoming events',
+      );
+    }
+
+    const membership = await this.getOrgMembership(
+      userId,
+      event.organizationId,
+    );
+
+    if (membership?.role === 'ADMIN') {
+      throw new ForbiddenException(
+        'Organization admins cannot register as event attendees',
+      );
+    }
+
+    if (
+      membership?.role === 'PRESENTER' &&
+      event.presenterId === membership.id
+    ) {
+      throw new ForbiddenException(
+        'Presenters cannot register for events they are hosting',
+      );
+    }
+  }
+
+  private async canUserRegister(
+    userId: string,
+    event: {
+      organizationId: string;
+      startsAt: Date;
+      presenterId: string | null;
+    },
+  ): Promise<boolean> {
+    return this.evaluateRegistrationEligibility(userId, event);
   }
 
   private async getRegisteredEventIds(
@@ -157,7 +227,6 @@ export class EventsService {
       where: {
         eventId: id,
         userId: user.id,
-        ...(organizationId ? { organizationId } : {}),
       },
     });
 
@@ -170,26 +239,20 @@ export class EventsService {
       presenter: presenter ?? null,
       isRegistered,
       isUpcoming,
-      canRegister: !isRegistered && this.canUserRegister(user, event),
+      canRegister:
+        !isRegistered && (await this.canUserRegister(user.id, event)),
       attendeeCount: _count.attendees,
     };
   }
 
   async register(eventId: string, user: User): Promise<EventRegisterResponse> {
-    if (user.role !== 'MEMBER') {
-      throw new ForbiddenException(
-        'Only organization members can register as event attendees',
-      );
-    }
-
-    if (!user.organizationId) {
-      throw new ForbiddenException('User is not assigned to an organization');
-    }
+    const organizationId =
+      user.role === 'SUPER_ADMIN' ? undefined : resolveOrganizationScope(user);
 
     const event = await this.prisma.event.findFirst({
       where: {
         id: eventId,
-        organizationId: user.organizationId,
+        ...(organizationId ? { organizationId } : {}),
       },
     });
 
@@ -197,17 +260,12 @@ export class EventsService {
       throw new NotFoundException(`Event with ID ${eventId} not found`);
     }
 
-    if (!this.isUpcoming(event.startsAt)) {
-      throw new BadRequestException(
-        'Registration is only available for upcoming events',
-      );
-    }
+    await this.assertCanRegister(user.id, event);
 
     const existingRegistration = await this.prisma.eventAttendee.findFirst({
       where: {
         eventId,
         userId: user.id,
-        organizationId: user.organizationId,
       },
     });
 
@@ -221,7 +279,7 @@ export class EventsService {
       data: {
         eventId,
         userId: user.id,
-        organizationId: user.organizationId,
+        organizationId: event.organizationId,
       },
     });
 

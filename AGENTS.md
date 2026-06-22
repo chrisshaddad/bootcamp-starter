@@ -66,15 +66,15 @@ Requires Redis (BullMQ mail queue) and `MAILPIT_URL="http://localhost:8025"` in 
 
 ### Do not conflate these concepts
 
-| Concept            | Model / enum                                              | Purpose                                                          |
-| ------------------ | --------------------------------------------------------- | ---------------------------------------------------------------- |
-| **Auth user**      | `User`, `UserRole` (`SUPER_ADMIN`, `ORG_ADMIN`, `MEMBER`) | Magic-link login, platform/org access                            |
-| **Coordly member** | `Member`, `MemberRole` (`ADMIN`, `MEMBER`)                | Org-scoped domain record with `username`; can **present** events |
-| **Event attendee** | `EventAttendee` → auth `User`                             | Auth users who **sign up** to attend; never presenters           |
+| Concept            | Model / enum                                              | Purpose                                                               |
+| ------------------ | --------------------------------------------------------- | --------------------------------------------------------------------- |
+| **Auth user**      | `User`, `UserRole` (`SUPER_ADMIN`, `ORG_ADMIN`, `MEMBER`) | Magic-link login, platform/org access                                 |
+| **Coordly member** | `Member`, `MemberRole` (`ADMIN`, `PRESENTER`)             | Org staff; can **present** events; presenters may attend other events |
+| **Event attendee** | `EventAttendee` → auth `User`                             | Users who sign up to attend (not org admins; not hosting that event)  |
 
 Contracts: `userRoleSchema` vs `memberRoleSchema`. Never reuse one enum for the other.
 
-**Presenters** are Coordly `Member` records (`Event.presenterId`). **Attendees** are auth `User` records (`EventAttendee.userId`). Only auth `MEMBER` role users may register as attendees.
+**Presenters** are Coordly `Member` records (`Event.presenterId`). **Attendees** are auth `User` records (`EventAttendee.userId`). Org `ADMIN` members cannot register; `PRESENTER` members may register for events they are not hosting.
 
 ### Prisma models (tenant-scoped)
 
@@ -104,7 +104,7 @@ Sidebar: org admins see **Members** + **Events**; auth **MEMBER** users see **Ev
 | `GET /members`              | `apps/api/src/members/`       | `SUPER_ADMIN`, `ORG_ADMIN`           |                                                         |
 | `GET /events`               | `apps/api/src/events/`        | `SUPER_ADMIN`, `ORG_ADMIN`, `MEMBER` | Query: `upcoming=true\|false`, `page`, `limit`          |
 | `GET /events/:id`           | `apps/api/src/events/`        | `SUPER_ADMIN`, `ORG_ADMIN`, `MEMBER` | Includes `canRegister`, `isRegistered`, `attendeeCount` |
-| `POST /events/:id/register` | `apps/api/src/events/`        | `MEMBER` only                        | Upcoming events in caller's org                         |
+| `POST /events/:id/register` | `apps/api/src/events/`        | `SUPER_ADMIN`, `ORG_ADMIN`, `MEMBER` | Upcoming events in caller's org; see registration rules |
 | `GET /organizations`        | `apps/api/src/organizations/` | `SUPER_ADMIN`                        |                                                         |
 
 List/detail query validation via `ZodValidationPipe` + schemas from `@repo/contracts`.
@@ -113,9 +113,10 @@ Org-scoped callers are pinned to `user.organizationId` via `resolveOrganizationS
 
 Event registration rules (enforced in `EventsService.register`):
 
-- Caller must be auth `MEMBER` with non-null `organizationId`
-- Event must belong to caller's org (`findFirst({ id, organizationId })`)
-- Event must be upcoming (`startsAt > now`)
+- Caller must not be an org `Member` with role `ADMIN`
+- Presenters (`Member` role `PRESENTER`) cannot register for events they are hosting (`presenterId`)
+- Users without a `Member` row, and eligible presenters, may register
+- Event must be upcoming (`startsAt > now`) and visible in caller's org scope
 - No duplicate registration (`@@unique([eventId, userId])`)
 
 ### Reference implementations

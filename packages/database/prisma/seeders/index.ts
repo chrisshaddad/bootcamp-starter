@@ -1,5 +1,5 @@
 import { prisma } from '../../src/client';
-import { seedSuperAdmins, seedOrgAdmins, seedOrgMembers } from './seedUsers';
+import { seedSuperAdmins, seedOrgAdmins, seedAttendeeUsers } from './seedUsers';
 import { seedOrganizations } from './seedOrganizations';
 import { seedCoordly } from './seedCoordly';
 
@@ -7,7 +7,7 @@ async function main() {
   // Seed users first (org admins need to exist before organizations)
   await seedSuperAdmins(prisma);
   await seedOrgAdmins(prisma);
-  await seedOrgMembers(prisma);
+  await seedAttendeeUsers(prisma);
 
   // Seed organizations (links org admins and members to their orgs)
   await seedOrganizations(prisma);

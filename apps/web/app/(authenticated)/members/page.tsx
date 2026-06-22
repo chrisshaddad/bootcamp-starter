@@ -16,7 +16,7 @@ import { Users, ShieldX } from 'lucide-react';
 
 const ROLE_COLORS: Record<string, string> = {
   ADMIN: 'bg-blue-100 text-blue-800',
-  MEMBER: 'bg-gray-100 text-gray-800',
+  PRESENTER: 'bg-purple-100 text-purple-800',
 };
 
 function RoleBadge({ role }: { role: string }) {

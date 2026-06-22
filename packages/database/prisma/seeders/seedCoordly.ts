@@ -2,8 +2,9 @@ import { PrismaClient } from '../../src/generated/prisma/client';
 
 interface MemberSeed {
   username: string;
-  role: 'ADMIN' | 'MEMBER';
+  role: 'ADMIN' | 'PRESENTER';
   organizationName: string;
+  userEmail?: string;
 }
 
 interface EventSeed {
@@ -25,25 +26,28 @@ const MEMBERS: MemberSeed[] = [
     username: 'jsmith',
     role: 'ADMIN',
     organizationName: 'TechCorp Solutions',
+    userEmail: 'admin@techcorp.example.com',
   },
   {
     username: 'alee',
-    role: 'MEMBER',
+    role: 'PRESENTER',
     organizationName: 'TechCorp Solutions',
+    userEmail: 'presenter@techcorp.example.com',
   },
   {
     username: 'mchen',
     role: 'ADMIN',
     organizationName: 'Green Energy Partners',
+    userEmail: 'admin@greenenergy.example.com',
   },
   {
     username: 'rwilson',
-    role: 'MEMBER',
+    role: 'PRESENTER',
     organizationName: 'Green Energy Partners',
   },
   {
     username: 'tpatel',
-    role: 'MEMBER',
+    role: 'PRESENTER',
     organizationName: 'DataSync Analytics',
   },
 ];
@@ -98,6 +102,19 @@ export async function seedCoordly(prisma: PrismaClient) {
       continue;
     }
 
+    const linkedUser = member.userEmail
+      ? await prisma.user.findUnique({
+          where: { email: member.userEmail },
+        })
+      : null;
+
+    if (member.userEmail && !linkedUser) {
+      console.warn(
+        `  Warning: User "${member.userEmail}" not found. Skipping member ${member.username}.`,
+      );
+      continue;
+    }
+
     const record = await prisma.member.upsert({
       where: {
         organizationId_username: {
@@ -109,9 +126,11 @@ export async function seedCoordly(prisma: PrismaClient) {
         username: member.username,
         role: member.role,
         organizationId: organization.id,
+        userId: linkedUser?.id,
       },
       update: {
         role: member.role,
+        userId: linkedUser?.id,
       },
     });
 
@@ -121,7 +140,9 @@ export async function seedCoordly(prisma: PrismaClient) {
     );
 
     console.log(
-      `  Member ready: ${member.username} (${member.role}) in ${member.organizationName}`,
+      `  Member ready: ${member.username} (${member.role}) in ${member.organizationName}${
+        linkedUser ? ` — linked to ${linkedUser.email}` : ''
+      }`,
     );
   }
 

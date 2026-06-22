@@ -68,11 +68,11 @@ export default function EventsPage() {
   const { user, isLoading: userLoading } = useUser();
   const canAccess = canAccessEvents(user?.role);
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
-  const isAuthMember = user?.role === 'MEMBER';
+  const isAttendeeUser = user?.role === 'MEMBER';
   const [eventFilter, setEventFilter] = useState<EventFilter | undefined>(
     undefined,
   );
-  const activeFilter = eventFilter ?? (isAuthMember ? 'upcoming' : 'all');
+  const activeFilter = eventFilter ?? (isAttendeeUser ? 'upcoming' : 'all');
 
   const upcomingFilter =
     activeFilter === 'upcoming'
@@ -109,8 +109,8 @@ export default function EventsPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Events</h1>
           <p className="mt-1 text-sm text-gray-500">
-            {isAuthMember
-              ? 'Browse upcoming events in your organization and sign up to attend'
+            {isAttendeeUser
+              ? 'Browse upcoming events and sign up when eligible'
               : isSuperAdmin
                 ? 'Workshops, meetings, and camps across organizations'
                 : 'Workshops, meetings, and camps in your organization'}
@@ -177,7 +177,7 @@ export default function EventsPage() {
                   <TableHead>Event Name</TableHead>
                   <TableHead>Starts</TableHead>
                   <TableHead>Presenter</TableHead>
-                  {isAuthMember && <TableHead>Your Status</TableHead>}
+                  {isAttendeeUser && <TableHead>Your Status</TableHead>}
                   {isSuperAdmin && <TableHead>Organization ID</TableHead>}
                 </TableRow>
               </TableHeader>
@@ -200,7 +200,7 @@ export default function EventsPage() {
                           ? truncateId(event.presenterId)
                           : '—')}
                     </TableCell>
-                    {isAuthMember && (
+                    {isAttendeeUser && (
                       <TableCell>
                         {event.isRegistered ? (
                           <span className="inline-flex rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
