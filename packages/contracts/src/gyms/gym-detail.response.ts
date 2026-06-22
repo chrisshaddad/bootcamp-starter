@@ -25,6 +25,7 @@ export const gymDetailResponseSchema = z.object({
   approvedBy: gymUserSchema.nullable(),
   _count: z.object({
     users: z.number(),
+    members: z.number(),
   }),
 });
 export type GymDetailResponse = z.infer<typeof gymDetailResponseSchema>;

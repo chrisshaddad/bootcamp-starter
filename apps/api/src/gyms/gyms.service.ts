@@ -37,7 +37,7 @@ const GYM_DETAIL_SELECT = {
     select: { id: true, email: true, name: true },
   },
   _count: {
-    select: { users: true },
+    select: { users: true, members: true },
   },
 } as const;
 
