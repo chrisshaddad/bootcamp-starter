@@ -15,9 +15,12 @@ export const gymDetailResponseSchema = z.object({
   status: gymStatusSchema,
   description: z.string().nullable(),
   website: z.string().nullable(),
+  phone: z.string(),
+  address: z.string(),
   createdAt: dateSchema,
   updatedAt: dateSchema,
   approvedAt: dateSchema.nullable(),
+  statusReason: z.string().nullable(),
   createdBy: gymUserSchema,
   approvedBy: gymUserSchema.nullable(),
   _count: z.object({

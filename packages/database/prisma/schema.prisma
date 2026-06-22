@@ -135,13 +135,16 @@ model MagicLink {
 
 model Gym {
   id           String    @id @default(uuid())
-  name         String
+  name         String    @unique
   status       GymStatus @default(PENDING)
   description  String?   @db.Text
   website      String?
+  phone        String
+  address      String    @db.Text
   maxCapacity  Int?
   createdById  String    @unique // User can only create one gym
   approvedById String?
+  statusReason String?   @db.Text // Reason for REJECTED or SUSPENDED status
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   approvedAt   DateTime? // When super admin approved

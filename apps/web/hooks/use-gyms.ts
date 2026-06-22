@@ -54,11 +54,13 @@ interface UseGymReturn {
   isLoading: boolean;
   error: Error | undefined;
   approve: () => Promise<GymActionResponse>;
-  reject: () => Promise<GymActionResponse>;
+  reject: (reason: string) => Promise<GymActionResponse>;
+  suspend: (reason: string) => Promise<GymActionResponse>;
+  reactivate: () => Promise<GymActionResponse>;
   mutate: () => void;
 }
 
-/** Fetch a single gym by ID and expose approve/reject actions */
+/** Fetch a single gym by ID and expose approve/reject/suspend/reactivate actions */
 export function useGym(id: string, options: UseGymOptions = {}): UseGymReturn {
   const { enabled = true } = options;
 
@@ -84,8 +86,20 @@ export function useGym(id: string, options: UseGymOptions = {}): UseGymReturn {
     return result;
   }, [id, invalidateAll]);
 
-  const reject = useCallback(async () => {
-    const result = await apiPatch<GymActionResponse>(`/gyms/${id}/reject`);
+  const reject = useCallback(async (reason: string) => {
+    const result = await apiPatch<GymActionResponse>(`/gyms/${id}/reject`, { reason });
+    invalidateAll();
+    return result;
+  }, [id, invalidateAll]);
+
+  const suspend = useCallback(async (reason: string) => {
+    const result = await apiPatch<GymActionResponse>(`/gyms/${id}/suspend`, { reason });
+    invalidateAll();
+    return result;
+  }, [id, invalidateAll]);
+
+  const reactivate = useCallback(async () => {
+    const result = await apiPatch<GymActionResponse>(`/gyms/${id}/reactivate`);
     invalidateAll();
     return result;
   }, [id, invalidateAll]);
@@ -96,6 +110,8 @@ export function useGym(id: string, options: UseGymOptions = {}): UseGymReturn {
     error,
     approve,
     reject,
+    suspend,
+    reactivate,
     mutate: swrMutate,
   };
 }

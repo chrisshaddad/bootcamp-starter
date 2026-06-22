@@ -143,10 +143,10 @@ export default function LoginPage() {
             {/* Register Link */}
             <p className="text-center text-sm font-medium leading-[1.6]">
               <span className="text-gray-500">
-                Don&apos;t have a organization?{' '}
+                Don&apos;t have a gym account?{' '}
               </span>
               <a href="/register" className="text-primary-base hover:underline">
-                Create an Org
+                Register your gym
               </a>
             </p>
           </div>

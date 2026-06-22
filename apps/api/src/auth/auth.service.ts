@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import * as crypto from 'crypto';
@@ -23,14 +23,21 @@ export class AuthService {
    * Creates a magic link token and queues an email to be sent
    */
   async requestMagicLink(email: string): Promise<{ success: boolean }> {
-    // Find user by email
+    // Find user by email (include gym to check approval status for ORG_ADMIN)
     const user = await this.prisma.user.findUnique({
       where: { email: email.toLowerCase() },
+      include: { gym: true },
     });
 
     if (!user) {
       // Don't reveal if user exists - still return success
       this.logger.warn(`Magic link requested for non-existent email: ${email}`);
+      return { success: true };
+    }
+
+    // Don't send a login link to gym owners whose gym is not active
+    if (user.role === 'ORG_ADMIN' && user.gym && user.gym.status !== 'ACTIVE') {
+      this.logger.warn(`Magic link blocked for non-active gym owner: ${user.id} (gym status: ${user.gym.status})`);
       return { success: true };
     }
 
@@ -82,10 +89,10 @@ export class AuthService {
     sessionId: string;
     user: { id: string; email: string; name: string; role: string };
   }> {
-    // Find the magic link
+    // Find the magic link (include gym to check approval status for ORG_ADMIN)
     const magicLink = await this.prisma.magicLink.findUnique({
       where: { token },
-      include: { user: true },
+      include: { user: { include: { gym: true } } },
     });
 
     if (!magicLink) {
@@ -100,6 +107,20 @@ export class AuthService {
     // Check if expired
     if (magicLink.expiresAt < new Date()) {
       throw new NotFoundException('This magic link has expired');
+    }
+
+    // Block gym owners whose gym is not active
+    if (magicLink.user.role === 'ORG_ADMIN' && magicLink.user.gym) {
+      const gymStatus = magicLink.user.gym.status;
+      if (gymStatus === 'PENDING') {
+        throw new ForbiddenException('Your gym registration is pending approval by an administrator');
+      }
+      if (gymStatus === 'REJECTED') {
+        throw new ForbiddenException('Your gym registration has been rejected');
+      }
+      if (gymStatus === 'SUSPENDED') {
+        throw new ForbiddenException('Your gym account has been suspended');
+      }
     }
 
     // Mark as used
@@ -155,6 +176,27 @@ export class AuthService {
       role: user.role,
       gymId: user.gymId,
       isConfirmed: user.isConfirmed,
+    };
+  }
+
+  /**
+   * Fetch user with gym status for the /auth/me endpoint
+   */
+  async getMe(userId: string) {
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      include: { gym: { select: { status: true, statusReason: true } } },
+    });
+
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      gymId: user.gymId,
+      isConfirmed: user.isConfirmed,
+      gymStatus: user.gym?.status ?? null,
+      gymStatusReason: user.gym?.statusReason ?? null,
     };
   }
 }
