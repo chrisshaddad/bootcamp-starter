@@ -317,16 +317,8 @@ export default function GymDetailPage() {
                 <p className="text-sm text-gray-700">{gym.description}</p>
               </div>
             )}
-            <InfoRow
-              icon={Phone}
-              label="Phone"
-              value={gym.phone}
-            />
-            <InfoRow
-              icon={MapPin}
-              label="Address"
-              value={gym.address}
-            />
+            <InfoRow icon={Phone} label="Phone" value={gym.phone} />
+            <InfoRow icon={MapPin} label="Address" value={gym.address} />
             <InfoRow
               icon={Globe}
               label="Website"
@@ -454,12 +446,19 @@ export default function GymDetailPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showRejectDialog} onOpenChange={(open) => { setShowRejectDialog(open); if (!open) setRejectReason(''); }}>
+      <Dialog
+        open={showRejectDialog}
+        onOpenChange={(open) => {
+          setShowRejectDialog(open);
+          if (!open) setRejectReason('');
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Reject Gym</DialogTitle>
             <DialogDescription>
-              Provide a reason for rejecting <strong>{gym.name}</strong>. The gym admin will be notified.
+              Provide a reason for rejecting <strong>{gym.name}</strong>. The
+              gym admin will be notified.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2 py-2">
@@ -470,14 +469,19 @@ export default function GymDetailPage() {
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
             />
-            <div className={`text-xs text-right ${rejectWordCount > 80 ? 'text-red-500' : 'text-gray-400'}`}>
+            <div
+              className={`text-xs text-right ${rejectWordCount > 80 ? 'text-red-500' : 'text-gray-400'}`}
+            >
               {rejectWordCount} / 80 words
             </div>
           </div>
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => { setShowRejectDialog(false); setRejectReason(''); }}
+              onClick={() => {
+                setShowRejectDialog(false);
+                setRejectReason('');
+              }}
               disabled={isRejecting}
             >
               Cancel
@@ -485,7 +489,9 @@ export default function GymDetailPage() {
             <Button
               variant="destructive"
               onClick={handleReject}
-              disabled={isRejecting || !rejectReason.trim() || rejectWordCount > 80}
+              disabled={
+                isRejecting || !rejectReason.trim() || rejectWordCount > 80
+              }
             >
               {isRejecting ? 'Rejecting...' : 'Reject'}
             </Button>
@@ -493,12 +499,19 @@ export default function GymDetailPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showSuspendDialog} onOpenChange={(open) => { setShowSuspendDialog(open); if (!open) setSuspendReason(''); }}>
+      <Dialog
+        open={showSuspendDialog}
+        onOpenChange={(open) => {
+          setShowSuspendDialog(open);
+          if (!open) setSuspendReason('');
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Suspend Gym</DialogTitle>
             <DialogDescription>
-              Provide a reason for suspending <strong>{gym.name}</strong>. The owner&apos;s sessions will be terminated.
+              Provide a reason for suspending <strong>{gym.name}</strong>. The
+              owner&apos;s sessions will be terminated.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2 py-2">
@@ -509,14 +522,19 @@ export default function GymDetailPage() {
               value={suspendReason}
               onChange={(e) => setSuspendReason(e.target.value)}
             />
-            <div className={`text-xs text-right ${suspendWordCount > 80 ? 'text-red-500' : 'text-gray-400'}`}>
+            <div
+              className={`text-xs text-right ${suspendWordCount > 80 ? 'text-red-500' : 'text-gray-400'}`}
+            >
               {suspendWordCount} / 80 words
             </div>
           </div>
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => { setShowSuspendDialog(false); setSuspendReason(''); }}
+              onClick={() => {
+                setShowSuspendDialog(false);
+                setSuspendReason('');
+              }}
               disabled={isSuspending}
             >
               Cancel
@@ -524,7 +542,9 @@ export default function GymDetailPage() {
             <Button
               variant="destructive"
               onClick={handleSuspend}
-              disabled={isSuspending || !suspendReason.trim() || suspendWordCount > 80}
+              disabled={
+                isSuspending || !suspendReason.trim() || suspendWordCount > 80
+              }
             >
               {isSuspending ? 'Suspending...' : 'Suspend'}
             </Button>

@@ -6,7 +6,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { gymRegisterRequestSchema, type GymRegisterRequest } from '@repo/contracts';
+import {
+  gymRegisterRequestSchema,
+  type GymRegisterRequest,
+} from '@repo/contracts';
 import { apiPost, ApiError } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,7 +32,9 @@ export default function RegisterPage() {
 
   const descriptionValue = watch('description') ?? '';
   const descriptionWordCount =
-    descriptionValue.trim() === '' ? 0 : descriptionValue.trim().split(/\s+/).length;
+    descriptionValue.trim() === ''
+      ? 0
+      : descriptionValue.trim().split(/\s+/).length;
 
   const onSubmit = async (data: GymRegisterRequest) => {
     setIsSubmitting(true);
@@ -79,9 +84,7 @@ export default function RegisterPage() {
         <div className="mb-8 text-center">
           <div className="mb-4 flex items-center justify-center gap-2">
             <span className="text-2xl text-primary-base">✦</span>
-            <span className="text-xl font-semibold text-gray-900">
-              GymOS
-            </span>
+            <span className="text-xl font-semibold text-gray-900">GymOS</span>
           </div>
           <h1 className="text-2xl font-bold text-gray-900">
             Register your gym
@@ -95,7 +98,10 @@ export default function RegisterPage() {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           {/* Gym Name */}
           <div className="flex flex-col gap-2">
-            <Label htmlFor="name" className="flex gap-0.5 text-sm font-medium text-gray-900">
+            <Label
+              htmlFor="name"
+              className="flex gap-0.5 text-sm font-medium text-gray-900"
+            >
               Gym Name <span className="text-error">*</span>
             </Label>
             <Input
@@ -111,7 +117,10 @@ export default function RegisterPage() {
 
           {/* Owner Name */}
           <div className="flex flex-col gap-2">
-            <Label htmlFor="ownerName" className="flex gap-0.5 text-sm font-medium text-gray-900">
+            <Label
+              htmlFor="ownerName"
+              className="flex gap-0.5 text-sm font-medium text-gray-900"
+            >
               Your Name <span className="text-error">*</span>
             </Label>
             <Input
@@ -127,7 +136,10 @@ export default function RegisterPage() {
 
           {/* Email */}
           <div className="flex flex-col gap-2">
-            <Label htmlFor="email" className="flex gap-0.5 text-sm font-medium text-gray-900">
+            <Label
+              htmlFor="email"
+              className="flex gap-0.5 text-sm font-medium text-gray-900"
+            >
               Email Address <span className="text-error">*</span>
             </Label>
             <Input
@@ -144,7 +156,10 @@ export default function RegisterPage() {
 
           {/* Phone Number */}
           <div className="flex flex-col gap-2">
-            <Label htmlFor="phone" className="flex gap-0.5 text-sm font-medium text-gray-900">
+            <Label
+              htmlFor="phone"
+              className="flex gap-0.5 text-sm font-medium text-gray-900"
+            >
               Phone Number <span className="text-error">*</span>
             </Label>
             <Input
@@ -161,7 +176,10 @@ export default function RegisterPage() {
 
           {/* Address */}
           <div className="flex flex-col gap-2">
-            <Label htmlFor="address" className="flex gap-0.5 text-sm font-medium text-gray-900">
+            <Label
+              htmlFor="address"
+              className="flex gap-0.5 text-sm font-medium text-gray-900"
+            >
               Gym Address <span className="text-error">*</span>
             </Label>
             <Textarea
@@ -178,8 +196,12 @@ export default function RegisterPage() {
 
           {/* Description */}
           <div className="flex flex-col gap-2">
-            <Label htmlFor="description" className="text-sm font-medium text-gray-900">
-              Description <span className="text-gray-400 font-normal">(optional)</span>
+            <Label
+              htmlFor="description"
+              className="text-sm font-medium text-gray-900"
+            >
+              Description{' '}
+              <span className="text-gray-400 font-normal">(optional)</span>
             </Label>
             <Textarea
               id="description"
@@ -188,7 +210,9 @@ export default function RegisterPage() {
               aria-invalid={!!errors.description}
               {...register('description')}
             />
-            <div className={`text-xs text-right ${descriptionWordCount > 200 ? 'text-red-500' : 'text-gray-400'}`}>
+            <div
+              className={`text-xs text-right ${descriptionWordCount > 200 ? 'text-red-500' : 'text-gray-400'}`}
+            >
               {descriptionWordCount} / 200 words
             </div>
             {errors.description && (
@@ -198,8 +222,12 @@ export default function RegisterPage() {
 
           {/* Website */}
           <div className="flex flex-col gap-2">
-            <Label htmlFor="website" className="text-sm font-medium text-gray-900">
-              Website <span className="text-gray-400 font-normal">(optional)</span>
+            <Label
+              htmlFor="website"
+              className="text-sm font-medium text-gray-900"
+            >
+              Website{' '}
+              <span className="text-gray-400 font-normal">(optional)</span>
             </Label>
             <Input
               id="website"
@@ -231,7 +259,10 @@ export default function RegisterPage() {
 
         <p className="mt-6 text-center text-sm text-gray-500">
           Already have an account?{' '}
-          <Link href="/login" className="font-medium text-primary-base hover:underline">
+          <Link
+            href="/login"
+            className="font-medium text-primary-base hover:underline"
+          >
             Sign in
           </Link>
         </p>

@@ -86,17 +86,27 @@ export function useGym(id: string, options: UseGymOptions = {}): UseGymReturn {
     return result;
   }, [id, invalidateAll]);
 
-  const reject = useCallback(async (reason: string) => {
-    const result = await apiPatch<GymActionResponse>(`/gyms/${id}/reject`, { reason });
-    invalidateAll();
-    return result;
-  }, [id, invalidateAll]);
+  const reject = useCallback(
+    async (reason: string) => {
+      const result = await apiPatch<GymActionResponse>(`/gyms/${id}/reject`, {
+        reason,
+      });
+      invalidateAll();
+      return result;
+    },
+    [id, invalidateAll],
+  );
 
-  const suspend = useCallback(async (reason: string) => {
-    const result = await apiPatch<GymActionResponse>(`/gyms/${id}/suspend`, { reason });
-    invalidateAll();
-    return result;
-  }, [id, invalidateAll]);
+  const suspend = useCallback(
+    async (reason: string) => {
+      const result = await apiPatch<GymActionResponse>(`/gyms/${id}/suspend`, {
+        reason,
+      });
+      invalidateAll();
+      return result;
+    },
+    [id, invalidateAll],
+  );
 
   const reactivate = useCallback(async () => {
     const result = await apiPatch<GymActionResponse>(`/gyms/${id}/reactivate`);
