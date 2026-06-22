@@ -18,7 +18,9 @@ export default function DashboardLayout({
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <p className="text-gray-600 mb-4">Something went wrong. Please try again.</p>
+          <p className="text-gray-600 mb-4">
+            Something went wrong. Please try again.
+          </p>
           <button
             className="text-sm text-blue-600 underline"
             onClick={() => window.location.reload()}

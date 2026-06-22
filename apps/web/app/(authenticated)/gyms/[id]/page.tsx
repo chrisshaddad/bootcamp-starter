@@ -158,7 +158,9 @@ export default function GymDetailPage() {
       toast.success('Gym approved successfully');
       setShowApproveDialog(false);
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Failed to approve gym');
+      toast.error(
+        err instanceof ApiError ? err.message : 'Failed to approve gym',
+      );
     } finally {
       setIsApproving(false);
     }
@@ -172,7 +174,9 @@ export default function GymDetailPage() {
       setShowRejectDialog(false);
       rejectForm.reset();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Failed to reject gym');
+      toast.error(
+        err instanceof ApiError ? err.message : 'Failed to reject gym',
+      );
     } finally {
       setIsRejecting(false);
     }
@@ -186,7 +190,9 @@ export default function GymDetailPage() {
       setShowSuspendDialog(false);
       suspendForm.reset();
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Failed to suspend gym');
+      toast.error(
+        err instanceof ApiError ? err.message : 'Failed to suspend gym',
+      );
     } finally {
       setIsSuspending(false);
     }
@@ -198,7 +204,9 @@ export default function GymDetailPage() {
       await reactivate();
       toast.success('Gym reactivated');
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Failed to reactivate gym');
+      toast.error(
+        err instanceof ApiError ? err.message : 'Failed to reactivate gym',
+      );
     } finally {
       setIsReactivating(false);
     }
@@ -509,7 +517,11 @@ export default function GymDetailPage() {
               >
                 Cancel
               </Button>
-              <Button type="submit" variant="destructive" disabled={isRejecting}>
+              <Button
+                type="submit"
+                variant="destructive"
+                disabled={isRejecting}
+              >
                 {isRejecting ? 'Rejecting...' : 'Reject'}
               </Button>
             </DialogFooter>
@@ -566,7 +578,11 @@ export default function GymDetailPage() {
               >
                 Cancel
               </Button>
-              <Button type="submit" variant="destructive" disabled={isSuspending}>
+              <Button
+                type="submit"
+                variant="destructive"
+                disabled={isSuspending}
+              >
                 {isSuspending ? 'Suspending...' : 'Suspend'}
               </Button>
             </DialogFooter>
