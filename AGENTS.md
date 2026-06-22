@@ -82,7 +82,7 @@ Tenant-scoped models are scoped by `pharmacyId` and/or `branchId` depending on t
 ### Prisma (`packages/database`)
 
 - All models belong to the `public` schema. Every model declares `@@schema("public")`.
-- UUID primary keys (`@id @default(uuid())`), `createdAt`/`updatedAt` on every mutable model. Exception: `Medicine` uses `Int` auto-increment (`@id @default(autoincrement())`). Exception: `AuditLog` and `InquiryMessage` have only `createdAt` — they are immutable records.
+- UUID primary keys (`@id @default(uuid())`), `createdAt`/`updatedAt` on every mutable model. Exception: `AuditLog` and `InquiryMessage` have only `createdAt` — they are immutable records.
 - Index every FK with `@@index([fkField])`.
 - Cascade for owned children, `SetNull` for soft refs.
 - Never hand-edit migration SQL. Edit the schema, then run `npx turbo run db:migrate -- --name <change>`.

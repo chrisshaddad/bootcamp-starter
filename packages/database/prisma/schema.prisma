@@ -88,26 +88,26 @@ model Pharmacy {
 }
 
 model User {
-  id          String    @id @default(uuid())
-  firstName   String    @db.VarChar(100)
-  lastName    String    @db.VarChar(100)
-  email       String    @unique @db.VarChar(255)
-  password    String?   @db.VarChar(255)
-  phoneNumber String?   @db.VarChar(20)
+  id          String     @id @default(uuid())
+  firstName   String     @db.VarChar(100)
+  lastName    String     @db.VarChar(100)
+  email       String     @unique @db.VarChar(255)
+  password    String?    @db.VarChar(255)
+  phoneNumber String?    @db.VarChar(20)
   role        UserRole
   status      UserStatus @default(ACTIVE)
   pharmacyId  String?
   branchId    String?
-  dateOfBirth DateTime? @db.Date
-  address     String?   @db.Text
-  latitude    Decimal?  @db.Decimal(9, 6)
-  longitude   Decimal?  @db.Decimal(9, 6)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  dateOfBirth DateTime?  @db.Date
+  address     String?    @db.Text
+  latitude    Decimal?   @db.Decimal(9, 6)
+  longitude   Decimal?   @db.Decimal(9, 6)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 
-  pharmacy Pharmacy? @relation(fields: [pharmacyId], references: [id], onDelete: SetNull)
-  branch   PharmacyBranch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
-  sessions Session[]
+  pharmacy   Pharmacy?       @relation(fields: [pharmacyId], references: [id], onDelete: SetNull)
+  branch     PharmacyBranch? @relation(fields: [pharmacyId, branchId], references: [pharmacyId, id], onDelete: SetNull)
+  sessions   Session[]
   magicLinks MagicLink[]
 
   @@index([role])
@@ -132,35 +132,35 @@ model Session {
 }
 
 model MagicLink {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   userId    String
-  token     String   @unique
+  token     String    @unique
   expiresAt DateTime
   usedAt    DateTime?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([token])
   @@index([userId])
   @@map("magic_links")
   @@schema("public")
 }
 
 model PharmacyBranch {
-  id         String   @id @default(uuid())
-  pharmacyId String
-  name       String   @db.VarChar(150)
-  phoneNumber String? @db.VarChar(20)
-  address    String   @db.Text
-  latitude   Decimal  @db.Decimal(9, 6)
-  longitude  Decimal  @db.Decimal(9, 6)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id          String   @id @default(uuid())
+  pharmacyId  String
+  name        String   @db.VarChar(150)
+  phoneNumber String?  @db.VarChar(20)
+  address     String   @db.Text
+  latitude    Decimal  @db.Decimal(9, 6)
+  longitude   Decimal  @db.Decimal(9, 6)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   pharmacy Pharmacy @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
-  users User[]
+  users    User[]
 
+  @@unique([pharmacyId, id])
   @@index([pharmacyId])
   @@index([latitude, longitude], name: "idx_branch_location")
   @@map("pharmacy_branches")

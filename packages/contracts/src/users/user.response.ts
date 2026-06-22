@@ -5,8 +5,8 @@ import { userRoleSchema } from './user-role.schema';
 export const userResponseSchema = z.object({
   id: z.uuid(),
   email: z.email(),
-  firstName: z.string().nullable(),
-  lastName: z.string().nullable(),
+  firstName: z.string(),
+  lastName: z.string(),
   role: userRoleSchema,
 });
 export type UserResponse = z.infer<typeof userResponseSchema>;

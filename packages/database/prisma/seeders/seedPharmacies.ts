@@ -20,10 +20,11 @@ export async function seedPharmacies(
   );
 
   for (const name of pharmacyNames) {
-    const pharmacy = await prisma.pharmacy.create({
-      data: {
-        name,
-      },
+    const pharmacy = await prisma.pharmacy.upsert({
+      where: { name },
+      update: {},
+      create: { name },
+      select: { id: true, name: true },
     });
 
     pharmacies.push({

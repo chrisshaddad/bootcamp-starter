@@ -284,7 +284,7 @@ id String @id @default(uuid())
 
 branchId String
 
-medicineId Int
+medicineId String
 
 batchNumber String? @db.VarChar(100)
 
@@ -310,7 +310,7 @@ medicine Medicine @relation(fields: [medicineId], references: [id], onDelete: Ca
 // ============================================================
 
 model MedicineIngredient {
-medicineId Int
+medicineId String
 ingredientId String
 
 medicine Medicine @relation(fields: [medicineId], references: [id], onDelete: Cascade)
@@ -336,7 +336,7 @@ pharmacyId String
 
 branchId String
 
-medicineId Int
+medicineId String
 
 status InquiryStatus @default(PENDING)
 

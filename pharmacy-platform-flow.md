@@ -281,7 +281,7 @@ Enums:
 - All Prisma models belong to the public schema.
 - Every mutable model should contain createdAt and updatedAt.
 - Immutable records (AuditLog, InquiryMessage, MagicLink, Session) only have createdAt.
-- Use UUID primary keys except where auto-increment is explicitly required (Medicine uses Int auto-increment).
+- - Use UUID primary keys by default. Session IDs are externally generated strings, and junction tables may use composite keys.
 - All API request and response contracts must be defined inside packages/contracts.
 - Database access must go through DatabaseService.
 - Controllers should remain thin and delegate logic to services.
