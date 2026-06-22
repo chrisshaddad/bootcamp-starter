@@ -338,12 +338,17 @@ export default function MembersPage() {
                                   newMonth.getMonth() + 1,
                                   0,
                                 ).getDate();
-                                const newDate = new Date(
-                                  newMonth.getFullYear(),
-                                  newMonth.getMonth(),
-                                  Math.min(selected.getDate(), maxDay),
-                                );
-                                field.onChange(toUTCMidnight(newDate));
+                                if (selected.getDate() > maxDay) {
+                                  field.onChange(
+                                    toUTCMidnight(
+                                      new Date(
+                                        newMonth.getFullYear(),
+                                        newMonth.getMonth(),
+                                        maxDay,
+                                      ),
+                                    ),
+                                  );
+                                }
                               }
                             }}
                             onSelect={(date) => {

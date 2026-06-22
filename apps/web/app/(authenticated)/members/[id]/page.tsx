@@ -118,11 +118,15 @@ export default function MemberDetailPage() {
       phoneNumber: member.phoneNumber ?? '',
       dateOfBirth: dob
         ? new Date(
-            Date.UTC(dob.getFullYear(), dob.getMonth(), dob.getDate()),
+            Date.UTC(dob.getUTCFullYear(), dob.getUTCMonth(), dob.getUTCDate()),
           ).toISOString()
         : undefined,
     });
-    setDobMonth(dob ?? new Date(2000, 0));
+    setDobMonth(
+      dob
+        ? new Date(dob.getUTCFullYear(), dob.getUTCMonth(), 1)
+        : new Date(2000, 0),
+    );
     setShowEditDialog(true);
   };
 
@@ -427,12 +431,17 @@ export default function MemberDetailPage() {
                                   newMonth.getMonth() + 1,
                                   0,
                                 ).getDate();
-                                const newDate = new Date(
-                                  newMonth.getFullYear(),
-                                  newMonth.getMonth(),
-                                  Math.min(selected.getDate(), maxDay),
-                                );
-                                field.onChange(toUTCMidnight(newDate));
+                                if (selected.getDate() > maxDay) {
+                                  field.onChange(
+                                    toUTCMidnight(
+                                      new Date(
+                                        newMonth.getFullYear(),
+                                        newMonth.getMonth(),
+                                        maxDay,
+                                      ),
+                                    ),
+                                  );
+                                }
                               }
                             }}
                             onSelect={(date) => {

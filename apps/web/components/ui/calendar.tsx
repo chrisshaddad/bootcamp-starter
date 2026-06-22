@@ -9,7 +9,7 @@ import {
 import {
   DayPicker,
   getDefaultClassNames,
-  type DayButton,
+  type DayButtonProps,
 } from 'react-day-picker';
 
 import { cn } from '@/lib/utils';
@@ -186,7 +186,7 @@ function CalendarDayButton({
   day,
   modifiers,
   ...props
-}: React.ComponentProps<typeof DayButton>) {
+}: DayButtonProps) {
   const defaultClassNames = getDefaultClassNames();
 
   const ref = React.useRef<HTMLButtonElement>(null);

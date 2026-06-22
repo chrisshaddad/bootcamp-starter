@@ -1,5 +1,7 @@
 import {
+  BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
   ConflictException,
 } from '@nestjs/common';
@@ -29,6 +31,8 @@ const MEMBER_SELECT = {
 
 @Injectable()
 export class MembersService {
+  private readonly logger = new Logger(MembersService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   /** List all members for a gym with optional status filter and pagination */
@@ -37,6 +41,9 @@ export class MembersService {
     options: { status?: MemberStatus; page?: number; limit?: number },
   ): Promise<MemberListResponse> {
     const { status, page = 1, limit = 20 } = options;
+    if (page < 1 || limit < 1) {
+      throw new BadRequestException('page and limit must be positive integers');
+    }
     const skip = (page - 1) * limit;
     const where = { gymId, ...(status ? { status } : {}) };
 
@@ -147,17 +154,31 @@ export class MembersService {
       }
     }
 
-    return this.prisma.member.update({
-      where: { id },
-      data: {
-        ...(dto.name !== undefined && { name: dto.name }),
-        ...(dto.phoneNumber !== undefined && { phoneNumber: dto.phoneNumber }),
-        ...(dto.dateOfBirth !== undefined && {
-          dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : null,
-        }),
-        ...(dto.status !== undefined && { status: dto.status }),
-      },
-      select: MEMBER_SELECT,
-    });
+    try {
+      return await this.prisma.member.update({
+        where: { id },
+        data: {
+          ...(dto.name !== undefined && { name: dto.name }),
+          ...(dto.phoneNumber !== undefined && {
+            phoneNumber: dto.phoneNumber,
+          }),
+          ...(dto.dateOfBirth !== undefined && {
+            dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : null,
+          }),
+          ...(dto.status !== undefined && { status: dto.status }),
+        },
+        select: MEMBER_SELECT,
+      });
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        throw new ConflictException(
+          'A member with this phone number already exists in this gym',
+        );
+      }
+      throw err;
+    }
   }
 }

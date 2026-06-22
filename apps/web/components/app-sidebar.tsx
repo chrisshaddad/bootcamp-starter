@@ -32,6 +32,7 @@ interface NavItem {
   url: string;
   icon: LucideIcon;
   disabled?: boolean;
+  roles?: string[];
 }
 
 // Navigation items for ORG_ADMIN and MEMBER roles
@@ -45,6 +46,7 @@ const orgNavItems: NavItem[] = [
     title: 'Members',
     url: '/members',
     icon: UserRound,
+    roles: ['ORG_ADMIN'],
   },
 ];
 
@@ -85,7 +87,11 @@ export function AppSidebar() {
   const { user } = useUser({ redirectOnUnauthenticated: false });
 
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
-  const mainNavItems = isSuperAdmin ? superAdminNavItems : orgNavItems;
+  const mainNavItems = isSuperAdmin
+    ? superAdminNavItems
+    : orgNavItems.filter(
+        (item) => !item.roles || item.roles.includes(user?.role ?? ''),
+      );
   const secondaryNavItems = isSuperAdmin
     ? superAdminSecondaryNavItems
     : orgSecondaryNavItems;

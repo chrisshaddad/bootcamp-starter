@@ -1,12 +1,9 @@
 import {
   Body,
   Controller,
-  DefaultValuePipe,
   Get,
   HttpCode,
   Param,
-  ParseEnumPipe,
-  ParseIntPipe,
   Patch,
   Post,
   Query,
@@ -22,15 +19,16 @@ import {
 } from '@nestjs/swagger';
 import { MembersService } from './members.service';
 import { Roles, CurrentUser } from '../auth/decorators';
-import { MemberStatus } from '@repo/db';
 import type { User } from '@repo/db';
 import type {
   MemberListResponse,
+  MemberListQuery,
   MemberResponse,
   MemberCreateRequest,
   MemberUpdateRequest,
 } from '@repo/contracts';
 import {
+  memberListQuerySchema,
   memberCreateRequestSchema,
   memberUpdateRequestSchema,
 } from '@repo/contracts';
@@ -83,12 +81,10 @@ export class MembersController {
   @ApiResponse({ status: 403, description: 'Insufficient role' })
   async findAll(
     @CurrentUser() user: User,
-    @Query('status', new ParseEnumPipe(MemberStatus, { optional: true }))
-    status?: MemberStatus,
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
-    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit?: number,
+    @Query(new ZodValidationPipe(memberListQuerySchema))
+    query: MemberListQuery,
   ): Promise<MemberListResponse> {
-    return this.membersService.findAll(user.gymId!, { status, page, limit });
+    return this.membersService.findAll(user.gymId!, query);
   }
 
   @Get(':id')
