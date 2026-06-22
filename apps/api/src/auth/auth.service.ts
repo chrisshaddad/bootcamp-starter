@@ -121,6 +121,9 @@ export class AuthService {
       if (gymStatus === 'SUSPENDED') {
         throw new ForbiddenException('Your gym account has been suspended');
       }
+      if (gymStatus === 'INACTIVE') {
+        throw new ForbiddenException('Your gym account is inactive');
+      }
     }
 
     // Mark as used

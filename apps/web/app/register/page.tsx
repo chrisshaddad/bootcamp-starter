@@ -31,10 +31,7 @@ export default function RegisterPage() {
   });
 
   const descriptionValue = watch('description') ?? '';
-  const descriptionWordCount =
-    descriptionValue.trim() === ''
-      ? 0
-      : descriptionValue.trim().split(/\s+/).length;
+  const descriptionCharCount = descriptionValue.length;
 
   const onSubmit = async (data: GymRegisterRequest) => {
     setIsSubmitting(true);
@@ -211,9 +208,9 @@ export default function RegisterPage() {
               {...register('description')}
             />
             <div
-              className={`text-xs text-right ${descriptionWordCount > 200 ? 'text-red-500' : 'text-gray-400'}`}
+              className={`text-xs text-right ${descriptionCharCount > 500 ? 'text-red-500' : 'text-gray-400'}`}
             >
-              {descriptionWordCount} / 200 words
+              {descriptionCharCount} / 500 characters
             </div>
             {errors.description && (
               <p className="text-sm text-error">{errors.description.message}</p>

@@ -10,9 +10,27 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { isLoading, isAuthenticated } = useUser();
+  const { isLoading, isAuthenticated, error } = useUser();
 
-  // Show nothing while the auth check is in-flight or while a redirect is pending.
+  // Non-401 errors (e.g. 500, network) won't trigger a redirect, so show an
+  // error state rather than leaving the user on an infinite spinner.
+  if (!isLoading && error && error.status !== 401) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">Something went wrong. Please try again.</p>
+          <button
+            className="text-sm text-blue-600 underline"
+            onClick={() => window.location.reload()}
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Show spinner while the auth check is in-flight or while a redirect is pending.
   // The redirect itself is triggered by useUser (401 → /login, SUSPENDED → /suspended).
   if (isLoading || !isAuthenticated) {
     return (

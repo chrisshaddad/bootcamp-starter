@@ -2,10 +2,9 @@ import { Module } from '@nestjs/common';
 import { GymsService } from './gyms.service';
 import { GymsController } from './gyms.controller';
 import { MailModule } from '../mail/mail.module';
-import { AuthModule } from '../auth/auth.module';
 
 @Module({
-  imports: [MailModule, AuthModule],
+  imports: [MailModule],
   providers: [GymsService],
   controllers: [GymsController],
 })

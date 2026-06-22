@@ -1,2 +1,2 @@
 -- AlterTable
-ALTER TABLE "Gym" ADD COLUMN     "statusReason" TEXT;
+ALTER TABLE "public"."Gym" ADD COLUMN     "statusReason" TEXT;

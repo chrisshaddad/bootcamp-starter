@@ -85,9 +85,8 @@ export function useAuth() {
   const logout = useCallback(async () => {
     try {
       await apiPost<{ success: boolean }>('/auth/logout');
-    } catch (err) {
-      // Session already invalid — treat as logged out
-      if (!(err instanceof ApiError && err.status === 401)) throw err;
+    } catch {
+      // Logout is best-effort — always clear local session state regardless of server response
     }
     mutate();
   }, [mutate]);

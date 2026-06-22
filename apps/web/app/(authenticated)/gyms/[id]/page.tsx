@@ -4,6 +4,10 @@ import { useUser } from '@/hooks/use-auth';
 import { useGym } from '@/hooks/use-gyms';
 import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { gymReasonRequestSchema, type GymReasonRequest } from '@repo/contracts';
+import { ApiError } from '@/lib/api';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -45,7 +49,7 @@ const STATUS_COLORS: Record<string, string> = {
   PENDING: 'bg-yellow-100 text-yellow-800 border-yellow-200',
   ACTIVE: 'bg-green-100 text-green-800 border-green-200',
   REJECTED: 'bg-red-100 text-red-800 border-red-200',
-  SUSPENDED: 'bg-orange-100 text-orange-800 border-orange-200',
+  SUSPENDED: 'bg-orange/15 text-orange border-orange/30',
   INACTIVE: 'bg-gray-100 text-gray-800 border-gray-200',
 };
 
@@ -105,6 +109,10 @@ function InfoRow({
   );
 }
 
+function charCount(value: string): number {
+  return value.length;
+}
+
 export default function GymDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -116,16 +124,22 @@ export default function GymDetailPage() {
   const [showApproveDialog, setShowApproveDialog] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [showSuspendDialog, setShowSuspendDialog] = useState(false);
-  const [rejectReason, setRejectReason] = useState('');
-  const [suspendReason, setSuspendReason] = useState('');
+
+  const rejectForm = useForm<GymReasonRequest>({
+    resolver: zodResolver(gymReasonRequestSchema),
+    defaultValues: { reason: '' },
+  });
+
+  const suspendForm = useForm<GymReasonRequest>({
+    resolver: zodResolver(gymReasonRequestSchema),
+    defaultValues: { reason: '' },
+  });
+
+  const rejectReasonValue = rejectForm.watch('reason');
+  const suspendReasonValue = suspendForm.watch('reason');
 
   const gymId = params.id as string;
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
-
-  const rejectWordCount =
-    rejectReason.trim() === '' ? 0 : rejectReason.trim().split(/\s+/).length;
-  const suspendWordCount =
-    suspendReason.trim() === '' ? 0 : suspendReason.trim().split(/\s+/).length;
 
   const {
     gym,
@@ -143,48 +157,48 @@ export default function GymDetailPage() {
       await approve();
       toast.success('Gym approved successfully');
       setShowApproveDialog(false);
-    } catch {
-      toast.error('Failed to approve gym');
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Failed to approve gym');
     } finally {
       setIsApproving(false);
     }
   };
 
-  const handleReject = async () => {
+  const handleReject = rejectForm.handleSubmit(async (data) => {
     setIsRejecting(true);
     try {
-      await reject(rejectReason);
+      await reject(data.reason);
       toast.success('Gym rejected');
       setShowRejectDialog(false);
-      setRejectReason('');
-    } catch {
-      toast.error('Failed to reject gym');
+      rejectForm.reset();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Failed to reject gym');
     } finally {
       setIsRejecting(false);
     }
-  };
+  });
 
-  const handleSuspend = async () => {
+  const handleSuspend = suspendForm.handleSubmit(async (data) => {
     setIsSuspending(true);
     try {
-      await suspend(suspendReason);
+      await suspend(data.reason);
       toast.success('Gym suspended');
       setShowSuspendDialog(false);
-      setSuspendReason('');
-    } catch {
-      toast.error('Failed to suspend gym');
+      suspendForm.reset();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Failed to suspend gym');
     } finally {
       setIsSuspending(false);
     }
-  };
+  });
 
   const handleReactivate = async () => {
     setIsReactivating(true);
     try {
       await reactivate();
       toast.success('Gym reactivated');
-    } catch {
-      toast.error('Failed to reactivate gym');
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Failed to reactivate gym');
     } finally {
       setIsReactivating(false);
     }
@@ -201,7 +215,7 @@ export default function GymDetailPage() {
   if (error) {
     return (
       <div className="py-10 text-center">
-        <div className="text-red-500 mb-4">Failed to load gym</div>
+        <div className="text-error mb-4">Failed to load gym</div>
         <Button variant="outline" onClick={() => router.back()}>
           Go Back
         </Button>
@@ -240,7 +254,7 @@ export default function GymDetailPage() {
         <div
           className={`rounded-lg border p-4 text-sm ${
             isSuspended
-              ? 'border-orange-200 bg-orange-50 text-orange-800'
+              ? 'border-orange/30 bg-orange/10 text-orange'
               : 'border-red-200 bg-red-50 text-red-800'
           }`}
         >
@@ -282,7 +296,7 @@ export default function GymDetailPage() {
           {isActive && (
             <Button
               variant="outline"
-              className="gap-2 text-orange-600 border-orange-200 hover:bg-orange-50"
+              className="gap-2 text-orange border-orange/30 hover:bg-orange/10"
               onClick={() => setShowSuspendDialog(true)}
             >
               <ShieldX className="h-4 w-4" />
@@ -450,52 +464,56 @@ export default function GymDetailPage() {
         open={showRejectDialog}
         onOpenChange={(open) => {
           setShowRejectDialog(open);
-          if (!open) setRejectReason('');
+          if (!open) rejectForm.reset();
         }}
       >
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Reject Gym</DialogTitle>
-            <DialogDescription>
-              Provide a reason for rejecting <strong>{gym.name}</strong>. The
-              gym admin will be notified.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2 py-2">
-            <Label htmlFor="reject-reason">Reason</Label>
-            <Textarea
-              id="reject-reason"
-              placeholder="e.g. Incomplete business information provided."
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-            />
-            <div
-              className={`text-xs text-right ${rejectWordCount > 80 ? 'text-red-500' : 'text-gray-400'}`}
-            >
-              {rejectWordCount} / 80 words
+          <form onSubmit={handleReject}>
+            <DialogHeader>
+              <DialogTitle>Reject Gym</DialogTitle>
+              <DialogDescription>
+                Provide a reason for rejecting <strong>{gym.name}</strong>. The
+                gym admin will be notified.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2 py-2">
+              <Label htmlFor="reject-reason">Reason</Label>
+              <Textarea
+                id="reject-reason"
+                placeholder="e.g. Incomplete business information provided."
+                className="field-sizing-fixed resize-none max-h-36 overflow-y-auto"
+                rows={3}
+                {...rejectForm.register('reason')}
+              />
+              {rejectForm.formState.errors.reason ? (
+                <p className="text-xs text-error">
+                  {rejectForm.formState.errors.reason.message}
+                </p>
+              ) : (
+                <div
+                  className={`text-xs text-right ${charCount(rejectReasonValue) > 500 ? 'text-error' : 'text-gray-400'}`}
+                >
+                  {charCount(rejectReasonValue)} / 500 characters
+                </div>
+              )}
             </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowRejectDialog(false);
-                setRejectReason('');
-              }}
-              disabled={isRejecting}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleReject}
-              disabled={
-                isRejecting || !rejectReason.trim() || rejectWordCount > 80
-              }
-            >
-              {isRejecting ? 'Rejecting...' : 'Reject'}
-            </Button>
-          </DialogFooter>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setShowRejectDialog(false);
+                  rejectForm.reset();
+                }}
+                disabled={isRejecting}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" variant="destructive" disabled={isRejecting}>
+                {isRejecting ? 'Rejecting...' : 'Reject'}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -503,52 +521,56 @@ export default function GymDetailPage() {
         open={showSuspendDialog}
         onOpenChange={(open) => {
           setShowSuspendDialog(open);
-          if (!open) setSuspendReason('');
+          if (!open) suspendForm.reset();
         }}
       >
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Suspend Gym</DialogTitle>
-            <DialogDescription>
-              Provide a reason for suspending <strong>{gym.name}</strong>. The
-              owner&apos;s sessions will be terminated.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2 py-2">
-            <Label htmlFor="suspend-reason">Reason</Label>
-            <Textarea
-              id="suspend-reason"
-              placeholder="e.g. Violation of terms of service."
-              value={suspendReason}
-              onChange={(e) => setSuspendReason(e.target.value)}
-            />
-            <div
-              className={`text-xs text-right ${suspendWordCount > 80 ? 'text-red-500' : 'text-gray-400'}`}
-            >
-              {suspendWordCount} / 80 words
+          <form onSubmit={handleSuspend}>
+            <DialogHeader>
+              <DialogTitle>Suspend Gym</DialogTitle>
+              <DialogDescription>
+                Provide a reason for suspending <strong>{gym.name}</strong>. The
+                owner&apos;s sessions will be terminated.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2 py-2">
+              <Label htmlFor="suspend-reason">Reason</Label>
+              <Textarea
+                id="suspend-reason"
+                placeholder="e.g. Violation of terms of service."
+                className="field-sizing-fixed resize-none max-h-36 overflow-y-auto"
+                rows={3}
+                {...suspendForm.register('reason')}
+              />
+              {suspendForm.formState.errors.reason ? (
+                <p className="text-xs text-error">
+                  {suspendForm.formState.errors.reason.message}
+                </p>
+              ) : (
+                <div
+                  className={`text-xs text-right ${charCount(suspendReasonValue) > 500 ? 'text-error' : 'text-gray-400'}`}
+                >
+                  {charCount(suspendReasonValue)} / 500 characters
+                </div>
+              )}
             </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowSuspendDialog(false);
-                setSuspendReason('');
-              }}
-              disabled={isSuspending}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleSuspend}
-              disabled={
-                isSuspending || !suspendReason.trim() || suspendWordCount > 80
-              }
-            >
-              {isSuspending ? 'Suspending...' : 'Suspend'}
-            </Button>
-          </DialogFooter>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setShowSuspendDialog(false);
+                  suspendForm.reset();
+                }}
+                disabled={isSuspending}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" variant="destructive" disabled={isSuspending}>
+                {isSuspending ? 'Suspending...' : 'Suspend'}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

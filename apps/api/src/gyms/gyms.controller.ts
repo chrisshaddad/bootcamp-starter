@@ -56,11 +56,13 @@ export class GymsController {
   @ApiBody({
     schema: {
       type: 'object',
-      required: ['name', 'ownerName', 'email'],
+      required: ['name', 'ownerName', 'email', 'phone', 'address'],
       properties: {
         name: { type: 'string', example: 'Iron Paradise Gym' },
         ownerName: { type: 'string', example: 'Jane Doe' },
         email: { type: 'string', format: 'email', example: 'jane@ironparadise.com' },
+        phone: { type: 'string', example: '+1-555-0100' },
+        address: { type: 'string', example: '123 Main St, Springfield, IL 62701' },
         description: { type: 'string', example: 'A premium fitness center.' },
         website: { type: 'string', format: 'uri', example: 'https://ironparadise.com' },
       },

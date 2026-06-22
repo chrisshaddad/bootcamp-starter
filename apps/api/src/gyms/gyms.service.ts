@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   NotFoundException,
   BadRequestException,
   ConflictException,
@@ -38,6 +39,8 @@ const GYM_DETAIL_SELECT = {
 
 @Injectable()
 export class GymsService {
+  private readonly logger = new Logger(GymsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     @InjectQueue(MAIL_QUEUE) private readonly mailQueue: Queue,
@@ -130,6 +133,7 @@ export class GymsService {
       });
     }
 
+    this.logger.log(`Gym approved: ${id} (by: ${approvedById})`);
     return gym;
   }
 
@@ -140,11 +144,13 @@ export class GymsService {
       throw new NotFoundException(`Gym with ID ${id} not found`);
     }
 
-    return this.prisma.gym.update({
+    const gym = await this.prisma.gym.update({
       where: { id },
       data: { status: 'REJECTED', statusReason: reason },
       select: GYM_DETAIL_SELECT,
     });
+    this.logger.log(`Gym rejected: ${id}`);
+    return gym;
   }
 
   /** Suspend an active gym with a mandatory reason and immediately log out the owner */
@@ -163,6 +169,7 @@ export class GymsService {
       select: GYM_DETAIL_SELECT,
     });
 
+    this.logger.log(`Gym suspended: ${id}`);
     return updated;
   }
 
@@ -200,6 +207,7 @@ export class GymsService {
       });
     }
 
+    this.logger.log(`Gym reactivated: ${id}`);
     return gym;
   }
 
@@ -245,6 +253,10 @@ export class GymsService {
       }));
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        const target = err.meta?.target as string[] | undefined;
+        if (target?.includes('email')) {
+          throw new ConflictException('A user with this email already exists');
+        }
         throw new ConflictException('A gym with this name is already registered');
       }
       throw err;
@@ -256,6 +268,7 @@ export class GymsService {
       gymName: gym.name,
     });
 
+    this.logger.log(`Gym registered: ${gym.id} (owner: ${user.id})`);
     return {
       message:
         'Gym registration submitted. You will receive a login link by email once your application is approved.',
