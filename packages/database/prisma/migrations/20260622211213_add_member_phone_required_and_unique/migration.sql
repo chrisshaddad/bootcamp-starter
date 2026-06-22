@@ -1,35 +1,48 @@
--- Data-conditioning: fill NULL phone numbers with a unique placeholder so the
--- NOT NULL constraint below does not fail on rows created before this migration.
-UPDATE "public"."Member"
-SET "phoneNumber" = CONCAT('unknown-', "id")
-WHERE "phoneNumber" IS NULL;
-
--- Data-conditioning: de-duplicate emails within the same gym so the unique
--- index below does not fail on pre-existing duplicates.
-WITH dup_emails AS (
-  SELECT "id",
-    ROW_NUMBER() OVER (
-      PARTITION BY "gymId", "email" ORDER BY "createdAt"
-    ) AS rn
+-- Pre-flight checks: abort with a clear message if dirty data exists so that a
+-- proper backfill can be performed before re-running this migration.
+DO $$
+DECLARE
+  null_phones  BIGINT;
+  dup_emails   BIGINT;
+  dup_phones   BIGINT;
+BEGIN
+  SELECT COUNT(*) INTO null_phones
   FROM "public"."Member"
-)
-UPDATE "public"."Member" m
-SET "email" = CONCAT(m."email", '+dup-', m."id")
-FROM dup_emails d
-WHERE m."id" = d."id" AND d.rn > 1;
+  WHERE "phoneNumber" IS NULL;
 
--- Data-conditioning: de-duplicate phone numbers within the same gym.
-WITH dup_phones AS (
-  SELECT "id",
-    ROW_NUMBER() OVER (
-      PARTITION BY "gymId", "phoneNumber" ORDER BY "createdAt"
-    ) AS rn
-  FROM "public"."Member"
-)
-UPDATE "public"."Member" m
-SET "phoneNumber" = CONCAT(m."phoneNumber", '-dup-', m."id")
-FROM dup_phones d
-WHERE m."id" = d."id" AND d.rn > 1;
+  SELECT COUNT(*) INTO dup_emails
+  FROM (
+    SELECT 1 FROM "public"."Member"
+    GROUP BY "gymId", "email"
+    HAVING COUNT(*) > 1
+  ) sub;
+
+  SELECT COUNT(*) INTO dup_phones
+  FROM (
+    SELECT 1 FROM "public"."Member"
+    WHERE "phoneNumber" IS NOT NULL
+    GROUP BY "gymId", "phoneNumber"
+    HAVING COUNT(*) > 1
+  ) sub;
+
+  IF null_phones > 0 THEN
+    RAISE EXCEPTION
+      'Migration aborted: % Member row(s) have NULL phoneNumber. Backfill before re-running.',
+      null_phones;
+  END IF;
+
+  IF dup_emails > 0 THEN
+    RAISE EXCEPTION
+      'Migration aborted: % (gymId, email) duplicate group(s) found. Deduplicate before re-running.',
+      dup_emails;
+  END IF;
+
+  IF dup_phones > 0 THEN
+    RAISE EXCEPTION
+      'Migration aborted: % (gymId, phoneNumber) duplicate group(s) found. Deduplicate before re-running.',
+      dup_phones;
+  END IF;
+END $$;
 
 -- AlterTable: make phoneNumber non-nullable
 ALTER TABLE "public"."Member" ALTER COLUMN "phoneNumber" SET NOT NULL;
