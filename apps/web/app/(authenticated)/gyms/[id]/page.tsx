@@ -361,7 +361,12 @@ export default function GymDetailPage() {
             />
             <InfoRow
               icon={Users}
-              label="Members"
+              label="Registered Members"
+              value={`${gym._count.members} member${gym._count.members !== 1 ? 's' : ''}`}
+            />
+            <InfoRow
+              icon={Users}
+              label="Staff Users"
               value={`${gym._count.users} user${gym._count.users !== 1 ? 's' : ''}`}
             />
             <InfoRow

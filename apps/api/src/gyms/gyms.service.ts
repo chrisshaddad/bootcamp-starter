@@ -12,7 +12,11 @@ import * as crypto from 'crypto';
 import { PrismaService } from '../database/prisma.service';
 import { MAIL_QUEUE, MAIL_JOBS } from '../mail/mail.constants';
 import type { GymStatus } from '@repo/db';
-import type { GymListResponse, GymDetailResponse, GymRegisterRequest } from '@repo/contracts';
+import type {
+  GymListResponse,
+  GymDetailResponse,
+  GymRegisterRequest,
+} from '@repo/contracts';
 
 const GYM_DETAIL_SELECT = {
   id: true,
@@ -33,7 +37,7 @@ const GYM_DETAIL_SELECT = {
     select: { id: true, email: true, name: true },
   },
   _count: {
-    select: { users: true },
+    select: { users: true, members: true },
   },
 } as const;
 
@@ -108,14 +112,23 @@ export class GymsService {
 
     const gym = await this.prisma.gym.update({
       where: { id },
-      data: { status: 'ACTIVE', approvedById, approvedAt: new Date(), statusReason: null },
+      data: {
+        status: 'ACTIVE',
+        approvedById,
+        approvedAt: new Date(),
+        statusReason: null,
+      },
       select: GYM_DETAIL_SELECT,
     });
 
     const owner = gym.createdBy;
     if (owner) {
       await this.prisma.magicLink.updateMany({
-        where: { userId: owner.id, usedAt: null, expiresAt: { gt: new Date() } },
+        where: {
+          userId: owner.id,
+          usedAt: null,
+          expiresAt: { gt: new Date() },
+        },
         data: { usedAt: new Date() },
       });
 
@@ -189,7 +202,11 @@ export class GymsService {
     const owner = gym.createdBy;
     if (owner) {
       await this.prisma.magicLink.updateMany({
-        where: { userId: owner.id, usedAt: null, expiresAt: { gt: new Date() } },
+        where: {
+          userId: owner.id,
+          usedAt: null,
+          expiresAt: { gt: new Date() },
+        },
         data: { usedAt: new Date() },
       });
 
@@ -252,12 +269,17 @@ export class GymsService {
         return { user: u, gym: g };
       }));
     } catch (err) {
-      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
         const target = err.meta?.target as string[] | undefined;
         if (target?.includes('email')) {
           throw new ConflictException('A user with this email already exists');
         }
-        throw new ConflictException('A gym with this name is already registered');
+        throw new ConflictException(
+          'A gym with this name is already registered',
+        );
       }
       throw err;
     }

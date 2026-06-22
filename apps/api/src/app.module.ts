@@ -6,6 +6,7 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { MailModule } from './mail/mail.module';
 import { GymsModule } from './gyms/gyms.module';
+import { MembersModule } from './members/members.module';
 import { DatabaseModule } from './database/database.module';
 
 @Module({
@@ -20,6 +21,7 @@ import { DatabaseModule } from './database/database.module';
     AuthModule,
     MailModule,
     GymsModule,
+    MembersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

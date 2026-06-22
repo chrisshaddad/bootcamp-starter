@@ -1,4 +1,9 @@
-import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import * as crypto from 'crypto';
@@ -37,7 +42,9 @@ export class AuthService {
 
     // Don't send a login link to gym owners whose gym is not active
     if (user.role === 'ORG_ADMIN' && user.gym && user.gym.status !== 'ACTIVE') {
-      this.logger.warn(`Magic link blocked for non-active gym owner: ${user.id} (gym status: ${user.gym.status})`);
+      this.logger.warn(
+        `Magic link blocked for non-active gym owner: ${user.id} (gym status: ${user.gym.status})`,
+      );
       return { success: true };
     }
 
@@ -113,7 +120,9 @@ export class AuthService {
     if (magicLink.user.role === 'ORG_ADMIN' && magicLink.user.gym) {
       const gymStatus = magicLink.user.gym.status;
       if (gymStatus === 'PENDING') {
-        throw new ForbiddenException('Your gym registration is pending approval by an administrator');
+        throw new ForbiddenException(
+          'Your gym registration is pending approval by an administrator',
+        );
       }
       if (gymStatus === 'REJECTED') {
         throw new ForbiddenException('Your gym registration has been rejected');

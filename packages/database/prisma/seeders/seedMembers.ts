@@ -4,7 +4,7 @@ interface MemberSeed {
   gymName: string;
   name: string;
   email: string;
-  phoneNumber: string | null;
+  phoneNumber: string;
   dateOfBirth: Date | null;
   status: 'ACTIVE' | 'INACTIVE';
   joinedAt: Date;
@@ -38,7 +38,7 @@ const MEMBERS: MemberSeed[] = [
     gymName: 'Iron Peak Fitness',
     name: 'David Park',
     email: 'david.park@example.com',
-    phoneNumber: null,
+    phoneNumber: '+1-555-0103',
     dateOfBirth: new Date('1988-01-09'),
     status: 'ACTIVE',
     joinedAt: new Date('2025-12-10'),
@@ -79,7 +79,7 @@ const MEMBERS: MemberSeed[] = [
     gymName: 'FlexZone Gym',
     name: 'Liam Chen',
     email: 'liam.chen@example.com',
-    phoneNumber: null,
+    phoneNumber: '+1-555-0203',
     dateOfBirth: null,
     status: 'ACTIVE',
     joinedAt: new Date('2026-02-01'),
@@ -99,7 +99,7 @@ const MEMBERS: MemberSeed[] = [
     gymName: 'ProFit Training',
     name: 'Priya Patel',
     email: 'priya.patel@example.com',
-    phoneNumber: null,
+    phoneNumber: '+1-555-0302',
     dateOfBirth: new Date('1993-04-12'),
     status: 'INACTIVE',
     joinedAt: new Date('2025-09-15'),

@@ -31,7 +31,10 @@ import type {
   GymRegisterRequest,
   GymReasonRequest,
 } from '@repo/contracts';
-import { gymRegisterRequestSchema, gymReasonRequestSchema } from '@repo/contracts';
+import {
+  gymRegisterRequestSchema,
+  gymReasonRequestSchema,
+} from '@repo/contracts';
 import { ZodValidationPipe } from '../common/pipes';
 import {
   GYM_STATUS_ENUM,
@@ -60,11 +63,22 @@ export class GymsController {
       properties: {
         name: { type: 'string', example: 'Iron Paradise Gym' },
         ownerName: { type: 'string', example: 'Jane Doe' },
-        email: { type: 'string', format: 'email', example: 'jane@ironparadise.com' },
+        email: {
+          type: 'string',
+          format: 'email',
+          example: 'jane@ironparadise.com',
+        },
         phone: { type: 'string', example: '+1-555-0100' },
-        address: { type: 'string', example: '123 Main St, Springfield, IL 62701' },
+        address: {
+          type: 'string',
+          example: '123 Main St, Springfield, IL 62701',
+        },
         description: { type: 'string', example: 'A premium fitness center.' },
-        website: { type: 'string', format: 'uri', example: 'https://ironparadise.com' },
+        website: {
+          type: 'string',
+          format: 'uri',
+          example: 'https://ironparadise.com',
+        },
       },
     },
   })
@@ -74,14 +88,22 @@ export class GymsController {
     schema: {
       type: 'object',
       properties: {
-        message: { type: 'string', example: 'Gym registration submitted. Check your email for a login link once approved.' },
+        message: {
+          type: 'string',
+          example:
+            'Gym registration submitted. Check your email for a login link once approved.',
+        },
         gymId: { type: 'string', format: 'uuid' },
       },
     },
   })
-  @ApiResponse({ status: 400, description: 'Validation error or email already taken' })
+  @ApiResponse({
+    status: 400,
+    description: 'Validation error or email already taken',
+  })
   async register(
-    @Body(new ZodValidationPipe(gymRegisterRequestSchema)) dto: GymRegisterRequest,
+    @Body(new ZodValidationPipe(gymRegisterRequestSchema))
+    dto: GymRegisterRequest,
   ): Promise<{ message: string; gymId: string }> {
     return this.gymsService.register(dto);
   }
@@ -201,7 +223,10 @@ export class GymsController {
       type: 'object',
       required: ['reason'],
       properties: {
-        reason: { type: 'string', example: 'Incomplete business information provided.' },
+        reason: {
+          type: 'string',
+          example: 'Incomplete business information provided.',
+        },
       },
     },
   })
@@ -266,7 +291,9 @@ export class GymsController {
 
   @Patch(':id/reactivate')
   @Roles('SUPER_ADMIN')
-  @ApiOperation({ summary: 'Reactivate a suspended gym and send the owner a new login link' })
+  @ApiOperation({
+    summary: 'Reactivate a suspended gym and send the owner a new login link',
+  })
   @ApiParam({ name: 'id', type: String, description: 'Gym UUID' })
   @ApiResponse({
     status: 200,

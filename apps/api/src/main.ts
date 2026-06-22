@@ -26,7 +26,8 @@ async function bootstrap() {
         type: 'apiKey',
         in: 'cookie',
         name: 'bootcamp_starter_session',
-        description: 'HttpOnly session cookie issued after magic-link login (30-day TTL)',
+        description:
+          'HttpOnly session cookie issued after magic-link login (30-day TTL)',
       },
       'session-cookie',
     )
