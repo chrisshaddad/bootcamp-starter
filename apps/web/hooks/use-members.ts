@@ -11,6 +11,8 @@ import type {
   MemberStatus,
 } from '@repo/contracts';
 
+export const MEMBERS_PAGE_SIZE = 25;
+
 interface UseMembersOptions {
   status?: MemberStatus;
   page?: number;
@@ -29,7 +31,10 @@ interface UseMembersReturn {
 export function useMembers(options: UseMembersOptions = {}): UseMembersReturn {
   const { status, page = 1, enabled = true } = options;
 
-  const params = new URLSearchParams({ page: String(page) });
+  const params = new URLSearchParams({
+    page: String(page),
+    limit: String(MEMBERS_PAGE_SIZE),
+  });
   if (status) params.set('status', status);
   const endpoint = `/members?${params.toString()}`;
 

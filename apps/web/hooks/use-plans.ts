@@ -10,6 +10,8 @@ import type {
   PlanUpdateRequest,
 } from '@repo/contracts';
 
+export const PLANS_PAGE_SIZE = 25;
+
 interface UsePlansOptions {
   isActive?: boolean;
   page?: number;
@@ -28,7 +30,10 @@ interface UsePlansReturn {
 export function usePlans(options: UsePlansOptions = {}): UsePlansReturn {
   const { isActive, page = 1, enabled = true } = options;
 
-  const params = new URLSearchParams({ page: String(page) });
+  const params = new URLSearchParams({
+    page: String(page),
+    limit: String(PLANS_PAGE_SIZE),
+  });
   if (isActive !== undefined) params.set('isActive', String(isActive));
   const endpoint = `/plans?${params.toString()}`;
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
@@ -10,7 +10,12 @@ import {
   planCreateRequestSchema,
   planUpdateRequestSchema,
 } from '@repo/contracts';
-import { usePlans, useCreatePlan, useUpdatePlan } from '@/hooks/use-plans';
+import {
+  usePlans,
+  useCreatePlan,
+  useUpdatePlan,
+  PLANS_PAGE_SIZE,
+} from '@/hooks/use-plans';
 import { ApiError } from '@/lib/api';
 import type { PlanResponse } from '@repo/contracts';
 import {
@@ -91,6 +96,12 @@ function LoadingSkeleton() {
 
 // Form schemas: extend contract schemas with z.coerce for HTML inputs,
 // and accept price in dollars (the submit handler converts to cents)
+const atMostTwoDecimals = (val: number) => {
+  const str = val.toString();
+  const dot = str.indexOf('.');
+  return dot === -1 || str.length - dot - 1 <= 2;
+};
+
 const createPlanFormSchema = planCreateRequestSchema
   .omit({ price: true, durationDays: true })
   .extend({
@@ -98,7 +109,10 @@ const createPlanFormSchema = planCreateRequestSchema
       .number()
       .int('Must be a whole number')
       .positive('Duration must be at least 1 day'),
-    price: z.coerce.number().nonnegative('Price must be non-negative'),
+    price: z.coerce
+      .number()
+      .nonnegative('Price must be non-negative')
+      .refine(atMostTwoDecimals, 'Price must have at most 2 decimal places'),
   });
 type CreatePlanFormInput = z.input<typeof createPlanFormSchema>;
 type CreatePlanFormOutput = z.output<typeof createPlanFormSchema>;
@@ -110,7 +124,10 @@ const editPlanFormSchema = planUpdateRequestSchema
       .number()
       .int('Must be a whole number')
       .positive('Duration must be at least 1 day'),
-    price: z.coerce.number().nonnegative('Price must be non-negative'),
+    price: z.coerce
+      .number()
+      .nonnegative('Price must be non-negative')
+      .refine(atMostTwoDecimals, 'Price must have at most 2 decimal places'),
   });
 type EditPlanFormInput = z.input<typeof editPlanFormSchema>;
 type EditPlanFormOutput = z.output<typeof editPlanFormSchema>;
@@ -161,7 +178,7 @@ function AddPlanDialog({
       }}
     >
       <DialogContent>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
           <DialogHeader>
             <DialogTitle>Add Plan</DialogTitle>
             <DialogDescription>
@@ -206,7 +223,7 @@ function AddPlanDialog({
                   type="number"
                   min={1}
                   placeholder="30"
-                  {...form.register('durationDays')}
+                  {...form.register('durationDays', { valueAsNumber: true })}
                 />
                 {form.formState.errors.durationDays && (
                   <p className="text-xs text-error">
@@ -230,7 +247,7 @@ function AddPlanDialog({
                     step={0.01}
                     placeholder="29.99"
                     className="pl-7"
-                    {...form.register('price')}
+                    {...form.register('price', { valueAsNumber: true })}
                   />
                 </div>
                 {form.formState.errors.price && (
@@ -327,7 +344,7 @@ function EditPlanDialog({
     <>
       <Dialog open onOpenChange={(o) => !o && onClose()}>
         <DialogContent>
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} noValidate>
             <DialogHeader>
               <DialogTitle>Edit Plan</DialogTitle>
               <DialogDescription>
@@ -371,7 +388,7 @@ function EditPlanDialog({
                     id="edit-duration"
                     type="number"
                     min={1}
-                    {...form.register('durationDays')}
+                    {...form.register('durationDays', { valueAsNumber: true })}
                   />
                   {form.formState.errors.durationDays && (
                     <p className="text-xs text-error">
@@ -394,7 +411,7 @@ function EditPlanDialog({
                       min={0}
                       step={0.01}
                       className="pl-7"
-                      {...form.register('price')}
+                      {...form.register('price', { valueAsNumber: true })}
                     />
                   </div>
                   {form.formState.errors.price && (
@@ -516,7 +533,11 @@ export default function PlansPage() {
     isActive: isActiveFilter,
     page,
   });
-  const totalPages = Math.ceil((total ?? 0) / 20);
+  const totalPages = Math.ceil((total ?? 0) / PLANS_PAGE_SIZE);
+
+  useEffect(() => {
+    if (totalPages > 0 && page > totalPages) setPage(totalPages);
+  }, [totalPages, page]);
 
   if (isLoading) return <LoadingSkeleton />;
 
@@ -624,8 +645,8 @@ export default function PlansPage() {
           {!error && total !== undefined && totalPages > 1 && (
             <div className="flex items-center justify-between border-t border-gray-100 pt-4 mt-2">
               <p className="text-sm text-gray-500">
-                Showing {(page - 1) * 20 + 1}–{Math.min(page * 20, total)} of{' '}
-                {total}
+                Showing {(page - 1) * PLANS_PAGE_SIZE + 1}–
+                {Math.min(page * PLANS_PAGE_SIZE, total)} of {total}
               </p>
               <div className="flex items-center gap-2">
                 <Button

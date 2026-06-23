@@ -83,16 +83,8 @@ export class PlansService {
     gymId: string,
     dto: PlanUpdateRequest,
   ): Promise<PlanResponse> {
-    const existing = await this.prisma.membershipPlan.findFirst({
+    const { count } = await this.prisma.membershipPlan.updateMany({
       where: { id, gymId },
-      select: { id: true },
-    });
-    if (!existing) {
-      throw new NotFoundException(`Plan with ID ${id} not found`);
-    }
-
-    return this.prisma.membershipPlan.update({
-      where: { id },
       data: {
         ...(dto.name !== undefined && { name: dto.name }),
         ...(dto.description !== undefined && { description: dto.description }),
@@ -102,6 +94,14 @@ export class PlansService {
         ...(dto.price !== undefined && { price: dto.price }),
         ...(dto.isActive !== undefined && { isActive: dto.isActive }),
       },
+    });
+
+    if (count === 0) {
+      throw new NotFoundException(`Plan with ID ${id} not found`);
+    }
+
+    return this.prisma.membershipPlan.findFirstOrThrow({
+      where: { id, gymId },
       select: PLAN_SELECT,
     });
   }

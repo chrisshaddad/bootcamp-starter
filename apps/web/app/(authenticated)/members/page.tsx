@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -12,7 +12,11 @@ import {
   type MemberCreateRequest,
   type MemberStatus,
 } from '@repo/contracts';
-import { useMembers, useCreateMember } from '@/hooks/use-members';
+import {
+  useMembers,
+  useCreateMember,
+  MEMBERS_PAGE_SIZE,
+} from '@/hooks/use-members';
 import { ApiError } from '@/lib/api';
 import {
   Table,
@@ -92,7 +96,11 @@ export default function MembersPage() {
     status: statusFilter === 'all' ? undefined : statusFilter,
     page,
   });
-  const totalPages = Math.ceil((total ?? 0) / 20);
+  const totalPages = Math.ceil((total ?? 0) / MEMBERS_PAGE_SIZE);
+
+  useEffect(() => {
+    if (totalPages > 0 && page > totalPages) setPage(totalPages);
+  }, [totalPages, page]);
 
   const { create } = useCreateMember();
 
@@ -230,8 +238,8 @@ export default function MembersPage() {
           {!isLoading && !error && total !== undefined && totalPages > 1 && (
             <div className="flex items-center justify-between border-t border-gray-100 pt-4 mt-2">
               <p className="text-sm text-gray-500">
-                Showing {(page - 1) * 20 + 1}–{Math.min(page * 20, total)} of{' '}
-                {total}
+                Showing {(page - 1) * MEMBERS_PAGE_SIZE + 1}–
+                {Math.min(page * MEMBERS_PAGE_SIZE, total)} of {total}
               </p>
               <div className="flex items-center gap-2">
                 <Button
@@ -268,7 +276,7 @@ export default function MembersPage() {
         }}
       >
         <DialogContent>
-          <form onSubmit={handleAdd}>
+          <form onSubmit={handleAdd} noValidate>
             <DialogHeader>
               <DialogTitle>Add Member</DialogTitle>
               <DialogDescription>
