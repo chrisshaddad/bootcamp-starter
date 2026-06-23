@@ -38,6 +38,13 @@ model User {
   organizationId String? // null for SUPER_ADMIN users
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+  title          String?
+  department     String?
+  level          Int?
+  managerId      String?
+
+  manager        User?  @relation("UserManager", fields: [managerId], references: [id], onDelete: SetNull)
+  subordinates   User[] @relation("UserManager")
 
   sessions              Session[]
   magicLinks            MagicLink[]
@@ -115,9 +122,41 @@ model Organization {
 
   createdBy  User   @relation("OrganizationCreator", fields: [createdById], references: [id])
   approvedBy User?  @relation("OrganizationApprover", fields: [approvedById], references: [id])
-  users      User[] @relation("OrganizationMembers")
+  users         User[] @relation("OrganizationMembers")
+  skills        Skill[]
+  opportunities Opportunity[]
 
   @@index([approvedById])
   @@index([status])
+  @@schema("public")
+}
+
+model Skill {
+  id             String   @id @default(uuid())
+  name           String
+  category       String
+  organizationId String
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@schema("public")
+}
+
+model Opportunity {
+  id             String   @id @default(uuid())
+  title          String
+  department     String
+  type           String
+  description    String?  @db.Text
+  status         String
+  deadline       DateTime?
+  requiredLevel  Int?
+  organizationId String
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
   @@schema("public")
 }
