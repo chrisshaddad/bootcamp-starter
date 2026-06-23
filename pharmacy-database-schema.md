@@ -153,8 +153,8 @@ longitude Decimal? @db.Decimal(9,6)
 createdAt DateTime @default(now())
 updatedAt DateTime @updatedAt
 
-pharmacy Pharmacy? @relation(fields: [pharmacyId], references: [id], onDelete: SetNull)
-branch PharmacyBranch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+pharmacy Pharmacy? @relation(fields: [pharmacyId], references: [id], onDelete: Restrict)
+branch PharmacyBranch? @relation(fields: [pharmacyId, branchId], references: [pharmacyId, id], onDelete: Restrict)
 
 sessions Session[]
 magicLinks MagicLink[]
@@ -206,10 +206,10 @@ expiresAt DateTime
 usedAt DateTime?
 
 createdAt DateTime @default(now())
+updatedAt DateTime @updatedAt
 
 user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-@@index([token])
 @@index([userId])
 
 @@map("magic_links")
@@ -242,6 +242,7 @@ users User[]
 stockBatches StockBatch[]
 inquiries Inquiry[]
 
+@@unique([pharmacyId, id])
 @@index([pharmacyId])
 @@index([latitude, longitude], name: "idx_branch_location")
 

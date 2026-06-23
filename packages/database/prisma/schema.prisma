@@ -105,8 +105,8 @@ model User {
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
-  pharmacy   Pharmacy?       @relation(fields: [pharmacyId], references: [id], onDelete: SetNull)
-  branch     PharmacyBranch? @relation(fields: [pharmacyId, branchId], references: [pharmacyId, id], onDelete: SetNull)
+  pharmacy   Pharmacy?       @relation(fields: [pharmacyId], references: [id], onDelete: Restrict)
+  branch     PharmacyBranch? @relation(fields: [pharmacyId, branchId], references: [pharmacyId, id], onDelete: Restrict)
   sessions   Session[]
   magicLinks MagicLink[]
 
@@ -138,6 +138,7 @@ model MagicLink {
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
