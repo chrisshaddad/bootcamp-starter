@@ -13,6 +13,7 @@ import type {
 
 interface UseMembersOptions {
   status?: MemberStatus;
+  page?: number;
   enabled?: boolean;
 }
 
@@ -26,9 +27,11 @@ interface UseMembersReturn {
 
 /** Fetch the paginated list of members with optional status filter */
 export function useMembers(options: UseMembersOptions = {}): UseMembersReturn {
-  const { status, enabled = true } = options;
+  const { status, page = 1, enabled = true } = options;
 
-  const endpoint = status ? `/members?status=${status}` : '/members';
+  const params = new URLSearchParams({ page: String(page) });
+  if (status) params.set('status', status);
+  const endpoint = `/members?${params.toString()}`;
 
   const {
     data,

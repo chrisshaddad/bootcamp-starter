@@ -12,6 +12,7 @@ import type {
 
 interface UseGymsOptions {
   status?: GymStatus;
+  page?: number;
   enabled?: boolean;
 }
 
@@ -25,9 +26,11 @@ interface UseGymsReturn {
 
 /** Fetch the paginated list of gyms with optional status filter */
 export function useGyms(options: UseGymsOptions = {}): UseGymsReturn {
-  const { status, enabled = true } = options;
+  const { status, page = 1, enabled = true } = options;
 
-  const endpoint = status ? `/gyms?status=${status}` : '/gyms';
+  const params = new URLSearchParams({ page: String(page) });
+  if (status) params.set('status', status);
+  const endpoint = `/gyms?${params.toString()}`;
 
   const {
     data,
