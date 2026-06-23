@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -12,7 +12,11 @@ import {
   type MemberCreateRequest,
   type MemberStatus,
 } from '@repo/contracts';
-import { useMembers, useCreateMember } from '@/hooks/use-members';
+import {
+  useMembers,
+  useCreateMember,
+  MEMBERS_PAGE_SIZE,
+} from '@/hooks/use-members';
 import { ApiError } from '@/lib/api';
 import {
   Table,
@@ -83,13 +87,20 @@ function LoadingSkeleton() {
 export default function MembersPage() {
   const router = useRouter();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [page, setPage] = useState(1);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [dobMonth, setDobMonth] = useState(new Date(2000, 0));
 
   const { members, total, isLoading, error } = useMembers({
     status: statusFilter === 'all' ? undefined : statusFilter,
+    page,
   });
+  const totalPages = Math.ceil((total ?? 0) / MEMBERS_PAGE_SIZE);
+
+  useEffect(() => {
+    if (totalPages > 0 && page > totalPages) setPage(totalPages);
+  }, [totalPages, page]);
 
   const { create } = useCreateMember();
 
@@ -141,7 +152,10 @@ export default function MembersPage() {
         <div className="flex items-center gap-3">
           <Select
             value={statusFilter}
-            onValueChange={(v) => setStatusFilter(v as StatusFilter)}
+            onValueChange={(v) => {
+              setStatusFilter(v as StatusFilter);
+              setPage(1);
+            }}
           >
             <SelectTrigger className="w-36">
               <SelectValue placeholder="All statuses" />
@@ -221,6 +235,35 @@ export default function MembersPage() {
               </TableBody>
             </Table>
           )}
+          {!isLoading && !error && total !== undefined && totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-gray-100 pt-4 mt-2">
+              <p className="text-sm text-gray-500">
+                Showing {(page - 1) * MEMBERS_PAGE_SIZE + 1}–
+                {Math.min(page * MEMBERS_PAGE_SIZE, total)} of {total}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => p - 1)}
+                  disabled={page === 1}
+                >
+                  Previous
+                </Button>
+                <span className="text-sm text-gray-600">
+                  Page {page} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => p + 1)}
+                  disabled={page >= totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -233,7 +276,7 @@ export default function MembersPage() {
         }}
       >
         <DialogContent>
-          <form onSubmit={handleAdd}>
+          <form onSubmit={handleAdd} noValidate>
             <DialogHeader>
               <DialogTitle>Add Member</DialogTitle>
               <DialogDescription>

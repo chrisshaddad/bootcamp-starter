@@ -10,6 +10,7 @@ import {
   LogOut,
   Building2,
   UserRound,
+  ClipboardList,
 } from 'lucide-react';
 import { useAuth, useUser } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
@@ -46,6 +47,12 @@ const orgNavItems: NavItem[] = [
     title: 'Members',
     url: '/members',
     icon: UserRound,
+    roles: ['ORG_ADMIN'],
+  },
+  {
+    title: 'Plans',
+    url: '/plans',
+    icon: ClipboardList,
     roles: ['ORG_ADMIN'],
   },
 ];

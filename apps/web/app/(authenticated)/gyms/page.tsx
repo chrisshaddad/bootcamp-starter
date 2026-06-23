@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Building2, ShieldX } from 'lucide-react';
 import { useState } from 'react';
@@ -83,6 +84,7 @@ export default function GymsPage() {
   const router = useRouter();
   const { user, isLoading: userLoading } = useUser();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [page, setPage] = useState(1);
 
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
 
@@ -93,8 +95,10 @@ export default function GymsPage() {
     error,
   } = useGyms({
     status: statusFilter === 'all' ? undefined : (statusFilter as GymStatus),
+    page,
     enabled: isSuperAdmin,
   });
+  const totalPages = Math.ceil((total ?? 0) / 20);
 
   if (userLoading) {
     return <LoadingSkeleton />;
@@ -116,7 +120,10 @@ export default function GymsPage() {
         <div className="flex items-center gap-4">
           <Select
             value={statusFilter}
-            onValueChange={(value) => setStatusFilter(value as StatusFilter)}
+            onValueChange={(value) => {
+              setStatusFilter(value as StatusFilter);
+              setPage(1);
+            }}
           >
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Filter by status" />
@@ -211,6 +218,35 @@ export default function GymsPage() {
                 ))}
               </TableBody>
             </Table>
+          )}
+          {!gymsLoading && !error && total !== undefined && totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-gray-100 pt-4 mt-2">
+              <p className="text-sm text-gray-500">
+                Showing {(page - 1) * 20 + 1}–{Math.min(page * 20, total)} of{' '}
+                {total}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => p - 1)}
+                  disabled={page === 1}
+                >
+                  Previous
+                </Button>
+                <span className="text-sm text-gray-600">
+                  Page {page} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => p + 1)}
+                  disabled={page >= totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>

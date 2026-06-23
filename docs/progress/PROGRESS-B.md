@@ -27,4 +27,5 @@ _(none yet)_
 
 ## Notes for the next agent
 
-_(none yet)_
+- **Pagination pattern (required for list pages):** Follow the pattern established in A1/A2 — see `PROGRESS-A.md` Decisions section. Export a named `*_PAGE_SIZE = 25` constant from the hook, pass it as `limit` in URL params, use it for `totalPages` math and range text. Required for: **B0** (`instructors/page.tsx`) and **B3** (`app/(member)/bookings/page.tsx`). B1 sessions use date-range filtering (not page numbers) — different approach, no `PAGE_SIZE` needed there. B2 bookings roster is bounded per session — no pagination needed.
+- **Inline form validation pattern (required for all forms):** use `mode: 'onTouched'` on `useForm`, add `noValidate` to the `<form>` element (prevents browser-native "Please enter a valid value" tooltip from firing on submit before Zod runs), and add `{ valueAsNumber: true }` to `form.register(...)` for every `type="number"` input. Without `valueAsNumber: true`, RHF passes the raw string to Zod and inline validation misfires on blur. Applies to: B0 instructor forms, B1 session capacity/times form, B2 bookings form. See `PROGRESS-A.md` Decisions section for the full pattern.
