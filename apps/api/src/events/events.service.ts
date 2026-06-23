@@ -53,6 +53,17 @@ export class EventsService {
     });
   }
 
+  private async getPresenterMemberId(
+    userId: string,
+    organizationId: string,
+  ): Promise<string | null> {
+    const membership = await this.getOrgMembership(userId, organizationId);
+    if (membership && membership.role === 'PRESENTER') {
+      return membership.id;
+    }
+    return null;
+  }
+
   private async evaluateRegistrationEligibility(
     user: Pick<User, 'id' | 'role'>,
     event: {
@@ -170,8 +181,20 @@ export class EventsService {
     const skip = (page - 1) * limit;
 
     const organizationId = resolveOrganizationScope(user, requestedOrgId);
+
+    // Check if user is a presenter in the organization
+    let presenterMemberId: string | null = null;
+    if (user.role === 'MEMBER' && organizationId) {
+      presenterMemberId = await this.getPresenterMemberId(
+        user.id,
+        organizationId,
+      );
+    }
+
     const where = {
       ...(organizationId ? { organizationId } : {}),
+      // If user is a presenter, filter by their presented events
+      ...(presenterMemberId ? { presenterId: presenterMemberId } : {}),
       ...(upcoming === true ? { startsAt: { gt: new Date() } } : {}),
       ...(upcoming === false ? { startsAt: { lte: new Date() } } : {}),
     };
@@ -194,6 +217,11 @@ export class EventsService {
               username: true,
             },
           },
+          _count: {
+            select: {
+              attendees: true,
+            },
+          },
         },
       }),
       this.prisma.event.count({ where }),
@@ -206,12 +234,13 @@ export class EventsService {
 
     this.logger.log(`Listed ${rows.length} events (total: ${total})`);
 
-    const events = rows.map(({ presenter, startsAt, ...event }) => ({
+    const events = rows.map(({ presenter, startsAt, _count, ...event }) => ({
       ...event,
       startsAt,
       presenter: presenter ?? null,
       isRegistered: registeredEventIds.has(event.id),
       isUpcoming: this.isUpcoming(startsAt),
+      attendeeCount: _count.attendees,
     }));
 
     return { events, total };
@@ -221,10 +250,21 @@ export class EventsService {
     const organizationId =
       user.role === 'SUPER_ADMIN' ? undefined : resolveOrganizationScope(user);
 
+    // Check if user is a presenter in the organization
+    let presenterMemberId: string | null = null;
+    if (user.role === 'MEMBER' && organizationId) {
+      presenterMemberId = await this.getPresenterMemberId(
+        user.id,
+        organizationId,
+      );
+    }
+
     const event = await this.prisma.event.findFirst({
       where: {
         id,
         ...(organizationId ? { organizationId } : {}),
+        // If user is a presenter, ensure they can only view their own events
+        ...(presenterMemberId ? { presenterId: presenterMemberId } : {}),
       },
       select: this.eventSelect,
     });

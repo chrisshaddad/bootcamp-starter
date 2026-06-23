@@ -114,11 +114,16 @@ export function AppSidebar() {
 
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   const isOrgAdmin = user?.role === 'ORG_ADMIN';
+  const isPresenter =
+    user?.role === 'MEMBER' && user?.memberRole === 'PRESENTER';
+
   const mainNavItems = isSuperAdmin
     ? superAdminNavItems
     : isOrgAdmin
       ? orgAdminNavItems
-      : memberNavItems;
+      : isPresenter
+        ? memberNavItems
+        : memberNavItems;
   const secondaryNavItems = isSuperAdmin
     ? superAdminSecondaryNavItems
     : orgSecondaryNavItems;
