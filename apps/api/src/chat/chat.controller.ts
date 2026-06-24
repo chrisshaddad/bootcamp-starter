@@ -15,7 +15,11 @@ export class ChatController {
     @Body(new ZodValidationPipe(chatRequestSchema)) body: ChatRequest,
     @Res() res: Response,
   ): Promise<void> {
-    // The schema validates the envelope; the AI SDK owns the full UIMessage shape.
-    await this.chatService.streamChat(body.messages as UIMessage[], res);
+    // The schema validates the envelope; the AI SDK owns the full UIMessage shape,
+    // so we assert through `unknown` at this boundary.
+    await this.chatService.streamChat(
+      body.messages as unknown as UIMessage[],
+      res,
+    );
   }
 }

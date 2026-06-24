@@ -1,9 +1,15 @@
 import { z } from 'zod';
 
-// Request for POST /chat — the conversation so far, sent as AI SDK UI messages
-// by the web client's `useChat`. The AI SDK owns the full UIMessage shape, so we
-// validate only the envelope here (a non-empty list).
+// Each message on the wire is an AI SDK UI message. The SDK owns the full
+// UIMessage shape, so we validate the essentials (an object with a `role`) and
+// pass the rest (`id`, `parts`, metadata, …) through untouched — rejecting
+// non-object items that would otherwise fail later in the streaming path.
+const uiMessageSchema = z.looseObject({
+  role: z.string(),
+});
+
+// Request for POST /chat — the conversation so far, sent by the web client's `useChat`.
 export const chatRequestSchema = z.object({
-  messages: z.array(z.unknown()).min(1, 'At least one message is required'),
+  messages: z.array(uiMessageSchema).min(1, 'At least one message is required'),
 });
 export type ChatRequest = z.infer<typeof chatRequestSchema>;
