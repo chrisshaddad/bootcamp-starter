@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import type { Response } from 'express';
 import { google } from '@ai-sdk/google';
 import { convertToModelMessages, streamText, type UIMessage } from 'ai';
@@ -15,6 +15,8 @@ need to answer it.`;
 
 @Injectable()
 export class ChatService {
+  private readonly logger = new Logger(ChatService.name);
+
   /**
    * Streams a chat completion for the given conversation directly to the HTTP
    * response, using the AI SDK's UI message stream protocol that `useChat` expects.
@@ -26,6 +28,12 @@ export class ChatService {
       model: google(CHAT_MODEL),
       system: SYSTEM_PROMPT,
       messages: await convertToModelMessages(messages),
+      onError: ({ error }) => {
+        this.logger.error(
+          'Chat streaming failed',
+          error instanceof Error ? error.stack : String(error),
+        );
+      },
     });
 
     result.pipeUIMessageStreamToResponse(res);
