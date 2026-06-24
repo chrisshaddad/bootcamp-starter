@@ -13,3 +13,4 @@ export * from './dashboard';
 export * from './goals';
 export * from './alerts';
 export * from './ai-insights';
+export * from './chat';

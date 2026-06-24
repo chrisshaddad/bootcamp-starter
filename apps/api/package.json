@@ -19,6 +19,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@ai-sdk/google": "^3.0.83",
     "@nestjs/bullmq": "^11.0.4",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.2",
@@ -26,6 +27,7 @@
     "@nestjs/platform-express": "^11.0.1",
     "@repo/contracts": "*",
     "@repo/db": "*",
+    "ai": "^6.0.209",
     "bullmq": "^5.66.4",
     "cookie-parser": "^1.4.7",
     "ioredis": "^5.8.2",
