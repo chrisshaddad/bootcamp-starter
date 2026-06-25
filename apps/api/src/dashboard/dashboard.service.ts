@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import type { DashboardResponse, DashboardQuery } from '@repo/contracts';
+import type { Expense, Sale } from '@repo/db';
 
 /**
  * All arithmetic is done in TypeScript (never delegated to AI).
@@ -209,9 +210,8 @@ export class DashboardService {
   }
 
   private buildTrend(
-    expenses: any[],
-
-    sales: any[],
+    expenses: Expense[],
+    sales: Sale[],
     start: Date,
     end: Date,
   ) {

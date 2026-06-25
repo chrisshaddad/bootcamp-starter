@@ -5,7 +5,7 @@ import { PrismaService } from '../database/prisma.service';
 import { GeminiService } from './gemini.service';
 import { DashboardService } from '../dashboard/dashboard.service';
 import { AI_INSIGHTS_QUEUE, AI_INSIGHTS_JOBS } from './ai-insights.constants';
-import { Prisma } from '@repo/db';
+import { Prisma, type AiInsight } from '@repo/db';
 import type {
   AiInsightListResponse,
   AiInsightResponse,
@@ -148,7 +148,7 @@ export class AiInsightsService {
     return this.toResponse(saved);
   }
 
-  private toResponse(i: any): AiInsightResponse {
+  private toResponse(i: AiInsight): AiInsightResponse {
     return {
       id: i.id,
       organizationId: i.organizationId,
@@ -159,11 +159,11 @@ export class AiInsightsService {
       metrics: i.metrics as Record<string, unknown>,
       periodStart:
         i.periodStart instanceof Date
-          ? i.periodStart.toISOString().split('T')[0]
+          ? i.periodStart.toISOString().split('T')[0]!
           : i.periodStart,
       periodEnd:
         i.periodEnd instanceof Date
-          ? i.periodEnd.toISOString().split('T')[0]
+          ? i.periodEnd.toISOString().split('T')[0]!
           : i.periodEnd,
       createdAt: i.createdAt.toISOString(),
     };
