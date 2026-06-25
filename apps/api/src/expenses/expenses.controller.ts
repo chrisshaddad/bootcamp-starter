@@ -31,7 +31,8 @@ export class ExpensesController {
   @Get()
   async findAll(
     @CurrentUser() user: User,
-    @Query(new ZodValidationPipe(expenseQuerySchema)) query: {
+    @Query(new ZodValidationPipe(expenseQuerySchema))
+    query: {
       page?: string;
       limit?: string;
       categoryId?: string;
@@ -41,8 +42,8 @@ export class ExpensesController {
     },
   ): Promise<ExpenseListResponse> {
     return this.expensesService.findAll(user.organizationId!, {
-      page: query.page ? parseInt(query.page as string, 10) : 1,
-      limit: query.limit ? parseInt(query.limit as string, 10) : 20,
+      page: query.page ? parseInt(query.page, 10) : 1,
+      limit: query.limit ? parseInt(query.limit, 10) : 20,
       categoryId: query.categoryId,
       dateFrom: query.dateFrom,
       dateTo: query.dateTo,

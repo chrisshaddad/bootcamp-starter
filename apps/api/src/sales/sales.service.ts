@@ -18,8 +18,7 @@ export class SalesService {
     organizationId: string,
     query: SaleQuery,
   ): Promise<SaleListResponse> {
-    const { page = 1, limit = 20, productId, dateFrom, dateTo, search } =
-      query;
+    const { page = 1, limit = 20, productId, dateFrom, dateTo, search } = query;
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = { organizationId };
@@ -145,7 +144,6 @@ export class SalesService {
     this.logger.log(`Sale deleted: ${id}`);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   toResponse(s: any): SaleResponse {
     const qty = parseFloat(s.quantity.toString());
     const price = parseFloat(s.unitPrice.toString());
@@ -163,7 +161,8 @@ export class SalesService {
       quantity: s.quantity.toString(),
       unitPrice: s.unitPrice.toString(),
       unitCost: s.unitCost ? s.unitCost.toString() : null,
-      date: s.date instanceof Date ? s.date.toISOString().split('T')[0] : s.date,
+      date:
+        s.date instanceof Date ? s.date.toISOString().split('T')[0] : s.date,
       recurrence: s.recurrence,
       notes: s.notes,
       createdAt: s.createdAt.toISOString(),
@@ -177,9 +176,7 @@ export class SalesService {
             name: s.product.name,
             description: s.product.description,
             unitPrice: s.product.unitPrice.toString(),
-            unitCost: s.product.unitCost
-              ? s.product.unitCost.toString()
-              : null,
+            unitCost: s.product.unitCost ? s.product.unitCost.toString() : null,
             sku: s.product.sku,
             isActive: s.product.isActive,
             createdAt: s.product.createdAt.toISOString(),

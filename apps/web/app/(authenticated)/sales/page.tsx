@@ -28,6 +28,7 @@ import {
 import { Plus, Trash2, Pencil } from 'lucide-react';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { toast } from 'sonner';
+import { z } from 'zod';
 import {
   saleCreateRequestSchema,
   type SaleCreateRequest,
@@ -43,7 +44,7 @@ function formatUSD(value: string): string {
 }
 
 function today(): string {
-  return new Date().toISOString().split('T')[0];
+  return new Date().toISOString().split('T')[0]!;
 }
 
 interface SaleFormProps {
@@ -58,7 +59,11 @@ function SaleForm({ defaultValues, onSubmit, products }: SaleFormProps) {
     handleSubmit,
     setValue,
     formState: { errors, isSubmitting },
-  } = useForm<SaleCreateRequest>({
+  } = useForm<
+    z.input<typeof saleCreateRequestSchema>,
+    unknown,
+    SaleCreateRequest
+  >({
     resolver: zodResolver(saleCreateRequestSchema),
     defaultValues: {
       date: today(),

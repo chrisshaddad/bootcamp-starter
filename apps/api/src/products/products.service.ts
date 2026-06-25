@@ -94,7 +94,9 @@ export class ProductsService {
       where: { id },
       data: {
         ...(data.name !== undefined && { name: data.name }),
-        ...(data.description !== undefined && { description: data.description }),
+        ...(data.description !== undefined && {
+          description: data.description,
+        }),
         ...(data.unitPrice !== undefined && { unitPrice: data.unitPrice }),
         ...(data.unitCost !== undefined && { unitCost: data.unitCost }),
         ...(data.sku !== undefined && { sku: data.sku }),
@@ -113,7 +115,6 @@ export class ProductsService {
     this.logger.log(`Product deleted: ${id}`);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private toResponse(p: any): ProductResponse {
     return {
       id: p.id,

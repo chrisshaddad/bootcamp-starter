@@ -139,7 +139,6 @@ export class AlertsService {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private toResponse(a: any): AlertResponse {
     return {
       id: a.id,

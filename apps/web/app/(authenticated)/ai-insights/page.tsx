@@ -41,7 +41,7 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 function today(): string {
-  return new Date().toISOString().split('T')[0];
+  return new Date().toISOString().split('T')[0]!;
 }
 
 function firstOfMonth(): string {

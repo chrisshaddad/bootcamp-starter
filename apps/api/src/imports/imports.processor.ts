@@ -39,8 +39,7 @@ export class ImportsProcessor extends WorkerHost {
   }
 
   private async handleProcessFile(data: ProcessFileJobData): Promise<void> {
-    const { importId, organizationId, createdById, type, columnMapping } =
-      data;
+    const { importId, organizationId, createdById, type, columnMapping } = data;
 
     // Mark as processing
     await this.prisma.import.update({
@@ -125,8 +124,7 @@ export class ImportsProcessor extends WorkerHost {
 
           successCount++;
         } catch (err) {
-          const msg =
-            err instanceof Error ? err.message : 'Unknown error';
+          const msg = err instanceof Error ? err.message : 'Unknown error';
           await this.prisma.importRow.update({
             where: { id: dbRow.id },
             data: { status: 'error', errorMsg: msg },
@@ -239,7 +237,8 @@ export class ImportsProcessor extends WorkerHost {
     createdById: string,
   ) {
     if (!data.date) throw new Error('Missing required field: date');
-    if (!data.description) throw new Error('Missing required field: description');
+    if (!data.description)
+      throw new Error('Missing required field: description');
     if (!data.amount) throw new Error('Missing required field: amount');
 
     const amount = parseFloat(data.amount.replace(/[^0-9.-]/g, ''));
@@ -299,9 +298,7 @@ export class ImportsProcessor extends WorkerHost {
       throw new Error(`Invalid date: ${data.date}`);
     }
 
-    const quantity = data.quantity
-      ? parseFloat(data.quantity)
-      : 1;
+    const quantity = data.quantity ? parseFloat(data.quantity) : 1;
 
     const unitCost = data.unitCost
       ? parseFloat(data.unitCost.replace(/[^0-9.-]/g, ''))
@@ -351,7 +348,10 @@ export class ImportsProcessor extends WorkerHost {
 
     // Upsert by name so re-imports don't create duplicates
     const existing = await this.prisma.product.findFirst({
-      where: { organizationId, name: { equals: data.name.trim(), mode: 'insensitive' } },
+      where: {
+        organizationId,
+        name: { equals: data.name.trim(), mode: 'insensitive' },
+      },
     });
 
     if (existing) {

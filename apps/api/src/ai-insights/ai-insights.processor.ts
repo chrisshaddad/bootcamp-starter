@@ -31,9 +31,7 @@ export class AiInsightsProcessor extends WorkerHost {
     }
   }
 
-  private async handleGenerate(
-    data: GenerateInsightJobData,
-  ): Promise<void> {
+  private async handleGenerate(data: GenerateInsightJobData): Promise<void> {
     const { organizationId, type, periodStart, periodEnd } = data;
 
     await this.aiInsightsService.generate(

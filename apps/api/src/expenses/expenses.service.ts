@@ -18,8 +18,14 @@ export class ExpensesService {
     organizationId: string,
     query: ExpenseQuery,
   ): Promise<ExpenseListResponse> {
-    const { page = 1, limit = 20, categoryId, dateFrom, dateTo, search } =
-      query;
+    const {
+      page = 1,
+      limit = 20,
+      categoryId,
+      dateFrom,
+      dateTo,
+      search,
+    } = query;
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = { organizationId };
@@ -100,9 +106,7 @@ export class ExpensesService {
       },
     });
 
-    this.logger.log(
-      `Expense created: ${expense.id} for org ${organizationId}`,
-    );
+    this.logger.log(`Expense created: ${expense.id} for org ${organizationId}`);
     return this.toResponse(expense);
   }
 
@@ -143,7 +147,6 @@ export class ExpensesService {
     this.logger.log(`Expense deleted: ${id}`);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   toResponse(e: any): ExpenseResponse {
     return {
       id: e.id,
@@ -152,7 +155,8 @@ export class ExpensesService {
       createdById: e.createdById,
       description: e.description,
       amount: e.amount.toString(),
-      date: e.date instanceof Date ? e.date.toISOString().split('T')[0] : e.date,
+      date:
+        e.date instanceof Date ? e.date.toISOString().split('T')[0] : e.date,
       recurrence: e.recurrence,
       notes: e.notes,
       createdAt: e.createdAt.toISOString(),

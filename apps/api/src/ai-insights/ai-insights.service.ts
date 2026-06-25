@@ -134,11 +134,7 @@ export class AiInsightsService {
     const saved = await this.prisma.aiInsight.create({
       data: {
         organizationId,
-        type: type as
-          | 'PROFITABILITY'
-          | 'EXPENSE'
-          | 'REVENUE'
-          | 'GOAL',
+        type: type as 'PROFITABILITY' | 'EXPENSE' | 'REVENUE' | 'GOAL',
         title: insight.title,
         summary: insight.summary,
         recommendations: insight.recommendations,
@@ -152,7 +148,6 @@ export class AiInsightsService {
     return this.toResponse(saved);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private toResponse(i: any): AiInsightResponse {
     return {
       id: i.id,

@@ -209,9 +209,8 @@ export class DashboardService {
   }
 
   private buildTrend(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expenses: any[],
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     sales: any[],
     start: Date,
     end: Date,

@@ -105,7 +105,9 @@ Provide:
 Respond as JSON matching the schema exactly. Do not include any markdown. Do not perform arithmetic.`;
   }
 
-  private validateInsight(insight: unknown): asserts insight is StructuredInsight {
+  private validateInsight(
+    insight: unknown,
+  ): asserts insight is StructuredInsight {
     if (
       typeof insight !== 'object' ||
       insight === null ||

@@ -7,10 +7,7 @@ import { DatabaseModule } from '../database/database.module';
 import { IMPORT_QUEUE } from './imports.constants';
 
 @Module({
-  imports: [
-    DatabaseModule,
-    BullModule.registerQueue({ name: IMPORT_QUEUE }),
-  ],
+  imports: [DatabaseModule, BullModule.registerQueue({ name: IMPORT_QUEUE })],
   controllers: [ImportsController],
   providers: [ImportsService, ImportsProcessor],
   exports: [ImportsService],

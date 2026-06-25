@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import * as crypto from 'crypto';
@@ -176,7 +181,9 @@ export class AuthService {
       });
     });
 
-    this.logger.log(`Registered new org "${organizationName}" with admin ${user.id}`);
+    this.logger.log(
+      `Registered new org "${organizationName}" with admin ${user.id}`,
+    );
 
     // Immediately send them a magic link to log in
     return this.requestMagicLink(normalizedEmail);

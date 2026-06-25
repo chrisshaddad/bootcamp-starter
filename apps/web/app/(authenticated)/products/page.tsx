@@ -20,6 +20,7 @@ import {
 import { Plus, Trash2, Pencil, Package } from 'lucide-react';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { toast } from 'sonner';
+import { z } from 'zod';
 import {
   productCreateRequestSchema,
   type ProductCreateRequest,
@@ -43,7 +44,11 @@ function ProductForm({ defaultValues, onSubmit }: ProductFormProps) {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<ProductCreateRequest>({
+  } = useForm<
+    z.input<typeof productCreateRequestSchema>,
+    unknown,
+    ProductCreateRequest
+  >({
     resolver: zodResolver(productCreateRequestSchema),
     defaultValues: { isActive: true, ...defaultValues },
   });

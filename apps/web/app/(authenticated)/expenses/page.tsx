@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useExpenses } from '@/hooks/use-expenses';
 import { useExpenseCategories } from '@/hooks/use-expense-categories';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -28,6 +28,7 @@ import {
 import { Plus, Trash2, Pencil } from 'lucide-react';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { toast } from 'sonner';
+import { z } from 'zod';
 import {
   expenseCreateRequestSchema,
   type ExpenseCreateRequest,
@@ -42,7 +43,7 @@ function formatUSD(value: string): string {
 }
 
 function today(): string {
-  return new Date().toISOString().split('T')[0];
+  return new Date().toISOString().split('T')[0]!;
 }
 
 interface ExpenseFormProps {
@@ -63,7 +64,11 @@ function ExpenseForm({
     handleSubmit,
     setValue,
     formState: { errors, isSubmitting },
-  } = useForm<ExpenseCreateRequest>({
+  } = useForm<
+    z.input<typeof expenseCreateRequestSchema>,
+    unknown,
+    ExpenseCreateRequest
+  >({
     resolver: zodResolver(expenseCreateRequestSchema),
     defaultValues: {
       date: today(),

@@ -321,6 +321,28 @@ function DonutChart({
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
+  const handleSliceHover = useCallback(
+    (
+      e: React.MouseEvent,
+      s: { categoryName: string; amount: string; percentage: number; color: string },
+      i: number,
+    ) => {
+      const svgEl = svgRef.current;
+      if (!svgEl) return;
+      const rect = svgEl.getBoundingClientRect();
+      setHoveredIdx(i);
+      setTooltip({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+        categoryName: s.categoryName,
+        amount: s.amount,
+        percentage: s.percentage,
+        color: s.color,
+      });
+    },
+    [],
+  );
+
   if (!data.length) {
     return (
       <div className="flex h-[180px] items-center justify-center text-sm text-muted-foreground">
@@ -349,21 +371,6 @@ function DonutChart({
     const large = endDeg - startDeg > 180 ? 1 : 0;
     return `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}`;
   };
-
-  const handleSliceHover = useCallback((e: React.MouseEvent, s: typeof slices[0], i: number) => {
-    const svgEl = svgRef.current;
-    if (!svgEl) return;
-    const rect = svgEl.getBoundingClientRect();
-    setHoveredIdx(i);
-    setTooltip({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-      categoryName: s.categoryName,
-      amount: s.amount,
-      percentage: s.percentage,
-      color: s.color,
-    });
-  }, []);
 
   const hoveredSlice = hoveredIdx !== null ? slices[hoveredIdx] : null;
 

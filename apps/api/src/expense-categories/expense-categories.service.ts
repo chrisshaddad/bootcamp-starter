@@ -93,7 +93,9 @@ export class ExpenseCategoriesService {
       where: { id },
       data: {
         ...(data.name !== undefined && { name: data.name }),
-        ...(data.description !== undefined && { description: data.description }),
+        ...(data.description !== undefined && {
+          description: data.description,
+        }),
         ...(data.color !== undefined && { color: data.color }),
       },
     });
@@ -140,7 +142,6 @@ export class ExpenseCategoriesService {
     this.logger.log(`Default categories seeded for org ${organizationId}`);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private toResponse(c: any): ExpenseCategoryResponse {
     return {
       id: c.id,

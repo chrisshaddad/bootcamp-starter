@@ -7,6 +7,7 @@ import type {
   ImportListResponse,
   ImportResponse,
   ImportRowListResponse,
+  ImportType,
 } from '@repo/contracts';
 
 const ACTIVE_STATUSES = new Set(['PENDING', 'PROCESSING']);
@@ -41,7 +42,7 @@ export function useImports(options: { page?: number } = {}) {
 
   const uploadImport = useCallback(
     async (params: {
-      type: 'EXPENSES' | 'SALES';
+      type: ImportType;
       fileName: string;
       fileContent: string; // base64
       columnMapping: Record<string, string>;
