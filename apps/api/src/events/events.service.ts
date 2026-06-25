@@ -54,19 +54,23 @@ export class EventsService {
   }
 
   private async evaluateRegistrationEligibility(
-    userId: string,
+    user: Pick<User, 'id' | 'role'>,
     event: {
       organizationId: string;
       startsAt: Date;
       presenterId: string | null;
     },
   ): Promise<boolean> {
+    if (user.role !== 'MEMBER') {
+      return false;
+    }
+
     if (!this.isUpcoming(event.startsAt)) {
       return false;
     }
 
     const membership = await this.getOrgMembership(
-      userId,
+      user.id,
       event.organizationId,
     );
 
@@ -82,17 +86,23 @@ export class EventsService {
       return event.presenterId !== membership.id;
     }
 
-    return false;
+    return true;
   }
 
   private async assertCanRegister(
-    userId: string,
+    user: Pick<User, 'id' | 'role'>,
     event: {
       organizationId: string;
       startsAt: Date;
       presenterId: string | null;
     },
   ): Promise<void> {
+    if (user.role !== 'MEMBER') {
+      throw new ForbiddenException(
+        'Only organization members can register as event attendees',
+      );
+    }
+
     if (!this.isUpcoming(event.startsAt)) {
       throw new BadRequestException(
         'Registration is only available for upcoming events',
@@ -100,7 +110,7 @@ export class EventsService {
     }
 
     const membership = await this.getOrgMembership(
-      userId,
+      user.id,
       event.organizationId,
     );
 
@@ -121,14 +131,14 @@ export class EventsService {
   }
 
   private async canUserRegister(
-    userId: string,
+    user: Pick<User, 'id' | 'role'>,
     event: {
       organizationId: string;
       startsAt: Date;
       presenterId: string | null;
     },
   ): Promise<boolean> {
-    return this.evaluateRegistrationEligibility(userId, event);
+    return this.evaluateRegistrationEligibility(user, event);
   }
 
   private async getRegisteredEventIds(
@@ -239,8 +249,7 @@ export class EventsService {
       presenter: presenter ?? null,
       isRegistered,
       isUpcoming,
-      canRegister:
-        !isRegistered && (await this.canUserRegister(user.id, event)),
+      canRegister: !isRegistered && (await this.canUserRegister(user, event)),
       attendeeCount: _count.attendees,
     };
   }
@@ -260,7 +269,7 @@ export class EventsService {
       throw new NotFoundException(`Event with ID ${eventId} not found`);
     }
 
-    await this.assertCanRegister(user.id, event);
+    await this.assertCanRegister(user, event);
 
     try {
       await this.prisma.eventAttendee.create({

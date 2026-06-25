@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { PrismaClient } from '../../src/generated/prisma/client';
 
 interface MemberSeed {
@@ -9,6 +10,7 @@ interface MemberSeed {
 }
 
 interface EventSeed {
+  seedKey: string;
   eventName: string;
   presenterUsername: string;
   organizationName: string;
@@ -21,6 +23,20 @@ function daysFromNow(days: number): Date {
   date.setDate(date.getDate() + days);
   date.setHours(10, 0, 0, 0);
   return date;
+}
+
+function seedEventId(seedKey: string): string {
+  const hash = createHash('sha256')
+    .update(`coordly:event:${seedKey}`)
+    .digest('hex');
+
+  return [
+    hash.slice(0, 8),
+    hash.slice(8, 12),
+    hash.slice(12, 16),
+    `4${hash.slice(17, 20)}`,
+    hash.slice(20, 32),
+  ].join('-');
 }
 
 const MEMBERS: MemberSeed[] = [
@@ -61,6 +77,7 @@ const MEMBERS: MemberSeed[] = [
 
 const EVENTS: EventSeed[] = [
   {
+    seedKey: 'techcorp-leadership-workshop',
     eventName: 'Leadership Workshop',
     presenterUsername: 'jsmith',
     organizationName: 'TechCorp Solutions',
@@ -68,6 +85,7 @@ const EVENTS: EventSeed[] = [
     startsAt: daysFromNow(7),
   },
   {
+    seedKey: 'techcorp-team-sync-meeting',
     eventName: 'Team Sync Meeting',
     presenterUsername: 'alee',
     organizationName: 'TechCorp Solutions',
@@ -75,6 +93,7 @@ const EVENTS: EventSeed[] = [
     startsAt: daysFromNow(14),
   },
   {
+    seedKey: 'green-energy-sustainability-camp',
     eventName: 'Sustainability Camp',
     presenterUsername: 'mchen',
     organizationName: 'Green Energy Partners',
@@ -82,6 +101,7 @@ const EVENTS: EventSeed[] = [
     startsAt: daysFromNow(-7),
   },
   {
+    seedKey: 'green-energy-renewable-seminar',
     eventName: 'Renewable Energy Seminar',
     presenterUsername: 'mchen',
     organizationName: 'Green Energy Partners',
@@ -89,6 +109,7 @@ const EVENTS: EventSeed[] = [
     startsAt: daysFromNow(10),
   },
   {
+    seedKey: 'datasync-analytics-bootcamp',
     eventName: 'Data Analytics Bootcamp',
     presenterUsername: 'tpatel',
     organizationName: 'DataSync Analytics',
@@ -209,36 +230,24 @@ export async function seedCoordly(prisma: PrismaClient) {
       continue;
     }
 
-    const existingEvent = await prisma.event.findFirst({
-      where: {
-        eventName: event.eventName,
-        organizationId: organization.id,
-      },
-    });
-
-    if (existingEvent) {
-      await prisma.event.update({
-        where: { id: existingEvent.id },
-        data: {
-          presenterId,
-          startsAt: event.startsAt,
-        },
-      });
-      console.log(`  Event updated: ${event.eventName}`);
-      continue;
-    }
-
-    await prisma.event.create({
-      data: {
+    await prisma.event.upsert({
+      where: { id: seedEventId(event.seedKey) },
+      create: {
+        id: seedEventId(event.seedKey),
         eventName: event.eventName,
         presenterId,
         organizationId: organization.id,
         startsAt: event.startsAt,
       },
+      update: {
+        eventName: event.eventName,
+        presenterId,
+        startsAt: event.startsAt,
+      },
     });
 
     console.log(
-      `  Created event: ${event.eventName} (presenter: ${event.presenterUsername})`,
+      `  Event ready: ${event.eventName} (presenter: ${event.presenterUsername})`,
     );
   }
 
