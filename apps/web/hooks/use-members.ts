@@ -1,6 +1,6 @@
 'use client';
 
-import useSWR from 'swr';
+import useSWR, { type KeyedMutator } from 'swr';
 import type { MemberListResponse } from '@repo/contracts';
 
 interface UseMembersOptions {
@@ -12,7 +12,7 @@ interface UseMembersReturn {
   total: number | undefined;
   isLoading: boolean;
   error: Error | undefined;
-  mutate: () => void;
+  mutate: KeyedMutator<MemberListResponse>;
 }
 
 export function useMembers(options: UseMembersOptions = {}): UseMembersReturn {
