@@ -22,6 +22,7 @@ import {
   type MemberUpdateRequest,
 } from '@repo/contracts';
 import { useMember } from '@/hooks/use-members';
+import { SubscriptionsPanel } from './subscriptions-panel';
 import { ApiError } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -338,6 +339,8 @@ export default function MemberDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      <SubscriptionsPanel memberId={memberId} />
 
       <Dialog
         open={showEditDialog}
