@@ -72,7 +72,12 @@ export function proxy(request: NextRequest) {
 
   // Non-MEMBER users (ORG_ADMIN, SUPER_ADMIN) must not access portal routes.
   // Guard on isKnownRole so an absent/stale role cookie doesn't block a valid member session.
-  if (isAuthenticated && isKnownRole(role) && role !== 'MEMBER' && isMemberPortalRoute(pathname)) {
+  if (
+    isAuthenticated &&
+    isKnownRole(role) &&
+    role !== 'MEMBER' &&
+    isMemberPortalRoute(pathname)
+  ) {
     return NextResponse.redirect(new URL(ADMIN_HOME, request.url));
   }
 

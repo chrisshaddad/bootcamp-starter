@@ -43,7 +43,7 @@ export function useUser(options: UseUserOptions = {}): UseUserReturn {
     // Gym suspended → redirect to suspended page
     if (data?.gymStatus === 'SUSPENDED') {
       router.replace('/suspended');
-    // Member deactivated → redirect to deactivated page
+      // Member deactivated → redirect to deactivated page
     } else if (data?.memberStatus === 'INACTIVE') {
       router.replace('/portal/deactivated');
     }

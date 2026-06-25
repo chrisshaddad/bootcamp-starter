@@ -73,9 +73,7 @@ function VerifyContent() {
             <h1 className="mt-4 text-xl font-semibold text-foreground">
               Successfully verified!
             </h1>
-            <p className="mt-2 text-muted-foreground">
-              Redirecting you now...
-            </p>
+            <p className="mt-2 text-muted-foreground">Redirecting you now...</p>
           </>
         )}
 
