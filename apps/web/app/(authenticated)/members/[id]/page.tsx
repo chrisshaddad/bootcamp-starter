@@ -16,6 +16,7 @@ import {
   Edit2,
   UserX,
   UserCheck,
+  Send,
 } from 'lucide-react';
 import {
   memberUpdateRequestSchema,
@@ -23,7 +24,7 @@ import {
 } from '@repo/contracts';
 import { useMember } from '@/hooks/use-members';
 import { SubscriptionsPanel } from './subscriptions-panel';
-import { ApiError } from '@/lib/api';
+import { ApiError, apiPost } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -98,12 +99,14 @@ export default function MemberDetailPage() {
   const router = useRouter();
   const memberId = params.id as string;
 
-  const { member, isLoading, error, update } = useMember(memberId);
+  const { member, isLoading, error, update, mutate } = useMember(memberId);
 
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isTogglingStatus, setIsTogglingStatus] = useState(false);
+  const [isInviting, setIsInviting] = useState(false);
   const [dobMonth, setDobMonth] = useState(new Date(2000, 0));
 
   const form = useForm<MemberUpdateRequest>({
@@ -170,6 +173,25 @@ export default function MemberDetailPage() {
     }
   });
 
+  const handleInvite = async () => {
+    if (!member) return;
+    setIsInviting(true);
+    try {
+      await apiPost(`/members/${memberId}/invite`);
+      toast.success(
+        "Portal invite sent — check the member's email for a login link",
+      );
+      setShowInviteDialog(false);
+      mutate();
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : 'Failed to send invite',
+      );
+    } finally {
+      setIsInviting(false);
+    }
+  };
+
   const handleToggleStatus = async () => {
     if (!member) return;
     setIsTogglingStatus(true);
@@ -235,6 +257,17 @@ export default function MemberDetailPage() {
         </div>
 
         <div className="flex gap-3">
+          {!member.userId && isActive && (
+            <Button
+              variant="outline"
+              className="gap-2 border-primary-200 text-primary-base hover:bg-primary-100"
+              onClick={() => setShowInviteDialog(true)}
+              disabled={isInviting}
+            >
+              <Send className="h-4 w-4" />
+              Invite to Portal
+            </Button>
+          )}
           <Button variant="outline" className="gap-2" onClick={openEdit}>
             <Edit2 className="h-4 w-4" />
             Edit
@@ -319,7 +352,7 @@ export default function MemberDetailPage() {
             {member.userId ? (
               <div className="rounded-lg bg-primary-100 p-4">
                 <div className="text-sm font-medium text-primary-base">
-                  Member portal access granted
+                  Portal access active
                 </div>
                 <p className="mt-1 text-sm text-gray-600">
                   This member has been invited and can log in to the member
@@ -327,13 +360,28 @@ export default function MemberDetailPage() {
                 </p>
               </div>
             ) : (
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-                <div className="text-sm font-medium text-gray-700">
-                  No portal access yet
+              <div className="space-y-3">
+                <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                  <div className="text-sm font-medium text-gray-700">
+                    No portal access yet
+                  </div>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Send an invite so this member can log in and view their
+                    subscriptions.
+                  </p>
                 </div>
-                <p className="mt-1 text-sm text-gray-500">
-                  Portal invite will be available in a future phase.
-                </p>
+                {isActive && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 border-primary-200 text-primary-base hover:bg-primary-100"
+                    onClick={() => setShowInviteDialog(true)}
+                    disabled={isInviting}
+                  >
+                    <Send className="h-4 w-4" />
+                    Send Portal Invite
+                  </Button>
+                )}
               </div>
             )}
           </CardContent>
@@ -490,6 +538,37 @@ export default function MemberDetailPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Invite to Member Portal</DialogTitle>
+            <DialogDescription>
+              A magic-link login email will be sent to{' '}
+              <span className="font-medium text-gray-900">{member.email}</span>.
+              The member will be able to log in and view their subscriptions and
+              available plans.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowInviteDialog(false)}
+              disabled={isInviting}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="gap-2 bg-primary-base hover:bg-primary-400 text-white"
+              onClick={handleInvite}
+              disabled={isInviting}
+            >
+              <Send className="h-4 w-4" />
+              {isInviting ? 'Sending...' : 'Send Invite'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

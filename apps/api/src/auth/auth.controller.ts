@@ -27,6 +27,7 @@ import type { User } from '@repo/db';
 import { ZodValidationPipe } from '../common/pipes';
 
 const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const ROLE_COOKIE_NAME = 'bootcamp_starter_role';
 
 @Controller('auth')
 export class AuthController {
@@ -61,6 +62,15 @@ export class AuthController {
       path: '/',
     });
 
+    // Set role cookie (non-HttpOnly so Next.js middleware can read it for role-aware redirects)
+    response.cookie(ROLE_COOKIE_NAME, user.role, {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: SESSION_MAX_AGE_MS,
+      path: '/',
+    });
+
     return { user };
   }
 
@@ -79,6 +89,14 @@ export class AuthController {
     // Clear session cookie
     response.clearCookie(SESSION_COOKIE_NAME, {
       httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+    });
+
+    // Clear role cookie
+    response.clearCookie(ROLE_COOKIE_NAME, {
+      httpOnly: false,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',

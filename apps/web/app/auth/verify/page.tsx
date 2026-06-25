@@ -27,12 +27,15 @@ function VerifyContent() {
 
     const verify = async () => {
       try {
-        await verifyMagicLink({ token });
+        const result = await verifyMagicLink({ token });
         setStatus('success');
         toast.success('Successfully logged in!');
+        // Redirect members to the portal; everyone else to the admin dashboard
+        const destination =
+          result.user.role === 'MEMBER' ? '/portal' : '/dashboard';
         // Small delay to show success state before redirecting
         setTimeout(() => {
-          router.replace('/dashboard');
+          router.replace(destination);
         }, 1000);
       } catch (error) {
         setStatus('error');
@@ -70,9 +73,7 @@ function VerifyContent() {
             <h1 className="mt-4 text-xl font-semibold text-foreground">
               Successfully verified!
             </h1>
-            <p className="mt-2 text-muted-foreground">
-              Redirecting to dashboard...
-            </p>
+            <p className="mt-2 text-muted-foreground">Redirecting you now...</p>
           </>
         )}
 

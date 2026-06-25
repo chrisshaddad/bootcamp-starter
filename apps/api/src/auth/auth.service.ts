@@ -28,10 +28,10 @@ export class AuthService {
    * Creates a magic link token and queues an email to be sent
    */
   async requestMagicLink(email: string): Promise<{ success: boolean }> {
-    // Find user by email (include gym to check approval status for ORG_ADMIN)
+    // Find user by email (include gym for ORG_ADMIN check, member for MEMBER check)
     const user = await this.prisma.user.findUnique({
       where: { email: email.toLowerCase() },
-      include: { gym: true },
+      include: { gym: true, member: true },
     });
 
     if (!user) {
@@ -44,6 +44,14 @@ export class AuthService {
     if (user.role === 'ORG_ADMIN' && user.gym && user.gym.status !== 'ACTIVE') {
       this.logger.warn(
         `Magic link blocked for non-active gym owner: ${user.id} (gym status: ${user.gym.status})`,
+      );
+      return { success: true };
+    }
+
+    // Don't send a login link to deactivated members
+    if (user.role === 'MEMBER' && user.member?.status === 'INACTIVE') {
+      this.logger.warn(
+        `Magic link blocked for inactive member: ${user.id}`,
       );
       return { success: true };
     }
@@ -96,10 +104,10 @@ export class AuthService {
     sessionId: string;
     user: { id: string; email: string; name: string; role: string };
   }> {
-    // Find the magic link (include gym to check approval status for ORG_ADMIN)
+    // Find the magic link (include gym for ORG_ADMIN check, member for MEMBER check)
     const magicLink = await this.prisma.magicLink.findUnique({
       where: { token },
-      include: { user: { include: { gym: true } } },
+      include: { user: { include: { gym: true, member: true } } },
     });
 
     if (!magicLink) {
@@ -135,11 +143,24 @@ export class AuthService {
       }
     }
 
-    // Mark as used
-    await this.prisma.magicLink.update({
-      where: { id: magicLink.id },
+    // Block deactivated members
+    if (
+      magicLink.user.role === 'MEMBER' &&
+      magicLink.user.member?.status === 'INACTIVE'
+    ) {
+      throw new ForbiddenException('Your account has been deactivated');
+    }
+
+    // Atomically mark as used — WHERE usedAt IS NULL ensures only one concurrent
+    // request wins; a second concurrent verify will see count === 0 and be rejected.
+    const claim = await this.prisma.magicLink.updateMany({
+      where: { id: magicLink.id, usedAt: null },
       data: { usedAt: new Date() },
     });
+
+    if (claim.count === 0) {
+      throw new NotFoundException('This magic link has already been used');
+    }
 
     // Confirm user email if not already confirmed
     if (!magicLink.user.isConfirmed) {
@@ -192,12 +213,15 @@ export class AuthService {
   }
 
   /**
-   * Fetch user with gym status for the /auth/me endpoint
+   * Fetch user with gym/member status for the /auth/me endpoint
    */
   async getMe(userId: string) {
     const user = await this.prisma.user.findUniqueOrThrow({
       where: { id: userId },
-      include: { gym: { select: { status: true, statusReason: true } } },
+      include: {
+        gym: { select: { status: true, statusReason: true } },
+        member: { select: { status: true } },
+      },
     });
 
     return {
@@ -209,6 +233,7 @@ export class AuthService {
       isConfirmed: user.isConfirmed,
       gymStatus: user.gym?.status ?? null,
       gymStatusReason: user.gym?.statusReason ?? null,
+      memberStatus: user.member?.status ?? null,
     };
   }
 }

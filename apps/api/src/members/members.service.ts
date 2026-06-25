@@ -5,6 +5,9 @@ import {
   NotFoundException,
   ConflictException,
 } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
+import * as crypto from 'crypto';
 import { Prisma } from '@repo/db';
 import { PrismaService } from '../database/prisma.service';
 import type { MemberStatus } from '@repo/db';
@@ -13,7 +16,11 @@ import type {
   MemberResponse,
   MemberCreateRequest,
   MemberUpdateRequest,
+  MessageResponse,
 } from '@repo/contracts';
+import { MAIL_QUEUE, MAIL_JOBS } from '../mail/mail.constants';
+
+const MAGIC_LINK_EXPIRY_MINUTES = 15;
 
 const MEMBER_SELECT = {
   id: true,
@@ -33,7 +40,10 @@ const MEMBER_SELECT = {
 export class MembersService {
   private readonly logger = new Logger(MembersService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @InjectQueue(MAIL_QUEUE) private readonly mailQueue: Queue,
+  ) {}
 
   /** List all members for a gym with optional status filter and pagination */
   async findAll(
@@ -124,6 +134,89 @@ export class MembersService {
       }
       throw err;
     }
+  }
+
+  /** Provision a portal User for the member and send a magic-link invite email */
+  async invite(memberId: string, gymId: string): Promise<MessageResponse> {
+    const member = await this.prisma.member.findFirst({
+      where: { id: memberId, gymId },
+    });
+    if (!member) {
+      throw new NotFoundException(`Member with ID ${memberId} not found`);
+    }
+
+    if (member.userId) {
+      throw new ConflictException(
+        'This member has already been invited to the portal',
+      );
+    }
+
+    // Reject if another user with this email already exists (e.g. from another gym)
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email: member.email.toLowerCase() },
+    });
+    if (existingUser) {
+      throw new ConflictException(
+        'A user account for this email already exists',
+      );
+    }
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(
+      Date.now() + MAGIC_LINK_EXPIRY_MINUTES * 60 * 1000,
+    );
+
+    // Provision User, link Member, and create magic link in one atomic transaction.
+    // All three writes succeed or none do — no partial invite state can be left behind.
+    const portalUser = await this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          email: member.email.toLowerCase(),
+          name: member.name,
+          role: 'MEMBER',
+          gymId,
+          isConfirmed: false,
+        },
+      });
+
+      await tx.member.update({
+        where: { id: memberId },
+        data: { userId: user.id },
+      });
+
+      await tx.magicLink.create({
+        data: { userId: user.id, token, expiresAt },
+      });
+
+      return user;
+    });
+
+    const appUrl = process.env.APP_URL;
+    const magicLinkUrl = `${appUrl}/auth/verify?token=${token}`;
+
+    // jobId makes re-enqueue idempotent on retry; catch transient queue failures so
+    // a Redis blip doesn't strand an already-committed invite (magic link is in DB).
+    try {
+      await this.mailQueue.add(
+        MAIL_JOBS.SEND_MAGIC_LINK,
+        {
+          email: portalUser.email,
+          magicLink: magicLinkUrl,
+          userName: portalUser.name,
+        },
+        { jobId: token },
+      );
+    } catch (err) {
+      this.logger.error(
+        `Invite email enqueue failed for user ${portalUser.id}: ${(err as Error).message}`,
+      );
+    }
+
+    this.logger.log(
+      `Portal invite sent to member ${memberId} (user ${portalUser.id})`,
+    );
+
+    return { message: 'Portal invite sent successfully' };
   }
 
   /** Update a member's details or status, scoped to the caller's gym */

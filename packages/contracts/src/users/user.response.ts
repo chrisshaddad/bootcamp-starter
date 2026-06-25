@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { userRoleSchema } from './user-role.schema';
 import { gymStatusSchema } from '../gyms/gym-status.schema';
+import { memberStatusSchema } from '../members/member-status.schema';
 
 // User profile (optional nested object)
 const userProfileSchema = z.object({
@@ -22,5 +23,6 @@ export const userResponseSchema = z.object({
   profile: userProfileSchema.nullable().optional(),
   gymStatus: gymStatusSchema.nullable().optional(),
   gymStatusReason: z.string().nullable().optional(),
+  memberStatus: memberStatusSchema.nullable().optional(),
 });
 export type UserResponse = z.infer<typeof userResponseSchema>;

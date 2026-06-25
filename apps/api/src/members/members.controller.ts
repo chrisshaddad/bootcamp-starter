@@ -27,6 +27,7 @@ import type {
   MemberResponse,
   MemberCreateRequest,
   MemberUpdateRequest,
+  MessageResponse,
 } from '@repo/contracts';
 import {
   memberListQuerySchema,
@@ -148,6 +149,39 @@ export class MembersController {
     @CurrentUser() user: User,
   ): Promise<MemberResponse> {
     return this.membersService.create(user.gymId!, dto);
+  }
+
+  @Post(':id/invite')
+  @Roles('ORG_ADMIN')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Invite member to portal',
+    description:
+      'Provisions a MEMBER user account for the gym member and sends a magic-link login email. Idempotent guard: returns 409 if already invited.',
+  })
+  @ApiParam({ name: 'id', type: String, description: 'Member UUID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Invite sent',
+    schema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string', example: 'Portal invite sent successfully' },
+      },
+    },
+  })
+  @ApiResponse({ status: 401, description: 'Not authenticated' })
+  @ApiResponse({ status: 403, description: 'Insufficient role' })
+  @ApiResponse({ status: 404, description: 'Member not found' })
+  @ApiResponse({
+    status: 409,
+    description: 'Already invited or email conflict',
+  })
+  async invite(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: User,
+  ): Promise<MessageResponse> {
+    return this.membersService.invite(id, user.gymId!);
   }
 
   @Patch(':id')
