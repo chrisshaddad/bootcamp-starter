@@ -27,7 +27,7 @@ import { Calendar, ShieldX } from 'lucide-react';
 function ForbiddenPage() {
   return (
     <div className="flex flex-col items-center justify-center py-20">
-      <ShieldX className="mb-4 h-16 w-16 text-red-400" />
+      <ShieldX className="mb-4 h-16 w-16 text-error" />
       <h1 className="mb-2 text-2xl font-bold text-gray-900">Access Denied</h1>
       <p className="max-w-md text-center text-gray-500">
         You don&apos;t have permission to access this page.
@@ -163,7 +163,7 @@ export default function EventsPage() {
               ))}
             </div>
           ) : error ? (
-            <div className="py-10 text-center text-red-500">
+            <div className="py-10 text-center text-error">
               Failed to load events
             </div>
           ) : !events?.length ? (
@@ -186,7 +186,16 @@ export default function EventsPage() {
                   <TableRow
                     key={event.id}
                     className="cursor-pointer"
+                    tabIndex={0}
+                    role="button"
+                    aria-label={`View event ${event.eventName}`}
                     onClick={() => router.push(`/events/${event.id}`)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        router.push(`/events/${event.id}`);
+                      }
+                    }}
                   >
                     <TableCell className="font-medium text-gray-900">
                       {event.eventName}
@@ -203,7 +212,7 @@ export default function EventsPage() {
                     {isAttendeeUser && (
                       <TableCell>
                         {event.isRegistered ? (
-                          <span className="inline-flex rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
+                          <span className="inline-flex rounded-full bg-primary-100 px-2.5 py-0.5 text-xs font-medium text-primary-base">
                             Registered
                           </span>
                         ) : event.isUpcoming ? (
