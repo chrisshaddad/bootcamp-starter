@@ -23,7 +23,6 @@ import {
   type MagicLinkVerifyRequest,
   type UserResponse,
 } from '@repo/contracts';
-import type { User } from '@repo/db';
 import { ZodValidationPipe } from '../common/pipes';
 
 const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -48,11 +47,8 @@ export class AuthController {
     @Body() body: MagicLinkVerifyRequest,
     @Res({ passthrough: true }) response: Response,
   ) {
-    const { sessionId, user } = await this.authService.verifyMagicLink(
-      body.token,
-    );
+    const { sessionId, user } = await this.authService.verifyMagicLink(body.token);
 
-    // Set session cookie
     response.cookie(SESSION_COOKIE_NAME, sessionId, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -71,12 +67,10 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ) {
     const sessionId = request.sessionId;
-
     if (sessionId) {
       await this.authService.logout(sessionId);
     }
 
-    // Clear session cookie
     response.clearCookie(SESSION_COOKIE_NAME, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -88,14 +82,15 @@ export class AuthController {
   }
 
   @Get('me')
-  getCurrentUser(@CurrentUser() user: User): UserResponse {
+  getCurrentUser(@CurrentUser() user: any): UserResponse {
+    // ZERO FAKE LOGIC: Return only the true database schema fields
     return {
       id: user.id,
       email: user.email,
-      name: user.name,
-      role: user.role,
-      organizationId: user.organizationId,
+      accountType: user.accountType,
       isConfirmed: user.isConfirmed,
+      developerProfile: user.developerProfile || null,
+      hiringProfile: user.hiringProfile || null,
     };
   }
 }

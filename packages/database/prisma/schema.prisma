@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
@@ -11,66 +8,340 @@ datasource db {
   schemas  = ["public", "private"]
 }
 
-enum UserRole {
-  SUPER_ADMIN // Manages all organizations (can also accept org registrations)
-  ORG_ADMIN // Manages a single organization (can also invite members to their org)
-  MEMBER
+enum AccountType {
+  DEVELOPER
+  HIRING
+  SUPER_ADMIN
 
   @@schema("public")
 }
 
-enum OrganizationStatus {
-  PENDING // Awaiting super admin approval
-  ACTIVE // Approved and operational
-  REJECTED // Denied by super admin
-  SUSPENDED
-  INACTIVE
+enum OrganizationType {
+  COMPANY
+  AGENCY
+  INDIVIDUAL
+  FREELANCE_CLIENT
+
+  @@schema("public")
+}
+
+enum ProjectStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+
+  @@schema("public")
+}
+
+enum ProjectRoleKey {
+  OWNER
+  EDITOR
+  CONTRIBUTOR
+
+  @@schema("public")
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  UNVERIFIED
+
+  @@schema("public")
+}
+
+enum VerificationSource {
+  GITHUB_CONTRIBUTOR
+  GITHUB_COLLABORATOR
+  MANUAL_INVITE
+
+  @@schema("public")
+}
+
+enum TechnologyCategory {
+  LANGUAGE
+  FRAMEWORK
+  LIBRARY
+  DATABASE
+  CLOUD
+  DEVOPS
+  TOOL
+  OTHER
+
+  @@schema("public")
+}
+
+enum ProjectTechnologySource {
+  SCANNER
+  MANUAL
+  BOTH
+
+  @@schema("public")
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  GIF
+  ARCHITECTURE_DIAGRAM
+
+  @@schema("public")
+}
+
+enum RepositoryVisibility {
+  PUBLIC
+  PRIVATE
 
   @@schema("public")
 }
 
 model User {
-  id             String   @id @default(uuid())
-  email          String   @unique
-  isConfirmed    Boolean  @default(false)
-  name           String
-  role           UserRole @default(MEMBER)
-  organizationId String? // null for SUPER_ADMIN users
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id           String      @id @default(uuid())
+  email        String      @unique
+  passwordHash String
+  accountType  AccountType
+  isConfirmed  Boolean     @default(false)
 
-  sessions              Session[]
-  magicLinks            MagicLink[]
-  profile               UserProfile?
-  organization          Organization?  @relation("OrganizationMembers", fields: [organizationId], references: [id], onDelete: SetNull)
-  createdOrganization   Organization?  @relation("OrganizationCreator")
-  approvedOrganizations Organization[] @relation("OrganizationApprover")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@index([organizationId])
+  developerProfile DeveloperProfile?
+  hiringProfile    HiringProfile?
+
+  sessions   Session[]
+  magicLinks MagicLink[]
+
+  createdProjects     Project[]           @relation("ProjectCreator")
+  addedMembers        ProjectMember[]     @relation("MemberAddedBy")
+  projectMemberships  ProjectMember[]     @relation("UserProjectMemberships")
+  uploadedMedia       ProjectMedia[]
+  savedProjects       SavedProject[]
+  addedTechnologies   ProjectTechnology[] @relation("ProjectTechAddedBy")
+
+  @@index([accountType])
   @@schema("public")
 }
 
-model UserProfile {
-  id          String    @id @default(uuid())
-  userId      String    @unique
-  dateOfBirth DateTime?
-  bio         String?   @db.Text
-  phoneNumber String?
+model DeveloperProfile {
+  id String @id @default(uuid())
+  userId String @unique
 
-  // Address fields
-  street1    String?
-  street2    String?
-  city       String?
-  state      String?
-  postalCode String?
-  country    String?
+  publicSlug  String  @unique
+  displayName String
+  headline    String?
+  bio         String? @db.Text
+  location    String?
 
-  profilePictureUrl String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  profilePictureUrl  String?
+  linkedinUrl        String?
+  personalWebsiteUrl String?
+
+  githubUserId      BigInt?   @unique
+  githubUsername    String?   @unique
+  githubConnectedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@schema("public")
+}
+
+model HiringProfile {
+  id     String @id @default(uuid())
+  userId String @unique
+
+  organizationName String
+  organizationType OrganizationType
+  jobTitle         String?
+
+  linkedinUrl            String?
+  organizationWebsiteUrl String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([organizationName])
+  @@index([organizationType])
+  @@schema("public")
+}
+
+model Repository {
+  id String @id @default(uuid())
+
+  githubRepoId BigInt @unique
+  fullName     String @unique
+  ownerLogin   String
+  repoName     String
+  htmlUrl      String @unique
+
+  defaultBranch String?
+  visibility    RepositoryVisibility @default(PUBLIC)
+
+  lastPushedAt DateTime?
+  lastSyncedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project?
+
+  @@index([ownerLogin])
+  @@index([repoName])
+  @@schema("public")
+}
+
+model Project {
+  id String @id @default(uuid())
+
+  repositoryId    String @unique
+  createdByUserId String
+
+  title String
+  slug  String @unique
+
+  shortDescription String? @db.Text
+  fullDescription  String? @db.Text
+
+  deploymentUrl String?
+
+  status ProjectStatus @default(DRAFT)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  publishedAt DateTime?
+
+  repository Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  createdBy  User       @relation("ProjectCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+
+  members      ProjectMember[]
+  technologies ProjectTechnology[]
+  media        ProjectMedia[]
+  savedByUsers SavedProject[]
+
+  @@index([status])
+  @@index([createdByUserId])
+  @@schema("public")
+}
+
+model ProjectMember {
+  id String @id @default(uuid())
+
+  projectId      String
+  userId         String?
+  githubUsername String?
+
+  role ProjectRoleKey
+
+  contributionRoleLabel String?
+  contributionSummary   String? @db.Text
+  githubPermission      String?
+
+  verificationStatus VerificationStatus  @default(PENDING)
+  verificationSource VerificationSource?
+  verifiedAt         DateTime?
+
+  addedByUserId String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User?   @relation("UserProjectMemberships", fields: [userId], references: [id], onDelete: SetNull)
+  addedBy User?   @relation("MemberAddedBy", fields: [addedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([projectId])
+  @@index([userId])
+  @@index([githubUsername])
+  @@index([verificationStatus])
+  @@schema("public")
+}
+
+model Technology {
+  id       String             @id @default(uuid())
+  name     String
+  slug     String             @unique
+  category TechnologyCategory
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  projects ProjectTechnology[]
+
+  @@index([category])
+  @@schema("public")
+}
+
+model ProjectTechnology {
+  id String @id @default(uuid())
+
+  projectId    String
+  technologyId String
+
+  source ProjectTechnologySource
+
+  evidence   String?   @db.Text
+  detectedAt DateTime?
+
+  addedByUserId String?
+  isPrimary     Boolean @default(false)
+  sortOrder     Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project    Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  technology Technology @relation(fields: [technologyId], references: [id], onDelete: Cascade)
+  addedBy    User?      @relation("ProjectTechAddedBy", fields: [addedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([projectId, technologyId])
+  @@index([projectId])
+  @@index([technologyId])
+  @@index([isPrimary])
+  @@schema("public")
+}
+
+model ProjectMedia {
+  id String @id @default(uuid())
+
+  projectId        String
+  uploadedByUserId String
+
+  mediaType MediaType
+
+  storageKey String
+  publicUrl  String
+
+  caption   String? @db.Text
+  sortOrder Int     @default(0)
+
+  createdAt DateTime @default(now())
+
+  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  uploadedBy User    @relation(fields: [uploadedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([projectId])
+  @@index([uploadedByUserId])
+  @@schema("public")
+}
+
+model SavedProject {
+  id String @id @default(uuid())
+
+  savedByUserId String
+  projectId     String
+
+  note String? @db.Text
+
+  createdAt DateTime @default(now())
+
+  savedBy User    @relation(fields: [savedByUserId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([savedByUserId, projectId])
+  @@index([savedByUserId])
+  @@index([projectId])
   @@schema("public")
 }
 
@@ -89,7 +360,7 @@ model Session {
 model MagicLink {
   id        String    @id @default(uuid())
   userId    String
-  token     String    @unique // securely generated random token, not a UUID
+  token     String    @unique
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime  @default(now())
@@ -99,25 +370,4 @@ model MagicLink {
   @@index([token])
   @@index([userId])
   @@schema("private")
-}
-
-model Organization {
-  id           String             @id @default(uuid())
-  name         String
-  status       OrganizationStatus @default(PENDING)
-  description  String?            @db.Text
-  website      String?
-  createdById  String             @unique // User can only create one organization
-  approvedById String?
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
-  approvedAt   DateTime? // When super admin approved
-
-  createdBy  User   @relation("OrganizationCreator", fields: [createdById], references: [id])
-  approvedBy User?  @relation("OrganizationApprover", fields: [approvedById], references: [id])
-  users      User[] @relation("OrganizationMembers")
-
-  @@index([approvedById])
-  @@index([status])
-  @@schema("public")
 }
