@@ -74,7 +74,7 @@ function VerifyContent() {
               Successfully verified!
             </h1>
             <p className="mt-2 text-muted-foreground">
-              Redirecting to dashboard...
+              Redirecting you now...
             </p>
           </>
         )}

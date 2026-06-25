@@ -16,6 +16,7 @@ import type {
   MemberResponse,
   MemberCreateRequest,
   MemberUpdateRequest,
+  MessageResponse,
 } from '@repo/contracts';
 import { MAIL_QUEUE, MAIL_JOBS } from '../mail/mail.constants';
 
@@ -136,7 +137,7 @@ export class MembersService {
   }
 
   /** Provision a portal User for the member and send a magic-link invite email */
-  async invite(memberId: string, gymId: string): Promise<{ message: string }> {
+  async invite(memberId: string, gymId: string): Promise<MessageResponse> {
     const member = await this.prisma.member.findFirst({
       where: { id: memberId, gymId },
     });
@@ -160,9 +161,15 @@ export class MembersService {
       );
     }
 
-    // Provision User and link Member atomically
-    const [portalUser] = await this.prisma.$transaction([
-      this.prisma.user.create({
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(
+      Date.now() + MAGIC_LINK_EXPIRY_MINUTES * 60 * 1000,
+    );
+
+    // Provision User, link Member, and create magic link in one atomic transaction.
+    // All three writes succeed or none do — no partial invite state can be left behind.
+    const portalUser = await this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
         data: {
           email: member.email.toLowerCase(),
           name: member.name,
@@ -170,32 +177,40 @@ export class MembersService {
           gymId,
           isConfirmed: false,
         },
-      }),
-    ]);
+      });
 
-    await this.prisma.member.update({
-      where: { id: memberId },
-      data: { userId: portalUser.id },
-    });
+      await tx.member.update({
+        where: { id: memberId },
+        data: { userId: user.id },
+      });
 
-    // Create a magic link and queue the invite email
-    const token = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(
-      Date.now() + MAGIC_LINK_EXPIRY_MINUTES * 60 * 1000,
-    );
+      await tx.magicLink.create({
+        data: { userId: user.id, token, expiresAt },
+      });
 
-    await this.prisma.magicLink.create({
-      data: { userId: portalUser.id, token, expiresAt },
+      return user;
     });
 
     const appUrl = process.env.APP_URL;
     const magicLinkUrl = `${appUrl}/auth/verify?token=${token}`;
 
-    await this.mailQueue.add(MAIL_JOBS.SEND_MAGIC_LINK, {
-      email: portalUser.email,
-      magicLink: magicLinkUrl,
-      userName: portalUser.name,
-    });
+    // jobId makes re-enqueue idempotent on retry; catch transient queue failures so
+    // a Redis blip doesn't strand an already-committed invite (magic link is in DB).
+    try {
+      await this.mailQueue.add(
+        MAIL_JOBS.SEND_MAGIC_LINK,
+        {
+          email: portalUser.email,
+          magicLink: magicLinkUrl,
+          userName: portalUser.name,
+        },
+        { jobId: token },
+      );
+    } catch (err) {
+      this.logger.error(
+        `Invite email enqueue failed for user ${portalUser.id}: ${(err as Error).message}`,
+      );
+    }
 
     this.logger.log(
       `Portal invite sent to member ${memberId} (user ${portalUser.id})`,

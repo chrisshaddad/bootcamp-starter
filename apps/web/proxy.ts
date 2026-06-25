@@ -21,7 +21,14 @@ function isMemberPortalRoute(pathname: string): boolean {
   return pathname === '/portal' || pathname.startsWith('/portal/');
 }
 
-/** Redirect destination for an authenticated user based on their role */
+const KNOWN_ROLES = new Set(['MEMBER', 'ORG_ADMIN', 'SUPER_ADMIN']);
+
+function isKnownRole(role: string | undefined): role is string {
+  return !!role && KNOWN_ROLES.has(role);
+}
+
+/** Redirect destination for an authenticated user based on their role.
+ * Falls back to ADMIN_HOME for unknown/absent roles; client-side auth corrects on load. */
 function homeForRole(role: string | undefined): string {
   return role === 'MEMBER' ? MEMBER_HOME : ADMIN_HOME;
 }
@@ -63,8 +70,9 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL(MEMBER_HOME, request.url));
   }
 
-  // Non-MEMBER users (ORG_ADMIN, SUPER_ADMIN) must not access portal routes
-  if (isAuthenticated && role !== 'MEMBER' && isMemberPortalRoute(pathname)) {
+  // Non-MEMBER users (ORG_ADMIN, SUPER_ADMIN) must not access portal routes.
+  // Guard on isKnownRole so an absent/stale role cookie doesn't block a valid member session.
+  if (isAuthenticated && isKnownRole(role) && role !== 'MEMBER' && isMemberPortalRoute(pathname)) {
     return NextResponse.redirect(new URL(ADMIN_HOME, request.url));
   }
 

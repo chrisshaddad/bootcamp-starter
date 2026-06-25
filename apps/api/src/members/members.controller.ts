@@ -27,6 +27,7 @@ import type {
   MemberResponse,
   MemberCreateRequest,
   MemberUpdateRequest,
+  MessageResponse,
 } from '@repo/contracts';
 import {
   memberListQuerySchema,
@@ -179,7 +180,7 @@ export class MembersController {
   async invite(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: User,
-  ): Promise<{ message: string }> {
+  ): Promise<MessageResponse> {
     return this.membersService.invite(id, user.gymId!);
   }
 

@@ -3,16 +3,10 @@
 import { SWRConfig } from 'swr';
 import { useRouter, usePathname } from 'next/navigation';
 import { fetcher, ApiError } from '@/lib/api';
+import { isAuthRoute } from '@/lib/auth-routes';
 
 interface SWRProviderProps {
   children: React.ReactNode;
-}
-
-const AUTH_ROUTES = ['/login', '/auth', '/suspended'];
-function isAuthRoute(pathname: string): boolean {
-  return AUTH_ROUTES.some(
-    (route) => pathname === route || pathname.startsWith(`${route}/`),
-  );
 }
 
 export function SWRProvider({ children }: SWRProviderProps) {

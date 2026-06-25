@@ -151,11 +151,16 @@ export class AuthService {
       throw new ForbiddenException('Your account has been deactivated');
     }
 
-    // Mark as used
-    await this.prisma.magicLink.update({
-      where: { id: magicLink.id },
+    // Atomically mark as used — WHERE usedAt IS NULL ensures only one concurrent
+    // request wins; a second concurrent verify will see count === 0 and be rejected.
+    const claim = await this.prisma.magicLink.updateMany({
+      where: { id: magicLink.id, usedAt: null },
       data: { usedAt: new Date() },
     });
+
+    if (claim.count === 0) {
+      throw new NotFoundException('This magic link has already been used');
+    }
 
     // Confirm user email if not already confirmed
     if (!magicLink.user.isConfirmed) {

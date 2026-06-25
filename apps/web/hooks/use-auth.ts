@@ -4,6 +4,7 @@ import useSWR from 'swr';
 import { useCallback, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { apiPost, ApiError } from '@/lib/api';
+import { isAuthRoute } from '@/lib/auth-routes';
 import type {
   MagicLinkRequest,
   MagicLinkVerifyRequest,
@@ -20,15 +21,6 @@ interface UseUserReturn {
   isAuthenticated: boolean;
   error: ApiError | undefined;
   mutate: () => void;
-}
-
-// Routes where auth redirects should not fire
-const AUTH_ROUTES = ['/login', '/auth', '/suspended', '/portal/deactivated'];
-
-function isAuthRoute(pathname: string): boolean {
-  return AUTH_ROUTES.some(
-    (route) => pathname === route || pathname.startsWith(`${route}/`),
-  );
 }
 
 export function useUser(options: UseUserOptions = {}): UseUserReturn {
@@ -51,10 +43,8 @@ export function useUser(options: UseUserOptions = {}): UseUserReturn {
     // Gym suspended → redirect to suspended page
     if (data?.gymStatus === 'SUSPENDED') {
       router.replace('/suspended');
-    }
-
     // Member deactivated → redirect to deactivated page
-    if (data?.memberStatus === 'INACTIVE') {
+    } else if (data?.memberStatus === 'INACTIVE') {
       router.replace('/portal/deactivated');
     }
   }, [data, error, redirectOnUnauthenticated, router, pathname]);

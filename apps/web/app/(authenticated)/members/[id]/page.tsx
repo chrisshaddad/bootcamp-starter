@@ -257,7 +257,7 @@ export default function MemberDetailPage() {
         </div>
 
         <div className="flex gap-3">
-          {!member.userId && (
+          {!member.userId && isActive && (
             <Button
               variant="outline"
               className="gap-2 border-primary-200 text-primary-base hover:bg-primary-100"
@@ -370,16 +370,18 @@ export default function MemberDetailPage() {
                     subscriptions.
                   </p>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-2 border-primary-200 text-primary-base hover:bg-primary-100"
-                  onClick={() => setShowInviteDialog(true)}
-                  disabled={isInviting}
-                >
-                  <Send className="h-4 w-4" />
-                  Send Portal Invite
-                </Button>
+                {isActive && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 border-primary-200 text-primary-base hover:bg-primary-100"
+                    onClick={() => setShowInviteDialog(true)}
+                    disabled={isInviting}
+                  >
+                    <Send className="h-4 w-4" />
+                    Send Portal Invite
+                  </Button>
+                )}
               </div>
             )}
           </CardContent>

@@ -99,6 +99,16 @@ export class SubscriptionsService {
       );
     }
 
+    const existing = await this.prisma.subscription.findFirst({
+      where: { memberId: dto.memberId, planId: dto.planId, status: 'ACTIVE' },
+      select: { id: true },
+    });
+    if (existing) {
+      throw new BadRequestException(
+        'Member already has an active subscription for this plan',
+      );
+    }
+
     const startDate = new Date();
     startDate.setUTCHours(0, 0, 0, 0);
 
