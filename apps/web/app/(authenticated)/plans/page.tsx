@@ -218,7 +218,7 @@ function AddPlanDialog({
                 {...form.register('description')}
               />
               <p
-                className={`text-xs text-right ${addDescCount > 500 ? 'text-red-500' : 'text-gray-400'}`}
+                className={`text-xs text-right ${addDescCount > 500 ? 'text-error' : 'text-gray-400'}`}
               >
                 {addDescCount} / 500 characters
               </p>
@@ -400,7 +400,7 @@ function EditPlanDialog({
                   {...form.register('description')}
                 />
                 <p
-                  className={`text-xs text-right ${editDescCount > 500 ? 'text-red-500' : 'text-gray-400'}`}
+                  className={`text-xs text-right ${editDescCount > 500 ? 'text-error' : 'text-gray-400'}`}
                 >
                   {editDescCount} / 500 characters
                 </p>

@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  ForbiddenException,
   Get,
   HttpCode,
   Param,
@@ -39,6 +40,13 @@ import { subscriptionSchema } from './subscriptions.swagger';
 @Controller()
 export class SubscriptionsController {
   constructor(private readonly subscriptionsService: SubscriptionsService) {}
+
+  private assertGymId(user: User): string {
+    if (!user.gymId) {
+      throw new ForbiddenException('User is not associated with a gym');
+    }
+    return user.gymId;
+  }
 
   /** List all subscriptions for a member */
   @Get('members/:memberId/subscriptions')
@@ -93,7 +101,7 @@ export class SubscriptionsController {
   ): Promise<SubscriptionListResponse> {
     return this.subscriptionsService.findAllByMember(
       memberId,
-      user.gymId!,
+      this.assertGymId(user),
       query,
     );
   }
@@ -143,7 +151,7 @@ export class SubscriptionsController {
     dto: SubscriptionCreateRequest,
     @CurrentUser() user: User,
   ): Promise<SubscriptionResponse> {
-    return this.subscriptionsService.create(user.gymId!, dto);
+    return this.subscriptionsService.create(this.assertGymId(user), dto);
   }
 
   /** Cancel an active subscription */
@@ -175,6 +183,6 @@ export class SubscriptionsController {
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: User,
   ): Promise<SubscriptionResponse> {
-    return this.subscriptionsService.cancel(id, user.gymId!);
+    return this.subscriptionsService.cancel(id, this.assertGymId(user));
   }
 }
