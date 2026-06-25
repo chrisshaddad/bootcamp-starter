@@ -13,7 +13,8 @@ export default function DashboardPage() {
   const router = useRouter();
   const { user, isLoading } = useUser();
   const { events, isLoading: eventsLoading } = useEvents({
-    enabled: !isLoading && user?.role !== 'SUPER_ADMIN',
+    enabled:
+      !isLoading && (user?.role === 'ORG_ADMIN' || user?.role === 'MEMBER'),
   });
 
   useEffect(() => {
