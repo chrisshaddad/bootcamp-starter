@@ -113,7 +113,7 @@ export async function seedUsers(
         firstName,
         lastName,
         role: 'CLIENT',
-        email: `${slugify(firstName)}.${slugify(lastName)}.${index + 1}@client.local`,
+        email: `client.${index + 1}@client.local`,
       }),
     );
   }

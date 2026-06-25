@@ -8,9 +8,9 @@ we will be doing the models, tables and everything in this order :
 5. medicine_ingredient + inquiry
 6. inquiry_message
 
-each migration is its own isolated unit:
+each numbered step above is its own isolated migration:
 
-- one model per migration (except enums which are migration 0)
+- one migration per step (related models grouped as shown; enums are step 0)
 - each migration has its own seeder
 - each migration has its own test
 - each migration is its own PR
@@ -84,6 +84,7 @@ medicineIngredients MedicineIngredient[]
 
 @@index([brandName], name: "idx_medicine_name")
 @@map("medicines")
+@@schema("public")
 }
 
 // ============================================================
@@ -101,6 +102,7 @@ updatedAt DateTime @updatedAt
 medicineIngredients MedicineIngredient[]
 
 @@map("ingredients")
+@@schema("public")
 }
 
 // ============================================================
@@ -120,6 +122,7 @@ branches PharmacyBranch[]
 inquiries Inquiry[]
 
 @@map("pharmacies")
+@@schema("public")
 }
 
 // ============================================================
@@ -168,6 +171,7 @@ auditLogs AuditLog[]
 @@index([branchId])
 
 @@map("users")
+@@schema("public")
 }
 
 // ============================================================
@@ -188,6 +192,7 @@ user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 @@index([userId])
 
 @@map("sessions")
+@@schema("public")
 }
 
 // ============================================================
@@ -213,6 +218,7 @@ user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 @@index([userId])
 
 @@map("magic_links")
+@@schema("public")
 }
 
 // ============================================================
@@ -247,6 +253,7 @@ inquiries Inquiry[]
 @@index([latitude, longitude], name: "idx_branch_location")
 
 @@map("pharmacy_branches")
+@@schema("public")
 }
 
 // ============================================================
@@ -274,6 +281,7 @@ user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 @@index([userId])
 
 @@map("audit_logs")
+@@schema("public")
 }
 
 // ============================================================
@@ -304,6 +312,7 @@ medicine Medicine @relation(fields: [medicineId], references: [id], onDelete: Ca
 @@index([medicineId])
 
 @@map("stock_batches")
+@@schema("public")
 }
 
 // ============================================================
@@ -321,6 +330,7 @@ ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDele
 @@id([medicineId, ingredientId])
 
 @@map("medicine_ingredients")
+@@schema("public")
 // no createdAt/updatedAt — junction table, immutable link
 }
 
@@ -360,6 +370,7 @@ messages InquiryMessage[]
 @@index([medicineId])
 
 @@map("inquiries")
+@@schema("public")
 }
 
 // ============================================================
@@ -388,4 +399,5 @@ sender User @relation(fields: [senderId], references: [id], onDelete: Cascade)
 @@index([senderId])
 
 @@map("inquiry_messages")
+@@schema("public")
 }
