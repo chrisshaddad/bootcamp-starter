@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma } from '@repo/db';
 import { PrismaService } from '../database/prisma.service';
 import type {
   SubscriptionListResponse,
@@ -100,7 +101,12 @@ export class SubscriptionsService {
     }
 
     const existing = await this.prisma.subscription.findFirst({
-      where: { memberId: dto.memberId, planId: dto.planId, status: 'ACTIVE' },
+      where: {
+        memberId: dto.memberId,
+        planId: dto.planId,
+        gymId,
+        status: 'ACTIVE',
+      },
       select: { id: true },
     });
     if (existing) {
@@ -116,18 +122,30 @@ export class SubscriptionsService {
     const endDate = new Date(startDate);
     endDate.setUTCDate(endDate.getUTCDate() + plan.durationDays);
 
-    return this.prisma.subscription.create({
-      data: {
-        gymId,
-        memberId: dto.memberId,
-        planId: dto.planId,
-        startDate,
-        endDate,
-        price: plan.price,
-        status: 'ACTIVE',
-      },
-      select: SUBSCRIPTION_SELECT,
-    });
+    try {
+      return await this.prisma.subscription.create({
+        data: {
+          gymId,
+          memberId: dto.memberId,
+          planId: dto.planId,
+          startDate,
+          endDate,
+          price: plan.price,
+          status: 'ACTIVE',
+        },
+        select: SUBSCRIPTION_SELECT,
+      });
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        throw new BadRequestException(
+          'Member already has an active subscription for this plan',
+        );
+      }
+      throw err;
+    }
   }
 
   /** Cancel an active subscription, scoped to the caller's gym */
