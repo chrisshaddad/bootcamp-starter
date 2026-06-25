@@ -27,12 +27,15 @@ function VerifyContent() {
 
     const verify = async () => {
       try {
-        await verifyMagicLink({ token });
+        const result = await verifyMagicLink({ token });
         setStatus('success');
         toast.success('Successfully logged in!');
+        // Redirect members to the portal; everyone else to the admin dashboard
+        const destination =
+          result.user.role === 'MEMBER' ? '/portal' : '/dashboard';
         // Small delay to show success state before redirecting
         setTimeout(() => {
-          router.replace('/dashboard');
+          router.replace(destination);
         }, 1000);
       } catch (error) {
         setStatus('error');

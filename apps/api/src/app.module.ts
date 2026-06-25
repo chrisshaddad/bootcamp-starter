@@ -9,6 +9,7 @@ import { GymsModule } from './gyms/gyms.module';
 import { MembersModule } from './members/members.module';
 import { PlansModule } from './plans/plans.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
+import { MePortalModule } from './me-portal/me-portal.module';
 import { DatabaseModule } from './database/database.module';
 
 @Module({
@@ -26,6 +27,7 @@ import { DatabaseModule } from './database/database.module';
     MembersModule,
     PlansModule,
     SubscriptionsModule,
+    MePortalModule,
   ],
   controllers: [AppController],
   providers: [AppService],

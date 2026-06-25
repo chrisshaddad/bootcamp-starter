@@ -23,7 +23,7 @@ interface UseUserReturn {
 }
 
 // Routes where auth redirects should not fire
-const AUTH_ROUTES = ['/login', '/auth', '/suspended'];
+const AUTH_ROUTES = ['/login', '/auth', '/suspended', '/portal/deactivated'];
 
 function isAuthRoute(pathname: string): boolean {
   return AUTH_ROUTES.some(
@@ -51,6 +51,11 @@ export function useUser(options: UseUserOptions = {}): UseUserReturn {
     // Gym suspended → redirect to suspended page
     if (data?.gymStatus === 'SUSPENDED') {
       router.replace('/suspended');
+    }
+
+    // Member deactivated → redirect to deactivated page
+    if (data?.memberStatus === 'INACTIVE') {
+      router.replace('/portal/deactivated');
     }
   }, [data, error, redirectOnUnauthenticated, router, pathname]);
 
