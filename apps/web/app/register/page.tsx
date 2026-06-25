@@ -69,7 +69,9 @@ export default function RegisterPage() {
     <div className="flex min-h-screen items-center justify-center bg-white">
       <div className="flex w-full max-w-md flex-col gap-8 px-6">
         <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold text-gray-900">Create your organization</h1>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Create your organization
+          </h1>
           <p className="text-gray-500">
             Already have an account?{' '}
             <Link href="/login" className="text-primary-base hover:underline">
@@ -90,7 +92,9 @@ export default function RegisterPage() {
               {...register('organizationName')}
             />
             {errors.organizationName && (
-              <p className="text-sm text-error">{errors.organizationName.message}</p>
+              <p className="text-sm text-error">
+                {errors.organizationName.message}
+              </p>
             )}
           </div>
 

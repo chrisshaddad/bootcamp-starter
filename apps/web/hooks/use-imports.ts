@@ -7,6 +7,7 @@ import type {
   ImportListResponse,
   ImportResponse,
   ImportRowListResponse,
+  ImportType,
 } from '@repo/contracts';
 
 const ACTIVE_STATUSES = new Set(['PENDING', 'PROCESSING']);
@@ -25,7 +26,9 @@ export function useImports(options: { page?: number } = {}) {
   } = useSWR<ImportListResponse>(endpoint, {
     // Poll every 2 s while any import is still processing; stop when all settle
     refreshInterval: (latestData) => {
-      const hasActive = latestData?.imports?.some((i) => ACTIVE_STATUSES.has(i.status));
+      const hasActive = latestData?.imports?.some((i) =>
+        ACTIVE_STATUSES.has(i.status),
+      );
       return hasActive ? 2000 : 0;
     },
   });
@@ -41,7 +44,7 @@ export function useImports(options: { page?: number } = {}) {
 
   const uploadImport = useCallback(
     async (params: {
-      type: 'EXPENSES' | 'SALES';
+      type: ImportType;
       fileName: string;
       fileContent: string; // base64
       columnMapping: Record<string, string>;
@@ -85,9 +88,16 @@ export function useImportRows(
     ? `/imports/${importId}/rows${params.toString() ? `?${params}` : ''}`
     : null;
 
-  const isActive = options.importStatus ? ACTIVE_STATUSES.has(options.importStatus) : false;
+  const isActive = options.importStatus
+    ? ACTIVE_STATUSES.has(options.importStatus)
+    : false;
 
-  const { data, error, isLoading, mutate: revalidate } = useSWR<ImportRowListResponse>(endpoint, {
+  const {
+    data,
+    error,
+    isLoading,
+    mutate: revalidate,
+  } = useSWR<ImportRowListResponse>(endpoint, {
     refreshInterval: isActive ? 2000 : 0,
   });
 

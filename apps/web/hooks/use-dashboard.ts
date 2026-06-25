@@ -16,9 +16,8 @@ export function useDashboard(options: UseDashboardOptions = {}) {
   const query = params.toString();
   const endpoint = `/dashboard${query ? `?${query}` : ''}`;
 
-  const { data, error, isLoading, mutate } = useSWR<DashboardResponse>(
-    endpoint,
-  );
+  const { data, error, isLoading, mutate } =
+    useSWR<DashboardResponse>(endpoint);
 
   return {
     dashboard: data,

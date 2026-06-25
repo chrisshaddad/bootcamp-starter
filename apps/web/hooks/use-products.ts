@@ -16,11 +16,20 @@ export function useProducts(options: { activeOnly?: boolean } = {}) {
 
   const endpoint = `/products${params.toString() ? `?${params}` : ''}`;
 
-  const { data, error, isLoading, mutate: revalidate } = useSWR<ProductListResponse>(endpoint);
+  const {
+    data,
+    error,
+    isLoading,
+    mutate: revalidate,
+  } = useSWR<ProductListResponse>(endpoint);
 
   const invalidate = useCallback(() => {
     revalidate();
-    mutate((key) => typeof key === 'string' && key.startsWith('/products'), undefined, { revalidate: true });
+    mutate(
+      (key) => typeof key === 'string' && key.startsWith('/products'),
+      undefined,
+      { revalidate: true },
+    );
   }, [revalidate]);
 
   const createProduct = useCallback(
@@ -33,7 +42,10 @@ export function useProducts(options: { activeOnly?: boolean } = {}) {
   );
 
   const updateProduct = useCallback(
-    async (id: string, data: ProductUpdateRequest): Promise<ProductResponse> => {
+    async (
+      id: string,
+      data: ProductUpdateRequest,
+    ): Promise<ProductResponse> => {
       const result = await apiPatch<ProductResponse>(`/products/${id}`, data);
       invalidate();
       return result;

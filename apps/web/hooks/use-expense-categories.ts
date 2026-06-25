@@ -21,15 +21,16 @@ export function useExpenseCategories() {
   const invalidate = useCallback(() => {
     revalidate();
     mutate(
-      (key) =>
-        typeof key === 'string' && key.startsWith('/expense-categories'),
+      (key) => typeof key === 'string' && key.startsWith('/expense-categories'),
       undefined,
       { revalidate: true },
     );
   }, [revalidate]);
 
   const createCategory = useCallback(
-    async (data: ExpenseCategoryCreateRequest): Promise<ExpenseCategoryResponse> => {
+    async (
+      data: ExpenseCategoryCreateRequest,
+    ): Promise<ExpenseCategoryResponse> => {
       const result = await apiPost<ExpenseCategoryResponse>(
         '/expense-categories',
         data,

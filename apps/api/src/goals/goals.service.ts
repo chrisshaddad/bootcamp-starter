@@ -118,7 +118,6 @@ export class GoalsService {
     this.logger.log(`Goal deleted: ${id}`);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private toResponse(g: any): GoalResponse {
     return {
       id: g.id,

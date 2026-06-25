@@ -30,20 +30,27 @@ export function TopNavbar() {
   const pathname = usePathname();
 
   const pageTitle =
-    Object.entries(PAGE_TITLES).find(([key]) =>
-      pathname === key || pathname.startsWith(key + '/'),
+    Object.entries(PAGE_TITLES).find(
+      ([key]) => pathname === key || pathname.startsWith(key + '/'),
     )?.[1] ?? 'Margin';
 
   const initials = user?.name
-    ? user.name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase()
-    : user?.email?.[0]?.toUpperCase() ?? '?';
+    ? user.name
+        .split(' ')
+        .map((p) => p[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase()
+    : (user?.email?.[0]?.toUpperCase() ?? '?');
 
   return (
     <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-6">
       {/* Left */}
       <div className="flex items-center gap-3">
         <SidebarTrigger className="h-8 w-8 text-muted-foreground hover:bg-secondary hover:text-foreground" />
-        <span className="text-sm font-semibold text-muted-foreground">{pageTitle}</span>
+        <span className="text-sm font-semibold text-muted-foreground">
+          {pageTitle}
+        </span>
       </div>
 
       {/* Right */}
@@ -59,7 +66,11 @@ export function TopNavbar() {
                   {user?.name ?? user?.email?.split('@')[0] ?? 'User'}
                 </p>
                 <p className="text-[11px] text-muted-foreground leading-tight">
-                  {user?.role === 'SUPER_ADMIN' ? 'Super Admin' : user?.role === 'ORG_ADMIN' ? 'Admin' : 'Member'}
+                  {user?.role === 'SUPER_ADMIN'
+                    ? 'Super Admin'
+                    : user?.role === 'ORG_ADMIN'
+                      ? 'Admin'
+                      : 'Member'}
                 </p>
               </div>
               <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
@@ -70,8 +81,12 @@ export function TopNavbar() {
             className="w-48 border-border bg-popover text-popover-foreground"
           >
             <div className="px-3 py-2">
-              <p className="text-sm font-medium text-foreground">{user?.name ?? 'User'}</p>
-              <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+              <p className="text-sm font-medium text-foreground">
+                {user?.name ?? 'User'}
+              </p>
+              <p className="text-xs text-muted-foreground truncate">
+                {user?.email}
+              </p>
             </div>
             <DropdownMenuSeparator className="bg-border" />
             <DropdownMenuItem

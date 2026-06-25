@@ -28,6 +28,7 @@ import {
 import { Plus, Trash2, Pencil } from 'lucide-react';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { toast } from 'sonner';
+import { z } from 'zod';
 import {
   saleCreateRequestSchema,
   type SaleCreateRequest,
@@ -43,7 +44,7 @@ function formatUSD(value: string): string {
 }
 
 function today(): string {
-  return new Date().toISOString().split('T')[0];
+  return new Date().toISOString().split('T')[0]!;
 }
 
 interface SaleFormProps {
@@ -58,7 +59,11 @@ function SaleForm({ defaultValues, onSubmit, products }: SaleFormProps) {
     handleSubmit,
     setValue,
     formState: { errors, isSubmitting },
-  } = useForm<SaleCreateRequest>({
+  } = useForm<
+    z.input<typeof saleCreateRequestSchema>,
+    unknown,
+    SaleCreateRequest
+  >({
     resolver: zodResolver(saleCreateRequestSchema),
     defaultValues: {
       date: today(),
@@ -143,7 +148,9 @@ function SaleForm({ defaultValues, onSubmit, products }: SaleFormProps) {
           <SelectContent>
             {['NONE', 'DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'].map((r) => (
               <SelectItem key={r} value={r}>
-                {r === 'NONE' ? 'One-time' : r.charAt(0) + r.slice(1).toLowerCase()}
+                {r === 'NONE'
+                  ? 'One-time'
+                  : r.charAt(0) + r.slice(1).toLowerCase()}
               </SelectItem>
             ))}
           </SelectContent>
@@ -220,10 +227,7 @@ export default function SalesPage() {
             <DialogHeader>
               <DialogTitle>Record Sale</DialogTitle>
             </DialogHeader>
-            <SaleForm
-              onSubmit={handleCreate}
-              products={products ?? []}
-            />
+            <SaleForm onSubmit={handleCreate} products={products ?? []} />
           </DialogContent>
         </Dialog>
       </div>
@@ -245,7 +249,9 @@ export default function SalesPage() {
             </div>
           ) : !sales?.length ? (
             <div className="p-12 text-center">
-              <p className="text-sm text-muted-foreground">No sales recorded yet.</p>
+              <p className="text-sm text-muted-foreground">
+                No sales recorded yet.
+              </p>
               <Button
                 variant="link"
                 className="mt-2 text-primary"
@@ -267,7 +273,9 @@ export default function SalesPage() {
                   >
                     <div className="space-y-0.5">
                       <p className="text-sm font-medium text-foreground">
-                        {sale.product?.name ?? sale.description ?? 'Direct sale'}
+                        {sale.product?.name ??
+                          sale.description ??
+                          'Direct sale'}
                       </p>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <span>{sale.date}</span>
@@ -351,7 +359,9 @@ export default function SalesPage() {
 
       <ConfirmDialog
         open={!!deleteTarget}
-        onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
         title="Delete sale?"
         description="This sale record will be permanently removed. This action cannot be undone."
         confirmLabel="Yes, delete"

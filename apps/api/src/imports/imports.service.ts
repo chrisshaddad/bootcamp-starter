@@ -200,7 +200,7 @@ export class ImportsService {
         organizationId,
         createdById: imp.createdById,
         type: imp.type,
-        columnMapping: (imp.columnMapping ?? {}) as Record<string, string>,
+        columnMapping: imp.columnMapping ?? {},
         reprocess: true,
       },
       { attempts: 3 },
@@ -210,7 +210,6 @@ export class ImportsService {
     return this.findOne(id, organizationId);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private toResponse(imp: any): ImportResponse {
     return {
       id: imp.id,

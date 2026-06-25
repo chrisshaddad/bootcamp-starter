@@ -26,9 +26,7 @@ export class ExpenseCategoriesController {
   ) {}
 
   @Get()
-  async findAll(
-    @CurrentUser() user: User,
-  ): Promise<ExpenseCategoryResponse[]> {
+  async findAll(@CurrentUser() user: User): Promise<ExpenseCategoryResponse[]> {
     return this.expenseCategoriesService.findAll(user.organizationId!);
   }
 
@@ -56,11 +54,7 @@ export class ExpenseCategoriesController {
     body: Partial<ExpenseCategoryCreateRequest>,
     @CurrentUser() user: User,
   ): Promise<ExpenseCategoryResponse> {
-    return this.expenseCategoriesService.update(
-      id,
-      user.organizationId!,
-      body,
-    );
+    return this.expenseCategoriesService.update(id, user.organizationId!, body);
   }
 
   @Delete(':id')

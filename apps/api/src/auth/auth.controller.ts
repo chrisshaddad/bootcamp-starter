@@ -39,7 +39,11 @@ export class AuthController {
   @HttpCode(HttpStatus.CREATED)
   @UsePipes(new ZodValidationPipe(registerRequestSchema))
   async register(@Body() body: RegisterRequest) {
-    return this.authService.register(body.organizationName, body.name, body.email);
+    return this.authService.register(
+      body.organizationName,
+      body.name,
+      body.email,
+    );
   }
 
   @Public()

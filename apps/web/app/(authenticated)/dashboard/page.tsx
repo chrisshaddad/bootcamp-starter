@@ -44,7 +44,14 @@ function pct(n: number) {
 
 // ─── KPI card ───────────────────────────────────────────────────────────────
 
-const CHART_COLORS = ['#7C4DFF', '#22D3EE', '#E879F9', '#34D39A', '#FBBF24', '#F4506A'];
+const CHART_COLORS = [
+  '#7C4DFF',
+  '#22D3EE',
+  '#E879F9',
+  '#34D39A',
+  '#FBBF24',
+  '#F4506A',
+];
 
 function KpiCard({
   title,
@@ -69,7 +76,9 @@ function KpiCard({
             <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/70">
               {title}
             </p>
-            <p className="text-2xl font-bold tabular-nums text-foreground">{value}</p>
+            <p className="text-2xl font-bold tabular-nums text-foreground">
+              {value}
+            </p>
             {sub && (
               <p
                 className={cn(
@@ -109,7 +118,12 @@ interface BarTooltip {
 function BarChart({
   data,
 }: {
-  data: Array<{ date: string; revenue: string; expenses: string; netProfit: string }>;
+  data: Array<{
+    date: string;
+    revenue: string;
+    expenses: string;
+    netProfit: string;
+  }>;
 }) {
   const W = 560;
   const H = 200;
@@ -144,15 +158,22 @@ function BarChart({
 
   const label = (dateStr: string) => {
     const [y, m] = dateStr.split('-');
-    const month = new Date(parseInt(y!), parseInt(m!) - 1).toLocaleString('en-US', { month: 'short' });
+    const month = new Date(parseInt(y!), parseInt(m!) - 1).toLocaleString(
+      'en-US',
+      { month: 'short' },
+    );
     return `${month} ${y?.slice(2)}`;
   };
 
-  const handleBarHover = (e: React.MouseEvent<SVGRectElement>, d: typeof data[0], i: number) => {
+  const handleBarHover = (
+    e: React.MouseEvent<SVGRectElement>,
+    d: (typeof data)[0],
+    i: number,
+  ) => {
     const svgEl = svgRef.current;
     if (!svgEl) return;
     const rect = svgEl.getBoundingClientRect();
-    const cx = (PAD.left + i * barGroupW + barGroupW / 2) / W * rect.width;
+    const cx = ((PAD.left + i * barGroupW + barGroupW / 2) / W) * rect.width;
     const rawY = e.clientY - rect.top;
     setTooltip({
       x: cx,
@@ -177,8 +198,25 @@ function BarChart({
           {/* Grid lines */}
           {ticks.map(({ v, y }) => (
             <g key={v}>
-              <line x1={0} x2={inner.w} y1={y} y2={y} stroke="currentColor" strokeOpacity={0.08} strokeWidth={1} className="text-foreground" />
-              <text x={-6} y={y + 4} textAnchor="end" fill="currentColor" fillOpacity={0.4} fontSize={10} className="text-foreground">
+              <line
+                x1={0}
+                x2={inner.w}
+                y1={y}
+                y2={y}
+                stroke="currentColor"
+                strokeOpacity={0.08}
+                strokeWidth={1}
+                className="text-foreground"
+              />
+              <text
+                x={-6}
+                y={y + 4}
+                textAnchor="end"
+                fill="currentColor"
+                fillOpacity={0.4}
+                fontSize={10}
+                className="text-foreground"
+              >
                 {fmt(v, true)}
               </text>
             </g>
@@ -253,7 +291,15 @@ function BarChart({
           })}
 
           {/* X axis */}
-          <line x1={0} x2={inner.w} y1={inner.h} y2={inner.h} stroke="currentColor" strokeOpacity={0.15} className="text-foreground" />
+          <line
+            x1={0}
+            x2={inner.w}
+            y1={inner.h}
+            y2={inner.h}
+            stroke="currentColor"
+            strokeOpacity={0.15}
+            className="text-foreground"
+          />
         </g>
       </svg>
 
@@ -267,26 +313,42 @@ function BarChart({
             transform: tooltip.x > 400 ? 'translateX(-110%)' : undefined,
           }}
         >
-          <p className="mb-1.5 font-semibold text-foreground">{(() => {
-            const [y, m] = tooltip.date.split('-');
-            return new Date(parseInt(y!), parseInt(m!) - 1).toLocaleString('en-US', { month: 'long', year: 'numeric' });
-          })()}</p>
+          <p className="mb-1.5 font-semibold text-foreground">
+            {(() => {
+              const [y, m] = tooltip.date.split('-');
+              return new Date(parseInt(y!), parseInt(m!) - 1).toLocaleString(
+                'en-US',
+                { month: 'long', year: 'numeric' },
+              );
+            })()}
+          </p>
           <div className="space-y-1">
             <div className="flex items-center justify-between gap-4">
               <span className="flex items-center gap-1.5 text-muted-foreground">
-                <span className="h-2 w-2 rounded-sm bg-[#7C4DFF]" />Revenue
+                <span className="h-2 w-2 rounded-sm bg-[#7C4DFF]" />
+                Revenue
               </span>
-              <span className="font-medium tabular-nums text-foreground">{fmt(tooltip.revenue)}</span>
+              <span className="font-medium tabular-nums text-foreground">
+                {fmt(tooltip.revenue)}
+              </span>
             </div>
             <div className="flex items-center justify-between gap-4">
               <span className="flex items-center gap-1.5 text-muted-foreground">
-                <span className="h-2 w-2 rounded-sm bg-[#22D3EE]" />Expenses
+                <span className="h-2 w-2 rounded-sm bg-[#22D3EE]" />
+                Expenses
               </span>
-              <span className="font-medium tabular-nums text-foreground">{fmt(tooltip.expenses)}</span>
+              <span className="font-medium tabular-nums text-foreground">
+                {fmt(tooltip.expenses)}
+              </span>
             </div>
             <div className="border-t border-border pt-1 flex items-center justify-between gap-4">
               <span className="text-muted-foreground">Net</span>
-              <span className={cn('font-semibold tabular-nums', tooltip.netProfit >= 0 ? 'text-[#34D39A]' : 'text-[#F4506A]')}>
+              <span
+                className={cn(
+                  'font-semibold tabular-nums',
+                  tooltip.netProfit >= 0 ? 'text-[#34D39A]' : 'text-[#F4506A]',
+                )}
+              >
                 {fmt(tooltip.netProfit)}
               </span>
             </div>
@@ -311,7 +373,12 @@ interface DonutTooltip {
 function DonutChart({
   data,
 }: {
-  data: Array<{ categoryName: string; color: string | null; percentage: number; amount: string }>;
+  data: Array<{
+    categoryName: string;
+    color: string | null;
+    percentage: number;
+    amount: string;
+  }>;
 }) {
   const R = 70;
   const CX = 90;
@@ -320,6 +387,33 @@ function DonutChart({
   const [tooltip, setTooltip] = useState<DonutTooltip | null>(null);
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+
+  const handleSliceHover = useCallback(
+    (
+      e: React.MouseEvent,
+      s: {
+        categoryName: string;
+        amount: string;
+        percentage: number;
+        color: string;
+      },
+      i: number,
+    ) => {
+      const svgEl = svgRef.current;
+      if (!svgEl) return;
+      const rect = svgEl.getBoundingClientRect();
+      setHoveredIdx(i);
+      setTooltip({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+        categoryName: s.categoryName,
+        amount: s.amount,
+        percentage: s.percentage,
+        color: s.color,
+      });
+    },
+    [],
+  );
 
   if (!data.length) {
     return (
@@ -340,7 +434,13 @@ function DonutChart({
     return { ...d, angle, start, color };
   });
 
-  const arc = (cx: number, cy: number, r: number, startDeg: number, endDeg: number) => {
+  const arc = (
+    cx: number,
+    cy: number,
+    r: number,
+    startDeg: number,
+    endDeg: number,
+  ) => {
     const toRad = (deg: number) => (deg * Math.PI) / 180;
     const x1 = cx + r * Math.cos(toRad(startDeg));
     const y1 = cy + r * Math.sin(toRad(startDeg));
@@ -349,21 +449,6 @@ function DonutChart({
     const large = endDeg - startDeg > 180 ? 1 : 0;
     return `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}`;
   };
-
-  const handleSliceHover = useCallback((e: React.MouseEvent, s: typeof slices[0], i: number) => {
-    const svgEl = svgRef.current;
-    if (!svgEl) return;
-    const rect = svgEl.getBoundingClientRect();
-    setHoveredIdx(i);
-    setTooltip({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-      categoryName: s.categoryName,
-      amount: s.amount,
-      percentage: s.percentage,
-      color: s.color,
-    });
-  }, []);
 
   const hoveredSlice = hoveredIdx !== null ? slices[hoveredIdx] : null;
 
@@ -374,10 +459,22 @@ function DonutChart({
           ref={svgRef}
           viewBox="0 0 180 180"
           className="h-[160px] w-[160px]"
-          onMouseLeave={() => { setTooltip(null); setHoveredIdx(null); }}
+          onMouseLeave={() => {
+            setTooltip(null);
+            setHoveredIdx(null);
+          }}
         >
           {/* Background ring */}
-          <circle cx={CX} cy={CY} r={R} fill="none" stroke="currentColor" strokeOpacity={0.07} strokeWidth={stroke} className="text-foreground" />
+          <circle
+            cx={CX}
+            cy={CY}
+            r={R}
+            fill="none"
+            stroke="currentColor"
+            strokeOpacity={0.07}
+            strokeWidth={stroke}
+            className="text-foreground"
+          />
           {slices.map((s, i) => (
             <path
               key={i}
@@ -386,7 +483,11 @@ function DonutChart({
               stroke={s.color}
               strokeWidth={hoveredIdx === i ? stroke + 6 : stroke}
               strokeLinecap="butt"
-              style={{ transition: 'stroke-width 0.15s ease', cursor: 'pointer', opacity: hoveredIdx !== null && hoveredIdx !== i ? 0.45 : 1 }}
+              style={{
+                transition: 'stroke-width 0.15s ease',
+                cursor: 'pointer',
+                opacity: hoveredIdx !== null && hoveredIdx !== i ? 0.45 : 1,
+              }}
               onMouseEnter={(e) => handleSliceHover(e, s, i)}
               onMouseMove={(e) => handleSliceHover(e, s, i)}
             />
@@ -394,19 +495,53 @@ function DonutChart({
           {/* Center label — shows hovered slice or default */}
           {hoveredSlice ? (
             <>
-              <text x={CX} y={CY - 8} textAnchor="middle" fill={hoveredSlice.color} fontSize={9} fontWeight="600" className="pointer-events-none">
-                {hoveredSlice.categoryName.length > 10 ? hoveredSlice.categoryName.slice(0, 9) + '…' : hoveredSlice.categoryName}
+              <text
+                x={CX}
+                y={CY - 8}
+                textAnchor="middle"
+                fill={hoveredSlice.color}
+                fontSize={9}
+                fontWeight="600"
+                className="pointer-events-none"
+              >
+                {hoveredSlice.categoryName.length > 10
+                  ? hoveredSlice.categoryName.slice(0, 9) + '…'
+                  : hoveredSlice.categoryName}
               </text>
-              <text x={CX} y={CY + 8} textAnchor="middle" fill="currentColor" fontSize={11} fontWeight="bold" className="text-foreground pointer-events-none">
+              <text
+                x={CX}
+                y={CY + 8}
+                textAnchor="middle"
+                fill="currentColor"
+                fontSize={11}
+                fontWeight="bold"
+                className="text-foreground pointer-events-none"
+              >
                 {hoveredSlice.percentage.toFixed(1)}%
               </text>
             </>
           ) : (
             <>
-              <text x={CX} y={CY - 6} textAnchor="middle" fill="currentColor" fillOpacity={0.5} fontSize={10} className="text-foreground">
+              <text
+                x={CX}
+                y={CY - 6}
+                textAnchor="middle"
+                fill="currentColor"
+                fillOpacity={0.5}
+                fontSize={10}
+                className="text-foreground"
+              >
                 Total
               </text>
-              <text x={CX} y={CY + 10} textAnchor="middle" fill="currentColor" fontSize={12} fontWeight="bold" className="text-foreground">
+              <text
+                x={CX}
+                y={CY + 10}
+                textAnchor="middle"
+                fill="currentColor"
+                fontSize={12}
+                fontWeight="bold"
+                className="text-foreground"
+              >
                 {data.length} cat
               </text>
             </>
@@ -420,16 +555,23 @@ function DonutChart({
             style={{ left: tooltip.x + 12, top: tooltip.y - 40 }}
           >
             <div className="flex items-center gap-1.5 mb-1 font-semibold text-foreground">
-              <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: tooltip.color }} />
+              <span
+                className="h-2 w-2 rounded-full shrink-0"
+                style={{ backgroundColor: tooltip.color }}
+              />
               {tooltip.categoryName}
             </div>
             <div className="flex justify-between gap-3">
               <span className="text-muted-foreground">Amount</span>
-              <span className="font-medium tabular-nums text-foreground">{fmt(tooltip.amount)}</span>
+              <span className="font-medium tabular-nums text-foreground">
+                {fmt(tooltip.amount)}
+              </span>
             </div>
             <div className="flex justify-between gap-3">
               <span className="text-muted-foreground">Share</span>
-              <span className="font-medium tabular-nums text-foreground">{tooltip.percentage.toFixed(1)}%</span>
+              <span className="font-medium tabular-nums text-foreground">
+                {tooltip.percentage.toFixed(1)}%
+              </span>
             </div>
           </div>
         )}
@@ -448,12 +590,28 @@ function DonutChart({
             onMouseLeave={() => setHoveredIdx(null)}
           >
             <div className="flex items-center gap-2 min-w-0">
-              <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: s.color }} />
-              <span className={cn('truncate', hoveredIdx === i ? 'text-foreground' : 'text-muted-foreground')}>{s.categoryName}</span>
+              <span
+                className="h-2.5 w-2.5 shrink-0 rounded-full"
+                style={{ backgroundColor: s.color }}
+              />
+              <span
+                className={cn(
+                  'truncate',
+                  hoveredIdx === i
+                    ? 'text-foreground'
+                    : 'text-muted-foreground',
+                )}
+              >
+                {s.categoryName}
+              </span>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <span className="font-medium text-foreground">{fmt(s.amount)}</span>
-              <span className="text-muted-foreground/60">({s.percentage.toFixed(1)}%)</span>
+              <span className="font-medium text-foreground">
+                {fmt(s.amount)}
+              </span>
+              <span className="text-muted-foreground/60">
+                ({s.percentage.toFixed(1)}%)
+              </span>
             </div>
           </li>
         ))}
@@ -483,7 +641,9 @@ export default function DashboardPage() {
       <div className="space-y-6">
         <Skeleton className="h-8 w-64" />
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-28 rounded-xl" />
+          ))}
         </div>
         <div className="grid gap-6 lg:grid-cols-5">
           <Skeleton className="h-72 rounded-xl lg:col-span-3" />
@@ -509,8 +669,11 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            Welcome back, <span className="font-medium text-foreground">{user?.name ?? user?.email?.split('@')[0]}</span>
-            {' '}· {dateFrom} → {dateTo}
+            Welcome back,{' '}
+            <span className="font-medium text-foreground">
+              {user?.name ?? user?.email?.split('@')[0]}
+            </span>{' '}
+            · {dateFrom} → {dateTo}
           </p>
         </div>
         <Button
@@ -529,7 +692,11 @@ export default function DashboardPage() {
         <KpiCard
           title="Total Revenue"
           value={fmt(revenue)}
-          sub={dashboard ? `${dashboard.grossMarginPct.toFixed(1)}% gross margin` : undefined}
+          sub={
+            dashboard
+              ? `${dashboard.grossMarginPct.toFixed(1)}% gross margin`
+              : undefined
+          }
           trend={revenue >= 0 ? 'up' : 'down'}
           icon={DollarSign}
           accent="#7C4DFF"
@@ -537,7 +704,9 @@ export default function DashboardPage() {
         <KpiCard
           title="Gross Profit"
           value={fmt(grossPft)}
-          sub={dashboard ? `${pct(dashboard.grossMarginPct)} margin` : undefined}
+          sub={
+            dashboard ? `${pct(dashboard.grossMarginPct)} margin` : undefined
+          }
           trend={grossPft >= 0 ? 'up' : 'down'}
           icon={TrendingUp}
           accent="#34D39A"
@@ -545,7 +714,11 @@ export default function DashboardPage() {
         <KpiCard
           title="Total Expenses"
           value={fmt(expenses)}
-          sub={dashboard && revenue > 0 ? `${((expenses / revenue) * 100).toFixed(1)}% of revenue` : 'No revenue data'}
+          sub={
+            dashboard && revenue > 0
+              ? `${((expenses / revenue) * 100).toFixed(1)}% of revenue`
+              : 'No revenue data'
+          }
           trend="neutral"
           icon={TrendingDown}
           accent="#FBBF24"
@@ -553,7 +726,11 @@ export default function DashboardPage() {
         <KpiCard
           title="Net Profit"
           value={fmt(netPft)}
-          sub={dashboard ? `${dashboard.netMarginPct.toFixed(1)}% net margin` : undefined}
+          sub={
+            dashboard
+              ? `${dashboard.netMarginPct.toFixed(1)}% net margin`
+              : undefined
+          }
           trend={netPft >= 0 ? 'up' : 'down'}
           icon={Activity}
           accent={netPft >= 0 ? '#34D39A' : '#F4506A'}
@@ -605,8 +782,12 @@ export default function DashboardPage() {
         <Card className="border-border bg-card shadow-sm">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold text-foreground">Goal Progress</CardTitle>
-              <a href="/goals" className="text-xs text-primary hover:underline">Manage →</a>
+              <CardTitle className="text-sm font-semibold text-foreground">
+                Goal Progress
+              </CardTitle>
+              <a href="/goals" className="text-xs text-primary hover:underline">
+                Manage →
+              </a>
             </div>
           </CardHeader>
           <CardContent>
@@ -614,7 +795,12 @@ export default function DashboardPage() {
               <div className="space-y-1.5 py-4 text-center">
                 <Target className="mx-auto h-8 w-8 text-muted-foreground/30" />
                 <p className="text-sm text-muted-foreground">No active goals</p>
-                <a href="/goals" className="text-xs text-primary hover:underline">Set a goal →</a>
+                <a
+                  href="/goals"
+                  className="text-xs text-primary hover:underline"
+                >
+                  Set a goal →
+                </a>
               </div>
             ) : (
               <div className="space-y-4">
@@ -622,7 +808,14 @@ export default function DashboardPage() {
                   const pctVal = Math.min(g.progressPct, 100);
                   const isExpLimit = g.type === 'EXPENSE_LIMIT';
                   const isOver = g.progressPct > 100;
-                  const barColor = isExpLimit && isOver ? '#F4506A' : isExpLimit ? '#FBBF24' : pctVal >= 100 ? '#34D39A' : '#7C4DFF';
+                  const barColor =
+                    isExpLimit && isOver
+                      ? '#F4506A'
+                      : isExpLimit
+                        ? '#FBBF24'
+                        : pctVal >= 100
+                          ? '#34D39A'
+                          : '#7C4DFF';
 
                   return (
                     <div key={g.goalId} className="space-y-1.5">
@@ -648,11 +841,15 @@ export default function DashboardPage() {
                       <div className="h-1.5 w-full rounded-full bg-muted">
                         <div
                           className="h-1.5 rounded-full transition-all"
-                          style={{ width: `${pctVal}%`, backgroundColor: barColor }}
+                          style={{
+                            width: `${pctVal}%`,
+                            backgroundColor: barColor,
+                          }}
                         />
                       </div>
                       <p className="text-[11px] text-muted-foreground/60">
-                        {g.progressPct.toFixed(1)}% — {g.startDate} to {g.endDate}
+                        {g.progressPct.toFixed(1)}% — {g.startDate} to{' '}
+                        {g.endDate}
                       </p>
                     </div>
                   );
@@ -672,7 +869,12 @@ export default function DashboardPage() {
                   Product Margins
                 </span>
               </CardTitle>
-              <a href="/products" className="text-xs text-primary hover:underline">All products →</a>
+              <a
+                href="/products"
+                className="text-xs text-primary hover:underline"
+              >
+                All products →
+              </a>
             </div>
           </CardHeader>
           <CardContent className="p-0">
@@ -684,14 +886,23 @@ export default function DashboardPage() {
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="pb-2 pl-5 pr-3 pt-0 text-left font-medium text-muted-foreground/60 uppercase tracking-wider text-[10px]">Product</th>
-                    <th className="pb-2 pr-3 pt-0 text-right font-medium text-muted-foreground/60 uppercase tracking-wider text-[10px]">Revenue</th>
-                    <th className="pb-2 pr-5 pt-0 text-right font-medium text-muted-foreground/60 uppercase tracking-wider text-[10px]">Margin</th>
+                    <th className="pb-2 pl-5 pr-3 pt-0 text-left font-medium text-muted-foreground/60 uppercase tracking-wider text-[10px]">
+                      Product
+                    </th>
+                    <th className="pb-2 pr-3 pt-0 text-right font-medium text-muted-foreground/60 uppercase tracking-wider text-[10px]">
+                      Revenue
+                    </th>
+                    <th className="pb-2 pr-5 pt-0 text-right font-medium text-muted-foreground/60 uppercase tracking-wider text-[10px]">
+                      Margin
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {dashboard.productContributions.slice(0, 6).map((p) => (
-                    <tr key={p.productId ?? 'direct'} className="hover:bg-muted/20">
+                    <tr
+                      key={p.productId ?? 'direct'}
+                      className="hover:bg-muted/20"
+                    >
                       <td className="py-2.5 pl-5 pr-3 font-medium text-foreground truncate max-w-[140px]">
                         {p.productName}
                       </td>
@@ -730,9 +941,14 @@ export default function DashboardPage() {
             </div>
             <p className="text-sm text-foreground">
               <span className="font-semibold">Break-even point:</span>{' '}
-              <span className="text-[#FBBF24] font-medium">{fmt(dashboard.breakEvenRevenue)}</span>
-              {' '}revenue needed to cover all expenses at your current{' '}
-              <span className="font-medium">{dashboard.grossMarginPct.toFixed(1)}%</span> gross margin.
+              <span className="text-[#FBBF24] font-medium">
+                {fmt(dashboard.breakEvenRevenue)}
+              </span>{' '}
+              revenue needed to cover all expenses at your current{' '}
+              <span className="font-medium">
+                {dashboard.grossMarginPct.toFixed(1)}%
+              </span>{' '}
+              gross margin.
             </p>
           </CardContent>
         </Card>

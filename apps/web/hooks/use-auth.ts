@@ -1,6 +1,6 @@
 'use client';
 
-import useSWR from 'swr';
+import useSWR, { type KeyedMutator } from 'swr';
 import { useCallback, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { apiPost, ApiError } from '@/lib/api';
@@ -19,7 +19,7 @@ interface UseUserReturn {
   isLoading: boolean;
   isAuthenticated: boolean;
   error: ApiError | undefined;
-  mutate: () => void;
+  mutate: KeyedMutator<UserResponse>;
 }
 
 // Routes where we should NOT redirect on 401

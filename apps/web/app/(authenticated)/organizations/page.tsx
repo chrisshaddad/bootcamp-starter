@@ -173,11 +173,21 @@ export default function OrganizationsPage() {
             <Table>
               <TableHeader>
                 <TableRow className="border-border hover:bg-transparent">
-                  <TableHead className="text-muted-foreground">Organization</TableHead>
-                  <TableHead className="text-muted-foreground">Status</TableHead>
-                  <TableHead className="text-muted-foreground">Created By</TableHead>
-                  <TableHead className="text-muted-foreground">Members</TableHead>
-                  <TableHead className="text-muted-foreground">Registered</TableHead>
+                  <TableHead className="text-muted-foreground">
+                    Organization
+                  </TableHead>
+                  <TableHead className="text-muted-foreground">
+                    Status
+                  </TableHead>
+                  <TableHead className="text-muted-foreground">
+                    Created By
+                  </TableHead>
+                  <TableHead className="text-muted-foreground">
+                    Members
+                  </TableHead>
+                  <TableHead className="text-muted-foreground">
+                    Registered
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

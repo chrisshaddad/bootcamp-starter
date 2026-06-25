@@ -68,7 +68,9 @@ export function AppSidebar() {
     return pathname.startsWith(url);
   };
 
-  const orgInitial = (isSuperAdmin ? 'S' : user?.name?.[0] ?? '?').toUpperCase();
+  const orgInitial = (
+    isSuperAdmin ? 'S' : (user?.name?.[0] ?? '?')
+  ).toUpperCase();
 
   return (
     <Sidebar className="border-r border-border bg-sidebar">
@@ -96,7 +98,7 @@ export function AppSidebar() {
               {isSuperAdmin ? 'Super Admin' : (user?.name ?? 'My Organization')}
             </p>
             <p className="truncate text-xs text-muted-foreground">
-              {isSuperAdmin ? 'Platform Administrator' : user?.email ?? ''}
+              {isSuperAdmin ? 'Platform Administrator' : (user?.email ?? '')}
             </p>
           </div>
         </div>
@@ -134,13 +136,19 @@ export function AppSidebar() {
                           </span>
                         </div>
                       ) : (
-                        <Link href={item.url} className="flex w-full items-center gap-3">
+                        <Link
+                          href={item.url}
+                          className="flex w-full items-center gap-3"
+                        >
                           {/* Active left indicator */}
                           {active && (
                             <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-primary" />
                           )}
                           <item.icon
-                            className={cn('h-4 w-4 shrink-0', active ? 'text-primary' : '')}
+                            className={cn(
+                              'h-4 w-4 shrink-0',
+                              active ? 'text-primary' : '',
+                            )}
                           />
                           <span>{item.title}</span>
                         </Link>
@@ -173,12 +181,18 @@ export function AppSidebar() {
                           : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
                       )}
                     >
-                      <Link href={item.url} className="flex w-full items-center gap-3">
+                      <Link
+                        href={item.url}
+                        className="flex w-full items-center gap-3"
+                      >
                         {active && (
                           <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-primary" />
                         )}
                         <item.icon
-                          className={cn('h-4 w-4 shrink-0', active ? 'text-primary' : '')}
+                          className={cn(
+                            'h-4 w-4 shrink-0',
+                            active ? 'text-primary' : '',
+                          )}
                         />
                         <span>{item.title}</span>
                       </Link>
@@ -195,7 +209,9 @@ export function AppSidebar() {
       <SidebarFooter className="border-t border-border p-3">
         <div className="flex items-center gap-3 rounded-lg px-2 py-1.5">
           <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
-            {user?.name?.[0]?.toUpperCase() ?? user?.email?.[0]?.toUpperCase() ?? '?'}
+            {user?.name?.[0]?.toUpperCase() ??
+              user?.email?.[0]?.toUpperCase() ??
+              '?'}
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-xs font-semibold text-foreground">

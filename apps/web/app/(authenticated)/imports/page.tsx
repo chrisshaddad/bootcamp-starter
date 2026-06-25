@@ -22,39 +22,79 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Upload, RefreshCw, FileText, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import {
+  Upload,
+  RefreshCw,
+  FileText,
+  CheckCircle2,
+  XCircle,
+  Clock,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import * as XLSX from 'xlsx';
 
-const EXPENSE_FIELDS  = ['date', 'description', 'amount', 'category', 'categoryId', 'recurrence', 'notes'];
-const SALE_FIELDS     = ['date', 'description', 'quantity', 'unitPrice', 'unitCost', 'product', 'productId', 'recurrence', 'notes'];
-const PRODUCT_FIELDS  = ['name', 'description', 'unitPrice', 'unitCost', 'sku'];
+const EXPENSE_FIELDS = [
+  'date',
+  'description',
+  'amount',
+  'category',
+  'categoryId',
+  'recurrence',
+  'notes',
+];
+const SALE_FIELDS = [
+  'date',
+  'description',
+  'quantity',
+  'unitPrice',
+  'unitCost',
+  'product',
+  'productId',
+  'recurrence',
+  'notes',
+];
+const PRODUCT_FIELDS = ['name', 'description', 'unitPrice', 'unitCost', 'sku'];
 
 function statusBadge(status: string) {
-  const map: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+  const map: Record<
+    string,
+    {
+      label: string;
+      variant: 'default' | 'secondary' | 'destructive' | 'outline';
+    }
+  > = {
     PENDING: { label: 'Pending', variant: 'secondary' },
     PROCESSING: { label: 'Processing…', variant: 'outline' },
     COMPLETED: { label: 'Completed', variant: 'default' },
     FAILED: { label: 'Failed', variant: 'destructive' },
     PARTIAL: { label: 'Partial', variant: 'outline' },
   };
-  const { label, variant } = map[status] ?? { label: status, variant: 'secondary' };
+  const { label, variant } = map[status] ?? {
+    label: status,
+    variant: 'secondary',
+  };
   return <Badge variant={variant}>{label}</Badge>;
 }
 
 function StatusIcon({ status }: { status: string }) {
-  if (status === 'success') return <CheckCircle2 className="h-4 w-4 text-[#34D39A]" />;
-  if (status === 'error') return <XCircle className="h-4 w-4 text-destructive" />;
+  if (status === 'success')
+    return <CheckCircle2 className="h-4 w-4 text-[#34D39A]" />;
+  if (status === 'error')
+    return <XCircle className="h-4 w-4 text-destructive" />;
   return <Clock className="h-4 w-4 text-muted-foreground" />;
 }
 
 export default function ImportsPage() {
   const [open, setOpen] = useState(false);
   const [selectedImportId, setSelectedImportId] = useState<string | null>(null);
-  const [importType, setImportType] = useState<'EXPENSES' | 'SALES' | 'PRODUCTS'>('EXPENSES');
+  const [importType, setImportType] = useState<
+    'EXPENSES' | 'SALES' | 'PRODUCTS'
+  >('EXPENSES');
   const [fileHeaders, setFileHeaders] = useState<string[]>([]);
-  const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
+  const [columnMapping, setColumnMapping] = useState<Record<string, string>>(
+    {},
+  );
   const [fileContent, setFileContent] = useState('');
   const [fileName, setFileName] = useState('');
   const [isUploading, setIsUploading] = useState(false);
@@ -69,7 +109,12 @@ export default function ImportsPage() {
 
   const processHeaders = (headers: string[]) => {
     setFileHeaders(headers);
-    const fields = importType === 'EXPENSES' ? EXPENSE_FIELDS : importType === 'PRODUCTS' ? PRODUCT_FIELDS : SALE_FIELDS;
+    const fields =
+      importType === 'EXPENSES'
+        ? EXPENSE_FIELDS
+        : importType === 'PRODUCTS'
+          ? PRODUCT_FIELDS
+          : SALE_FIELDS;
     const autoMap: Record<string, string> = {};
     headers.forEach((h) => {
       const match = fields.find((f) => f.toLowerCase() === h.toLowerCase());
@@ -83,13 +128,19 @@ export default function ImportsPage() {
     if (!file) return;
     setFileName(file.name);
 
-    const isXlsx = file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls');
+    const isXlsx =
+      file.name.toLowerCase().endsWith('.xlsx') ||
+      file.name.toLowerCase().endsWith('.xls');
 
     if (isXlsx) {
       const reader = new FileReader();
       reader.onload = (ev) => {
         const ab = ev.target?.result as ArrayBuffer;
-        const wb = XLSX.read(ab, { type: 'array', cellDates: true, dateNF: 'yyyy-mm-dd' });
+        const wb = XLSX.read(ab, {
+          type: 'array',
+          cellDates: true,
+          dateNF: 'yyyy-mm-dd',
+        });
         const ws = wb.Sheets[wb.SheetNames[0]!]!;
         // Convert sheet → CSV string, forcing ISO date format so backend can parse it
         // Strip trailing empty rows (e.g. TOTAL footer rows that have no date)
@@ -106,7 +157,9 @@ export default function ImportsPage() {
         const b64 = btoa(unescape(encodeURIComponent(csv)));
         setFileContent(b64);
         const firstLine = csv.split(/\r?\n/)[0] ?? '';
-        const headers = firstLine.split(',').map((h) => h.trim().replace(/^"|"$/g, ''));
+        const headers = firstLine
+          .split(',')
+          .map((h) => h.trim().replace(/^"|"$/g, ''));
         processHeaders(headers);
       };
       reader.readAsArrayBuffer(file);
@@ -117,28 +170,37 @@ export default function ImportsPage() {
         const b64 = btoa(unescape(encodeURIComponent(text)));
         setFileContent(b64);
         const firstLine = text.split(/\r?\n/)[0] ?? '';
-        const headers = firstLine.split(',').map((h) => h.trim().replace(/^"|"$/g, ''));
+        const headers = firstLine
+          .split(',')
+          .map((h) => h.trim().replace(/^"|"$/g, ''));
         processHeaders(headers);
       };
       reader.readAsText(file);
     }
   };
 
-  const requiredFields = importType === 'EXPENSES'
-    ? ['date', 'description', 'amount']
-    : importType === 'PRODUCTS'
-    ? ['name', 'unitPrice']
-    : ['date', 'unitPrice'];
+  const requiredFields =
+    importType === 'EXPENSES'
+      ? ['date', 'description', 'amount']
+      : importType === 'PRODUCTS'
+        ? ['name', 'unitPrice']
+        : ['date', 'unitPrice'];
 
   const mappedValues = Object.values(columnMapping).filter(Boolean);
   const missingFields = requiredFields.filter((f) => !mappedValues.includes(f));
-  const canImport = !!fileContent && fileHeaders.length > 0 && missingFields.length === 0;
+  const canImport =
+    !!fileContent && fileHeaders.length > 0 && missingFields.length === 0;
 
   const handleUpload = async () => {
     if (!fileContent || !fileName) return;
     setIsUploading(true);
     try {
-      await uploadImport({ type: importType, fileName, fileContent, columnMapping });
+      await uploadImport({
+        type: importType,
+        fileName,
+        fileContent,
+        columnMapping,
+      });
       toast.success('Import started — processing in background');
       setOpen(false);
       setFileContent('');
@@ -152,7 +214,12 @@ export default function ImportsPage() {
     }
   };
 
-  const appFields = importType === 'EXPENSES' ? EXPENSE_FIELDS : importType === 'PRODUCTS' ? PRODUCT_FIELDS : SALE_FIELDS;
+  const appFields =
+    importType === 'EXPENSES'
+      ? EXPENSE_FIELDS
+      : importType === 'PRODUCTS'
+        ? PRODUCT_FIELDS
+        : SALE_FIELDS;
 
   return (
     <div className="space-y-6">
@@ -164,7 +231,12 @@ export default function ImportsPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => mutate()} className="gap-2 border-border bg-card text-foreground hover:bg-secondary">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => mutate()}
+            className="gap-2 border-border bg-card text-foreground hover:bg-secondary"
+          >
             <RefreshCw className="h-4 w-4" />
             Refresh
           </Button>
@@ -231,17 +303,25 @@ export default function ImportsPage() {
                 {fileHeaders.length > 0 && (
                   <div className="space-y-3">
                     <div>
-                      <p className="text-sm font-medium text-foreground">Column Mapping</p>
+                      <p className="text-sm font-medium text-foreground">
+                        Column Mapping
+                      </p>
                       <p className="text-xs text-muted-foreground">
-                        Map your file columns to Margin fields. Required fields are marked <span className="text-destructive font-medium">*</span>.
+                        Map your file columns to Margin fields. Required fields
+                        are marked{' '}
+                        <span className="text-destructive font-medium">*</span>.
                       </p>
                     </div>
                     <div className="max-h-56 space-y-2 overflow-y-auto">
                       {fileHeaders.map((header) => {
                         const mapped = columnMapping[header];
-                        const isRequired = mapped && requiredFields.includes(mapped);
+                        const isRequired =
+                          mapped && requiredFields.includes(mapped);
                         return (
-                          <div key={header} className="grid grid-cols-2 items-center gap-3">
+                          <div
+                            key={header}
+                            className="grid grid-cols-2 items-center gap-3"
+                          >
                             <span className="truncate rounded bg-muted px-2 py-1 text-xs font-mono text-foreground">
                               {header}
                             </span>
@@ -254,17 +334,20 @@ export default function ImportsPage() {
                                 }));
                               }}
                             >
-                              <SelectTrigger className={cn(
-                                'h-8 text-xs',
-                                isRequired && 'border-[#34D39A]/60',
-                              )}>
+                              <SelectTrigger
+                                className={cn(
+                                  'h-8 text-xs',
+                                  isRequired && 'border-[#34D39A]/60',
+                                )}
+                              >
                                 <SelectValue placeholder="Skip" />
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="skip">— Skip —</SelectItem>
                                 {appFields.map((f) => (
                                   <SelectItem key={f} value={f}>
-                                    {f}{requiredFields.includes(f) ? ' *' : ''}
+                                    {f}
+                                    {requiredFields.includes(f) ? ' *' : ''}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -306,7 +389,9 @@ export default function ImportsPage() {
         <div className="lg:col-span-3">
           <Card className="border-border bg-card shadow-sm">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base text-foreground">Import History</CardTitle>
+              <CardTitle className="text-base text-foreground">
+                Import History
+              </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               {isLoading ? (
@@ -414,11 +499,18 @@ export default function ImportsPage() {
                     const data = (row.rawData ?? {}) as Record<string, string>;
                     // Pick the most meaningful label fields regardless of import type
                     const label =
-                      data.description || data.name || data.date || `Row ${row.rowNumber}`;
+                      data.description ||
+                      data.name ||
+                      data.date ||
+                      `Row ${row.rowNumber}`;
                     const sub = [
                       data.date,
-                      data.amount ? `$${parseFloat(data.amount).toFixed(2)}` : null,
-                      data.unitPrice ? `$${parseFloat(data.unitPrice).toFixed(2)}` : null,
+                      data.amount
+                        ? `$${parseFloat(data.amount).toFixed(2)}`
+                        : null,
+                      data.unitPrice
+                        ? `$${parseFloat(data.unitPrice).toFixed(2)}`
+                        : null,
                       data.category,
                       data.product,
                       data.sku,
@@ -434,16 +526,22 @@ export default function ImportsPage() {
                         <StatusIcon status={row.status} />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between gap-2">
-                            <p className="truncate font-medium text-foreground">{label}</p>
+                            <p className="truncate font-medium text-foreground">
+                              {label}
+                            </p>
                             <span className="shrink-0 text-[10px] text-muted-foreground/60">
                               #{row.rowNumber}
                             </span>
                           </div>
                           {sub && (
-                            <p className="mt-0.5 truncate text-muted-foreground">{sub}</p>
+                            <p className="mt-0.5 truncate text-muted-foreground">
+                              {sub}
+                            </p>
                           )}
                           {row.errorMsg && (
-                            <p className="mt-0.5 truncate text-destructive">{row.errorMsg}</p>
+                            <p className="mt-0.5 truncate text-destructive">
+                              {row.errorMsg}
+                            </p>
                           )}
                         </div>
                       </div>

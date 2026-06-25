@@ -41,7 +41,7 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 function today(): string {
-  return new Date().toISOString().split('T')[0];
+  return new Date().toISOString().split('T')[0]!;
 }
 
 function firstOfMonth(): string {
@@ -51,12 +51,14 @@ function firstOfMonth(): string {
 
 export default function AiInsightsPage() {
   const [open, setOpen] = useState(false);
-  const [genType, setGenType] = useState<AiInsightGenerateRequest['type']>('PROFITABILITY');
+  const [genType, setGenType] =
+    useState<AiInsightGenerateRequest['type']>('PROFITABILITY');
   const [periodStart, setPeriodStart] = useState(firstOfMonth());
   const [periodEnd, setPeriodEnd] = useState(today());
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const { insights, meta, isLoading, generateInsight, mutate } = useAiInsights();
+  const { insights, meta, isLoading, generateInsight, mutate } =
+    useAiInsights();
 
   const handleGenerate = async () => {
     setIsGenerating(true);
@@ -87,7 +89,12 @@ export default function AiInsightsPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => mutate()} className="gap-2 border-border bg-card text-foreground hover:bg-secondary">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => mutate()}
+            className="gap-2 border-border bg-card text-foreground hover:bg-secondary"
+          >
             <RefreshCw className="h-4 w-4" />
             Refresh
           </Button>
@@ -153,8 +160,9 @@ export default function AiInsightsPage() {
                 <div className="rounded-lg border border-[#FBBF24]/30 bg-[#FBBF24]/5 p-3">
                   <p className="text-xs text-[#FBBF24]">
                     <span className="font-medium">Note:</span> Requires a{' '}
-                    <code className="font-mono">GEMINI_API_KEY</code> in your API
-                    environment. Without it, a placeholder insight will be returned.
+                    <code className="font-mono">GEMINI_API_KEY</code> in your
+                    API environment. Without it, a placeholder insight will be
+                    returned.
                   </p>
                 </div>
 
@@ -198,10 +206,7 @@ export default function AiInsightsPage() {
       ) : (
         <div className="space-y-4">
           {insights.map((insight) => (
-            <Card
-              key={insight.id}
-              className="border-border bg-card shadow-sm"
-            >
+            <Card key={insight.id} className="border-border bg-card shadow-sm">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">
@@ -241,7 +246,10 @@ export default function AiInsightsPage() {
                     </p>
                     <ul className="space-y-1.5">
                       {insight.recommendations.map((rec, i) => (
-                        <li key={i} className="flex items-start gap-2 text-sm text-foreground">
+                        <li
+                          key={i}
+                          className="flex items-start gap-2 text-sm text-foreground"
+                        >
                           <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
                             {i + 1}
                           </span>

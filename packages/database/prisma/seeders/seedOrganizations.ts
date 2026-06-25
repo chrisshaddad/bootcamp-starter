@@ -97,7 +97,9 @@ export async function seedOrganizations(prisma: PrismaClient) {
       continue;
     }
 
-    const existingOrg = await prisma.organization.findFirst({ where: { name: org.name } });
+    const existingOrg = await prisma.organization.findFirst({
+      where: { name: org.name },
+    });
     if (existingOrg) {
       console.log(`  Skipping existing org: ${org.name}`);
       continue;

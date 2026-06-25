@@ -16,7 +16,9 @@ import { ApiError } from '@/lib/api';
 
 export default function LoginPage() {
   const { requestMagicLink } = useAuth();
-  const { isAuthenticated, isLoading } = useUser({ redirectOnUnauthenticated: false });
+  const { isAuthenticated, isLoading } = useUser({
+    redirectOnUnauthenticated: false,
+  });
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
