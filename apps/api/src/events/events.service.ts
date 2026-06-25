@@ -5,7 +5,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import type { User } from '@repo/db';
+import { Prisma, type User } from '@repo/db';
 import { PrismaService } from '../database/prisma.service';
 import { resolveOrganizationScope } from '../common/organization-scope';
 import type {
@@ -262,26 +262,25 @@ export class EventsService {
 
     await this.assertCanRegister(user.id, event);
 
-    const existingRegistration = await this.prisma.eventAttendee.findFirst({
-      where: {
-        eventId,
-        userId: user.id,
-      },
-    });
-
-    if (existingRegistration) {
-      throw new BadRequestException(
-        'You are already registered for this event',
-      );
+    try {
+      await this.prisma.eventAttendee.create({
+        data: {
+          eventId,
+          userId: user.id,
+          organizationId: event.organizationId,
+        },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new BadRequestException(
+          'You are already registered for this event',
+        );
+      }
+      throw error;
     }
-
-    await this.prisma.eventAttendee.create({
-      data: {
-        eventId,
-        userId: user.id,
-        organizationId: event.organizationId,
-      },
-    });
 
     this.logger.log(`User ${user.id} registered for event ${eventId}`);
 
