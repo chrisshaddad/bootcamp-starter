@@ -9,7 +9,7 @@ export const expenseResponseSchema = z.object({
   createdById: z.uuid(),
   description: z.string(),
   amount: z.string(), // Decimal serialized as string
-  date: z.string(),   // ISO date string
+  date: z.string(), // ISO date string
   recurrence: recurrenceTypeSchema,
   notes: z.string().nullable(),
   createdAt: z.string(),

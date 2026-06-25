@@ -57,7 +57,11 @@ function ProductForm({ defaultValues, onSubmit }: ProductFormProps) {
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="space-y-1">
         <Label htmlFor="name">Product Name *</Label>
-        <Input id="name" placeholder="e.g. Premium Widget" {...register('name')} />
+        <Input
+          id="name"
+          placeholder="e.g. Premium Widget"
+          {...register('name')}
+        />
         {errors.name && (
           <p className="text-xs text-red-500">{errors.name.message}</p>
         )}
@@ -103,8 +107,14 @@ export default function ProductsPage() {
   const [editing, setEditing] = useState<ProductResponse | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
-  const { products, meta, isLoading, createProduct, updateProduct, deleteProduct } =
-    useProducts();
+  const {
+    products,
+    meta,
+    isLoading,
+    createProduct,
+    updateProduct,
+    deleteProduct,
+  } = useProducts();
 
   const handleCreate = async (data: ProductCreateRequest) => {
     try {
@@ -187,15 +197,14 @@ export default function ProductsPage() {
           ) : (
             <div className="divide-y divide-border">
               {products.map((product) => {
-                const margin =
-                  product.unitCost
-                    ? (
-                        ((parseFloat(product.unitPrice) -
-                          parseFloat(product.unitCost)) /
-                          parseFloat(product.unitPrice)) *
-                        100
-                      ).toFixed(1)
-                    : null;
+                const margin = product.unitCost
+                  ? (
+                      ((parseFloat(product.unitPrice) -
+                        parseFloat(product.unitCost)) /
+                        parseFloat(product.unitPrice)) *
+                      100
+                    ).toFixed(1)
+                  : null;
 
                 return (
                   <div
@@ -213,7 +222,10 @@ export default function ProductsPage() {
                           </Badge>
                         )}
                         {product.sku && (
-                          <Badge variant="outline" className="text-xs font-mono">
+                          <Badge
+                            variant="outline"
+                            className="text-xs font-mono"
+                          >
                             {product.sku}
                           </Badge>
                         )}
@@ -288,7 +300,9 @@ export default function ProductsPage() {
 
       <ConfirmDialog
         open={!!deleteTarget}
-        onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
         title="Delete product?"
         description="This product will be permanently removed. This action cannot be undone."
         confirmLabel="Yes, delete"

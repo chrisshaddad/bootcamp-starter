@@ -94,11 +94,7 @@ function ExpenseForm({
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1">
           <Label htmlFor="amount">Amount (USD) *</Label>
-          <Input
-            id="amount"
-            placeholder="0.00"
-            {...register('amount')}
-          />
+          <Input id="amount" placeholder="0.00" {...register('amount')} />
           {errors.amount && (
             <p className="text-xs text-red-500">{errors.amount.message}</p>
           )}
@@ -148,7 +144,9 @@ function ExpenseForm({
             <SelectContent>
               {['NONE', 'DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'].map((r) => (
                 <SelectItem key={r} value={r}>
-                  {r === 'NONE' ? 'One-time' : r.charAt(0) + r.slice(1).toLowerCase()}
+                  {r === 'NONE'
+                    ? 'One-time'
+                    : r.charAt(0) + r.slice(1).toLowerCase()}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -158,11 +156,7 @@ function ExpenseForm({
 
       <div className="space-y-1">
         <Label htmlFor="notes">Notes</Label>
-        <Input
-          id="notes"
-          placeholder="Optional notes"
-          {...register('notes')}
-        />
+        <Input id="notes" placeholder="Optional notes" {...register('notes')} />
       </div>
 
       <Button
@@ -182,8 +176,14 @@ export default function ExpensesPage() {
   const [search, setSearch] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
-  const { expenses, meta, isLoading, createExpense, updateExpense, deleteExpense } =
-    useExpenses({ search: search || undefined });
+  const {
+    expenses,
+    meta,
+    isLoading,
+    createExpense,
+    updateExpense,
+    deleteExpense,
+  } = useExpenses({ search: search || undefined });
   const { categories, seedDefaults } = useExpenseCategories();
 
   const handleCreate = async (data: ExpenseCreateRequest) => {
@@ -233,7 +233,11 @@ export default function ExpensesPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => seedDefaults().then(() => toast.success('Default categories added'))}
+              onClick={() =>
+                seedDefaults().then(() =>
+                  toast.success('Default categories added'),
+                )
+              }
             >
               Seed categories
             </Button>
@@ -298,7 +302,9 @@ export default function ExpensesPage() {
                       {expense.description}
                     </p>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">{expense.date}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {expense.date}
+                      </span>
                       {expense.category && (
                         <Badge
                           variant="secondary"
@@ -371,7 +377,9 @@ export default function ExpensesPage() {
 
       <ConfirmDialog
         open={!!deleteTarget}
-        onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
         title="Delete expense?"
         description="This expense will be permanently removed. This action cannot be undone."
         confirmLabel="Yes, delete"

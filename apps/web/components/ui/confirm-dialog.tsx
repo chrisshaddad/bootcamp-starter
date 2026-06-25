@@ -40,14 +40,22 @@ export function ConfirmDialog({
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
         <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-6 shadow-2xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95">
           <div className="flex flex-col items-center gap-4 text-center">
-            <div className={cn(
-              'flex h-12 w-12 items-center justify-center rounded-full',
-              variant === 'destructive' ? 'bg-destructive/15' : 'bg-primary/15'
-            )}>
-              <AlertTriangle className={cn(
-                'h-6 w-6',
-                variant === 'destructive' ? 'text-destructive' : 'text-primary'
-              )} />
+            <div
+              className={cn(
+                'flex h-12 w-12 items-center justify-center rounded-full',
+                variant === 'destructive'
+                  ? 'bg-destructive/15'
+                  : 'bg-primary/15',
+              )}
+            >
+              <AlertTriangle
+                className={cn(
+                  'h-6 w-6',
+                  variant === 'destructive'
+                    ? 'text-destructive'
+                    : 'text-primary',
+                )}
+              />
             </div>
 
             <div className="flex flex-col gap-1">

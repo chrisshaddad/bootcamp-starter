@@ -32,7 +32,9 @@ export function useAiInsights(options: { type?: string; page?: number } = {}) {
   }, [revalidate]);
 
   const generateInsight = useCallback(
-    async (req: AiInsightGenerateRequest): Promise<{ message: string; jobId: string }> => {
+    async (
+      req: AiInsightGenerateRequest,
+    ): Promise<{ message: string; jobId: string }> => {
       const result = await apiPost<{ message: string; jobId: string }>(
         '/ai-insights/generate',
         req,

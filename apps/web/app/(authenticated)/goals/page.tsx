@@ -92,7 +92,8 @@ function GoalForm({ defaultValues, onSubmit }: GoalFormProps) {
 
   const startDate = watch('startDate');
   const period = watch('period');
-  const derivedEndDate = startDate && period ? computeEndDate(startDate, period) : '';
+  const derivedEndDate =
+    startDate && period ? computeEndDate(startDate, period) : '';
 
   // Keep the hidden endDate field in sync
   useEffect(() => {
@@ -102,9 +103,14 @@ function GoalForm({ defaultValues, onSubmit }: GoalFormProps) {
   const fmtEndDate = (iso: string) => {
     if (!iso) return null;
     const [y, m, d] = iso.split('-');
-    return new Date(Number(y), Number(m) - 1, Number(d)).toLocaleDateString('en-US', {
-      month: 'long', day: 'numeric', year: 'numeric',
-    });
+    return new Date(Number(y), Number(m) - 1, Number(d)).toLocaleDateString(
+      'en-US',
+      {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+      },
+    );
   };
 
   return (
@@ -116,7 +122,9 @@ function GoalForm({ defaultValues, onSubmit }: GoalFormProps) {
         <div className="space-y-1">
           <Label>Goal Type *</Label>
           <Select
-            onValueChange={(v) => setValue('type', v as GoalCreateRequest['type'])}
+            onValueChange={(v) =>
+              setValue('type', v as GoalCreateRequest['type'])
+            }
             defaultValue={defaultValues?.type}
           >
             <SelectTrigger>
@@ -124,7 +132,9 @@ function GoalForm({ defaultValues, onSubmit }: GoalFormProps) {
             </SelectTrigger>
             <SelectContent>
               {Object.entries(GOAL_TYPE_LABELS).map(([v, l]) => (
-                <SelectItem key={v} value={v}>{l}</SelectItem>
+                <SelectItem key={v} value={v}>
+                  {l}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -135,7 +145,9 @@ function GoalForm({ defaultValues, onSubmit }: GoalFormProps) {
         <div className="space-y-1">
           <Label>Period *</Label>
           <Select
-            onValueChange={(v) => setValue('period', v as GoalCreateRequest['period'])}
+            onValueChange={(v) =>
+              setValue('period', v as GoalCreateRequest['period'])
+            }
             defaultValue={defaultValues?.period}
           >
             <SelectTrigger>
@@ -143,7 +155,9 @@ function GoalForm({ defaultValues, onSubmit }: GoalFormProps) {
             </SelectTrigger>
             <SelectContent>
               {Object.entries(GOAL_PERIOD_LABELS).map(([v, l]) => (
-                <SelectItem key={v} value={v}>{l}</SelectItem>
+                <SelectItem key={v} value={v}>
+                  {l}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -152,9 +166,15 @@ function GoalForm({ defaultValues, onSubmit }: GoalFormProps) {
 
       <div className="space-y-1">
         <Label htmlFor="targetAmount">Target Amount (USD) *</Label>
-        <Input id="targetAmount" placeholder="10000.00" {...register('targetAmount')} />
+        <Input
+          id="targetAmount"
+          placeholder="10000.00"
+          {...register('targetAmount')}
+        />
         {errors.targetAmount && (
-          <p className="text-xs text-destructive">{errors.targetAmount.message}</p>
+          <p className="text-xs text-destructive">
+            {errors.targetAmount.message}
+          </p>
         )}
       </div>
 
@@ -163,16 +183,22 @@ function GoalForm({ defaultValues, onSubmit }: GoalFormProps) {
           <Label htmlFor="startDate">Start Date *</Label>
           <Input id="startDate" type="date" {...register('startDate')} />
           {errors.startDate && (
-            <p className="text-xs text-destructive">{errors.startDate.message}</p>
+            <p className="text-xs text-destructive">
+              {errors.startDate.message}
+            </p>
           )}
         </div>
         <div className="space-y-1">
           <Label>End Date</Label>
-          <div className={cn(
-            'flex h-10 items-center rounded-lg border border-border bg-muted/30 px-3 text-sm',
-            derivedEndDate ? 'text-foreground' : 'text-muted-foreground',
-          )}>
-            {derivedEndDate ? fmtEndDate(derivedEndDate) : (
+          <div
+            className={cn(
+              'flex h-10 items-center rounded-lg border border-border bg-muted/30 px-3 text-sm',
+              derivedEndDate ? 'text-foreground' : 'text-muted-foreground',
+            )}
+          >
+            {derivedEndDate ? (
+              fmtEndDate(derivedEndDate)
+            ) : (
               <span className="text-xs">Set start date &amp; period</span>
             )}
           </div>
@@ -186,7 +212,11 @@ function GoalForm({ defaultValues, onSubmit }: GoalFormProps) {
 
       <div className="space-y-1">
         <Label htmlFor="description">Description</Label>
-        <Input id="description" placeholder="Optional description" {...register('description')} />
+        <Input
+          id="description"
+          placeholder="Optional description"
+          {...register('description')}
+        />
       </div>
 
       <Button type="submit" disabled={isSubmitting} className="w-full">
