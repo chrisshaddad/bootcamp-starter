@@ -109,8 +109,8 @@ export async function seedOrganizations(prisma: PrismaClient) {
       continue;
     }
 
-    const existingOrg = await prisma.organization.findFirst({
-      where: { name: org.name },
+    const existingOrg = await prisma.organization.findUnique({
+      where: { createdById: orgAdmin.id },
     });
 
     const organization =
@@ -147,9 +147,17 @@ export async function seedOrganizations(prisma: PrismaClient) {
     const attendee = await prisma.user.findUnique({
       where: { email: link.email },
     });
-    const organization = await prisma.organization.findFirst({
-      where: { name: link.organizationName },
-    });
+    const orgSeed = ORGANIZATIONS.find((o) => o.name === link.organizationName);
+    const orgAdmin = orgSeed
+      ? await prisma.user.findUnique({
+          where: { email: orgSeed.adminEmail },
+        })
+      : null;
+    const organization = orgAdmin
+      ? await prisma.organization.findUnique({
+          where: { createdById: orgAdmin.id },
+        })
+      : null;
 
     if (!attendee) {
       console.warn(
