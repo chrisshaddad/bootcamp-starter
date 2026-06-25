@@ -14,7 +14,7 @@ import { ApiError } from '@/lib/api';
 function ForbiddenPage() {
   return (
     <div className="flex flex-col items-center justify-center py-20">
-      <ShieldX className="mb-4 h-16 w-16 text-red-400" />
+      <ShieldX className="mb-4 h-16 w-16 text-error" />
       <h1 className="mb-2 text-2xl font-bold text-gray-900">Access Denied</h1>
       <p className="max-w-md text-center text-gray-500">
         You don&apos;t have permission to access this page.
@@ -102,7 +102,7 @@ export default function EventDetailPage() {
           <ArrowLeft className="h-4 w-4" />
           Back to Events
         </Button>
-        <div className="py-10 text-center text-red-500">
+        <div className="py-10 text-center text-error">
           Event not found or failed to load
         </div>
       </div>
@@ -139,7 +139,7 @@ export default function EventDetailPage() {
           </Button>
         )}
         {event.isRegistered && (
-          <span className="inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-800">
+          <span className="inline-flex items-center rounded-full bg-primary-100 px-3 py-1 text-sm font-medium text-primary-base">
             You are registered
           </span>
         )}

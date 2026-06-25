@@ -72,7 +72,7 @@ const FEATURE_CARDS: FeatureCard[] = [
 function ForbiddenPage() {
   return (
     <div className="flex flex-col items-center justify-center py-20">
-      <ShieldX className="mb-4 h-16 w-16 text-red-400" />
+      <ShieldX className="mb-4 h-16 w-16 text-error" />
       <h1 className="mb-2 text-2xl font-bold text-gray-900">Access Denied</h1>
       <p className="max-w-md text-center text-gray-500">
         You don&apos;t have permission to access this page. Only Super Admins
@@ -149,7 +149,7 @@ function FeatureCardItem({ card }: { card: FeatureCard }) {
           <span
             className={`rounded-full px-2 py-0.5 text-xs font-medium ${
               card.status === 'active'
-                ? 'bg-green-100 text-green-800'
+                ? 'bg-primary-100 text-primary-base'
                 : 'bg-gray-100 text-gray-500'
             }`}
           >
