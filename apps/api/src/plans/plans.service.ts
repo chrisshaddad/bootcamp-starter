@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { Prisma } from '@repo/db';
 import { PrismaService } from '../database/prisma.service';
 import type {
   PlanListResponse,
@@ -65,16 +70,26 @@ export class PlansService {
 
   /** Create a new membership plan in the caller's gym */
   async create(gymId: string, dto: PlanCreateRequest): Promise<PlanResponse> {
-    return this.prisma.membershipPlan.create({
-      data: {
-        gymId,
-        name: dto.name,
-        description: dto.description ?? null,
-        durationDays: dto.durationDays,
-        price: dto.price,
-      },
-      select: PLAN_SELECT,
-    });
+    try {
+      return await this.prisma.membershipPlan.create({
+        data: {
+          gymId,
+          name: dto.name,
+          description: dto.description ?? null,
+          durationDays: dto.durationDays,
+          price: dto.price,
+        },
+        select: PLAN_SELECT,
+      });
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        throw new ConflictException('A plan with this name already exists');
+      }
+      throw err;
+    }
   }
 
   /** Update a membership plan's details or active status, scoped to the caller's gym */
@@ -83,18 +98,31 @@ export class PlansService {
     gymId: string,
     dto: PlanUpdateRequest,
   ): Promise<PlanResponse> {
-    const { count } = await this.prisma.membershipPlan.updateMany({
-      where: { id, gymId },
-      data: {
-        ...(dto.name !== undefined && { name: dto.name }),
-        ...(dto.description !== undefined && { description: dto.description }),
-        ...(dto.durationDays !== undefined && {
-          durationDays: dto.durationDays,
-        }),
-        ...(dto.price !== undefined && { price: dto.price }),
-        ...(dto.isActive !== undefined && { isActive: dto.isActive }),
-      },
-    });
+    let count: number;
+    try {
+      ({ count } = await this.prisma.membershipPlan.updateMany({
+        where: { id, gymId },
+        data: {
+          ...(dto.name !== undefined && { name: dto.name }),
+          ...(dto.description !== undefined && {
+            description: dto.description,
+          }),
+          ...(dto.durationDays !== undefined && {
+            durationDays: dto.durationDays,
+          }),
+          ...(dto.price !== undefined && { price: dto.price }),
+          ...(dto.isActive !== undefined && { isActive: dto.isActive }),
+        },
+      }));
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        throw new ConflictException('A plan with this name already exists');
+      }
+      throw err;
+    }
 
     if (count === 0) {
       throw new NotFoundException(`Plan with ID ${id} not found`);

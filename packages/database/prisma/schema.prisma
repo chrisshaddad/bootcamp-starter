@@ -205,6 +205,7 @@ model MembershipPlan {
   gym           Gym            @relation(fields: [gymId], references: [id], onDelete: Cascade)
   subscriptions Subscription[]
 
+  @@unique([gymId, name])
   @@index([gymId])
   @@schema("public")
 }

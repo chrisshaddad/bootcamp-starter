@@ -8,6 +8,7 @@ import { MailModule } from './mail/mail.module';
 import { GymsModule } from './gyms/gyms.module';
 import { MembersModule } from './members/members.module';
 import { PlansModule } from './plans/plans.module';
+import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { DatabaseModule } from './database/database.module';
 
 @Module({
@@ -24,6 +25,7 @@ import { DatabaseModule } from './database/database.module';
     GymsModule,
     MembersModule,
     PlansModule,
+    SubscriptionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

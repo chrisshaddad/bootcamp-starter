@@ -2,7 +2,11 @@ import { z } from 'zod';
 
 export const planCreateRequestSchema = z.object({
   name: z.string().trim().min(1, 'Name is required'),
-  description: z.string().trim().optional(),
+  description: z
+    .string()
+    .trim()
+    .max(500, 'Description must be 500 characters or fewer')
+    .optional(),
   durationDays: z
     .number()
     .int('Duration must be a whole number')

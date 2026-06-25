@@ -148,6 +148,8 @@ function AddPlanDialog({
     defaultValues: { name: '', description: '', durationDays: 30, price: 0 },
   });
 
+  const addDescCount = (form.watch('description') ?? '').length;
+
   const handleSubmit = form.handleSubmit(async (data) => {
     setIsSubmitting(true);
     try {
@@ -161,9 +163,13 @@ function AddPlanDialog({
       onOpenChange(false);
       form.reset();
     } catch (err) {
-      toast.error(
-        err instanceof ApiError ? err.message : 'Failed to create plan',
-      );
+      if (err instanceof ApiError && err.status === 409) {
+        form.setError('name', { message: err.message });
+      } else {
+        toast.error(
+          err instanceof ApiError ? err.message : 'Failed to create plan',
+        );
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -211,6 +217,16 @@ function AddPlanDialog({
                 rows={3}
                 {...form.register('description')}
               />
+              <p
+                className={`text-xs text-right ${addDescCount > 500 ? 'text-red-500' : 'text-gray-400'}`}
+              >
+                {addDescCount} / 500 characters
+              </p>
+              {form.formState.errors.description && (
+                <p className="text-xs text-error">
+                  {form.formState.errors.description.message}
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -305,6 +321,8 @@ function EditPlanDialog({
     },
   });
 
+  const editDescCount = (form.watch('description') ?? '').length;
+
   const handleSubmit = form.handleSubmit(async (data) => {
     setIsSubmitting(true);
     try {
@@ -317,9 +335,13 @@ function EditPlanDialog({
       toast.success('Plan updated successfully');
       onClose();
     } catch (err) {
-      toast.error(
-        err instanceof ApiError ? err.message : 'Failed to update plan',
-      );
+      if (err instanceof ApiError && err.status === 409) {
+        form.setError('name', { message: err.message });
+      } else {
+        toast.error(
+          err instanceof ApiError ? err.message : 'Failed to update plan',
+        );
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -377,6 +399,16 @@ function EditPlanDialog({
                   rows={3}
                   {...form.register('description')}
                 />
+                <p
+                  className={`text-xs text-right ${editDescCount > 500 ? 'text-red-500' : 'text-gray-400'}`}
+                >
+                  {editDescCount} / 500 characters
+                </p>
+                {form.formState.errors.description && (
+                  <p className="text-xs text-error">
+                    {form.formState.errors.description.message}
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">

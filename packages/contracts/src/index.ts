@@ -4,3 +4,4 @@ export * from './users';
 export * from './gyms';
 export * from './members';
 export * from './plans';
+export * from './subscriptions';
