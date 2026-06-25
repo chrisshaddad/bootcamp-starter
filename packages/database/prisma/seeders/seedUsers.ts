@@ -35,6 +35,11 @@ const ORG_ADMINS: Prisma.UserCreateManyInput[] = [
     email: 'admin@datasync.example.com',
     name: 'Anna Data',
   },
+  {
+    email: 'mohamadfarhat720@gmail.com',
+    name: 'Mohamad',
+  },
+  
 ];
 
 export async function seedSuperAdmins(prisma: PrismaClient) {
