@@ -15,7 +15,12 @@ export const developerProfileSchema = z.object({
 export const hiringProfileSchema = z.object({
   id: z.string(),
   organizationName: z.string(),
-  organizationType: z.enum(['COMPANY', 'AGENCY', 'INDIVIDUAL', 'FREELANCE_CLIENT']),
+  organizationType: z.enum([
+    'COMPANY',
+    'AGENCY',
+    'INDIVIDUAL',
+    'FREELANCE_CLIENT',
+  ]),
   jobTitle: z.string().nullable().optional(),
 });
 

@@ -14,7 +14,10 @@ export class OrganizationsService {
    * while allowing you to deprecate/remove the module later.
    */
   async findAll(options: any): Promise<OrganizationListResponse> {
-    return { organizations: [], total: 0 } as unknown as OrganizationListResponse;
+    return {
+      organizations: [],
+      total: 0,
+    } as unknown as OrganizationListResponse;
   }
 
   async findOne(id: string): Promise<OrganizationDetailResponse> {

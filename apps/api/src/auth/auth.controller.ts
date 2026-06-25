@@ -47,7 +47,9 @@ export class AuthController {
     @Body() body: MagicLinkVerifyRequest,
     @Res({ passthrough: true }) response: Response,
   ) {
-    const { sessionId, user } = await this.authService.verifyMagicLink(body.token);
+    const { sessionId, user } = await this.authService.verifyMagicLink(
+      body.token,
+    );
 
     response.cookie(SESSION_COOKIE_NAME, sessionId, {
       httpOnly: true,

@@ -45,11 +45,20 @@ export async function seedProjects(prisma: PrismaClient) {
       defaultBranch: 'main',
       title: 'Enterprise NestJS Boilerplate',
       slug: 'enterprise-nestjs-boilerplate',
-      shortDescription: 'A production-ready NestJS API boilerplate with advanced caching and background workers.',
-      fullDescription: 'This project demonstrates industry-grade patterns for Node.js, leveraging PostgreSQL with Prisma, Redis with BullMQ, and Docker containerization. It contains robust logging and modular architecture principles.',
+      shortDescription:
+        'A production-ready NestJS API boilerplate with advanced caching and background workers.',
+      fullDescription:
+        'This project demonstrates industry-grade patterns for Node.js, leveraging PostgreSQL with Prisma, Redis with BullMQ, and Docker containerization. It contains robust logging and modular architecture principles.',
       deploymentUrl: 'https://api-demo.sarahchen.dev',
       status: 'PUBLISHED' as const,
-      techSlugs: ['typescript', 'nodejs', 'nestjs', 'postgresql', 'redis', 'docker'],
+      techSlugs: [
+        'typescript',
+        'nodejs',
+        'nestjs',
+        'postgresql',
+        'redis',
+        'docker',
+      ],
     },
     {
       githubRepoId: BigInt(94301292),
@@ -60,8 +69,10 @@ export async function seedProjects(prisma: PrismaClient) {
       defaultBranch: 'main',
       title: 'Tailwind v4 Sandbox',
       slug: 'tailwindcss-v4-sandbox',
-      shortDescription: 'An experimental Next.js layout showcasing Tailwind CSS v4 features.',
-      fullDescription: 'Explore the new compilation engine, custom utilities, and CSS-first configuration features of Tailwind v4 inside a modern Next.js 16 App Router interface.',
+      shortDescription:
+        'An experimental Next.js layout showcasing Tailwind CSS v4 features.',
+      fullDescription:
+        'Explore the new compilation engine, custom utilities, and CSS-first configuration features of Tailwind v4 inside a modern Next.js 16 App Router interface.',
       deploymentUrl: 'https://tailwind4.sarahchen.dev',
       status: 'PUBLISHED' as const,
       techSlugs: ['typescript', 'nextjs'],

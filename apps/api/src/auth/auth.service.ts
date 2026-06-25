@@ -97,13 +97,13 @@ export class AuthService {
     // Find the magic link and load associated profiles
     const magicLink = await this.prisma.magicLink.findUnique({
       where: { token },
-      include: { 
+      include: {
         user: {
           include: {
             developerProfile: true,
             hiringProfile: true,
-          }
-        } 
+          },
+        },
       },
     });
 
