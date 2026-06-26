@@ -77,7 +77,9 @@ export default function SettingsPage() {
   } = useSWR<UserResponse>('/auth/me', fetcher);
   const { organizations } = useOrganizations();
   const currentOrg = organizations?.find((o) => o.id === user?.organizationId);
-  const [activeTab, setActiveTab] = useState<'profile' | 'account' | 'organization' | 'members'>('profile');
+  const [activeTab, setActiveTab] = useState<
+    'profile' | 'account' | 'organization' | 'members'
+  >('profile');
 
   const { getOrganization, updateOrganization } = useOrganizationSettings(
     user?.organizationId,
@@ -165,7 +167,9 @@ export default function SettingsPage() {
       orgForm.reset(data);
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : 'Failed to update organization',
+        error instanceof Error
+          ? error.message
+          : 'Failed to update organization',
       );
     } finally {
       setOrgSaving(false);
@@ -219,19 +223,31 @@ export default function SettingsPage() {
       </div>
 
       <div className="flex flex-wrap gap-2 rounded-2xl border border-border bg-card p-2 shadow-sm">
-        <Button variant={activeTab === 'profile' ? 'default' : 'ghost'} onClick={() => setActiveTab('profile')}>
+        <Button
+          variant={activeTab === 'profile' ? 'default' : 'ghost'}
+          onClick={() => setActiveTab('profile')}
+        >
           Profile
         </Button>
-        <Button variant={activeTab === 'account' ? 'default' : 'ghost'} onClick={() => setActiveTab('account')}>
+        <Button
+          variant={activeTab === 'account' ? 'default' : 'ghost'}
+          onClick={() => setActiveTab('account')}
+        >
           Account
         </Button>
         {isOrgAdmin && (
-          <Button variant={activeTab === 'organization' ? 'default' : 'ghost'} onClick={() => setActiveTab('organization')}>
+          <Button
+            variant={activeTab === 'organization' ? 'default' : 'ghost'}
+            onClick={() => setActiveTab('organization')}
+          >
             Organization
           </Button>
         )}
         {isOrgAdmin && (
-          <Button variant={activeTab === 'members' ? 'default' : 'ghost'} onClick={() => setActiveTab('members')}>
+          <Button
+            variant={activeTab === 'members' ? 'default' : 'ghost'}
+            onClick={() => setActiveTab('members')}
+          >
             Members
           </Button>
         )}
@@ -246,7 +262,8 @@ export default function SettingsPage() {
                 User Profile
               </CardTitle>
               <CardDescription>
-                Update your personal details and picture. Changes here show in the top-right avatar.
+                Update your personal details and picture. Changes here show in
+                the top-right avatar.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -279,9 +296,12 @@ export default function SettingsPage() {
                     </label>
                   </div>
                   <div className="space-y-1">
-                    <p className="font-medium text-foreground">Profile picture</p>
+                    <p className="font-medium text-foreground">
+                      Profile picture
+                    </p>
                     <p className="text-sm text-muted-foreground">
-                      Click the plus button to upload a new image. The preview updates before you save.
+                      Click the plus button to upload a new image. The preview
+                      updates before you save.
                     </p>
                   </div>
                 </div>
@@ -303,7 +323,8 @@ export default function SettingsPage() {
                       if (!file) return;
 
                       try {
-                        const compressedDataUrl = await compressImageToDataUrl(file);
+                        const compressedDataUrl =
+                          await compressImageToDataUrl(file);
                         profileForm.setValue(
                           'profilePictureUrl',
                           compressedDataUrl,
@@ -323,49 +344,85 @@ export default function SettingsPage() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1">
                     <Label htmlFor="name">Full Name</Label>
-                    <Input id="name" {...profileForm.register('name')} placeholder="Your full name" />
+                    <Input
+                      id="name"
+                      {...profileForm.register('name')}
+                      placeholder="Your full name"
+                    />
                   </div>
                   <div className="space-y-1">
                     <Label htmlFor="phoneNumber">Phone Number</Label>
-                    <Input id="phoneNumber" {...profileForm.register('phoneNumber')} placeholder="Your phone number" />
+                    <Input
+                      id="phoneNumber"
+                      {...profileForm.register('phoneNumber')}
+                      placeholder="Your phone number"
+                    />
                   </div>
                 </div>
 
                 <div className="space-y-1">
                   <Label htmlFor="bio">Bio</Label>
-                  <Input id="bio" {...profileForm.register('bio')} placeholder="Tell us about yourself" />
+                  <Input
+                    id="bio"
+                    {...profileForm.register('bio')}
+                    placeholder="Tell us about yourself"
+                  />
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1">
                     <Label htmlFor="street1">Street Address</Label>
-                    <Input id="street1" {...profileForm.register('street1')} placeholder="Street address" />
+                    <Input
+                      id="street1"
+                      {...profileForm.register('street1')}
+                      placeholder="Street address"
+                    />
                   </div>
                   <div className="space-y-1">
                     <Label htmlFor="street2">Street Address 2</Label>
-                    <Input id="street2" {...profileForm.register('street2')} placeholder="Apt, suite, etc." />
+                    <Input
+                      id="street2"
+                      {...profileForm.register('street2')}
+                      placeholder="Apt, suite, etc."
+                    />
                   </div>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1">
                     <Label htmlFor="city">City</Label>
-                    <Input id="city" {...profileForm.register('city')} placeholder="City" />
+                    <Input
+                      id="city"
+                      {...profileForm.register('city')}
+                      placeholder="City"
+                    />
                   </div>
                   <div className="space-y-1">
                     <Label htmlFor="state">State / Province</Label>
-                    <Input id="state" {...profileForm.register('state')} placeholder="State" />
+                    <Input
+                      id="state"
+                      {...profileForm.register('state')}
+                      placeholder="State"
+                    />
                   </div>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1">
                     <Label htmlFor="postalCode">Postal Code</Label>
-                    <Input id="postalCode" {...profileForm.register('postalCode')} placeholder="Postal code" />
+                    <Input
+                      id="postalCode"
+                      {...profileForm.register('postalCode')}
+                      placeholder="Postal code"
+                    />
                   </div>
                   <div className="space-y-1">
                     <Label htmlFor="country">Country</Label>
-                    <Input id="country" {...profileForm.register('country')} placeholder="Country" />
+                    <Input
+                      id="country"
+                      {...profileForm.register('country')}
+                      placeholder="Country"
+                    />
                   </div>
                 </div>
 
@@ -388,29 +445,30 @@ export default function SettingsPage() {
             <CardHeader>
               <CardTitle>Account Information</CardTitle>
               <CardDescription>
-                Read-only identity and login info. This tab is informational only.
+                Read-only identity and login info. This tab is informational
+                only.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <Avatar className="h-14 w-14 ring-2 ring-border">
-                    {user?.profile?.avatarUrl && (
-                      <AvatarImage
-                        src={user.profile.avatarUrl}
-                        alt="Profile picture"
-                        className="object-cover"
-                      />
-                    )}
-                    <AvatarFallback className="bg-muted text-muted-foreground">
-                      <UserCircle2 className="h-8 w-8" />
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-medium text-foreground">
-                      {user?.name ?? 'User'}
-                    </p>
-                  </div>
+              <div className="flex items-center gap-4">
+                <Avatar className="h-14 w-14 ring-2 ring-border">
+                  {user?.profile?.avatarUrl && (
+                    <AvatarImage
+                      src={user.profile.avatarUrl}
+                      alt="Profile picture"
+                      className="object-cover"
+                    />
+                  )}
+                  <AvatarFallback className="bg-muted text-muted-foreground">
+                    <UserCircle2 className="h-8 w-8" />
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium text-foreground">
+                    {user?.name ?? 'User'}
+                  </p>
                 </div>
+              </div>
 
               <div>
                 <Label className="text-sm font-medium">Email</Label>
@@ -448,88 +506,90 @@ export default function SettingsPage() {
 
       {activeTab === 'organization' && isOrgAdmin && (
         <div className="space-y-4">
-            <Card className="border-border bg-card shadow-sm">
-              <CardHeader>
-                <CardTitle>Organization Settings</CardTitle>
-                <CardDescription>
-                  Org-admin only. This is where the company record and public-facing basics live.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form
-                  onSubmit={orgForm.handleSubmit(handleUpdateOrganization)}
-                  className="space-y-4"
+          <Card className="border-border bg-card shadow-sm">
+            <CardHeader>
+              <CardTitle>Organization Settings</CardTitle>
+              <CardDescription>
+                Org-admin only. This is where the company record and
+                public-facing basics live.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form
+                onSubmit={orgForm.handleSubmit(handleUpdateOrganization)}
+                className="space-y-4"
+              >
+                <div className="space-y-1">
+                  <Label htmlFor="org-name">Organization Name</Label>
+                  <Input
+                    id="org-name"
+                    {...orgForm.register('name')}
+                    placeholder="Organization name"
+                  />
+                  {orgForm.formState.errors.name && (
+                    <p className="text-xs text-destructive">
+                      {orgForm.formState.errors.name.message}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <Label htmlFor="description">Description</Label>
+                  <Input
+                    id="description"
+                    {...orgForm.register('description')}
+                    placeholder="Organization description"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label htmlFor="website">Website</Label>
+                  <Input
+                    id="website"
+                    {...orgForm.register('website')}
+                    placeholder="https://example.com"
+                  />
+                  {orgForm.formState.errors.website && (
+                    <p className="text-xs text-destructive">
+                      {orgForm.formState.errors.website.message}
+                    </p>
+                  )}
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={orgSaving}
+                  className="w-full sm:w-auto"
                 >
-                  <div className="space-y-1">
-                    <Label htmlFor="org-name">Organization Name</Label>
-                    <Input
-                      id="org-name"
-                      {...orgForm.register('name')}
-                      placeholder="Organization name"
-                    />
-                    {orgForm.formState.errors.name && (
-                      <p className="text-xs text-destructive">
-                        {orgForm.formState.errors.name.message}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label htmlFor="description">Description</Label>
-                    <Input
-                      id="description"
-                      {...orgForm.register('description')}
-                      placeholder="Organization description"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label htmlFor="website">Website</Label>
-                    <Input
-                      id="website"
-                      {...orgForm.register('website')}
-                      placeholder="https://example.com"
-                    />
-                    {orgForm.formState.errors.website && (
-                      <p className="text-xs text-destructive">
-                        {orgForm.formState.errors.website.message}
-                      </p>
-                    )}
-                  </div>
-
-                  <Button
-                    type="submit"
-                    disabled={orgSaving}
-                    className="w-full sm:w-auto"
-                  >
-                    {orgSaving ? 'Saving…' : 'Save Changes'}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
+                  {orgSaving ? 'Saving…' : 'Save Changes'}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
         </div>
       )}
 
       {activeTab === 'members' && isOrgAdmin && (
         <div className="space-y-4">
-            <Card className="border-border bg-card shadow-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5" />
-                  Organization Members
-                </CardTitle>
-                <CardDescription>
-                  {currentOrg?._count?.users || 0} member
-                  {currentOrg?._count?.users !== 1 ? 's' : ''}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  This is a placeholder for member management. Right now it only shows the member count;
-                  inviting, removing, and role changes still need work.
-                </p>
-              </CardContent>
-            </Card>
+          <Card className="border-border bg-card shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Organization Members
+              </CardTitle>
+              <CardDescription>
+                {currentOrg?._count?.users || 0} member
+                {currentOrg?._count?.users !== 1 ? 's' : ''}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                This is a placeholder for member management. Right now it only
+                shows the member count; inviting, removing, and role changes
+                still need work.
+              </p>
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>

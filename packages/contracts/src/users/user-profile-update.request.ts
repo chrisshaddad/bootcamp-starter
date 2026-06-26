@@ -13,4 +13,6 @@ export const userProfileUpdateRequestSchema = z.object({
   country: z.string().trim().max(100).nullable().optional(),
 });
 
-export type UserProfileUpdateRequest = z.infer<typeof userProfileUpdateRequestSchema>;
+export type UserProfileUpdateRequest = z.infer<
+  typeof userProfileUpdateRequestSchema
+>;

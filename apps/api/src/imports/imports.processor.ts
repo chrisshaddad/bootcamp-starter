@@ -354,7 +354,10 @@ export class ImportsProcessor extends WorkerHost {
 
     // Upsert by name so re-imports don't create duplicates
     const existing = await this.prisma.service.findFirst({
-      where: { organizationId, name: { equals: data.name.trim(), mode: 'insensitive' } },
+      where: {
+        organizationId,
+        name: { equals: data.name.trim(), mode: 'insensitive' },
+      },
     });
 
     if (existing) {

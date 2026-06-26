@@ -271,7 +271,8 @@ export class AuthService {
     // Build update object for userProfile
     const updateData: any = {};
     if (phoneNumber !== undefined) updateData.phoneNumber = phoneNumber;
-    if (profilePictureUrl !== undefined) updateData.profilePictureUrl = profilePictureUrl;
+    if (profilePictureUrl !== undefined)
+      updateData.profilePictureUrl = profilePictureUrl;
     if (bio !== undefined) updateData.bio = bio;
     if (street1 !== undefined) updateData.street1 = street1;
     if (street2 !== undefined) updateData.street2 = street2;

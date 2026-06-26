@@ -6,4 +6,6 @@ export const organizationUpdateRequestSchema = z.object({
   website: z.string().trim().url().nullable().optional(),
 });
 
-export type OrganizationUpdateRequest = z.infer<typeof organizationUpdateRequestSchema>;
+export type OrganizationUpdateRequest = z.infer<
+  typeof organizationUpdateRequestSchema
+>;

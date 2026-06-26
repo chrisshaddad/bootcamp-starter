@@ -57,7 +57,11 @@ function ServiceForm({ defaultValues, onSubmit }: ServiceFormProps) {
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="space-y-1">
         <Label htmlFor="name">Service Name *</Label>
-        <Input id="name" placeholder="e.g. Consulting Support" {...register('name')} />
+        <Input
+          id="name"
+          placeholder="e.g. Consulting Support"
+          {...register('name')}
+        />
         {errors.name && (
           <p className="text-xs text-red-500">{errors.name.message}</p>
         )}
@@ -104,14 +108,24 @@ export default function ServicesPage() {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const { services, meta, isLoading, createService, updateService, deleteService } =
-    useServices();
+  const {
+    services,
+    meta,
+    isLoading,
+    createService,
+    updateService,
+    deleteService,
+  } = useServices();
 
-  const filteredServices = services?.filter((service) =>
-    service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    service.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    service.sku?.toLowerCase().includes(searchQuery.toLowerCase())
-  ) ?? [];
+  const filteredServices =
+    services?.filter(
+      (service) =>
+        service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        service.description
+          ?.toLowerCase()
+          .includes(searchQuery.toLowerCase()) ||
+        service.sku?.toLowerCase().includes(searchQuery.toLowerCase()),
+    ) ?? [];
 
   const handleCreate = async (data: ServiceCreateRequest) => {
     try {
@@ -198,7 +212,9 @@ export default function ServicesPage() {
             <div className="p-12 text-center">
               <Briefcase className="mx-auto mb-3 h-10 w-10 text-muted-foreground/30" />
               <p className="text-sm text-muted-foreground">
-                {services?.length ? 'No services match your search.' : 'No services yet.'}
+                {services?.length
+                  ? 'No services match your search.'
+                  : 'No services yet.'}
               </p>
               <Button
                 variant="link"
@@ -211,15 +227,14 @@ export default function ServicesPage() {
           ) : (
             <div className="divide-y divide-border">
               {filteredServices.map((service) => {
-                const margin =
-                  service.unitCost
-                    ? (
-                        ((parseFloat(service.unitPrice) -
-                          parseFloat(service.unitCost)) /
-                          parseFloat(service.unitPrice)) *
-                        100
-                      ).toFixed(1)
-                    : null;
+                const margin = service.unitCost
+                  ? (
+                      ((parseFloat(service.unitPrice) -
+                        parseFloat(service.unitCost)) /
+                        parseFloat(service.unitPrice)) *
+                      100
+                    ).toFixed(1)
+                  : null;
 
                 return (
                   <div
@@ -237,7 +252,10 @@ export default function ServicesPage() {
                           </Badge>
                         )}
                         {service.sku && (
-                          <Badge variant="outline" className="text-xs font-mono">
+                          <Badge
+                            variant="outline"
+                            className="text-xs font-mono"
+                          >
                             {service.sku}
                           </Badge>
                         )}
@@ -312,7 +330,9 @@ export default function ServicesPage() {
 
       <ConfirmDialog
         open={!!deleteTarget}
-        onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
         title="Delete service?"
         description="This service will be permanently removed. This action cannot be undone."
         confirmLabel="Yes, delete"

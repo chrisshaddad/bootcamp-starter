@@ -16,7 +16,12 @@ export function useServices(options: { activeOnly?: boolean } = {}) {
 
   const endpoint = `/services${params.toString() ? `?${params}` : ''}`;
 
-  const { data, error, isLoading, mutate: revalidate } = useSWR<ServiceListResponse>(endpoint);
+  const {
+    data,
+    error,
+    isLoading,
+    mutate: revalidate,
+  } = useSWR<ServiceListResponse>(endpoint);
 
   const invalidate = useCallback(() => {
     revalidate();
@@ -37,7 +42,10 @@ export function useServices(options: { activeOnly?: boolean } = {}) {
   );
 
   const updateService = useCallback(
-    async (id: string, data: ServiceUpdateRequest): Promise<ServiceResponse> => {
+    async (
+      id: string,
+      data: ServiceUpdateRequest,
+    ): Promise<ServiceResponse> => {
       const result = await apiPatch<ServiceResponse>(`/services/${id}`, data);
       invalidate();
       return result;

@@ -231,7 +231,9 @@ export class OrganizationsService {
       where: { id },
       data: {
         ...(data.name !== undefined && { name: data.name }),
-        ...(data.description !== undefined && { description: data.description }),
+        ...(data.description !== undefined && {
+          description: data.description,
+        }),
         ...(data.website !== undefined && { website: data.website }),
       },
       select: {

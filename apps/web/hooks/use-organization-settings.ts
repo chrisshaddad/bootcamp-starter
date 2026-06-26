@@ -7,14 +7,20 @@ import type {
   OrganizationUpdateRequest,
 } from '@repo/contracts';
 
-export function useOrganizationSettings(organizationId: string | null | undefined) {
+export function useOrganizationSettings(
+  organizationId: string | null | undefined,
+) {
   const getOrganization = useCallback(async () => {
     if (!organizationId) return null;
-    return fetcher<OrganizationDetailResponse>(`/organizations/${organizationId}`);
+    return fetcher<OrganizationDetailResponse>(
+      `/organizations/${organizationId}`,
+    );
   }, [organizationId]);
 
   const updateOrganization = useCallback(
-    async (data: OrganizationUpdateRequest): Promise<OrganizationDetailResponse> => {
+    async (
+      data: OrganizationUpdateRequest,
+    ): Promise<OrganizationDetailResponse> => {
       if (!organizationId) throw new Error('Organization ID not available');
       return apiPatch<OrganizationDetailResponse>(
         `/organizations/${organizationId}`,

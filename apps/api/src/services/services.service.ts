@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import type {
   ServiceCreateRequest,
@@ -66,7 +62,9 @@ export class ServicesService {
     organizationId: string,
     data: ServiceCreateRequest,
   ): Promise<ServiceResponse> {
-    const normalizedDescription = this.normalizeOptionalString(data.description);
+    const normalizedDescription = this.normalizeOptionalString(
+      data.description,
+    );
     const normalizedUnitCost = this.normalizeOptionalString(data.unitCost);
     const normalizedSku = this.normalizeOptionalString(data.sku);
 

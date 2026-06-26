@@ -265,7 +265,9 @@ export default function ImportsPage() {
                   <Select
                     value={importType}
                     onValueChange={(v) => {
-                      setImportType(v as 'EXPENSES' | 'SALES' | 'PRODUCTS' | 'SERVICES');
+                      setImportType(
+                        v as 'EXPENSES' | 'SALES' | 'PRODUCTS' | 'SERVICES',
+                      );
                       setColumnMapping({});
                       setFileHeaders([]);
                     }}
