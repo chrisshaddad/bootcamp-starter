@@ -34,10 +34,28 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import * as XLSX from 'xlsx';
 
-const EXPENSE_FIELDS  = ['date', 'description', 'amount', 'category', 'categoryId', 'recurrence', 'notes'];
-const SALE_FIELDS     = ['date', 'description', 'quantity', 'unitPrice', 'unitCost', 'product', 'productId', 'recurrence', 'notes'];
-const PRODUCT_FIELDS  = ['name', 'description', 'unitPrice', 'unitCost', 'sku'];
-const SERVICE_FIELDS  = ['name', 'description', 'unitPrice', 'unitCost', 'sku'];
+const EXPENSE_FIELDS = [
+  'date',
+  'description',
+  'amount',
+  'category',
+  'categoryId',
+  'recurrence',
+  'notes',
+];
+const SALE_FIELDS = [
+  'date',
+  'description',
+  'quantity',
+  'unitPrice',
+  'unitCost',
+  'product',
+  'productId',
+  'recurrence',
+  'notes',
+];
+const PRODUCT_FIELDS = ['name', 'description', 'unitPrice', 'unitCost', 'sku'];
+const SERVICE_FIELDS = ['name', 'description', 'unitPrice', 'unitCost', 'sku'];
 
 function statusBadge(status: string) {
   const map: Record<
@@ -71,7 +89,9 @@ function StatusIcon({ status }: { status: string }) {
 export default function ImportsPage() {
   const [open, setOpen] = useState(false);
   const [selectedImportId, setSelectedImportId] = useState<string | null>(null);
-  const [importType, setImportType] = useState<'EXPENSES' | 'SALES' | 'PRODUCTS' | 'SERVICES'>('EXPENSES');
+  const [importType, setImportType] = useState<
+    'EXPENSES' | 'SALES' | 'PRODUCTS' | 'SERVICES'
+  >('EXPENSES');
   const [fileHeaders, setFileHeaders] = useState<string[]>([]);
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>(
     {},
@@ -90,7 +110,14 @@ export default function ImportsPage() {
 
   const processHeaders = (headers: string[]) => {
     setFileHeaders(headers);
-    const fields = importType === 'EXPENSES' ? EXPENSE_FIELDS : importType === 'PRODUCTS' ? PRODUCT_FIELDS : importType === 'SERVICES' ? SERVICE_FIELDS : SALE_FIELDS;
+    const fields =
+      importType === 'EXPENSES'
+        ? EXPENSE_FIELDS
+        : importType === 'PRODUCTS'
+          ? PRODUCT_FIELDS
+          : importType === 'SERVICES'
+            ? SERVICE_FIELDS
+            : SALE_FIELDS;
     const autoMap: Record<string, string> = {};
     headers.forEach((h) => {
       const match = fields.find((f) => f.toLowerCase() === h.toLowerCase());
@@ -155,13 +182,14 @@ export default function ImportsPage() {
     }
   };
 
-  const requiredFields = importType === 'EXPENSES'
-    ? ['date', 'description', 'amount']
-    : importType === 'PRODUCTS'
-    ? ['name', 'unitPrice']
-    : importType === 'SERVICES'
-    ? ['name', 'unitPrice']
-    : ['date', 'unitPrice'];
+  const requiredFields =
+    importType === 'EXPENSES'
+      ? ['date', 'description', 'amount']
+      : importType === 'PRODUCTS'
+        ? ['name', 'unitPrice']
+        : importType === 'SERVICES'
+          ? ['name', 'unitPrice']
+          : ['date', 'unitPrice'];
 
   const mappedValues = Object.values(columnMapping).filter(Boolean);
   const missingFields = requiredFields.filter((f) => !mappedValues.includes(f));
@@ -191,7 +219,14 @@ export default function ImportsPage() {
     }
   };
 
-  const appFields = importType === 'EXPENSES' ? EXPENSE_FIELDS : importType === 'PRODUCTS' ? PRODUCT_FIELDS : importType === 'SERVICES' ? SERVICE_FIELDS : SALE_FIELDS;
+  const appFields =
+    importType === 'EXPENSES'
+      ? EXPENSE_FIELDS
+      : importType === 'PRODUCTS'
+        ? PRODUCT_FIELDS
+        : importType === 'SERVICES'
+          ? SERVICE_FIELDS
+          : SALE_FIELDS;
 
   return (
     <div className="space-y-6">

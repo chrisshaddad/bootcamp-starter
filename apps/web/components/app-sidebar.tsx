@@ -78,10 +78,12 @@ export function AppSidebar() {
     return pathname.startsWith(url);
   };
 
-  const orgInitial = (isSuperAdmin ? 'S' : user?.name?.[0] ?? '?').toUpperCase();
+  const orgInitial = (
+    isSuperAdmin ? 'S' : (user?.name?.[0] ?? '?')
+  ).toUpperCase();
   const orgName = isSuperAdmin
     ? 'Super Admin'
-    : currentOrganization?.name ?? 'Organization';
+    : (currentOrganization?.name ?? 'Organization');
 
   return (
     <Sidebar className="border-r border-border bg-sidebar">

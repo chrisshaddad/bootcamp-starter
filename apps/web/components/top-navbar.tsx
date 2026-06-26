@@ -36,8 +36,13 @@ export function TopNavbar() {
     )?.[1] ?? 'Margin';
 
   const initials = user?.name
-    ? user.name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase()
-    : user?.email?.[0]?.toUpperCase() ?? '?';
+    ? user.name
+        .split(' ')
+        .map((p) => p[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase()
+    : (user?.email?.[0]?.toUpperCase() ?? '?');
   const avatarUrl = user?.profile?.avatarUrl;
 
   return (
