@@ -8,116 +8,355 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  schemas  = ["public", "private"]
+  schemas  = ["public", "tenant"]
 }
 
-enum UserRole {
-  SUPER_ADMIN // Manages all organizations (can also accept org registrations)
-  ORG_ADMIN // Manages a single organization (can also invite members to their org)
-  MEMBER
+// ==================== Public Schema ====================
 
-  @@schema("public")
-}
-
-enum OrganizationStatus {
-  PENDING // Awaiting super admin approval
-  ACTIVE // Approved and operational
-  REJECTED // Denied by super admin
+enum TenantStatus {
+  PENDING
+  ACTIVE
   SUSPENDED
   INACTIVE
 
   @@schema("public")
 }
 
-model User {
-  id             String   @id @default(uuid())
-  email          String   @unique
-  isConfirmed    Boolean  @default(false)
-  name           String
-  role           UserRole @default(MEMBER)
-  organizationId String? // null for SUPER_ADMIN users
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  sessions              Session[]
-  magicLinks            MagicLink[]
-  profile               UserProfile?
-  organization          Organization?  @relation("OrganizationMembers", fields: [organizationId], references: [id], onDelete: SetNull)
-  createdOrganization   Organization?  @relation("OrganizationCreator")
-  approvedOrganizations Organization[] @relation("OrganizationApprover")
-
-  @@index([organizationId])
-  @@schema("public")
-}
-
-model UserProfile {
-  id          String    @id @default(uuid())
-  userId      String    @unique
-  dateOfBirth DateTime?
-  bio         String?   @db.Text
-  phoneNumber String?
-
-  // Address fields
-  street1    String?
-  street2    String?
-  city       String?
-  state      String?
-  postalCode String?
-  country    String?
-
-  profilePictureUrl String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+enum AdminRole {
+  SUPER_ADMIN
+  SUPPORT
 
   @@schema("public")
 }
 
-model Session {
-  id        String   @id
-  userId    String
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@schema("private")
-}
-
-model MagicLink {
-  id        String    @id @default(uuid())
-  userId    String
-  token     String    @unique // securely generated random token, not a UUID
-  expiresAt DateTime
-  usedAt    DateTime?
-  createdAt DateTime  @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([token])
-  @@index([userId])
-  @@schema("private")
-}
-
-model Organization {
-  id           String             @id @default(uuid())
+model Tenant {
+  id           String       @id @default(uuid())
   name         String
-  status       OrganizationStatus @default(PENDING)
-  description  String?            @db.Text
-  website      String?
-  createdById  String             @unique // User can only create one organization
-  approvedById String?
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
-  approvedAt   DateTime? // When super admin approved
+  slug         String       @unique
+  schemaName   String       @unique @map("schema_name")
+  plan         String
+  status       TenantStatus @default(ACTIVE)
+  contactEmail String       @map("contact_email")
+  logoUrl      String?      @map("logo_url")
+  settings     Json?
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
 
-  createdBy  User   @relation("OrganizationCreator", fields: [createdById], references: [id])
-  approvedBy User?  @relation("OrganizationApprover", fields: [approvedById], references: [id])
-  users      User[] @relation("OrganizationMembers")
+  auditLogs AuditLog[]
 
-  @@index([approvedById])
-  @@index([status])
+  @@map("tenants")
   @@schema("public")
+}
+
+model AdminUser {
+  id           String    @id @default(uuid())
+  name         String
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  role         AdminRole
+  isActive     Boolean   @default(true) @map("is_active")
+  lastLoginAt  DateTime? @map("last_login_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  auditLogs AuditLog[]
+
+  @@map("admin_users")
+  @@schema("public")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  tenantId    String?  @map("tenant_id")
+  adminUserId String?  @map("admin_user_id")
+  action      String
+  entityType  String   @map("entity_type")
+  entityId    String?  @map("entity_id")
+  oldData     Json?    @map("old_data")
+  newData     Json?    @map("new_data")
+  ipAddress   String?  @map("ip_address")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  tenant    Tenant?    @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  adminUser AdminUser? @relation(fields: [adminUserId], references: [id], onDelete: SetNull)
+
+  @@map("audit_log")
+  @@schema("public")
+}
+
+// ==================== Tenant Schema ====================
+
+enum MembershipType {
+  BASIC
+  PREMIUM
+  STUDENT
+  SENIOR
+
+  @@schema("tenant")
+}
+
+enum MemberStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  EXPIRED
+
+  @@schema("tenant")
+}
+
+enum StaffRole {
+  LIBRARIAN
+  MANAGER
+  CASHIER
+
+  @@schema("tenant")
+}
+
+enum RentalStatus {
+  ACTIVE
+  RETURNED
+  OVERDUE
+  LOST
+
+  @@schema("tenant")
+}
+
+enum ReservationStatus {
+  PENDING
+  FULFILLED
+  CANCELLED
+  EXPIRED
+
+  @@schema("tenant")
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  ONLINE
+
+  @@schema("tenant")
+}
+
+enum ChatMessageRole {
+  USER
+  ASSISTANT
+
+  @@schema("tenant")
+}
+
+model Category {
+  id          Int       @id @default(autoincrement())
+  name        String
+  parentId    Int?      @map("parent_id")
+  description String?
+
+  parent   Category?  @relation("CategoryChildren", fields: [parentId], references: [id], onDelete: SetNull)
+  children Category[] @relation("CategoryChildren")
+  books    Book[]
+
+  @@map("categories")
+  @@schema("tenant")
+}
+
+model Author {
+  id          Int      @id @default(autoincrement())
+  name        String
+  bio         String?
+  nationality String?
+  birthYear   Int?     @map("birth_year")
+  photoUrl    String?  @map("photo_url")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  books Book[]
+
+  @@map("authors")
+  @@schema("tenant")
+}
+
+model Publisher {
+  id           Int      @id @default(autoincrement())
+  name         String
+  contactEmail String?  @map("contact_email")
+  website      String?
+  address      String?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  books Book[]
+
+  @@map("publishers")
+  @@schema("tenant")
+}
+
+model Book {
+  id              Int      @id @default(autoincrement())
+  isbn            String   @unique
+  title           String
+  authorId        Int      @map("author_id")
+  publisherId     Int      @map("publisher_id")
+  categoryId      Int      @map("category_id")
+  description     String?
+  publishedYear   Int?     @map("published_year")
+  language        String?
+  pageCount       Int?     @map("page_count")
+  coverUrl        String?  @map("cover_url")
+  totalCopies     Int      @default(1) @map("total_copies")
+  availableCopies Int      @default(1) @map("available_copies")
+  salePrice       Decimal? @map("sale_price")
+  dailyRentRate   Decimal? @map("daily_rent_rate")
+  isRentable      Boolean  @default(false) @map("is_rentable")
+  isPurchasable   Boolean  @default(true) @map("is_purchasable")
+  tags            String[]
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  author       Author        @relation(fields: [authorId], references: [id])
+  publisher    Publisher     @relation(fields: [publisherId], references: [id])
+  category     Category      @relation(fields: [categoryId], references: [id])
+  embedding    BookEmbedding?
+  rentals      Rental[]
+  sales        Sale[]
+  reservations Reservation[]
+
+  @@map("books")
+  @@schema("tenant")
+}
+
+model BookEmbedding {
+  bookId     Int                        @id @map("book_id")
+  embedding  Unsupported("vector(1536)")
+  embeddedAt DateTime                   @map("embedded_at")
+
+  book Book @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@map("book_embeddings")
+  @@schema("tenant")
+}
+
+model Member {
+  id              Int            @id @default(autoincrement())
+  firstName       String         @map("first_name")
+  lastName        String         @map("last_name")
+  email           String         @unique
+  phone           String?
+  address         String?
+  dateOfBirth     DateTime?      @map("date_of_birth")
+  membershipType  MembershipType @map("membership_type")
+  membershipStart DateTime       @map("membership_start")
+  membershipEnd   DateTime?      @map("membership_end")
+  status          MemberStatus   @default(ACTIVE)
+  passwordHash    String?        @map("password_hash")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  rentals      Rental[]
+  sales        Sale[]
+  reservations Reservation[]
+  chatSessions AiChatSession[]
+
+  @@map("members")
+  @@schema("tenant")
+}
+
+model Staff {
+  id           Int       @id @default(autoincrement())
+  firstName    String    @map("first_name")
+  lastName     String    @map("last_name")
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  role         StaffRole
+  isActive     Boolean   @default(true) @map("is_active")
+  lastLoginAt  DateTime? @map("last_login_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  rentals Rental[]
+  sales   Sale[]
+
+  @@map("staff")
+  @@schema("tenant")
+}
+
+model Rental {
+  id         Int          @id @default(autoincrement())
+  bookId     Int          @map("book_id")
+  memberId   Int          @map("member_id")
+  staffId    Int          @map("staff_id")
+  rentedAt   DateTime     @default(now()) @map("rented_at")
+  dueDate    DateTime     @map("due_date")
+  returnedAt DateTime?    @map("returned_at")
+  status     RentalStatus @default(ACTIVE)
+  dailyRate  Decimal      @map("daily_rate")
+  fineAmount Decimal      @default(0) @map("fine_amount")
+  finePaid   Boolean      @default(false) @map("fine_paid")
+  notes      String?
+
+  book   Book   @relation(fields: [bookId], references: [id])
+  member Member @relation(fields: [memberId], references: [id])
+  staff  Staff  @relation(fields: [staffId], references: [id])
+
+  @@map("rentals")
+  @@schema("tenant")
+}
+
+model Sale {
+  id             Int           @id @default(autoincrement())
+  bookId         Int           @map("book_id")
+  memberId       Int?          @map("member_id")
+  staffId        Int           @map("staff_id")
+  quantity       Int           @default(1)
+  unitPrice      Decimal       @map("unit_price")
+  totalPrice     Decimal       @map("total_price")
+  paymentMethod  PaymentMethod @map("payment_method")
+  transactionRef String?       @map("transaction_ref")
+  soldAt         DateTime      @default(now()) @map("sold_at")
+
+  book   Book    @relation(fields: [bookId], references: [id])
+  member Member? @relation(fields: [memberId], references: [id])
+  staff  Staff   @relation(fields: [staffId], references: [id])
+
+  @@map("sales")
+  @@schema("tenant")
+}
+
+model Reservation {
+  id         Int               @id @default(autoincrement())
+  bookId     Int               @map("book_id")
+  memberId   Int               @map("member_id")
+  reservedAt DateTime          @default(now()) @map("reserved_at")
+  expiresAt  DateTime          @map("expires_at")
+  status     ReservationStatus @default(PENDING)
+  notified   Boolean           @default(false)
+
+  book   Book   @relation(fields: [bookId], references: [id])
+  member Member @relation(fields: [memberId], references: [id])
+
+  @@map("reservations")
+  @@schema("tenant")
+}
+
+model AiChatSession {
+  id           Int      @id @default(autoincrement())
+  memberId     Int?     @map("member_id")
+  title        String?
+  startedAt    DateTime @default(now()) @map("started_at")
+  lastActiveAt DateTime @default(now()) @map("last_active_at")
+
+  member   Member?         @relation(fields: [memberId], references: [id], onDelete: SetNull)
+  messages AiChatMessage[]
+
+  @@map("ai_chat_sessions")
+  @@schema("tenant")
+}
+
+model AiChatMessage {
+  id                 Int             @id @default(autoincrement())
+  sessionId          Int             @map("session_id")
+  role               ChatMessageRole
+  content            String
+  recommendedBookIds Int[]           @map("recommended_book_ids")
+  createdAt          DateTime        @default(now()) @map("created_at")
+
+  session AiChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("ai_chat_messages")
+  @@schema("tenant")
 }
