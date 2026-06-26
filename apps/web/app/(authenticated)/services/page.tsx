@@ -20,6 +20,7 @@ import {
 import { Plus, Trash2, Pencil, Briefcase } from 'lucide-react';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { toast } from 'sonner';
+import { z } from 'zod';
 import {
   serviceCreateRequestSchema,
   type ServiceCreateRequest,
@@ -43,7 +44,11 @@ function ServiceForm({ defaultValues, onSubmit }: ServiceFormProps) {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<ServiceCreateRequest>({
+  } = useForm<
+    z.input<typeof serviceCreateRequestSchema>,
+    unknown,
+    ServiceCreateRequest
+  >({
     resolver: zodResolver(serviceCreateRequestSchema),
     defaultValues: { isActive: true, ...defaultValues },
   });

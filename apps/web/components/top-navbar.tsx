@@ -1,8 +1,9 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { LogOut, ChevronDown, UserCircle2 } from 'lucide-react';
+import { LogOut, ChevronDown } from 'lucide-react';
 import { useAuth, useUser } from '@/hooks/use-auth';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import {
   DropdownMenu,
@@ -54,17 +55,18 @@ export function TopNavbar() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors hover:bg-secondary">
-              {avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt="Profile picture"
-                  className="h-7 w-7 rounded-full object-cover ring-2 ring-border"
-                />
-              ) : (
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+              <Avatar className="h-7 w-7 ring-2 ring-border">
+                {avatarUrl && (
+                  <AvatarImage
+                    src={avatarUrl}
+                    alt="Profile picture"
+                    className="object-cover"
+                  />
+                )}
+                <AvatarFallback className="bg-primary text-xs font-bold text-primary-foreground">
                   {initials}
-                </div>
-              )}
+                </AvatarFallback>
+              </Avatar>
               <div className="hidden text-left md:block">
                 <p className="text-sm font-medium text-foreground leading-tight">
                   {user?.name ?? user?.email?.split('@')[0] ?? 'User'}

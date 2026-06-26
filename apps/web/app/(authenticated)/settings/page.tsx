@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
   organizationUpdateRequestSchema,
   userProfileUpdateRequestSchema,
@@ -252,17 +253,23 @@ export default function SettingsPage() {
               <div className="mb-6 rounded-3xl border border-border bg-gradient-to-br from-background via-background to-muted/20 p-5 shadow-sm">
                 <div className="flex items-center gap-4">
                   <div className="relative h-20 w-20 shrink-0">
-                    {profileForm.watch('profilePictureUrl') || user?.profile?.avatarUrl ? (
-                      <img
-                        src={profileForm.watch('profilePictureUrl') || user?.profile?.avatarUrl || ''}
-                        alt="Profile picture"
-                        className="h-20 w-20 rounded-full object-cover ring-4 ring-background shadow-sm"
-                      />
-                    ) : (
-                      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted text-muted-foreground ring-4 ring-background shadow-sm">
+                    <Avatar className="h-20 w-20 ring-4 ring-background shadow-sm">
+                      {(profileForm.watch('profilePictureUrl') ||
+                        user?.profile?.avatarUrl) && (
+                        <AvatarImage
+                          src={
+                            profileForm.watch('profilePictureUrl') ||
+                            user?.profile?.avatarUrl ||
+                            ''
+                          }
+                          alt="Profile picture"
+                          className="object-cover"
+                        />
+                      )}
+                      <AvatarFallback className="bg-muted text-muted-foreground">
                         <UserCircle2 className="h-11 w-11" />
-                      </div>
-                    )}
+                      </AvatarFallback>
+                    </Avatar>
                     <label
                       htmlFor="profilePictureFile"
                       className="absolute -bottom-1 -right-1 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-border bg-primary text-primary-foreground shadow-md transition-transform hover:scale-105"
@@ -386,17 +393,18 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
                 <div className="flex items-center gap-4">
-                  {user?.profile?.avatarUrl ? (
-                    <img
-                      src={user.profile.avatarUrl}
-                      alt="Profile picture"
-                      className="h-14 w-14 rounded-full object-cover ring-2 ring-border"
-                    />
-                  ) : (
-                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted text-muted-foreground ring-2 ring-border">
+                  <Avatar className="h-14 w-14 ring-2 ring-border">
+                    {user?.profile?.avatarUrl && (
+                      <AvatarImage
+                        src={user.profile.avatarUrl}
+                        alt="Profile picture"
+                        className="object-cover"
+                      />
+                    )}
+                    <AvatarFallback className="bg-muted text-muted-foreground">
                       <UserCircle2 className="h-8 w-8" />
-                    </div>
-                  )}
+                    </AvatarFallback>
+                  </Avatar>
                   <div>
                     <p className="font-medium text-foreground">
                       {user?.name ?? 'User'}
