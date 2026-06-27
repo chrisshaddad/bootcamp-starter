@@ -9,6 +9,7 @@ import {
   Settings,
   LogOut,
   Building2,
+  Calendar,
 } from 'lucide-react';
 import { useAuth, useUser } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
@@ -33,27 +34,60 @@ interface NavItem {
   disabled?: boolean;
 }
 
-// Navigation items for ORG_ADMIN and MEMBER roles
-const orgNavItems: NavItem[] = [
+// Navigation items for ORG_ADMIN
+const orgAdminNavItems: NavItem[] = [
   {
     title: 'Dashboard',
     url: '/dashboard',
     icon: LayoutDashboard,
+  },
+  {
+    title: 'Members',
+    url: '/members',
+    icon: Users,
+  },
+  {
+    title: 'Events',
+    url: '/events',
+    icon: Calendar,
+  },
+];
+
+// Navigation items for auth MEMBER role
+const memberNavItems: NavItem[] = [
+  {
+    title: 'Dashboard',
+    url: '/dashboard',
+    icon: LayoutDashboard,
+  },
+  {
+    title: 'Events',
+    url: '/events',
+    icon: Calendar,
   },
 ];
 
 // Navigation items for SUPER_ADMIN role
 const superAdminNavItems: NavItem[] = [
   {
+    title: 'Coordly',
+    url: '/admin',
+    icon: LayoutDashboard,
+  },
+  {
     title: 'Organizations',
     url: '/organizations',
     icon: Building2,
   },
   {
-    title: 'Users',
-    url: '/users',
+    title: 'Members',
+    url: '/members',
     icon: Users,
-    disabled: true, // Placeholder for future implementation
+  },
+  {
+    title: 'Events',
+    url: '/events',
+    icon: Calendar,
   },
 ];
 
@@ -79,7 +113,12 @@ export function AppSidebar() {
   const { user } = useUser({ redirectOnUnauthenticated: false });
 
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
-  const mainNavItems = isSuperAdmin ? superAdminNavItems : orgNavItems;
+  const isOrgAdmin = user?.role === 'ORG_ADMIN';
+  const mainNavItems = isSuperAdmin
+    ? superAdminNavItems
+    : isOrgAdmin
+      ? orgAdminNavItems
+      : memberNavItems;
   const secondaryNavItems = isSuperAdmin
     ? superAdminSecondaryNavItems
     : orgSecondaryNavItems;
@@ -99,9 +138,7 @@ export function AppSidebar() {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-base">
             <span className="text-lg font-bold text-white">✦</span>
           </div>
-          <span className="text-xl font-semibold text-gray-900">
-            Bootcamp Starter
-          </span>
+          <span className="text-xl font-semibold text-gray-900">Coordly</span>
         </Link>
       </SidebarHeader>
 

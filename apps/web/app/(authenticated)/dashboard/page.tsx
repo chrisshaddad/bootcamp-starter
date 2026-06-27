@@ -1,13 +1,29 @@
 'use client';
 
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useUser } from '@/hooks/use-auth';
+import { useEvents } from '@/hooks/use-events';
+import { EventCalendar } from '@/components/event-calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { CalendarDays } from 'lucide-react';
 
 export default function DashboardPage() {
+  const router = useRouter();
   const { user, isLoading } = useUser();
+  const { events, isLoading: eventsLoading } = useEvents({
+    enabled:
+      !isLoading && (user?.role === 'ORG_ADMIN' || user?.role === 'MEMBER'),
+  });
 
-  if (isLoading) {
+  useEffect(() => {
+    if (!isLoading && user?.role === 'SUPER_ADMIN') {
+      router.replace('/admin');
+    }
+  }, [isLoading, user?.role, router]);
+
+  if (isLoading || user?.role === 'SUPER_ADMIN') {
     return (
       <div className="space-y-6">
         <Skeleton className="h-8 w-48" />
@@ -31,6 +47,18 @@ export default function DashboardPage() {
           You&apos;re signed in. Start building your project.
         </p>
       </div>
+
+      <Card className="border-gray-200 bg-white shadow-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+            <CalendarDays className="h-5 w-5" />
+            Event Calendar
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <EventCalendar events={events} isLoading={eventsLoading} />
+        </CardContent>
+      </Card>
 
       {user && (
         <Card className="border-gray-200 bg-white shadow-sm">

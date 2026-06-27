@@ -1,4 +1,8 @@
-import { PrismaClient, Prisma } from '../../src/generated/prisma/client';
+import {
+  PrismaClient,
+  Prisma,
+  UserRole,
+} from '../../src/generated/prisma/client';
 
 const SUPER_ADMINS: Prisma.UserCreateManyInput[] = [
   {
@@ -37,34 +41,58 @@ const ORG_ADMINS: Prisma.UserCreateManyInput[] = [
   },
 ];
 
+// Regular users (not org Member records) — can sign up for events
+const ATTENDEE_USERS: Prisma.UserCreateManyInput[] = [
+  {
+    email: 'member@techcorp.example.com',
+    name: 'Alex Rivera',
+  },
+  {
+    email: 'member@greenenergy.example.com',
+    name: 'Jordan Lee',
+  },
+  {
+    email: 'presenter@techcorp.example.com',
+    name: 'Alex Lee',
+  },
+];
+
+async function upsertUsers(
+  prisma: PrismaClient,
+  users: Prisma.UserCreateManyInput[],
+  role: UserRole,
+  label: string,
+) {
+  console.log(`Seeding ${label}...`);
+
+  for (const user of users) {
+    await prisma.user.upsert({
+      where: { email: user.email },
+      create: {
+        email: user.email,
+        name: user.name,
+        isConfirmed: true,
+        role,
+      },
+      update: {
+        name: user.name,
+        isConfirmed: true,
+        role,
+      },
+    });
+  }
+
+  console.log(`${label}: ${users.map((u) => u.email).join(', ')} ready.`);
+}
+
 export async function seedSuperAdmins(prisma: PrismaClient) {
-  console.log('Seeding super admins...');
-
-  await prisma.user.createMany({
-    data: SUPER_ADMINS.map((admin) => ({
-      ...admin,
-      isConfirmed: true,
-      role: 'SUPER_ADMIN',
-    })),
-  });
-
-  console.log(
-    `Super admins: ${SUPER_ADMINS.map((u) => u.email).join(', ')} seeded.`,
-  );
+  await upsertUsers(prisma, SUPER_ADMINS, 'SUPER_ADMIN', 'super admins');
 }
 
 export async function seedOrgAdmins(prisma: PrismaClient) {
-  console.log('Seeding org admins...');
+  await upsertUsers(prisma, ORG_ADMINS, 'ORG_ADMIN', 'org admins');
+}
 
-  await prisma.user.createMany({
-    data: ORG_ADMINS.map((admin) => ({
-      ...admin,
-      isConfirmed: true,
-      role: 'ORG_ADMIN',
-    })),
-  });
-
-  console.log(
-    `Org admins: ${ORG_ADMINS.map((u) => u.email).join(', ')} seeded.`,
-  );
+export async function seedAttendeeUsers(prisma: PrismaClient) {
+  await upsertUsers(prisma, ATTENDEE_USERS, 'MEMBER', 'attendee users');
 }
