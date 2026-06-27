@@ -11,75 +11,49 @@ datasource db {
   schemas  = ["public", "private"]
 }
 
+// ─── Enums ───────────────────────────────────────────────
+
 enum UserRole {
-  SUPER_ADMIN // Manages all organizations (can also accept org registrations)
-  ORG_ADMIN // Manages a single organization (can also invite members to their org)
-  MEMBER
+  SUPER_ADMIN // Platform-level admin. No organizationId.
+  ORG_ADMIN   // Manages a single organization.
+  HR          // Talent/People Ops within an org. Owns mobility process.
+  EMPLOYEE    // Regular employee (managers are employees with subordinates).
 
   @@schema("public")
 }
 
 enum OrganizationStatus {
-  PENDING // Awaiting super admin approval
-  ACTIVE // Approved and operational
-  REJECTED // Denied by super admin
+  PENDING   // Awaiting super admin approval
+  ACTIVE    // Approved and operational
+  REJECTED  // Denied by super admin
   SUSPENDED
   INACTIVE
 
   @@schema("public")
 }
 
-model User {
-  id             String   @id @default(uuid())
-  email          String   @unique
-  isConfirmed    Boolean  @default(false)
-  name           String
-  role           UserRole @default(MEMBER)
-  organizationId String? // null for SUPER_ADMIN users
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  title          String?
-  department     String?
-  level          Int?
-  managerId      String?
-
-  manager        User?  @relation("UserManager", fields: [managerId], references: [id], onDelete: SetNull)
-  subordinates   User[] @relation("UserManager")
-
-  sessions              Session[]
-  magicLinks            MagicLink[]
-  profile               UserProfile?
-  organization          Organization?  @relation("OrganizationMembers", fields: [organizationId], references: [id], onDelete: SetNull)
-  createdOrganization   Organization?  @relation("OrganizationCreator")
-  approvedOrganizations Organization[] @relation("OrganizationApprover")
-
-  @@index([organizationId])
-  @@schema("public")
-}
-
-model UserProfile {
-  id          String    @id @default(uuid())
-  userId      String    @unique
-  dateOfBirth DateTime?
-  bio         String?   @db.Text
-  phoneNumber String?
-
-  // Address fields
-  street1    String?
-  street2    String?
-  city       String?
-  state      String?
-  postalCode String?
-  country    String?
-
-  profilePictureUrl String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+enum OpportunityStatus {
+  DRAFT  // Not yet visible to employees
+  OPEN   // Accepting applications
+  CLOSED // No longer accepting applications
+  FILLED // Position has been filled
 
   @@schema("public")
 }
+
+enum ApplicationStatus {
+  PENDING        // Just submitted
+  MANAGER_REVIEW // Awaiting current manager approval (if required)
+  UNDER_REVIEW   // HR is reviewing
+  SHORTLISTED    // Passed to hiring manager
+  ACCEPTED       // Offer extended / move approved
+  REJECTED       // Not selected
+  WITHDRAWN      // Employee withdrew their application
+
+  @@schema("public")
+}
+
+// ─── Auth (private schema) ───────────────────────────────
 
 model Session {
   id        String   @id
@@ -108,21 +82,92 @@ model MagicLink {
   @@schema("private")
 }
 
-model Organization {
-  id           String             @id @default(uuid())
-  name         String
-  status       OrganizationStatus @default(PENDING)
-  description  String?            @db.Text
-  website      String?
-  createdById  String             @unique // User can only create one organization
-  approvedById String?
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
-  approvedAt   DateTime? // When super admin approved
+// ─── Core Models ─────────────────────────────────────────
 
-  createdBy  User   @relation("OrganizationCreator", fields: [createdById], references: [id])
-  approvedBy User?  @relation("OrganizationApprover", fields: [approvedById], references: [id])
-  users         User[] @relation("OrganizationMembers")
+model User {
+  id             String   @id @default(uuid())
+  email          String   @unique
+  isConfirmed    Boolean  @default(false)
+  name           String
+  role           UserRole @default(EMPLOYEE)
+  organizationId String?  // null for SUPER_ADMIN users
+  departmentId   String?
+  title          String?  // job title
+  level          Int?     // seniority level (L1, L2, etc.)
+  managerId      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Self-relation: manager hierarchy
+  manager      User?  @relation("UserManager", fields: [managerId], references: [id], onDelete: SetNull)
+  subordinates User[] @relation("UserManager")
+
+  // Auth & profile
+  sessions   Session[]
+  magicLinks MagicLink[]
+  profile    UserProfile?
+
+  // Organization
+  organization          Organization?  @relation("OrganizationMembers", fields: [organizationId], references: [id], onDelete: SetNull)
+  createdOrganization   Organization?  @relation("OrganizationCreator")
+  approvedOrganizations Organization[] @relation("OrganizationApprover")
+
+  // Department
+  department         Department?  @relation("DepartmentMembers", fields: [departmentId], references: [id], onDelete: SetNull)
+  managedDepartments Department[] @relation("DepartmentManager")
+
+  // Mobility features
+  userSkills          UserSkill[]
+  applications        Application[]
+  careerPaths         CareerPath[]
+  hiringOpportunities Opportunity[] @relation("HiringManager")
+
+  @@index([organizationId])
+  @@index([departmentId])
+  @@schema("public")
+}
+
+model UserProfile {
+  id          String    @id @default(uuid())
+  userId      String    @unique
+  dateOfBirth DateTime?
+  bio         String?   @db.Text
+  phoneNumber String?
+
+  // Address fields
+  street1    String?
+  street2    String?
+  city       String?
+  state      String?
+  postalCode String?
+  country    String?
+
+  profilePictureUrl String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@schema("public")
+}
+
+model Organization {
+  id                      String             @id @default(uuid())
+  name                    String
+  status                  OrganizationStatus @default(PENDING)
+  description             String?            @db.Text
+  website                 String?
+  requiresManagerApproval Boolean            @default(false) // org-wide default policy
+  createdById             String             @unique // User can only create one organization
+  approvedById            String?
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+  approvedAt              DateTime?          // When super admin approved
+
+  createdBy     User          @relation("OrganizationCreator", fields: [createdById], references: [id])
+  approvedBy    User?         @relation("OrganizationApprover", fields: [approvedById], references: [id])
+  users         User[]        @relation("OrganizationMembers")
+  departments   Department[]
   skills        Skill[]
   opportunities Opportunity[]
 
@@ -131,32 +176,128 @@ model Organization {
   @@schema("public")
 }
 
-model Skill {
+model Department {
   id             String   @id @default(uuid())
   name           String
-  category       String
+  description    String?  @db.Text
   organizationId String
+  managerId      String?  // department head (a User)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization  Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  manager       User?         @relation("DepartmentManager", fields: [managerId], references: [id], onDelete: SetNull)
+  users         User[]        @relation("DepartmentMembers")
+  opportunities Opportunity[]
 
   @@index([organizationId])
   @@schema("public")
 }
 
-model Opportunity {
-  id             String   @id @default(uuid())
-  title          String
-  department     String
-  type           String
-  description    String?  @db.Text
-  status         String
-  deadline       DateTime?
-  requiredLevel  Int?
-  organizationId String
-  createdAt      DateTime @default(now())
+// ─── Skills ──────────────────────────────────────────────
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+model Skill {
+  id             String @id @default(uuid())
+  name           String
+  category       String
+  organizationId String
+
+  organization      Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userSkills        UserSkill[]
+  opportunitySkills OpportunitySkill[]
 
   @@index([organizationId])
+  @@schema("public")
+}
+
+model UserSkill {
+  userId           String
+  skillId          String
+  proficiencyLevel Int      @default(1) // 1-5 scale
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skill Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@id([userId, skillId])
+  @@schema("public")
+}
+
+// ─── Opportunities ───────────────────────────────────────
+
+model Opportunity {
+  id                      String            @id @default(uuid())
+  title                   String
+  departmentId            String?
+  type                    String            // e.g. "LATERAL_MOVE", "PROMOTION", "PROJECT"
+  description             String?           @db.Text
+  status                  OpportunityStatus @default(DRAFT)
+  deadline                DateTime?
+  requiredLevel           Int?              // minimum seniority level
+  organizationId          String
+  hiringManagerId         String?           // manager of the target role/team
+  requiresManagerApproval Boolean?          // null = use org default, true/false = override
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
+
+  department        Department?        @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  hiringManager     User?              @relation("HiringManager", fields: [hiringManagerId], references: [id], onDelete: SetNull)
+  opportunitySkills OpportunitySkill[]
+  applications      Application[]
+
+  @@index([organizationId])
+  @@index([departmentId])
+  @@schema("public")
+}
+
+model OpportunitySkill {
+  opportunityId String
+  skillId       String
+  requiredLevel Int // minimum proficiency level needed
+
+  opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  skill       Skill       @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@id([opportunityId, skillId])
+  @@schema("public")
+}
+
+// ─── Applications ────────────────────────────────────────
+
+model Application {
+  id              String            @id @default(uuid())
+  userId          String
+  opportunityId   String
+  status          ApplicationStatus @default(PENDING)
+  fitScore        Float?            // computed skill match score
+  coverNote       String?           @db.Text
+  reviewerNotes   String?           @db.Text
+  managerApproved Boolean?          // null = not yet reviewed or not required
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([opportunityId])
+  @@schema("public")
+}
+
+// ─── Career Paths ────────────────────────────────────────
+
+model CareerPath {
+  id              String   @id @default(uuid())
+  userId          String
+  targetTitle     String   // the role they're working toward
+  timeframeMonths Int
+  milestones      Json     // structured progression steps
+  createdAt       DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
   @@schema("public")
 }
