@@ -14,7 +14,12 @@ CREATE TYPE "ApplicationStatus" AS ENUM ('PENDING', 'MANAGER_REVIEW', 'UNDER_REV
 BEGIN;
 CREATE TYPE "UserRole_new" AS ENUM ('SUPER_ADMIN', 'ORG_ADMIN', 'HR', 'EMPLOYEE');
 ALTER TABLE "public"."User" ALTER COLUMN "role" DROP DEFAULT;
-ALTER TABLE "User" ALTER COLUMN "role" TYPE "UserRole_new" USING ("role"::text::"UserRole_new");
+ALTER TABLE "User" ALTER COLUMN "role" TYPE "UserRole_new" USING (
+  CASE "role"::text
+    WHEN 'MEMBER' THEN 'EMPLOYEE'::"UserRole_new"
+    ELSE "role"::text::"UserRole_new"
+  END
+);
 ALTER TYPE "UserRole" RENAME TO "UserRole_old";
 ALTER TYPE "UserRole_new" RENAME TO "UserRole";
 DROP TYPE "public"."UserRole_old";

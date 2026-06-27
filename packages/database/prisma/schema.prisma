@@ -74,10 +74,10 @@ model MagicLink {
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([token])
   @@index([userId])
   @@schema("private")
 }
@@ -124,6 +124,7 @@ model User {
 
   @@index([organizationId])
   @@index([departmentId])
+  @@index([managerId])
   @@schema("public")
 }
 
@@ -191,16 +192,19 @@ model Department {
   opportunities Opportunity[]
 
   @@index([organizationId])
+  @@index([managerId])
   @@schema("public")
 }
 
 // ─── Skills ──────────────────────────────────────────────
 
 model Skill {
-  id             String @id @default(uuid())
+  id             String   @id @default(uuid())
   name           String
   category       String
   organizationId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   organization      Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   userSkills        UserSkill[]
@@ -221,6 +225,7 @@ model UserSkill {
   skill Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
 
   @@id([userId, skillId])
+  @@index([skillId])
   @@schema("public")
 }
 
@@ -249,18 +254,22 @@ model Opportunity {
 
   @@index([organizationId])
   @@index([departmentId])
+  @@index([hiringManagerId])
   @@schema("public")
 }
 
 model OpportunitySkill {
   opportunityId String
   skillId       String
-  requiredLevel Int // minimum proficiency level needed
+  requiredLevel Int      // minimum proficiency level needed
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
   skill       Skill       @relation(fields: [skillId], references: [id], onDelete: Cascade)
 
   @@id([opportunityId, skillId])
+  @@index([skillId])
   @@schema("public")
 }
 
@@ -295,6 +304,7 @@ model CareerPath {
   timeframeMonths Int
   milestones      Json     // structured progression steps
   createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
