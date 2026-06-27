@@ -1,21 +1,23 @@
 import { prisma } from '../../src/client';
-import { seedSuperAdmins, seedOrgAdmins } from './seedUsers';
-import { seedOrganizations } from './seedOrganizations';
+import { seedIngredients } from './seedIngredients';
+import { seedMedicines } from './seedMedicines';
+import { seedPharmacies } from './seedPharmacies';
+import { seedUsers } from './seedUsers';
 
 async function main() {
-  // Seed users first (org admins need to exist before organizations)
-  await seedSuperAdmins(prisma);
-  await seedOrgAdmins(prisma);
+  await seedIngredients(prisma);
+  await seedMedicines(prisma);
 
-  // Seed organizations (links org admins to their orgs)
-  await seedOrganizations(prisma);
+  const pharmacies = await seedPharmacies(prisma);
+  await seedUsers(prisma, pharmacies);
 }
+
 main()
   .then(async () => {
     await prisma.$disconnect();
   })
-  .catch(async (e) => {
-    console.error(e);
+  .catch(async (error) => {
+    console.error(error);
     await prisma.$disconnect();
     process.exit(1);
   });

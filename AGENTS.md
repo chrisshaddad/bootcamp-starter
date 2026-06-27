@@ -4,7 +4,7 @@ Instructions for AI coding assistants (Claude Code, Cursor, Codex, Aider, etc.) 
 
 ## What this repo is
 
-A generic full-stack bootcamp starter on Turborepo. Multi-tenant auth (orgs + roles) is pre-wired; everything domain-specific is left for the student to build.
+A generic full-stack bootcamp starter on Turborepo. Multi-tenant auth (pharmacies + roles) is pre-wired; everything domain-specific is left for the student to build.
 
 ## Stack
 
@@ -41,9 +41,19 @@ After changing contracts, run `npx tsc -p packages/contracts` to rebuild before 
 
 ### Multi-tenant auth
 
-Three roles: `SUPER_ADMIN` (platform), `ORG_ADMIN` (one org), `MEMBER` (regular user). Most tenant-scoped models will have an `organizationId` FK indexed with `@@index([organizationId])`.
+Seven roles: `SUPER_ADMIN` (platform), `PHARMACY_ADMIN` (manages one pharmacy), `PHARMACY_MANAGER` (manages a branch), `PHARMACY_EMPLOYEE` (branch-level staff), `STOCK_MANAGER` (handles stock batches), `INQUIRY_OFFICER` (handles client inquiries), `CLIENT` (regular platform user).
 
-**Every Prisma query on a tenant-scoped model must filter by `organizationId`.** No exceptions. Even `findUnique` should be `findFirst({ where: { id, organizationId } })`. Cross-tenant leakage is the #1 security bug in multi-tenant SaaS.
+Tenant-scoped models are scoped by `pharmacyId` and/or `branchId` depending on the model:
+
+- `User` → scoped by `pharmacyId` (and optionally `branchId`)
+- `PharmacyBranch` → scoped by `pharmacyId`
+- `StockBatch` → scoped by `branchId`
+- `Inquiry` → scoped by `pharmacyId` and `branchId`
+- `InquiryMessage` → scoped by `inquiryId` (which is already branch/pharmacy scoped)
+- `Medicine`, `Ingredient`, `MedicineIngredient` → global, not tenant-scoped
+- `AuditLog` → scoped by `userId`
+
+**Every Prisma query on a tenant-scoped model must filter by the correct scope field (`pharmacyId` and/or `branchId`).** No exceptions. Even `findUnique` should be `findFirst({ where: { id, pharmacyId } })` for pharmacy-scoped models. Cross-tenant leakage is the #1 security bug in multi-tenant SaaS.
 
 ### NestJS (`apps/api`)
 
@@ -51,8 +61,9 @@ Three roles: `SUPER_ADMIN` (platform), `ORG_ADMIN` (one org), `MEMBER` (regular 
 - Validate every request body / query with `ZodValidationPipe` from `src/common/pipes/`. Schemas come from `@repo/contracts`.
 - Database access only through `DatabaseService` (extends `PrismaClient`). Never `new PrismaClient()` outside `packages/database`.
 - Routes are protected by default (global `AuthGuard`). Use `@Public()` to opt out, `@Roles(...)` to restrict by role, `@CurrentUser()` to get the calling user.
-- Cookie-based sessions (`bootcamp_starter_session`, `HttpOnly`, 30-day TTL). Magic-link auth only — no passwords.
-- Async work goes through BullMQ. See `src/mail/` for the canonical pattern: constants → module → service → processor.
+- Cookie-based sessions (`bootcamp_starter_session`, `HttpOnly`, 30-day TTL). Two auth flows are supported: **magic link (primary)** — user enters email, receives a one-time link via Mailpit/SMTP, clicks it to get a session; **password (secondary)** — user authenticates with email + password directly. Both flows produce the same session cookie. The `User` model has a nullable `password` field to support both.
+- Magic link tokens are stored in the `MagicLink` table and consumed on first use. Sessions are stored in the `Session` table. Both are in the `public` schema and reference the `User` model.
+- Mail delivery goes through BullMQ. See `src/mail/` for the canonical pattern: constants → module → service → processor.
 - Errors: throw NestJS exceptions (`NotFoundException`, `UnauthorizedException`, `BadRequestException`). Don't return error envelopes.
 - Logging: every service uses NestJS's `Logger` (`private readonly logger = new Logger(MyService.name)`). **Never `console.log` in `apps/api/src/`.** `console.*` is fine in CLI scripts under `packages/database/prisma/seeders/` because they're one-shot scripts, not the running server.
 
@@ -70,8 +81,8 @@ Three roles: `SUPER_ADMIN` (platform), `ORG_ADMIN` (one org), `MEMBER` (regular 
 
 ### Prisma (`packages/database`)
 
-- Two schemas: `public` for user-facing models, `private` for sensitive data (`Session`, `MagicLink`). Every model declares `@@schema(...)`.
-- UUID primary keys (`@id @default(uuid())`), `createdAt`/`updatedAt` on every mutable model.
+- All models belong to the `public` schema. Every model declares `@@schema("public")`.
+- UUID primary keys (`@id @default(uuid())`), `createdAt`/`updatedAt` on every mutable model. Exception: `AuditLog` and `InquiryMessage` have only `createdAt` — they are immutable records.
 - Index every FK with `@@index([fkField])`.
 - Cascade for owned children, `SetNull` for soft refs.
 - Never hand-edit migration SQL. Edit the schema, then run `npx turbo run db:migrate -- --name <change>`.
@@ -106,7 +117,7 @@ Run those three commands locally before pushing if you want a pre-flight check.
 - Don't add Husky / lint-staged / pre-commit hooks. Quality gates live in CI.
 - Don't define DTOs in `apps/api` or `apps/web` — put them in `packages/contracts`.
 - Don't access Prisma directly from controllers — go through a service that uses `DatabaseService`.
-- Don't filter tenant-scoped queries without `organizationId`.
+- Don't query tenant-scoped models without the correct scope filter (`pharmacyId` and/or `branchId`).
 - Don't hand-edit files under `apps/web/components/ui/`.
 - Don't hand-edit migration SQL.
 - Don't run `prisma migrate dev` without `--name` in scripts — it prompts and will hang.
