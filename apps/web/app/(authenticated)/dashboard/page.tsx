@@ -22,7 +22,17 @@ function PresenterDashboard({
   eventsLoading,
 }: PresenterDashboardProps) {
   // Get next upcoming event
-  const upcomingEvent = events?.find((event) => event.isUpcoming);
+  const upcomingEvent = events.reduce<
+    EventListResponse['events'][number] | undefined
+  >((next, event) => {
+    if (!event.isUpcoming) return next;
+    if (!next) return event;
+
+    return new Date(event.startsAt).getTime() <
+      new Date(next.startsAt).getTime()
+      ? event
+      : next;
+  }, undefined);
 
   const formatDate = (date: string | Date) => {
     const d = new Date(date);
