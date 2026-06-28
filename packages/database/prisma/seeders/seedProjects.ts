@@ -101,6 +101,7 @@ export async function seedProjects(prisma: PrismaClient) {
     const project = await prisma.project.upsert({
       where: { repositoryId: repo.id },
       update: {
+        createdByUserId: devUser.id,
         title: item.title,
         slug: item.slug,
         shortDescription: item.shortDescription,
