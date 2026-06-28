@@ -65,7 +65,20 @@ function PresenterDashboard({
       </div>
 
       {/* Upcoming Event Panel */}
-      {upcomingEvent ? (
+      {eventsLoading ? (
+        <Card className="border-gray-200 bg-white shadow-sm">
+          <CardHeader>
+            <Skeleton className="h-6 w-48" />
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Skeleton className="h-7 w-64" />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-5 w-32" />
+            </div>
+          </CardContent>
+        </Card>
+      ) : upcomingEvent ? (
         <Card className="border-primary-200 bg-gradient-to-br from-primary-50 to-white shadow-md">
           <CardHeader>
             <CardTitle className="text-lg font-semibold text-gray-900">

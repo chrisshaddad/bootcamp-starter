@@ -15,6 +15,6 @@ export const eventSchema = z.object({
   isRegistered: z.boolean().optional(),
   isUpcoming: z.boolean().optional(),
   presenter: eventPresenterSchema.nullable().optional(),
-  attendeeCount: z.number().optional(),
+  attendeeCount: z.number(),
 });
 export type Event = z.infer<typeof eventSchema>;
