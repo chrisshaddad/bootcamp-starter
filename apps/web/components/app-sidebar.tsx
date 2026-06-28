@@ -67,6 +67,20 @@ const memberNavItems: NavItem[] = [
   },
 ];
 
+// Navigation items for presenter members
+const presenterNavItems: NavItem[] = [
+  {
+    title: 'Dashboard',
+    url: '/dashboard',
+    icon: LayoutDashboard,
+  },
+  {
+    title: 'My Events',
+    url: '/events',
+    icon: Calendar,
+  },
+];
+
 // Navigation items for SUPER_ADMIN role
 const superAdminNavItems: NavItem[] = [
   {
@@ -122,7 +136,7 @@ export function AppSidebar() {
     : isOrgAdmin
       ? orgAdminNavItems
       : isPresenter
-        ? memberNavItems
+        ? presenterNavItems
         : memberNavItems;
   const secondaryNavItems = isSuperAdmin
     ? superAdminSecondaryNavItems
