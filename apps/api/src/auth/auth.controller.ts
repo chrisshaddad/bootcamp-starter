@@ -25,7 +25,7 @@ import {
 } from '@repo/contracts';
 import { ZodValidationPipe } from '../common/pipes';
 
-const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 @Controller('auth')
 export class AuthController {
@@ -84,15 +84,33 @@ export class AuthController {
   }
 
   @Get('me')
-  getCurrentUser(@CurrentUser() user: any): UserResponse {
-    // ZERO FAKE LOGIC: Return only the true database schema fields
+  getCurrentUser(@CurrentUser() user: UserResponse): UserResponse {
+    // Explicitly mapping true database schema fields to contract shape
     return {
       id: user.id,
       email: user.email,
       accountType: user.accountType,
       isConfirmed: user.isConfirmed,
-      developerProfile: user.developerProfile || null,
-      hiringProfile: user.hiringProfile || null,
+      developerProfile: user.developerProfile
+        ? {
+            id: user.developerProfile.id,
+            publicSlug: user.developerProfile.publicSlug,
+            displayName: user.developerProfile.displayName,
+            headline: user.developerProfile.headline ?? null,
+            bio: user.developerProfile.bio ?? null,
+            location: user.developerProfile.location ?? null,
+            profilePictureUrl: user.developerProfile.profilePictureUrl ?? null,
+            githubUsername: user.developerProfile.githubUsername ?? null,
+          }
+        : null,
+      hiringProfile: user.hiringProfile
+        ? {
+            id: user.hiringProfile.id,
+            organizationName: user.hiringProfile.organizationName,
+            organizationType: user.hiringProfile.organizationType,
+            jobTitle: user.hiringProfile.jobTitle ?? null,
+          }
+        : null,
     };
   }
 }

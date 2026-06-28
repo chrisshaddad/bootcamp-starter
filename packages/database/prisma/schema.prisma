@@ -255,6 +255,7 @@ model ProjectMember {
   @@index([userId])
   @@index([githubUsername])
   @@index([verificationStatus])
+  @@index([addedByUserId])
   @@schema("public")
 }
 
@@ -299,6 +300,7 @@ model ProjectTechnology {
   @@index([projectId])
   @@index([technologyId])
   @@index([isPrimary])
+  @@index([addedByUserId])
   @@schema("public")
 }
 
@@ -317,6 +319,7 @@ model ProjectMedia {
   sortOrder Int     @default(0)
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   uploadedBy User    @relation(fields: [uploadedByUserId], references: [id], onDelete: Restrict)
@@ -335,6 +338,7 @@ model SavedProject {
   note String? @db.Text
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   savedBy User    @relation(fields: [savedByUserId], references: [id], onDelete: Cascade)
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -370,4 +374,4 @@ model MagicLink {
   @@index([token])
   @@index([userId])
   @@schema("private")
-}
+} 

@@ -10,14 +10,10 @@ export class OrganizationsService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * Stubs returning empty to satisfy TypeScript and Contracts
-   * while allowing you to deprecate/remove the module later.
+   * Stubs returning explicit failure for deprecated endpoints.
    */
   async findAll(options: any): Promise<OrganizationListResponse> {
-    return {
-      organizations: [],
-      total: 0,
-    } as unknown as OrganizationListResponse;
+    throw new NotFoundException('The organizations directory has been deprecated.');
   }
 
   async findOne(id: string): Promise<OrganizationDetailResponse> {

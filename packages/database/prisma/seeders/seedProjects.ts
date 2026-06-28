@@ -25,13 +25,13 @@ export async function seedProjects(prisma: PrismaClient) {
     techMap[tech.slug] = createdTech.id;
   }
 
-  // 2. Fetch a developer user to create projects
-  const devUser = await prisma.user.findFirst({
-    where: { accountType: 'DEVELOPER' },
+  // 2. Fetch a specific developer user to create projects
+  const devUser = await prisma.user.findUnique({
+    where: { email: 'dev.sarah@example.com' },
   });
 
   if (!devUser) {
-    throw new Error('No developer found. Seed users first.');
+    throw new Error('No developer found with email dev.sarah@example.com. Seed users first.');
   }
 
   // 3. Seed Repository and Project
@@ -95,9 +95,18 @@ export async function seedProjects(prisma: PrismaClient) {
       },
     });
 
-    // Create Project
-    const project = await prisma.project.create({
-      data: {
+    // Upsert Project
+    const project = await prisma.project.upsert({
+      where: { repositoryId: repo.id },
+      update: {
+        title: item.title,
+        slug: item.slug,
+        shortDescription: item.shortDescription,
+        fullDescription: item.fullDescription,
+        deploymentUrl: item.deploymentUrl,
+        status: item.status,
+      },
+      create: {
         repositoryId: repo.id,
         createdByUserId: devUser.id,
         title: item.title,
@@ -109,7 +118,11 @@ export async function seedProjects(prisma: PrismaClient) {
       },
     });
 
-    // Link Technologies
+    // Link Technologies (Idempotent cleanup & recreate)
+    await prisma.projectTechnology.deleteMany({
+      where: { projectId: project.id },
+    });
+
     for (const slug of item.techSlugs) {
       const techId = techMap[slug];
       if (techId) {
@@ -123,7 +136,7 @@ export async function seedProjects(prisma: PrismaClient) {
         });
       }
     }
-    console.log(`  Created project: ${project.title} (${project.status})`);
+    console.log(`  Created/Updated project: ${project.title} (${project.status})`);
   }
 
   console.log('Technologies, repositories, and projects seeded.');

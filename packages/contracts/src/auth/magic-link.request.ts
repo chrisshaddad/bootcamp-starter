@@ -4,7 +4,8 @@ import { z } from 'zod';
 export const magicLinkRequestSchema = z.object({
   email: z
     .string()
-    .email('Please enter a valid email address')
-    .transform((email) => email.toLowerCase().trim()),
+    .trim()
+    .toLowerCase()
+    .email('Please enter a valid email address'),
 });
 export type MagicLinkRequest = z.infer<typeof magicLinkRequestSchema>;

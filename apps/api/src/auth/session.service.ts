@@ -5,7 +5,7 @@ import { PrismaService } from '../database/prisma.service';
 import { User, DeveloperProfile, HiringProfile } from '@repo/db';
 
 const SESSION_PREFIX = 'session:';
-const SESSION_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days
+const SESSION_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days
 
 // Create a combined type so TS knows profiles are loaded
 export type UserWithProfiles = User & {

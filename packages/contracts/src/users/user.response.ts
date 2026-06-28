@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { accountTypeSchema } from './user-role.schema';
 
 export const developerProfileSchema = z.object({
-  id: z.string(),
+  id: z.string().uuid(),
   publicSlug: z.string(),
   displayName: z.string(),
   headline: z.string().nullable().optional(),
@@ -13,7 +13,7 @@ export const developerProfileSchema = z.object({
 });
 
 export const hiringProfileSchema = z.object({
-  id: z.string(),
+  id: z.string().uuid(),
   organizationName: z.string(),
   organizationType: z.enum([
     'COMPANY',
@@ -25,8 +25,8 @@ export const hiringProfileSchema = z.object({
 });
 
 export const userResponseSchema = z.object({
-  id: z.string(),
-  email: z.string(),
+  id: z.string().uuid(),
+  email: z.string().email(),
   accountType: accountTypeSchema,
   isConfirmed: z.boolean(),
   developerProfile: developerProfileSchema.nullable().optional(),
