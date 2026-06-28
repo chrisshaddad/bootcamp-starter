@@ -5,7 +5,7 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import type { UserRole } from '@repo/db';
+import type { AccountType } from '@repo/db';
 import { ROLES_KEY } from '../decorators';
 import type { AuthenticatedRequest } from './auth.guard';
 
@@ -14,7 +14,7 @@ export class RolesGuard implements CanActivate {
   constructor(private readonly reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
-    const requiredRoles = this.reflector.getAllAndOverride<UserRole[]>(
+    const requiredRoles = this.reflector.getAllAndOverride<AccountType[]>(
       ROLES_KEY,
       [context.getHandler(), context.getClass()],
     );
@@ -25,13 +25,13 @@ export class RolesGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
-    const user = request.user;
+    const user = request.user as any;
 
     if (!user) {
       throw new ForbiddenException('User not found in request');
     }
 
-    const hasRole = requiredRoles.includes(user.role);
+    const hasRole = requiredRoles.includes(user.accountType);
 
     if (!hasRole) {
       throw new ForbiddenException(
