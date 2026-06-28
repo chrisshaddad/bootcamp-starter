@@ -16,6 +16,14 @@ interface PresenterDashboardProps {
   eventsLoading: boolean;
 }
 
+/**
+ * Renders the presenter dashboard.
+ *
+ * @param user - Presenter user details used in the greeting and event summary.
+ * @param events - Events shown in the calendar and used to find the next upcoming event.
+ * @param eventsLoading - Controls the loading state of the event calendar.
+ * @returns The presenter dashboard layout.
+ */
 function PresenterDashboard({
   user,
   events = [],
@@ -156,6 +164,11 @@ function PresenterDashboard({
   );
 }
 
+/**
+ * Renders the dashboard for the current user and routes super admins to the admin area.
+ *
+ * @returns The dashboard content, a loading skeleton, or the presenter-specific dashboard.
+ */
 export default function DashboardPage() {
   const router = useRouter();
   const { user, isLoading } = useUser();
