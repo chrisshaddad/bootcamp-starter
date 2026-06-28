@@ -31,7 +31,9 @@ export async function seedProjects(prisma: PrismaClient) {
   });
 
   if (!devUser) {
-    throw new Error('No developer found with email dev.sarah@example.com. Seed users first.');
+    throw new Error(
+      'No developer found with email dev.sarah@example.com. Seed users first.',
+    );
   }
 
   // 3. Seed Repository and Project
@@ -136,7 +138,9 @@ export async function seedProjects(prisma: PrismaClient) {
         });
       }
     }
-    console.log(`  Created/Updated project: ${project.title} (${project.status})`);
+    console.log(
+      `  Created/Updated project: ${project.title} (${project.status})`,
+    );
   }
 
   console.log('Technologies, repositories, and projects seeded.');

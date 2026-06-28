@@ -13,7 +13,9 @@ export class OrganizationsService {
    * Stubs returning explicit failure for deprecated endpoints.
    */
   async findAll(options: any): Promise<OrganizationListResponse> {
-    throw new NotFoundException('The organizations directory has been deprecated.');
+    throw new NotFoundException(
+      'The organizations directory has been deprecated.',
+    );
   }
 
   async findOne(id: string): Promise<OrganizationDetailResponse> {
