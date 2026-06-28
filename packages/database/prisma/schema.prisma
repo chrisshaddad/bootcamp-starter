@@ -59,6 +59,10 @@ model Medicine {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  stockBatches        StockBatch[]
+  inquiries           Inquiry[]
+  medicineIngredients MedicineIngredient[]
+
   @@index([brandName], name: "idx_medicine_name")
   @@map("medicines")
   @@schema("public")
@@ -70,6 +74,8 @@ model Ingredient {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  medicineIngredients MedicineIngredient[]
+
   @@map("ingredients")
   @@schema("public")
 }
@@ -80,8 +86,9 @@ model Pharmacy {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users    User[]
-  branches PharmacyBranch[]
+  users     User[]
+  branches  PharmacyBranch[]
+  inquiries Inquiry[]
 
   @@map("pharmacies")
   @@schema("public")
@@ -105,10 +112,13 @@ model User {
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
-  pharmacy   Pharmacy?       @relation(fields: [pharmacyId], references: [id], onDelete: Restrict)
-  branch     PharmacyBranch? @relation(fields: [pharmacyId, branchId], references: [pharmacyId, id], onDelete: Restrict)
+  pharmacy   Pharmacy?        @relation(fields: [pharmacyId], references: [id], onDelete: Restrict)
+  branch     PharmacyBranch?  @relation(fields: [pharmacyId, branchId], references: [pharmacyId, id], onDelete: Restrict)
   sessions   Session[]
   magicLinks MagicLink[]
+  auditLogs  AuditLog[]
+  inquiries  Inquiry[]
+  messages   InquiryMessage[]
 
   @@index([role])
   @@index([status])
@@ -158,12 +168,103 @@ model PharmacyBranch {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  pharmacy Pharmacy @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
-  users    User[]
+  pharmacy     Pharmacy     @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+  users        User[]
+  stockBatches StockBatch[]
+  inquiries    Inquiry[]
 
   @@unique([pharmacyId, id])
   @@index([pharmacyId])
   @@index([latitude, longitude], name: "idx_branch_location")
   @@map("pharmacy_branches")
+  @@schema("public")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String
+  action    String   @db.VarChar(100)
+  entity    String   @db.VarChar(100)
+  entityId  String?
+  details   Json?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("audit_logs")
+  @@schema("public")
+}
+
+model StockBatch {
+  id          String   @id @default(uuid())
+  branchId    String
+  medicineId  String
+  batchNumber String?  @db.VarChar(100)
+  quantity    Int      @default(0)
+  expiryDate  DateTime @db.Date
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  branch   PharmacyBranch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  medicine Medicine       @relation(fields: [medicineId], references: [id], onDelete: Cascade)
+
+  @@index([branchId])
+  @@index([medicineId])
+  @@map("stock_batches")
+  @@schema("public")
+}
+
+model MedicineIngredient {
+  medicineId   String
+  ingredientId String
+
+  medicine   Medicine   @relation(fields: [medicineId], references: [id], onDelete: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  @@id([medicineId, ingredientId])
+  @@index([ingredientId])
+  @@map("medicine_ingredients")
+  @@schema("public")
+}
+
+model Inquiry {
+  id         String        @id @default(uuid())
+  clientId   String
+  pharmacyId String
+  branchId   String
+  medicineId String
+  status     InquiryStatus @default(PENDING)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  client   User             @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  pharmacy Pharmacy         @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+  branch   PharmacyBranch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  medicine Medicine         @relation(fields: [medicineId], references: [id], onDelete: Cascade)
+  messages InquiryMessage[]
+
+  @@index([clientId])
+  @@index([pharmacyId])
+  @@index([branchId])
+  @@index([medicineId])
+  @@map("inquiries")
+  @@schema("public")
+}
+
+model InquiryMessage {
+  id         String     @id @default(uuid())
+  inquiryId  String
+  senderId   String
+  senderType SenderType
+  message    String     @db.Text
+  createdAt  DateTime   @default(now())
+
+  inquiry Inquiry @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+  sender  User    @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([inquiryId])
+  @@index([senderId])
+  @@map("inquiry_messages")
   @@schema("public")
 }
