@@ -1,5 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
+import type { Service } from '@repo/db';
 import type {
   ServiceCreateRequest,
   ServiceUpdateRequest,
@@ -124,8 +125,7 @@ export class ServicesService {
     return value?.trim() ? value.trim() : null;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private toResponse(service: any): ServiceResponse {
+  private toResponse(service: Service): ServiceResponse {
     return {
       id: service.id,
       organizationId: service.organizationId,

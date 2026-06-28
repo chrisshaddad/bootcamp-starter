@@ -8,6 +8,7 @@ import {
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import * as crypto from 'crypto';
+import type { UserProfileUpdateRequest, UserResponse } from '@repo/contracts';
 import { PrismaService } from '../database/prisma.service';
 import { SessionService } from './session.service';
 import { MAIL_QUEUE, MAIL_JOBS } from '../mail/mail.constants';
@@ -241,7 +242,10 @@ export class AuthService {
   /**
    * Update user profile information
    */
-  async updateProfile(sessionId: string, data: any): Promise<any> {
+  async updateProfile(
+    sessionId: string,
+    data: UserProfileUpdateRequest,
+  ): Promise<UserResponse> {
     const user = await this.sessionService.validateSession(sessionId);
     if (!user) {
       throw new UnauthorizedException('Invalid or expired session');
@@ -260,16 +264,18 @@ export class AuthService {
       profilePictureUrl,
     } = data;
 
-    // Update user name if provided
-    if (name !== undefined) {
-      await this.prisma.user.update({
-        where: { id: user.id },
-        data: { name },
-      });
-    }
-
     // Build update object for userProfile
-    const updateData: any = {};
+    const updateData: {
+      phoneNumber?: string | null;
+      profilePictureUrl?: string | null;
+      bio?: string | null;
+      street1?: string | null;
+      street2?: string | null;
+      city?: string | null;
+      state?: string | null;
+      postalCode?: string | null;
+      country?: string | null;
+    } = {};
     if (phoneNumber !== undefined) updateData.phoneNumber = phoneNumber;
     if (profilePictureUrl !== undefined)
       updateData.profilePictureUrl = profilePictureUrl;
@@ -281,15 +287,24 @@ export class AuthService {
     if (postalCode !== undefined) updateData.postalCode = postalCode;
     if (country !== undefined) updateData.country = country;
 
-    // Upsert user profile with address/contact info
-    const userProfile = await this.prisma.userProfile.upsert({
-      where: { userId: user.id },
-      update: updateData,
-      create: {
-        userId: user.id,
-        ...updateData,
-      },
-      include: { user: true },
+    // Keep user + profile writes atomic to avoid partial updates
+    const userProfile = await this.prisma.$transaction(async (tx) => {
+      if (name !== undefined) {
+        await tx.user.update({
+          where: { id: user.id },
+          data: { name },
+        });
+      }
+
+      return tx.userProfile.upsert({
+        where: { userId: user.id },
+        update: updateData,
+        create: {
+          userId: user.id,
+          ...updateData,
+        },
+        include: { user: true },
+      });
     });
 
     return {

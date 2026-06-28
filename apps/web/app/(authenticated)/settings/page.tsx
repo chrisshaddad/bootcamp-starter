@@ -27,12 +27,16 @@ import {
   type OrganizationUpdateRequest,
   type UserProfileUpdateRequest,
 } from '@repo/contracts';
+import { z } from 'zod';
 import { fetcher } from '@/lib/api';
 import { toast } from 'sonner';
 import { Settings, Users, UserCircle2, Plus } from 'lucide-react';
 
 const MAX_IMAGE_DIMENSION = 512;
 const JPEG_QUALITY = 0.82;
+type OrganizationUpdateFormInput = z.input<
+  typeof organizationUpdateRequestSchema
+>;
 
 async function compressImageToDataUrl(file: File): Promise<string> {
   const objectUrl = URL.createObjectURL(file);
@@ -91,12 +95,16 @@ export default function SettingsPage() {
   const [profileSaving, setProfileSaving] = useState(false);
 
   // Organization form
-  const orgForm = useForm<OrganizationUpdateRequest>({
+  const orgForm = useForm<
+    OrganizationUpdateFormInput,
+    unknown,
+    OrganizationUpdateRequest
+  >({
     resolver: zodResolver(organizationUpdateRequestSchema),
     defaultValues: {
       name: currentOrg?.name || '',
       description: null,
-      website: currentOrg?.website || null,
+      website: currentOrg?.website || '',
     },
   });
 
@@ -147,7 +155,7 @@ export default function SettingsPage() {
       orgForm.reset({
         name: organization.name,
         description: organization.description ?? null,
-        website: organization.website ?? null,
+        website: organization.website ?? '',
       });
     };
 
@@ -164,7 +172,10 @@ export default function SettingsPage() {
     try {
       await updateOrganization(data);
       toast.success('Organization updated successfully');
-      orgForm.reset(data);
+      orgForm.reset({
+        ...data,
+        website: data.website ?? '',
+      });
     } catch (error) {
       toast.error(
         error instanceof Error

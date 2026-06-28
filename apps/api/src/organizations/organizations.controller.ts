@@ -60,7 +60,7 @@ export class OrganizationsController {
   ): Promise<OrganizationDetailResponse> {
     // ORG_ADMIN can only update their own organization
     if (user.role === 'ORG_ADMIN' && user.organizationId !== id) {
-      throw new Error('Unauthorized');
+      throw new UnauthorizedException('Unauthorized');
     }
     return this.organizationsService.update(id, body);
   }

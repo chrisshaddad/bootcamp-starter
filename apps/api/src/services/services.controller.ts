@@ -9,6 +9,7 @@ import {
   Query,
   HttpCode,
   HttpStatus,
+  BadRequestException,
 } from '@nestjs/common';
 import { ServicesService } from './services.service';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
@@ -17,8 +18,10 @@ import type { User } from '@repo/db';
 import {
   serviceCreateRequestSchema,
   serviceUpdateRequestSchema,
+  serviceListQuerySchema,
   type ServiceCreateRequest,
   type ServiceUpdateRequest,
+  type ServiceListQuery,
   type ServiceListResponse,
   type ServiceResponse,
 } from '@repo/contracts';
@@ -27,17 +30,25 @@ import {
 export class ServicesController {
   constructor(private readonly servicesService: ServicesService) {}
 
+  private requireOrgId(user: User): string {
+    if (!user.organizationId) {
+      throw new BadRequestException(
+        'This endpoint requires an organization context',
+      );
+    }
+    return user.organizationId;
+  }
+
   @Get()
   async findAll(
     @CurrentUser() user: User,
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-    @Query('activeOnly') activeOnly?: string,
+    @Query(new ZodValidationPipe(serviceListQuerySchema))
+    query: ServiceListQuery,
   ): Promise<ServiceListResponse> {
-    return this.servicesService.findAll(user.organizationId!, {
-      page: page ? parseInt(page, 10) : 1,
-      limit: limit ? parseInt(limit, 10) : 20,
-      activeOnly: activeOnly === 'true',
+    return this.servicesService.findAll(this.requireOrgId(user), {
+      page: query.page,
+      limit: query.limit,
+      activeOnly: query.activeOnly,
     });
   }
 
@@ -46,7 +57,7 @@ export class ServicesController {
     @Param('id') id: string,
     @CurrentUser() user: User,
   ): Promise<ServiceResponse> {
-    return this.servicesService.findOne(id, user.organizationId!);
+    return this.servicesService.findOne(id, this.requireOrgId(user));
   }
 
   @Post()
@@ -55,7 +66,7 @@ export class ServicesController {
     body: ServiceCreateRequest,
     @CurrentUser() user: User,
   ): Promise<ServiceResponse> {
-    return this.servicesService.create(user.organizationId!, body);
+    return this.servicesService.create(this.requireOrgId(user), body);
   }
 
   @Patch(':id')
@@ -65,7 +76,7 @@ export class ServicesController {
     body: ServiceUpdateRequest,
     @CurrentUser() user: User,
   ): Promise<ServiceResponse> {
-    return this.servicesService.update(id, user.organizationId!, body);
+    return this.servicesService.update(id, this.requireOrgId(user), body);
   }
 
   @Delete(':id')
@@ -74,6 +85,6 @@ export class ServicesController {
     @Param('id') id: string,
     @CurrentUser() user: User,
   ): Promise<void> {
-    return this.servicesService.remove(id, user.organizationId!);
+    return this.servicesService.remove(id, this.requireOrgId(user));
   }
 }

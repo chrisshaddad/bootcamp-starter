@@ -20,12 +20,14 @@ import {
 import { Plus, Trash2, Pencil, Briefcase } from 'lucide-react';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { toast } from 'sonner';
-import { z } from 'zod';
 import {
   serviceCreateRequestSchema,
   type ServiceCreateRequest,
   type ServiceResponse,
 } from '@repo/contracts';
+import { z } from 'zod';
+
+type ServiceCreateFormInput = z.input<typeof serviceCreateRequestSchema>;
 
 function formatUSD(value: string): string {
   return new Intl.NumberFormat('en-US', {
@@ -35,7 +37,7 @@ function formatUSD(value: string): string {
 }
 
 interface ServiceFormProps {
-  defaultValues?: Partial<ServiceCreateRequest>;
+  defaultValues?: Partial<ServiceCreateFormInput>;
   onSubmit: (data: ServiceCreateRequest) => Promise<void>;
 }
 
