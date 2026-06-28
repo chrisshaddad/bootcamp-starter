@@ -55,6 +55,7 @@ const SALE_FIELDS = [
   'notes',
 ];
 const PRODUCT_FIELDS = ['name', 'description', 'unitPrice', 'unitCost', 'sku'];
+const SERVICE_FIELDS = ['name', 'description', 'unitPrice', 'unitCost', 'sku'];
 
 function statusBadge(status: string) {
   const map: Record<
@@ -89,7 +90,7 @@ export default function ImportsPage() {
   const [open, setOpen] = useState(false);
   const [selectedImportId, setSelectedImportId] = useState<string | null>(null);
   const [importType, setImportType] = useState<
-    'EXPENSES' | 'SALES' | 'PRODUCTS'
+    'EXPENSES' | 'SALES' | 'PRODUCTS' | 'SERVICES'
   >('EXPENSES');
   const [fileHeaders, setFileHeaders] = useState<string[]>([]);
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>(
@@ -114,7 +115,9 @@ export default function ImportsPage() {
         ? EXPENSE_FIELDS
         : importType === 'PRODUCTS'
           ? PRODUCT_FIELDS
-          : SALE_FIELDS;
+          : importType === 'SERVICES'
+            ? SERVICE_FIELDS
+            : SALE_FIELDS;
     const autoMap: Record<string, string> = {};
     headers.forEach((h) => {
       const match = fields.find((f) => f.toLowerCase() === h.toLowerCase());
@@ -184,7 +187,9 @@ export default function ImportsPage() {
       ? ['date', 'description', 'amount']
       : importType === 'PRODUCTS'
         ? ['name', 'unitPrice']
-        : ['date', 'unitPrice'];
+        : importType === 'SERVICES'
+          ? ['name', 'unitPrice']
+          : ['date', 'unitPrice'];
 
   const mappedValues = Object.values(columnMapping).filter(Boolean);
   const missingFields = requiredFields.filter((f) => !mappedValues.includes(f));
@@ -219,7 +224,9 @@ export default function ImportsPage() {
       ? EXPENSE_FIELDS
       : importType === 'PRODUCTS'
         ? PRODUCT_FIELDS
-        : SALE_FIELDS;
+        : importType === 'SERVICES'
+          ? SERVICE_FIELDS
+          : SALE_FIELDS;
 
   return (
     <div className="space-y-6">
@@ -258,7 +265,9 @@ export default function ImportsPage() {
                   <Select
                     value={importType}
                     onValueChange={(v) => {
-                      setImportType(v as 'EXPENSES' | 'SALES' | 'PRODUCTS');
+                      setImportType(
+                        v as 'EXPENSES' | 'SALES' | 'PRODUCTS' | 'SERVICES',
+                      );
                       setColumnMapping({});
                       setFileHeaders([]);
                     }}
@@ -268,6 +277,7 @@ export default function ImportsPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="PRODUCTS">Products</SelectItem>
+                      <SelectItem value="SERVICES">Services</SelectItem>
                       <SelectItem value="EXPENSES">Expenses</SelectItem>
                       <SelectItem value="SALES">Sales</SelectItem>
                     </SelectContent>

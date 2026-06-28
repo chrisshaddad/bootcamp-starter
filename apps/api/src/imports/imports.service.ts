@@ -121,7 +121,7 @@ export class ImportsService {
     organizationId: string,
     createdById: string,
     params: {
-      type: 'EXPENSES' | 'SALES' | 'PRODUCTS';
+      type: 'EXPENSES' | 'SALES' | 'PRODUCTS' | 'SERVICES';
       fileName: string;
       fileContent: string; // base64
       columnMapping: Record<string, string>;
