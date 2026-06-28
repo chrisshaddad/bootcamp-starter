@@ -111,7 +111,7 @@ CREATE TABLE "pharmacy_branches" (
 -- CreateTable
 CREATE TABLE "audit_logs" (
     "id" TEXT NOT NULL,
-    "userId" TEXT NOT NULL,
+    "userId" TEXT,
     "action" VARCHAR(100) NOT NULL,
     "entity" VARCHAR(100) NOT NULL,
     "entityId" TEXT,
@@ -161,7 +161,7 @@ CREATE TABLE "inquiries" (
 CREATE TABLE "inquiry_messages" (
     "id" TEXT NOT NULL,
     "inquiryId" TEXT NOT NULL,
-    "senderId" TEXT NOT NULL,
+    "senderId" TEXT,
     "senderType" "SenderType" NOT NULL,
     "message" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -260,7 +260,7 @@ ALTER TABLE "magic_links" ADD CONSTRAINT "magic_links_userId_fkey" FOREIGN KEY (
 ALTER TABLE "pharmacy_branches" ADD CONSTRAINT "pharmacy_branches_pharmacyId_fkey" FOREIGN KEY ("pharmacyId") REFERENCES "pharmacies"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "audit_logs" ADD CONSTRAINT "audit_logs_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "audit_logs" ADD CONSTRAINT "audit_logs_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "stock_batches" ADD CONSTRAINT "stock_batches_branchId_fkey" FOREIGN KEY ("branchId") REFERENCES "pharmacy_branches"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -281,7 +281,7 @@ ALTER TABLE "inquiries" ADD CONSTRAINT "inquiries_clientId_fkey" FOREIGN KEY ("c
 ALTER TABLE "inquiries" ADD CONSTRAINT "inquiries_pharmacyId_fkey" FOREIGN KEY ("pharmacyId") REFERENCES "pharmacies"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "inquiries" ADD CONSTRAINT "inquiries_branchId_fkey" FOREIGN KEY ("branchId") REFERENCES "pharmacy_branches"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "inquiries" ADD CONSTRAINT "inquiries_pharmacyId_branchId_fkey" FOREIGN KEY ("pharmacyId", "branchId") REFERENCES "pharmacy_branches"("pharmacyId", "id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "inquiries" ADD CONSTRAINT "inquiries_medicineId_fkey" FOREIGN KEY ("medicineId") REFERENCES "medicines"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -290,4 +290,4 @@ ALTER TABLE "inquiries" ADD CONSTRAINT "inquiries_medicineId_fkey" FOREIGN KEY (
 ALTER TABLE "inquiry_messages" ADD CONSTRAINT "inquiry_messages_inquiryId_fkey" FOREIGN KEY ("inquiryId") REFERENCES "inquiries"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "inquiry_messages" ADD CONSTRAINT "inquiry_messages_senderId_fkey" FOREIGN KEY ("senderId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "inquiry_messages" ADD CONSTRAINT "inquiry_messages_senderId_fkey" FOREIGN KEY ("senderId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;

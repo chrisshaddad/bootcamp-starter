@@ -182,14 +182,14 @@ model PharmacyBranch {
 
 model AuditLog {
   id        String   @id @default(uuid())
-  userId    String
+  userId    String?
   action    String   @db.VarChar(100)
   entity    String   @db.VarChar(100)
   entityId  String?
   details   Json?
   createdAt DateTime @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@map("audit_logs")
@@ -240,7 +240,7 @@ model Inquiry {
 
   client   User             @relation(fields: [clientId], references: [id], onDelete: Cascade)
   pharmacy Pharmacy         @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
-  branch   PharmacyBranch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  branch   PharmacyBranch   @relation(fields: [pharmacyId, branchId], references: [pharmacyId, id], onDelete: Cascade)
   medicine Medicine         @relation(fields: [medicineId], references: [id], onDelete: Cascade)
   messages InquiryMessage[]
 
@@ -255,13 +255,13 @@ model Inquiry {
 model InquiryMessage {
   id         String     @id @default(uuid())
   inquiryId  String
-  senderId   String
+  senderId   String?
   senderType SenderType
   message    String     @db.Text
   createdAt  DateTime   @default(now())
 
   inquiry Inquiry @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
-  sender  User    @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  sender  User?   @relation(fields: [senderId], references: [id], onDelete: SetNull)
 
   @@index([inquiryId])
   @@index([senderId])

@@ -11,7 +11,7 @@ export async function seedInquiryMessages(prisma: PrismaClient) {
 
   const [inquiries, staff] = await Promise.all([
     prisma.inquiry.findMany({
-      select: { id: true, clientId: true, pharmacyId: true },
+      select: { id: true, clientId: true, pharmacyId: true, status: true },
     }),
     // Pharmacy-attached users can answer inquiries on behalf of their pharmacy.
     prisma.user.findMany({
@@ -35,8 +35,14 @@ export async function seedInquiryMessages(prisma: PrismaClient) {
 
   const messages = inquiries.flatMap((inquiry) => {
     const pharmacyStaff = staffByPharmacy.get(inquiry.pharmacyId) ?? [];
+    // Answered/closed inquiries must contain at least one employee reply. With
+    // the alternating order below (index 0 client, index 1 employee), a minimum
+    // of two messages guarantees that reply whenever pharmacy staff exist.
+    const requiresEmployeeReply =
+      pharmacyStaff.length > 0 &&
+      (inquiry.status === 'ANSWERED' || inquiry.status === 'CLOSED');
     const messageCount = faker.number.int({
-      min: MIN_MESSAGES_PER_INQUIRY,
+      min: requiresEmployeeReply ? 2 : MIN_MESSAGES_PER_INQUIRY,
       max: MAX_MESSAGES_PER_INQUIRY,
     });
 
