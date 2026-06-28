@@ -107,6 +107,11 @@ const superAdminSecondaryNavItems: NavItem[] = [
   },
 ];
 
+/**
+ * Renders the application sidebar with role-based navigation and a logout action.
+ *
+ * @returns The sidebar navigation layout.
+ */
 export function AppSidebar() {
   const pathname = usePathname();
   const { logout } = useAuth();
