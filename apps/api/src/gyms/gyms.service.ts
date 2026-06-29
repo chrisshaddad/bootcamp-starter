@@ -9,7 +9,7 @@ import { Prisma } from '@repo/db';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import * as crypto from 'crypto';
-import { PrismaService } from '../database/prisma.service';
+import { DatabaseService } from '../database/database.service';
 import { MAIL_QUEUE, MAIL_JOBS } from '../mail/mail.constants';
 import type { GymStatus } from '@repo/db';
 import type {
@@ -46,7 +46,7 @@ export class GymsService {
   private readonly logger = new Logger(GymsService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly prisma: DatabaseService,
     @InjectQueue(MAIL_QUEUE) private readonly mailQueue: Queue,
   ) {}
 

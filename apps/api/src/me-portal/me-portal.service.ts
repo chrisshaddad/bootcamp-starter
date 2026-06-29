@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../database/prisma.service';
+import { DatabaseService } from '../database/database.service';
 import type {
   MeProfileResponse,
   SubscriptionListResponse,
@@ -29,7 +29,7 @@ const SUBSCRIPTION_SELECT = {
 
 @Injectable()
 export class MePortalService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: DatabaseService) {}
 
   /** Resolve the Member record for the logged-in portal user */
   private async resolveMember(userId: string, gymId: string) {

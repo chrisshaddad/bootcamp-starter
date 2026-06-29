@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { PrismaService } from '../database/prisma.service';
+import { DatabaseService } from '../database/database.service';
 import { Logger } from '@nestjs/common';
 import type {
   SessionListResponse,
@@ -48,7 +48,7 @@ const SESSION_SELECT = {
 export class SessionsService {
   private readonly logger = new Logger(SessionsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: DatabaseService) {}
 
   /** List all sessions for a gym with optional date filtering */
   async findAll(

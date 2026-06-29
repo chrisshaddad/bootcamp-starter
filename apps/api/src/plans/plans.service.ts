@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@repo/db';
-import { PrismaService } from '../database/prisma.service';
+import { DatabaseService } from '../database/database.service';
 import type {
   PlanListResponse,
   PlanResponse,
@@ -26,7 +26,7 @@ const PLAN_SELECT = {
 
 @Injectable()
 export class PlansService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: DatabaseService) {}
 
   /** List all membership plans for a gym with optional isActive filter and pagination */
   async findAll(

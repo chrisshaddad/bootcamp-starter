@@ -1,7 +1,7 @@
 import { Processor, WorkerHost, InjectQueue } from '@nestjs/bullmq';
 import { Logger, OnModuleInit } from '@nestjs/common';
 import { Job, Queue } from 'bullmq';
-import { PrismaService } from '../database/prisma.service';
+import { DatabaseService } from '../database/database.service';
 import {
   SUBSCRIPTION_EXPIRY_QUEUE,
   SUBSCRIPTION_EXPIRY_JOBS,
@@ -15,7 +15,7 @@ export class SubscriptionExpiryProcessor
   private readonly logger = new Logger(SubscriptionExpiryProcessor.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly prisma: DatabaseService,
     @InjectQueue(SUBSCRIPTION_EXPIRY_QUEUE) private readonly queue: Queue,
   ) {
     super();
