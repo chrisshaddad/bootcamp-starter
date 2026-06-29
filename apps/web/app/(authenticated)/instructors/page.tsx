@@ -178,10 +178,16 @@ export function AddInstructorDialog({
             <Input
               id="instructor-name"
               placeholder="e.g. Alice Trainer"
+              aria-invalid={!!errors.name}
+              aria-describedby={
+                errors.name ? 'instructor-name-error' : undefined
+              }
               {...register('name')}
             />
             {errors.name && (
-              <p className="text-xs text-error">{errors.name.message}</p>
+              <p id="instructor-name-error" className="text-xs text-error">
+                {errors.name.message}
+              </p>
             )}
           </div>
 
@@ -192,10 +198,16 @@ export function AddInstructorDialog({
               id="instructor-email"
               type="email"
               placeholder="alice@gym.com"
+              aria-invalid={!!errors.email}
+              aria-describedby={
+                errors.email ? 'instructor-email-error' : undefined
+              }
               {...register('email')}
             />
             {errors.email && (
-              <p className="text-xs text-error">{errors.email.message}</p>
+              <p id="instructor-email-error" className="text-xs text-error">
+                {errors.email.message}
+              </p>
             )}
           </div>
 
@@ -207,10 +219,19 @@ export function AddInstructorDialog({
             <Input
               id="instructor-specialization"
               placeholder="e.g. Yoga, CrossFit, HIIT"
+              aria-invalid={!!errors.specialization}
+              aria-describedby={
+                errors.specialization
+                  ? 'instructor-specialization-error'
+                  : undefined
+              }
               {...register('specialization')}
             />
             {errors.specialization && (
-              <p className="text-xs text-error">
+              <p
+                id="instructor-specialization-error"
+                className="text-xs text-error"
+              >
                 {errors.specialization.message}
               </p>
             )}
