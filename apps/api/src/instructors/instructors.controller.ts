@@ -62,13 +62,15 @@ export class InstructorsController {
     name: 'startsAt',
     required: true,
     type: String,
-    description: 'Start time of the session',
+    description: 'Start time of the session (ISO-8601 offset datetime)',
+    example: '2026-06-29T09:00:00Z',
   })
   @ApiQuery({
     name: 'endsAt',
     required: true,
     type: String,
-    description: 'End time of the session',
+    description: 'End time of the session (ISO-8601 offset datetime)',
+    example: '2026-06-29T10:00:00Z',
   })
   @ApiResponse({
     status: 200,
@@ -82,6 +84,11 @@ export class InstructorsController {
         },
       },
     },
+  })
+  @ApiResponse({
+    status: 400,
+    description:
+      'Validation error — missing/invalid datetime params, or endsAt not after startsAt',
   })
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   @ApiResponse({ status: 403, description: 'Insufficient role' })
