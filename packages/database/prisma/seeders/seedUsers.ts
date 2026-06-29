@@ -46,6 +46,7 @@ export async function seedSuperAdmins(prisma: PrismaClient) {
       isConfirmed: true,
       role: 'SUPER_ADMIN',
     })),
+    skipDuplicates: true,
   });
 
   console.log(
@@ -62,6 +63,7 @@ export async function seedOrgAdmins(prisma: PrismaClient) {
       isConfirmed: true,
       role: 'ORG_ADMIN',
     })),
+    skipDuplicates: true,
   });
 
   console.log(
