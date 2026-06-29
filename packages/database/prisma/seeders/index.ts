@@ -2,6 +2,7 @@ import { prisma } from '../../src/client';
 import { seedSuperAdmins, seedOrgAdmins, seedLibrarians } from './seedUsers';
 import { seedOrganizations } from './seedOrganizations';
 import { seedCatalog } from './seedCatalog';
+import { seedCirculation } from './seedCirculation';
 import { seedLibraryMembers } from './seedLibraryMembers';
 
 async function main() {
@@ -18,6 +19,9 @@ async function main() {
 
   // Seed library members after organizations exist
   await seedLibraryMembers(prisma);
+
+  // Seed rentals and reservations after members and catalog data exist
+  await seedCirculation(prisma);
 }
 main()
   .then(async () => {
