@@ -10,6 +10,7 @@ import { MembersModule } from './members/members.module';
 import { PlansModule } from './plans/plans.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { MePortalModule } from './me-portal/me-portal.module';
+import { InstructorsModule } from './instructors/instructors.module';
 import { DatabaseModule } from './database/database.module';
 
 @Module({
@@ -28,6 +29,7 @@ import { DatabaseModule } from './database/database.module';
     PlansModule,
     SubscriptionsModule,
     MePortalModule,
+    InstructorsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

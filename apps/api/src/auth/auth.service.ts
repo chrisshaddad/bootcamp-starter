@@ -50,9 +50,7 @@ export class AuthService {
 
     // Don't send a login link to deactivated members
     if (user.role === 'MEMBER' && user.member?.status === 'INACTIVE') {
-      this.logger.warn(
-        `Magic link blocked for inactive member: ${user.id}`,
-      );
+      this.logger.warn(`Magic link blocked for inactive member: ${user.id}`);
       return { success: true };
     }
 
