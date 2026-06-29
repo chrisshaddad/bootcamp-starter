@@ -22,6 +22,9 @@ const INSTRUCTOR_SELECT = {
   updatedAt: true,
 } as const;
 
+/**
+ * Service for managing gym instructors and related logic
+ */
 @Injectable()
 export class InstructorsService {
   constructor(private readonly prisma: PrismaService) {}

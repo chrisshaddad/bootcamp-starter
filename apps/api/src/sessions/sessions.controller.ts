@@ -36,6 +36,9 @@ import {
 import { ZodValidationPipe } from '../common/pipes';
 import { sessionSchema } from './sessions.swagger';
 
+/**
+ * Controller for managing gym sessions
+ */
 @ApiTags('sessions')
 @ApiCookieAuth('session-cookie')
 @Controller('sessions')

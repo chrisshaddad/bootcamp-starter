@@ -38,6 +38,9 @@ import {
 import { ZodValidationPipe } from '../common/pipes';
 import { instructorSchema } from './instructors.swagger';
 
+/**
+ * Controller for managing gym instructors
+ */
 @ApiTags('instructors')
 @ApiCookieAuth('session-cookie')
 @Controller('instructors')

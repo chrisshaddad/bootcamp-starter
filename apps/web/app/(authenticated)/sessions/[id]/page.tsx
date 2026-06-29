@@ -128,6 +128,7 @@ function EditSessionDialog({
   const startTimeVal = form.watch('startTime');
   const endTimeVal = form.watch('endTime');
 
+  /** Helper to combine date and time strings into ISO string */
   const getIsoString = (d: string, t: string) => {
     if (!d || !t) return null;
     try {
@@ -145,6 +146,7 @@ function EditSessionDialog({
   const { availableInstructors, isLoading: loadingInstructors } =
     useAvailableInstructors(startsAtIso, endsAtIso);
 
+  /** Handle form submission */
   async function onSubmit(data: FormValues) {
     const startIso = getIsoString(data.date, data.startTime);
     const endIso = getIsoString(data.date, data.endTime);
@@ -175,6 +177,7 @@ function EditSessionDialog({
     }
   }
 
+  /** Handle dialog close and reset form */
   function handleClose() {
     form.reset();
     onClose();
@@ -381,6 +384,7 @@ export default function SessionDetailPage() {
     Math.round((bookedCount / session.capacity) * 100),
   );
 
+  /** Action to cancel the current session */
   const handleCancelSession = async () => {
     setIsCancelling(true);
     try {

@@ -71,6 +71,7 @@ export function useSession(
     mutate: swrMutate,
   } = useSWR<SessionResponse>(enabled ? `/sessions/${id}` : null);
 
+  /** Invalidate related queries */
   const invalidateAll = useCallback(() => {
     swrMutate();
     mutate(
@@ -80,6 +81,7 @@ export function useSession(
     );
   }, [swrMutate]);
 
+  /** Update the session */
   const update = useCallback(
     async (dto: SessionUpdateRequest) => {
       const result = await apiPatch<SessionResponse>(`/sessions/${id}`, dto);
@@ -89,6 +91,7 @@ export function useSession(
     [id, invalidateAll],
   );
 
+  /** Cancel the session */
   const cancel = useCallback(async () => {
     const result = await apiPatch<SessionResponse>(
       `/sessions/${id}/cancel`,

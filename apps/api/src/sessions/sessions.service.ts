@@ -41,6 +41,9 @@ const SESSION_SELECT = {
   },
 } as const;
 
+/**
+ * Service for managing gym sessions and related logic
+ */
 @Injectable()
 export class SessionsService {
   private readonly logger = new Logger(SessionsService.name);

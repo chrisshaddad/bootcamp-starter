@@ -78,6 +78,7 @@ export function useInstructor(
     mutate: swrMutate,
   } = useSWR<InstructorResponse>(enabled ? `/instructors/${id}` : null);
 
+  /** Invalidate related queries */
   const invalidateAll = useCallback(() => {
     swrMutate();
     mutate(
@@ -87,6 +88,7 @@ export function useInstructor(
     );
   }, [swrMutate]);
 
+  /** Update the instructor */
   const update = useCallback(
     async (dto: InstructorUpdateRequest) => {
       const result = await apiPatch<InstructorResponse>(
