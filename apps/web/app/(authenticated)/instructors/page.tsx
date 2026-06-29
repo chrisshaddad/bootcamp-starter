@@ -80,6 +80,7 @@ function LoadingSkeleton() {
 function DeactivateButton({ id, isActive }: { id: string; isActive: boolean }) {
   const { update } = useInstructor(id, { enabled: false });
   const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
 
   async function toggle() {
     setLoading(true);
@@ -88,6 +89,7 @@ function DeactivateButton({ id, isActive }: { id: string; isActive: boolean }) {
       toast.success(
         isActive ? 'Instructor deactivated' : 'Instructor reactivated',
       );
+      setOpen(false);
     } catch (err) {
       const msg =
         err instanceof ApiError ? err.message : 'Failed to update instructor';
@@ -97,17 +99,61 @@ function DeactivateButton({ id, isActive }: { id: string; isActive: boolean }) {
     }
   }
 
+  if (!isActive) {
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={toggle}
+        disabled={loading}
+        className="text-xs"
+        id={`toggle-instructor-${id}`}
+      >
+        Reactivate
+      </Button>
+    );
+  }
+
   return (
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={toggle}
-      disabled={loading}
-      className="text-xs"
-      id={`toggle-instructor-${id}`}
-    >
-      {isActive ? 'Deactivate' : 'Reactivate'}
-    </Button>
+    <>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setOpen(true)}
+        disabled={loading}
+        className="text-xs text-error hover:text-error hover:bg-error/10"
+        id={`toggle-instructor-${id}`}
+      >
+        Deactivate
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Deactivate Instructor?</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to deactivate this instructor? They will not
+              be able to be assigned to new sessions.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setOpen(false)}
+              disabled={loading}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="bg-error hover:bg-red-600 text-white"
+              onClick={toggle}
+              disabled={loading}
+            >
+              {loading ? 'Deactivating...' : 'Yes, Deactivate'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -283,42 +329,43 @@ export default function InstructorsPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-100">
-            <Users className="h-5 w-5 text-primary-base" />
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold text-gray-900">Instructors</h1>
-            <p className="text-sm text-gray-500">
-              {total !== undefined
-                ? `${total} instructor${total === 1 ? '' : 's'}`
-                : 'Loading…'}
-            </p>
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Instructors</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Manage your gym instructors
+          </p>
         </div>
-        <Button
-          id="open-add-instructor-dialog"
-          onClick={() => setShowAddDialog(true)}
-          className="gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          Add Instructor
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button
+            id="open-add-instructor-dialog"
+            onClick={() => setShowAddDialog(true)}
+            className="gap-2 bg-primary-base hover:bg-primary-400 text-white"
+          >
+            <Plus className="h-4 w-4" />
+            Add Instructor
+          </Button>
+        </div>
       </div>
 
       {/* Table card */}
       <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-medium">
-            All Instructors
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Instructors
+            {total !== undefined && (
+              <span className="text-sm font-normal text-gray-500">
+                ({total} total)
+              </span>
+            )}
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent>
           {isLoading ? (
-            <div className="p-6">
+            <div className="py-6">
               <LoadingSkeleton />
             </div>
           ) : !instructors || instructors.length === 0 ? (
@@ -374,40 +421,40 @@ export default function InstructorsPage() {
               </TableBody>
             </Table>
           )}
+          {/* Pagination */}
+          {!isLoading && !error && total !== undefined && totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-gray-100 pt-4 mt-2">
+              <p className="text-sm text-gray-500">
+                Showing {(page - 1) * INSTRUCTORS_PAGE_SIZE + 1}–
+                {Math.min(page * INSTRUCTORS_PAGE_SIZE, total)} of {total}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                  id="instructors-prev-page"
+                >
+                  Previous
+                </Button>
+                <span className="text-sm text-gray-600">
+                  Page {page} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => p + 1)}
+                  disabled={page >= totalPages}
+                  id="instructors-next-page"
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between text-sm text-gray-600">
-          <span>
-            Showing{' '}
-            {Math.min((page - 1) * INSTRUCTORS_PAGE_SIZE + 1, total ?? 0)}–
-            {Math.min(page * INSTRUCTORS_PAGE_SIZE, total ?? 0)} of {total ?? 0}{' '}
-            instructors
-          </span>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              id="instructors-prev-page"
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page >= totalPages}
-              onClick={() => setPage((p) => p + 1)}
-              id="instructors-next-page"
-            >
-              Next
-            </Button>
-          </div>
-        </div>
-      )}
 
       {/* Add dialog */}
       <AddInstructorDialog
