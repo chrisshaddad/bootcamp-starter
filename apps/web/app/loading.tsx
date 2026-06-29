@@ -1,5 +1,6 @@
 import { Loader2 } from 'lucide-react';
 
+/** Auto-generated docstring */
 export default function Loading() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-white">

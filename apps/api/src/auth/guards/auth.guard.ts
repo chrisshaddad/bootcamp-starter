@@ -17,6 +17,7 @@ export interface AuthenticatedRequest extends Request {
   sessionId?: string;
 }
 
+/** Auto-generated docstring */
 @Injectable()
 export class AuthGuard implements CanActivate {
   constructor(
@@ -24,6 +25,7 @@ export class AuthGuard implements CanActivate {
     private readonly sessionService: SessionService,
   ) {}
 
+  /** Auto-generated docstring */
   async canActivate(context: ExecutionContext): Promise<boolean> {
     // Check if route is marked as public
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
@@ -55,6 +57,7 @@ export class AuthGuard implements CanActivate {
     return true;
   }
 
+  /** Auto-generated docstring */
   private extractSessionId(request: Request): string | undefined {
     // Try to get from cookie first
     const cookieSession = request.cookies?.[SESSION_COOKIE_NAME] as

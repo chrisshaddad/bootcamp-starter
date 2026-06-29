@@ -6,10 +6,12 @@ import {
 } from '@nestjs/common';
 import { z, ZodError } from 'zod';
 
+/** Auto-generated docstring */
 @Injectable()
 export class ZodValidationPipe<T> implements PipeTransform<unknown, T> {
   constructor(private schema: z.ZodType<T>) {}
 
+  /** Auto-generated docstring */
   transform(value: unknown, _metadata: ArgumentMetadata): T {
     try {
       return this.schema.parse(value);

@@ -4,6 +4,7 @@ import { useUser } from '@/hooks/use-auth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
+/** Auto-generated docstring */
 export default function DashboardPage() {
   const { user, isLoading } = useUser();
 

@@ -8,6 +8,7 @@ import { RolesGuard } from './guards/roles.guard';
 import { SessionService } from './session.service';
 import { MailModule } from '../mail/mail.module';
 
+/** Auto-generated docstring */
 @Module({
   imports: [MailModule],
   providers: [

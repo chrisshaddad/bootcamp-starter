@@ -15,6 +15,7 @@ export const metadata: Metadata = {
   description: 'Full-stack bootcamp starter',
 };
 
+/** Auto-generated docstring */
 export default function RootLayout({
   children,
 }: Readonly<{
