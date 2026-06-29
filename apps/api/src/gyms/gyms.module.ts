@@ -3,6 +3,7 @@ import { GymsService } from './gyms.service';
 import { GymsController } from './gyms.controller';
 import { MailModule } from '../mail/mail.module';
 
+/** Auto-generated docstring */
 @Module({
   imports: [MailModule],
   providers: [GymsService],

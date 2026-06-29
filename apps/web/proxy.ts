@@ -33,6 +33,7 @@ function homeForRole(role: string | undefined): string {
   return role === 'MEMBER' ? MEMBER_HOME : ADMIN_HOME;
 }
 
+/** Auto-generated docstring */
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const sessionCookie = request.cookies.get(SESSION_COOKIE_NAME);

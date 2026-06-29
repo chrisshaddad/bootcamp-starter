@@ -24,6 +24,7 @@ const PLAN_SELECT = {
   updatedAt: true,
 } as const;
 
+/** Auto-generated docstring */
 @Injectable()
 export class PlansService {
   constructor(private readonly prisma: DatabaseService) {}

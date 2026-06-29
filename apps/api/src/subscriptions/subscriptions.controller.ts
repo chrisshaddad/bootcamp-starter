@@ -35,12 +35,14 @@ import {
 import { ZodValidationPipe } from '../common/pipes';
 import { subscriptionSchema } from './subscriptions.swagger';
 
+/** Auto-generated docstring */
 @ApiTags('subscriptions')
 @ApiCookieAuth('session-cookie')
 @Controller()
 export class SubscriptionsController {
   constructor(private readonly subscriptionsService: SubscriptionsService) {}
 
+  /** Auto-generated docstring */
   private assertGymId(user: User): string {
     if (!user.gymId) {
       throw new ForbiddenException('User is not associated with a gym');

@@ -74,6 +74,7 @@ const BOOKINGS: BookingSeed[] = [
   },
 ];
 
+/** Auto-generated docstring */
 export async function seedBookings(prisma: PrismaClient) {
   console.log('Seeding session bookings...');
 

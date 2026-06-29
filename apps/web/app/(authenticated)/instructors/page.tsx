@@ -87,6 +87,7 @@ function LoadingSkeleton() {
 
 // ── Add instructor dialog ────────────────────────────────────────────────────
 
+/** Auto-generated docstring */
 export function AddInstructorDialog({
   open,
   onClose,
@@ -236,6 +237,7 @@ export function AddInstructorDialog({
 
 // ── Edit instructor dialog ───────────────────────────────────────────────────
 
+/** Auto-generated docstring */
 export function EditInstructorDialog({
   instructor,
   open,
@@ -505,6 +507,7 @@ export function EditInstructorDialog({
 
 type StatusFilter = 'all' | 'ACTIVE' | 'INACTIVE';
 
+/** Auto-generated docstring */
 export default function InstructorsPage() {
   const [page, setPage] = useState(1);
   const [showAddDialog, setShowAddDialog] = useState(false);

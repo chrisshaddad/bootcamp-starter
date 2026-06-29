@@ -106,6 +106,7 @@ const MEMBERS: MemberSeed[] = [
   },
 ];
 
+/** Auto-generated docstring */
 export async function seedMembers(prisma: PrismaClient) {
   console.log('Seeding members...');
 

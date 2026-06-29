@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ApiError } from '@/lib/api';
 
+/** Auto-generated docstring */
 export default function LoginPage() {
   const { requestMagicLink } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);

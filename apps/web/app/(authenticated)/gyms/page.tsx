@@ -80,6 +80,7 @@ function LoadingSkeleton() {
   );
 }
 
+/** Auto-generated docstring */
 export default function GymsPage() {
   const router = useRouter();
   const { user, isLoading: userLoading } = useUser();

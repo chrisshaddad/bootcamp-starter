@@ -97,6 +97,7 @@ const SUBSCRIPTIONS: SubscriptionSeed[] = [
   },
 ];
 
+/** Auto-generated docstring */
 export async function seedSubscriptions(prisma: PrismaClient) {
   console.log('Seeding subscriptions...');
 

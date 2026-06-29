@@ -7,6 +7,7 @@ import {
   SUBSCRIPTION_EXPIRY_JOBS,
 } from './subscriptions.constants';
 
+/** Auto-generated docstring */
 @Processor(SUBSCRIPTION_EXPIRY_QUEUE)
 export class SubscriptionExpiryProcessor
   extends WorkerHost
@@ -45,6 +46,7 @@ export class SubscriptionExpiryProcessor
     );
   }
 
+  /** Auto-generated docstring */
   async process(job: Job): Promise<void> {
     if (job.name === SUBSCRIPTION_EXPIRY_JOBS.EXPIRE_SUBSCRIPTIONS) {
       await this.expireSubscriptions();

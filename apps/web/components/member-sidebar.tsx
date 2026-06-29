@@ -37,6 +37,7 @@ const portalNavItems: NavItem[] = [
   { title: 'My Profile', url: '/portal/profile', icon: User },
 ];
 
+/** Auto-generated docstring */
 export function MemberSidebar() {
   const pathname = usePathname();
   const { logout } = useAuth();

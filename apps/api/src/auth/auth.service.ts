@@ -13,6 +13,7 @@ import { MAIL_QUEUE, MAIL_JOBS } from '../mail/mail.constants';
 
 const MAGIC_LINK_EXPIRY_MINUTES = 15;
 
+/** Auto-generated docstring */
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);

@@ -42,12 +42,14 @@ import {
   gymDetailSchema,
 } from './gyms.swagger';
 
+/** Auto-generated docstring */
 @ApiTags('gyms')
 @ApiCookieAuth('session-cookie')
 @Controller('gyms')
 export class GymsController {
   constructor(private readonly gymsService: GymsService) {}
 
+  /** Auto-generated docstring */
   @Post('register')
   @Public()
   @HttpCode(201)
@@ -108,6 +110,7 @@ export class GymsController {
     return this.gymsService.register(dto);
   }
 
+  /** Auto-generated docstring */
   @Get()
   @Roles('SUPER_ADMIN')
   @ApiOperation({
@@ -172,6 +175,7 @@ export class GymsController {
     return this.gymsService.findAll({ status, page, limit });
   }
 
+  /** Auto-generated docstring */
   @Get(':id')
   @Roles('SUPER_ADMIN')
   @ApiOperation({ summary: 'Get a gym by ID' })
@@ -188,6 +192,7 @@ export class GymsController {
     return this.gymsService.findOne(id);
   }
 
+  /** Auto-generated docstring */
   @Patch(':id/approve')
   @Roles('SUPER_ADMIN')
   @ApiOperation({ summary: 'Approve a gym registration' })
@@ -214,6 +219,7 @@ export class GymsController {
     return { message: 'Gym approved successfully', gym };
   }
 
+  /** Auto-generated docstring */
   @Patch(':id/reject')
   @Roles('SUPER_ADMIN')
   @ApiOperation({ summary: 'Reject a gym registration' })
@@ -253,6 +259,7 @@ export class GymsController {
     return { message: 'Gym rejected successfully', gym };
   }
 
+  /** Auto-generated docstring */
   @Patch(':id/suspend')
   @Roles('SUPER_ADMIN')
   @ApiOperation({ summary: 'Suspend an active gym' })
@@ -289,6 +296,7 @@ export class GymsController {
     return { message: 'Gym suspended successfully', gym };
   }
 
+  /** Auto-generated docstring */
   @Patch(':id/reactivate')
   @Roles('SUPER_ADMIN')
   @ApiOperation({

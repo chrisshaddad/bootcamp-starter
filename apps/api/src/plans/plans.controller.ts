@@ -36,12 +36,14 @@ import {
 import { ZodValidationPipe } from '../common/pipes';
 import { planSchema } from './plans.swagger';
 
+/** Auto-generated docstring */
 @ApiTags('plans')
 @ApiCookieAuth('session-cookie')
 @Controller('plans')
 export class PlansController {
   constructor(private readonly plansService: PlansService) {}
 
+  /** Auto-generated docstring */
   @Get()
   @Roles('ORG_ADMIN')
   @ApiOperation({
@@ -93,6 +95,7 @@ export class PlansController {
     });
   }
 
+  /** Auto-generated docstring */
   @Get(':id')
   @Roles('ORG_ADMIN')
   @ApiOperation({ summary: 'Get a membership plan by ID' })
@@ -112,6 +115,7 @@ export class PlansController {
     return this.plansService.findOne(id, user.gymId!);
   }
 
+  /** Auto-generated docstring */
   @Post()
   @Roles('ORG_ADMIN')
   @HttpCode(201)
@@ -158,6 +162,7 @@ export class PlansController {
     return this.plansService.create(user.gymId!, dto);
   }
 
+  /** Auto-generated docstring */
   @Patch(':id')
   @Roles('ORG_ADMIN')
   @ApiOperation({

@@ -28,6 +28,7 @@ type MailJobData =
   | SendInvitationJobData
   | SendGymPendingJobData;
 
+/** Auto-generated docstring */
 @Processor(MAIL_QUEUE)
 export class MailProcessor extends WorkerHost {
   private readonly logger = new Logger(MailProcessor.name);
@@ -36,6 +37,7 @@ export class MailProcessor extends WorkerHost {
     super();
   }
 
+  /** Auto-generated docstring */
   async process(job: Job<MailJobData>): Promise<void> {
     this.logger.log(`Processing job ${job.id} of type ${job.name}`);
 
@@ -54,6 +56,7 @@ export class MailProcessor extends WorkerHost {
     }
   }
 
+  /** Auto-generated docstring */
   private async handleSendMagicLink(data: SendMagicLinkJobData): Promise<void> {
     const { email, magicLink, userName } = data;
 
@@ -75,6 +78,7 @@ export class MailProcessor extends WorkerHost {
     }
   }
 
+  /** Auto-generated docstring */
   private async handleSendGymPending(
     data: SendGymPendingJobData,
   ): Promise<void> {
@@ -97,6 +101,7 @@ export class MailProcessor extends WorkerHost {
     }
   }
 
+  /** Auto-generated docstring */
   private async handleSendInvitation(
     data: SendInvitationJobData,
   ): Promise<void> {

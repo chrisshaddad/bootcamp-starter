@@ -27,6 +27,7 @@ const SUBSCRIPTION_SELECT = {
   updatedAt: true,
 } as const;
 
+/** Auto-generated docstring */
 @Injectable()
 export class MePortalService {
   constructor(private readonly prisma: DatabaseService) {}

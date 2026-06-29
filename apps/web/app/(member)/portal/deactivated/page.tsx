@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { UserX } from 'lucide-react';
 
+/** Auto-generated docstring */
 export default function DeactivatedPage() {
   const { logout } = useAuth();
   const router = useRouter();

@@ -19,12 +19,14 @@ import {
   mePlanSchema,
 } from './me-portal.swagger';
 
+/** Auto-generated docstring */
 @ApiTags('me')
 @ApiCookieAuth('session-cookie')
 @Controller('me')
 export class MePortalController {
   constructor(private readonly mePortalService: MePortalService) {}
 
+  /** Auto-generated docstring */
   @Get('profile')
   @Roles('MEMBER')
   @ApiOperation({
@@ -44,6 +46,7 @@ export class MePortalController {
     return this.mePortalService.getProfile(user.id, user.gymId!);
   }
 
+  /** Auto-generated docstring */
   @Get('subscriptions')
   @Roles('MEMBER')
   @ApiOperation({
@@ -70,6 +73,7 @@ export class MePortalController {
     return this.mePortalService.getSubscriptions(user.id, user.gymId!);
   }
 
+  /** Auto-generated docstring */
   @Get('plans')
   @Roles('MEMBER')
   @ApiOperation({

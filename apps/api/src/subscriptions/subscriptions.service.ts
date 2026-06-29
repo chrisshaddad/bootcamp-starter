@@ -33,6 +33,7 @@ const SUBSCRIPTION_SELECT = {
   updatedAt: true,
 } as const;
 
+/** Auto-generated docstring */
 @Injectable()
 export class SubscriptionsService {
   constructor(private readonly prisma: DatabaseService) {}

@@ -37,6 +37,7 @@ const ORG_ADMINS: Prisma.UserCreateManyInput[] = [
   },
 ];
 
+/** Auto-generated docstring */
 export async function seedSuperAdmins(prisma: PrismaClient) {
   console.log('Seeding super admins...');
 
@@ -53,6 +54,7 @@ export async function seedSuperAdmins(prisma: PrismaClient) {
   );
 }
 
+/** Auto-generated docstring */
 export async function seedOrgAdmins(prisma: PrismaClient) {
   console.log('Seeding org admins...');
 

@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { MailpitClient } from 'mailpit-api';
 
+/** Auto-generated docstring */
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
@@ -24,6 +25,7 @@ export class MailService {
     }
   }
 
+  /** Auto-generated docstring */
   async sendEmail(params: {
     to: string;
     from: string;

@@ -37,12 +37,14 @@ import {
 import { ZodValidationPipe } from '../common/pipes';
 import { memberSchema, MEMBER_STATUS_ENUM } from './members.swagger';
 
+/** Auto-generated docstring */
 @ApiTags('members')
 @ApiCookieAuth('session-cookie')
 @Controller('members')
 export class MembersController {
   constructor(private readonly membersService: MembersService) {}
 
+  /** Auto-generated docstring */
   @Get()
   @Roles('ORG_ADMIN')
   @ApiOperation({
@@ -89,6 +91,7 @@ export class MembersController {
     return this.membersService.findAll(user.gymId!, query);
   }
 
+  /** Auto-generated docstring */
   @Get(':id')
   @Roles('ORG_ADMIN')
   @ApiOperation({ summary: 'Get a member by ID' })
@@ -108,6 +111,7 @@ export class MembersController {
     return this.membersService.findOne(id, user.gymId!);
   }
 
+  /** Auto-generated docstring */
   @Post()
   @Roles('ORG_ADMIN')
   @HttpCode(201)
@@ -151,6 +155,7 @@ export class MembersController {
     return this.membersService.create(user.gymId!, dto);
   }
 
+  /** Auto-generated docstring */
   @Post(':id/invite')
   @Roles('ORG_ADMIN')
   @HttpCode(200)
@@ -184,6 +189,7 @@ export class MembersController {
     return this.membersService.invite(id, user.gymId!);
   }
 
+  /** Auto-generated docstring */
   @Patch(':id')
   @Roles('ORG_ADMIN')
   @ApiOperation({

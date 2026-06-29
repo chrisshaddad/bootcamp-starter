@@ -84,6 +84,7 @@ function LoadingSkeleton() {
   );
 }
 
+/** Auto-generated docstring */
 export default function MembersPage() {
   const router = useRouter();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');

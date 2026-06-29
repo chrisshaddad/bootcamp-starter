@@ -29,10 +29,12 @@ import { ZodValidationPipe } from '../common/pipes';
 const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const ROLE_COOKIE_NAME = 'bootcamp_starter_role';
 
+/** Auto-generated docstring */
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  /** Auto-generated docstring */
   @Public()
   @Post('magic-link')
   @HttpCode(HttpStatus.OK)
@@ -41,6 +43,7 @@ export class AuthController {
     return this.authService.requestMagicLink(body.email);
   }
 
+  /** Auto-generated docstring */
   @Public()
   @Post('magic-link/verify')
   @HttpCode(HttpStatus.OK)
@@ -74,6 +77,7 @@ export class AuthController {
     return { user };
   }
 
+  /** Auto-generated docstring */
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   async logout(
@@ -105,6 +109,7 @@ export class AuthController {
     return { success: true };
   }
 
+  /** Auto-generated docstring */
   @Get('me')
   async getCurrentUser(@CurrentUser() user: User): Promise<UserResponse> {
     return this.authService.getMe(user.id);

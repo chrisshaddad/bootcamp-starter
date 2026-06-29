@@ -23,6 +23,7 @@ interface UseUserReturn {
   mutate: () => void;
 }
 
+/** Auto-generated docstring */
 export function useUser(options: UseUserOptions = {}): UseUserReturn {
   const { redirectOnUnauthenticated = true } = options;
   const router = useRouter();
@@ -58,6 +59,7 @@ export function useUser(options: UseUserOptions = {}): UseUserReturn {
   };
 }
 
+/** Auto-generated docstring */
 export function useAuth() {
   const { mutate } = useUser();
 
