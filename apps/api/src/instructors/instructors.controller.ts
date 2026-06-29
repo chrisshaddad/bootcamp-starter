@@ -86,6 +86,7 @@ export class InstructorsController {
   })
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   @ApiResponse({ status: 403, description: 'Insufficient role' })
+  /** Find available instructors for a given time slot */
   async findAvailable(
     @Query(new ZodValidationPipe(instructorAvailabilityQuerySchema))
     query: InstructorAvailabilityQuery,
@@ -131,6 +132,7 @@ export class InstructorsController {
   })
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   @ApiResponse({ status: 403, description: 'Insufficient role' })
+  /** Get a paginated list of all instructors in the caller's gym */
   async findAll(
     @CurrentUser() user: User,
     @Query(new ZodValidationPipe(instructorListQuerySchema))
@@ -151,6 +153,7 @@ export class InstructorsController {
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   @ApiResponse({ status: 403, description: 'Insufficient role' })
   @ApiResponse({ status: 404, description: 'Instructor not found' })
+  /** Get a single instructor by ID */
   async findOne(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: User,
@@ -184,6 +187,7 @@ export class InstructorsController {
   @ApiResponse({ status: 400, description: 'Validation error' })
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   @ApiResponse({ status: 403, description: 'Insufficient role' })
+  /** Create a new instructor */
   async create(
     @Body(new ZodValidationPipe(instructorCreateRequestSchema))
     dto: InstructorCreateRequest,
@@ -224,6 +228,7 @@ export class InstructorsController {
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   @ApiResponse({ status: 403, description: 'Insufficient role' })
   @ApiResponse({ status: 404, description: 'Instructor not found' })
+  /** Update an instructor's details or active status */
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body(new ZodValidationPipe(instructorUpdateRequestSchema))
