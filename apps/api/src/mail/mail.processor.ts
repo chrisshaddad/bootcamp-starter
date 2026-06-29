@@ -56,7 +56,6 @@ export class MailProcessor extends WorkerHost {
     }
   }
 
-  /** Auto-generated docstring */
   private async handleSendMagicLink(data: SendMagicLinkJobData): Promise<void> {
     const { email, magicLink, userName } = data;
 
@@ -78,7 +77,6 @@ export class MailProcessor extends WorkerHost {
     }
   }
 
-  /** Auto-generated docstring */
   private async handleSendGymPending(
     data: SendGymPendingJobData,
   ): Promise<void> {
@@ -101,7 +99,6 @@ export class MailProcessor extends WorkerHost {
     }
   }
 
-  /** Auto-generated docstring */
   private async handleSendInvitation(
     data: SendInvitationJobData,
   ): Promise<void> {

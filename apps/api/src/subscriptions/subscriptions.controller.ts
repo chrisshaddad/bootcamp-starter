@@ -42,7 +42,6 @@ import { subscriptionSchema } from './subscriptions.swagger';
 export class SubscriptionsController {
   constructor(private readonly subscriptionsService: SubscriptionsService) {}
 
-  /** Auto-generated docstring */
   private assertGymId(user: User): string {
     if (!user.gymId) {
       throw new ForbiddenException('User is not associated with a gym');

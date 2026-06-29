@@ -120,7 +120,6 @@ export function AppSidebar() {
     ? superAdminSecondaryNavItems
     : orgSecondaryNavItems;
 
-  /** Auto-generated docstring */
   const isActive = (url: string) => {
     if (url === '/dashboard') {
       return pathname === '/dashboard';

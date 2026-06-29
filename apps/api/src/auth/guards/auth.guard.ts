@@ -57,7 +57,6 @@ export class AuthGuard implements CanActivate {
     return true;
   }
 
-  /** Auto-generated docstring */
   private extractSessionId(request: Request): string | undefined {
     // Try to get from cookie first
     const cookieSession = request.cookies?.[SESSION_COOKIE_NAME] as
