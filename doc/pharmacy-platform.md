@@ -3,12 +3,12 @@ Pharmacy Platform — Pages, Features & Flow
 # ROLES (access model)
 
 | Role | Scope | Home page |
-| SUPER\_ADMIN | Whole platform | /admin |
-| PHARMACY\_ADMIN | One pharmacy (all its branches) | /pharmacy |
-| PHARMACY\_MANAGER | One branch | /branch |
-| PHARMACY\_EMPLOYEE | One branch (limited) | /branch |
-| STOCK\_MANAGER | One branch (inventory) | /stock |
-| INQUIRY\_OFFICER | One branch (inquiries) | /inquiries |
+| SUPER_ADMIN | Whole platform | /admin |
+| PHARMACY_ADMIN | One pharmacy (all its branches) | /pharmacy |
+| PHARMACY_MANAGER | One branch | /branch |
+| PHARMACY_EMPLOYEE | One branch (limited) | /branch |
+| STOCK_MANAGER | One branch (inventory) | /stock |
+| INQUIRY_OFFICER | One branch (inquiries) | /inquiries |
 | CLIENT | Public, self only | / |
 
 Every page is gated by three things: role (which menu items appear), status (ACTIVE can use it, PENDING = invited-not-active, SUSPENDED/INACTIVE = blocked), and pharmacyId/branchId (which rows the page is allowed to show).
@@ -21,9 +21,9 @@ Every page is gated by three things: role (which menu items appear), status (ACT
 
 ### Features:
 
-- -   Magic-link login: enter email → token created → email sent → confirmation screen.
-    - Password login (secondary, optional toggle) — User.password is nullable.
-    - Link to client sign-up.
+- - Magic-link login: enter email → token created → email sent → confirmation screen.
+  - Password login (secondary, optional toggle) — User.password is nullable.
+  - Link to client sign-up.
 - States: idle → submitting → "check your email" / error toast.
 
 ## A2. Sign-up (/signup) — CLIENT only
@@ -32,9 +32,9 @@ Every page is gated by three things: role (which menu items appear), status (ACT
 
 ### Features:
 
-- -   Fields: first name, last name, email, phone (optional).
-    - Forces role = CLIENT, status = ACTIVE.
-    - Sends magic link to verify.
+- - Fields: first name, last name, email, phone (optional).
+  - Forces role = CLIENT, status = ACTIVE.
+  - Sends magic link to verify.
 - Note: Staff never sign up here — they are invited.
 
 ## A3. Verify (/auth/verify)
@@ -43,12 +43,12 @@ Every page is gated by three things: role (which menu items appear), status (ACT
 
 ### Features:
 
-- -   Validates token, marks used, creates session.
-    - If status = PENDING (staff invite): "set your password" step → flips to ACTIVE.
-    - Role dispatcher: redirects to the correct home page.
-    - Handles expired/used token → prompt to request a new link.
+- - Validates token, marks used, creates session.
+  - If status = PENDING (staff invite): "set your password" step → flips to ACTIVE.
+  - Role dispatcher: redirects to the correct home page.
+  - Handles expired/used token → prompt to request a new link.
 
-# B. SUPER\_ADMIN
+# B. SUPER_ADMIN
 
 ## B1. Platform Dashboard (/admin)
 
@@ -58,18 +58,18 @@ Every page is gated by three things: role (which menu items appear), status (ACT
 
 ### Features:
 
-- -   List all pharmacies with branch/admin counts and status.
-    - Search + filter by status.
-    - Create pharmacy: name + first pharmacy-admin email → creates pharmacy and invites the admin (PENDING).
+- - List all pharmacies with branch/admin counts and status.
+  - Search + filter by status.
+  - Create pharmacy: name + first pharmacy-admin email → creates pharmacy and invites the admin (PENDING).
 
 ## B3. Pharmacy Detail (/admin/pharmacies/\[id\])
 
 ### Features (tabbed):
 
-- -   Overview: counts, created date.
-    - Branches: list/add branches.
-    - Admins: list/invite pharmacy admins.
-    - Suspend / re-activate pharmacy (cascades to staff access).
+- - Overview: counts, created date.
+  - Branches: list/add branches.
+  - Admins: list/invite pharmacy admins.
+  - Suspend / re-activate pharmacy (cascades to staff access).
 
 ## B4. Users (/admin/users)
 
@@ -83,9 +83,9 @@ Platform-wide user list; filter by role and status; view detail.
 
 ### Features:
 
-- -   List/search by name, barcode, ingredient.
-    - Create/edit medicine: brand name, type, form, dosage, barcode, price, ingredients.
-    - Link ingredients (many-to-many).
+- - List/search by name, barcode, ingredient.
+  - Create/edit medicine: brand name, type, form, dosage, barcode, price, ingredients.
+  - Link ingredients (many-to-many).
 
 ## B6. Audit (/admin/audit)
 
@@ -93,7 +93,7 @@ Platform-wide user list; filter by role and status; view detail.
 
 Full audit log table (user, action, entity, entityId, timestamp); filterable; row opens raw detail JSON.
 
-# C. PHARMACY\_ADMIN (scoped to their pharmacy)
+# C. PHARMACY_ADMIN (scoped to their pharmacy)
 
 ## C1. Pharmacy Dashboard (/pharmacy)
 
@@ -105,17 +105,17 @@ KPIs across all branches (branches, employees, open inquiries, low-stock count);
 
 ### Features:
 
-- -   List/add/edit branches.
-    - Fields: name, phone, address, latitude, longitude.
-    - Manage staff assigned to each branch.
+- - List/add/edit branches.
+  - Fields: name, phone, address, latitude, longitude.
+  - Manage staff assigned to each branch.
 
 ## C3. Employees (/pharmacy/employees)
 
 ### Features:
 
-- -   List employees with role, branch, status.
-    - Invite employee: email + role (manager / employee / stock manager / inquiry officer) + branch → creates PENDING user + invite email.
-    - Per-employee actions: change role, reassign branch, set INACTIVE / SUSPENDED.
+- - List employees with role, branch, status.
+  - Invite employee: email + role (manager / employee / stock manager / inquiry officer) + branch → creates PENDING user + invite email.
+  - Per-employee actions: change role, reassign branch, set INACTIVE / SUSPENDED.
 
 ## C4. Pharmacy Audit (/pharmacy/audit)
 
@@ -131,18 +131,18 @@ Audit log filtered to this pharmacy's users.
 
 Low-stock alerts, near-expiry alerts, open inquiry count, recent branch activity. Cards link into Stock and Inquiries. Manager = full; employee = read-mostly.
 
-## D2. Stock (/stock) — STOCK\_MANAGER
+## D2. Stock (/stock) — STOCK_MANAGER
 
 - Purpose: Core inventory workflow (stock = batches; no separate stock table).
 
 ### Features:
 
-- -   List medicines grouped with total quantity, batch count, nearest expiry.
-    - Visual flags: low quantity, near-expiry.
-    - Search by name/barcode.
-    - Scan barcode: found → use existing medicine; not found → create medicine.
-    - Add batch: medicine, batch number, quantity, expiry date.
-    - Every write produces an audit log entry.
+- - List medicines grouped with total quantity, batch count, nearest expiry.
+  - Visual flags: low quantity, near-expiry.
+  - Search by name/barcode.
+  - Scan barcode: found → use existing medicine; not found → create medicine.
+  - Add batch: medicine, batch number, quantity, expiry date.
+  - Every write produces an audit log entry.
 
 ## D3. Medicine Batches (/stock/\[medicineId\])
 
@@ -150,7 +150,7 @@ Low-stock alerts, near-expiry alerts, open inquiry count, recent branch activity
 
 All batches for one medicine; edit quantity/expiry; delete batch (confirmed); total recalculated from batches.
 
-## D4. Inquiries Queue (/inquiries) — INQUIRY\_OFFICER
+## D4. Inquiries Queue (/inquiries) — INQUIRY_OFFICER
 
 ### Features: 
 
@@ -160,10 +160,10 @@ Inquiry list scoped to branch; status tabs (Pending / In progress / Answered / C
 
 ### Features:
 
-- -   Conversation view (messages ordered by time; client vs employee styling).
-    - Reply box → adds employee message, auto-moves status to In progress.
-    - Status selector (Pending / In progress / Answered / Closed) → updates + audit log.
-    - Context panel: client info + live stock lookup for that medicine at this branch (answer without leaving).
+- - Conversation view (messages ordered by time; client vs employee styling).
+  - Reply box → adds employee message, auto-moves status to In progress.
+  - Status selector (Pending / In progress / Answered / Closed) → updates + audit log.
+  - Context panel: client info + live stock lookup for that medicine at this branch (answer without leaving).
 
 # E. CLIENT (consumer app — lightweight header, no back-office sidebar)
 
