@@ -224,7 +224,7 @@ export type BuildingResponse = {
   code?: string | null;
   notes?: string | null;
   createdAt: string;
-  /** Keycloak user-ids (== Membership.userId) currently assigned. */
+  /** Keycloak user IDs (`sub`) currently assigned. */
   assignedUserIds: string[];
 };
 

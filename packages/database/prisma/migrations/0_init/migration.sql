@@ -1,5 +1,3 @@
-◇ injected env (13) from .env.local // tip: ⌘ enable debugging { debug: true }
-◇ injected env (0) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
 -- CreateSchema
 CREATE SCHEMA IF NOT EXISTS "public";
 
