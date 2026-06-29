@@ -83,11 +83,7 @@ export type AssignableRole = z.infer<typeof assignableRoleSchema>;
  * references UPPERCASE literals still compiles while it is being migrated.
  */
 export type MemberRoleUppercase =
-  | 'ORG_ADMIN'
-  | 'SUPERVISOR'
-  | 'FINANCE'
-  | 'MAINTENANCE'
-  | 'TENANT';
+  'ORG_ADMIN' | 'SUPERVISOR' | 'FINANCE' | 'MAINTENANCE' | 'TENANT';
 
 // ── Me / Provisioning ──────────────────────────────────────────────────────────
 
