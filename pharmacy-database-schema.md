@@ -328,6 +328,7 @@ medicine Medicine @relation(fields: [medicineId], references: [id], onDelete: Ca
 ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
 
 @@id([medicineId, ingredientId])
+@@index([ingredientId]) // composite PK only indexes medicineId (leading col); index ingredientId for reverse lookups + cascade deletes
 
 @@map("medicine_ingredients")
 @@schema("public")
