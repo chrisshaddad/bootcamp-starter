@@ -408,7 +408,11 @@ export default function SessionsPage() {
               </h2>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {groupedSessions![day]!.map((session) => (
-                  <Link href={`/sessions/${session.id}`} key={session.id} className="block outline-none focus-visible:ring-2 focus-visible:ring-primary-base rounded-xl">
+                  <Link
+                    href={`/sessions/${session.id}`}
+                    key={session.id}
+                    className="block outline-none focus-visible:ring-2 focus-visible:ring-primary-base rounded-xl"
+                  >
                     <Card
                       className={`h-full cursor-pointer hover:border-primary-base transition-colors ${session.status === 'CANCELLED' ? 'opacity-60 bg-gray-50' : ''}`}
                     >
