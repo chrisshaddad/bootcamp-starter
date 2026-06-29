@@ -48,9 +48,12 @@ files.forEach(file => {
     }
 
     if (targetNode) {
-      // Check if it's exported or if it's a class method (public/private/protected)
+      // Check if it's an exported function, class, or a public method of an exported class
       const isClassMethod = ts.isMethodDeclaration(targetNode) && ts.isClassDeclaration(targetNode.parent);
-      if (isExported(targetNode) || isClassMethod) {
+      const isPublic = !targetNode.modifiers?.some(m => m.kind === ts.SyntaxKind.PrivateKeyword || m.kind === ts.SyntaxKind.ProtectedKeyword);
+      const parentIsExported = isClassMethod && isExported(targetNode.parent);
+      
+      if (isExported(targetNode) || (isClassMethod && parentIsExported && isPublic)) {
         // Find the right place to insert.
         // It should be right before the decorators, or before the export keyword.
         let pos = targetNode.getStart(sourceFile, false);
