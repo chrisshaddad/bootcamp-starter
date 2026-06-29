@@ -239,17 +239,21 @@ model TeacherApplication {
   reviewedBy     String?
   reviewedAt     DateTime?
   createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @default(now()) @updatedAt
 
   user     User  @relation("TeacherApplicant", fields: [userId], references: [id], onDelete: Cascade)
   reviewer User? @relation("TeacherApplicationReviewer", fields: [reviewedBy], references: [id])
 
   @@index([status])
+  @@index([reviewedBy])
   @@schema("public")
 }
 
 model GradeLevel {
-  id   String @id @default(uuid())
-  name String @unique
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
   sections Section[]
 
@@ -257,9 +261,11 @@ model GradeLevel {
 }
 
 model Section {
-  id           String @id @default(uuid())
+  id           String   @id @default(uuid())
   gradeLevelId String
   name         String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt
 
   gradeLevel GradeLevel @relation(fields: [gradeLevelId], references: [id])
   courses    Course[]
@@ -271,9 +277,11 @@ model Section {
 }
 
 model Subject {
-  id   String  @id @default(uuid())
-  name String  @unique
-  code String? @unique
+  id        String   @id @default(uuid())
+  name      String   @unique
+  code      String?  @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
   courses Course[]
 
@@ -292,7 +300,7 @@ model Course {
   joinCode       String?      @unique
   status         CourseStatus @default(draft)
   createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  updatedAt      DateTime     @default(now()) @updatedAt
 
   teacher      User          @relation("TeacherCourses", fields: [teacherId], references: [id])
   subject      Subject       @relation(fields: [subjectId], references: [id])
@@ -307,6 +315,7 @@ model Course {
 
   @@index([teacherId])
   @@index([subjectId, sectionId])
+  @@index([sectionId])
   @@index([organizationId])
   @@schema("public")
 }
@@ -317,6 +326,7 @@ model Enrollment {
   studentId  String
   status     EnrollmentStatus @default(active)
   enrolledAt DateTime         @default(now())
+  updatedAt  DateTime         @default(now()) @updatedAt
 
   course  Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
   student User   @relation("StudentEnrollments", fields: [studentId], references: [id], onDelete: Cascade)
@@ -345,7 +355,7 @@ model Assignment {
   isAiGenerated  Boolean          @default(false)
   status         AssignmentStatus @default(draft)
   createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  updatedAt      DateTime         @default(now()) @updatedAt
 
   course    Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
   createdBy User   @relation("AssignmentCreator", fields: [createdById], references: [id])
@@ -474,6 +484,7 @@ model MeetingParticipant {
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([meetingId, userId])
+  @@index([userId])
   @@schema("public")
 }
 
@@ -483,7 +494,7 @@ model ChatThread {
   name      String?
   courseId  String?
   createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
+  updatedAt DateTime       @default(now()) @updatedAt
 
   course       Course?           @relation(fields: [courseId], references: [id], onDelete: Cascade)
   participants ChatParticipant[]
@@ -501,6 +512,7 @@ model ChatParticipant {
   user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([threadId, userId])
+  @@index([userId])
   @@schema("public")
 }
 
@@ -516,6 +528,7 @@ model Message {
   sender User       @relation("MessageSender", fields: [senderId], references: [id])
 
   @@index([threadId, sentAt])
+  @@index([senderId])
   @@schema("public")
 }
 
@@ -526,6 +539,7 @@ model Notification {
   payload   Json?
   readAt    DateTime?
   createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now()) @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
