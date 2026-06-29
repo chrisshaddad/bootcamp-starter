@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import { Users, Plus, CheckCircle2, XCircle, Pencil } from 'lucide-react';
+import { Users, Plus, CheckCircle2, XCircle } from 'lucide-react';
 import {
   instructorCreateRequestSchema,
   instructorUpdateRequestSchema,
@@ -82,88 +82,6 @@ function LoadingSkeleton() {
         ))}
       </div>
     </div>
-  );
-}
-
-// ── Deactivate toggle ────────────────────────────────────────────────────────
-
-function DeactivateButton({ id, isActive }: { id: string; isActive: boolean }) {
-  const { update } = useInstructor(id, { enabled: false });
-  const [loading, setLoading] = useState(false);
-  const [open, setOpen] = useState(false);
-
-  async function toggle() {
-    setLoading(true);
-    try {
-      await update({ isActive: !isActive });
-      toast.success(
-        isActive ? 'Instructor deactivated' : 'Instructor reactivated',
-      );
-      setOpen(false);
-    } catch (err) {
-      const msg =
-        err instanceof ApiError ? err.message : 'Failed to update instructor';
-      toast.error(msg);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  if (!isActive) {
-    return (
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={toggle}
-        disabled={loading}
-        className="text-xs"
-        id={`toggle-instructor-${id}`}
-      >
-        Reactivate
-      </Button>
-    );
-  }
-
-  return (
-    <>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => setOpen(true)}
-        disabled={loading}
-        className="text-xs text-error hover:text-error hover:bg-error/10"
-        id={`toggle-instructor-${id}`}
-      >
-        Deactivate
-      </Button>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Deactivate Instructor?</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to deactivate this instructor? They will not
-              be able to be assigned to new sessions.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setOpen(false)}
-              disabled={loading}
-            >
-              Cancel
-            </Button>
-            <Button
-              className="bg-error hover:bg-red-600 text-white"
-              onClick={toggle}
-              disabled={loading}
-            >
-              {loading ? 'Deactivating...' : 'Yes, Deactivate'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
   );
 }
 
@@ -329,6 +247,8 @@ export function EditInstructorDialog({
 }) {
   const { update } = useInstructor(instructor?.id ?? '', { enabled: false });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isTogglingStatus, setIsTogglingStatus] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   const {
     register,
@@ -369,115 +289,215 @@ export function EditInstructorDialog({
     onClose();
   }
 
+  const handleToggleStatus = async () => {
+    if (!instructor) return;
+    setIsTogglingStatus(true);
+    try {
+      await update({ isActive: !instructor.isActive });
+      toast.success(
+        instructor.isActive
+          ? 'Instructor deactivated'
+          : 'Instructor reactivated',
+      );
+      onClose();
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : 'Failed to update instructor status',
+      );
+    } finally {
+      setIsTogglingStatus(false);
+    }
+  };
+
   return (
-    <Dialog
-      open={open && !!instructor}
-      onOpenChange={(v) => !v && handleClose()}
-    >
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Edit Instructor</DialogTitle>
-          <DialogDescription>
-            Update details for this instructor.
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog
+        open={open && !!instructor}
+        onOpenChange={(v) => !v && handleClose()}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Instructor</DialogTitle>
+            <DialogDescription></DialogDescription>
+          </DialogHeader>
 
-        <form
-          id="edit-instructor-form"
-          onSubmit={handleSubmit(onSubmit)}
-          noValidate
-          className="space-y-4"
-        >
-          {/* Name */}
-          <div className="space-y-1.5">
-            <Label htmlFor="edit-instructor-name">
-              Name <span className="text-error">*</span>
-            </Label>
-            <Input
-              id="edit-instructor-name"
-              placeholder="e.g. Alice Trainer"
-              aria-invalid={!!errors.name}
-              aria-describedby={
-                errors.name ? 'edit-instructor-name-error' : undefined
-              }
-              {...register('name')}
-            />
-            {errors.name && (
-              <p id="edit-instructor-name-error" className="text-xs text-error">
-                {errors.name.message}
-              </p>
-            )}
-          </div>
-
-          {/* Email */}
-          <div className="space-y-1.5">
-            <Label htmlFor="edit-instructor-email">Email (optional)</Label>
-            <Input
-              id="edit-instructor-email"
-              type="email"
-              placeholder="alice@gym.com"
-              aria-invalid={!!errors.email}
-              aria-describedby={
-                errors.email ? 'edit-instructor-email-error' : undefined
-              }
-              {...register('email')}
-            />
-            {errors.email && (
-              <p
-                id="edit-instructor-email-error"
-                className="text-xs text-error"
-              >
-                {errors.email.message}
-              </p>
-            )}
-          </div>
-
-          {/* Specialization */}
-          <div className="space-y-1.5">
-            <Label htmlFor="edit-instructor-specialization">
-              Specialization (optional)
-            </Label>
-            <Input
-              id="edit-instructor-specialization"
-              placeholder="e.g. Yoga, CrossFit, HIIT"
-              aria-invalid={!!errors.specialization}
-              aria-describedby={
-                errors.specialization
-                  ? 'edit-instructor-specialization-error'
-                  : undefined
-              }
-              {...register('specialization')}
-            />
-            {errors.specialization && (
-              <p
-                id="edit-instructor-specialization-error"
-                className="text-xs text-error"
-              >
-                {errors.specialization.message}
-              </p>
-            )}
-          </div>
-        </form>
-
-        <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={handleClose}
-            disabled={isSubmitting}
+          <form
+            id="edit-instructor-form"
+            onSubmit={handleSubmit(onSubmit)}
+            noValidate
+            className="space-y-4"
           >
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            form="edit-instructor-form"
-            disabled={isSubmitting}
-            className="bg-primary-base hover:bg-primary-400 text-white"
-          >
-            {isSubmitting ? 'Saving…' : 'Save Changes'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+            {/* Name */}
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-instructor-name">
+                Name <span className="text-error">*</span>
+              </Label>
+              <Input
+                id="edit-instructor-name"
+                placeholder="e.g. Alice Trainer"
+                aria-invalid={!!errors.name}
+                aria-describedby={
+                  errors.name ? 'edit-instructor-name-error' : undefined
+                }
+                {...register('name')}
+              />
+              {errors.name && (
+                <p
+                  id="edit-instructor-name-error"
+                  className="text-xs text-error"
+                >
+                  {errors.name.message}
+                </p>
+              )}
+            </div>
+
+            {/* Email */}
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-instructor-email">Email (optional)</Label>
+              <Input
+                id="edit-instructor-email"
+                type="email"
+                placeholder="alice@gym.com"
+                aria-invalid={!!errors.email}
+                aria-describedby={
+                  errors.email ? 'edit-instructor-email-error' : undefined
+                }
+                {...register('email')}
+              />
+              {errors.email && (
+                <p
+                  id="edit-instructor-email-error"
+                  className="text-xs text-error"
+                >
+                  {errors.email.message}
+                </p>
+              )}
+            </div>
+
+            {/* Specialization */}
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-instructor-specialization">
+                Specialization (optional)
+              </Label>
+              <Input
+                id="edit-instructor-specialization"
+                placeholder="e.g. Yoga, CrossFit, HIIT"
+                aria-invalid={!!errors.specialization}
+                aria-describedby={
+                  errors.specialization
+                    ? 'edit-instructor-specialization-error'
+                    : undefined
+                }
+                {...register('specialization')}
+              />
+              {errors.specialization && (
+                <p
+                  id="edit-instructor-specialization-error"
+                  className="text-xs text-error"
+                >
+                  {errors.specialization.message}
+                </p>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 mt-4">
+              <div>
+                <p className="text-sm font-medium text-gray-900">Status</p>
+                <p className="text-xs text-gray-500">
+                  {instructor?.isActive
+                    ? 'Active and available for new sessions.'
+                    : 'Inactive and hidden from scheduling.'}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isTogglingStatus}
+                onClick={() => setShowConfirmDialog(true)}
+                className={
+                  instructor?.isActive
+                    ? 'border-error text-error hover:bg-red-50'
+                    : 'border-primary-base text-primary-base hover:bg-primary-100'
+                }
+              >
+                {isTogglingStatus
+                  ? 'Updating...'
+                  : instructor?.isActive
+                    ? 'Deactivate'
+                    : 'Reactivate'}
+              </Button>
+            </div>
+          </form>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={handleClose}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              form="edit-instructor-form"
+              disabled={isSubmitting}
+              className="bg-primary-base hover:bg-primary-400 text-white"
+            >
+              {isSubmitting ? 'Saving…' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {instructor?.isActive
+                ? 'Deactivate Instructor'
+                : 'Reactivate Instructor'}
+            </DialogTitle>
+            <DialogDescription>
+              {instructor?.isActive
+                ? `Are you sure you want to deactivate ${instructor?.name}? They will not be able to be assigned to new sessions.`
+                : `Are you sure you want to reactivate ${instructor?.name}? They will be available for new sessions.`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowConfirmDialog(false)}
+              disabled={isTogglingStatus}
+            >
+              Cancel
+            </Button>
+            <Button
+              className={
+                instructor?.isActive
+                  ? 'bg-error hover:bg-error/90 text-white'
+                  : 'bg-primary-base hover:bg-primary-400 text-white'
+              }
+              onClick={async () => {
+                setShowConfirmDialog(false);
+                await handleToggleStatus();
+              }}
+              disabled={isTogglingStatus}
+            >
+              {isTogglingStatus
+                ? instructor?.isActive
+                  ? 'Deactivating...'
+                  : 'Reactivating...'
+                : instructor?.isActive
+                  ? 'Deactivate'
+                  : 'Reactivate'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -586,7 +606,6 @@ export default function InstructorsPage() {
                   <TableHead>Email</TableHead>
                   <TableHead>Specialization</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -594,6 +613,8 @@ export default function InstructorsPage() {
                   <TableRow
                     key={instructor.id}
                     id={`instructor-row-${instructor.id}`}
+                    className="cursor-pointer"
+                    onClick={() => setEditingInstructor(instructor)}
                   >
                     <TableCell className="font-medium">
                       {instructor.name}
@@ -606,21 +627,6 @@ export default function InstructorsPage() {
                     </TableCell>
                     <TableCell>
                       <ActiveBadge isActive={instructor.isActive} />
-                    </TableCell>
-                    <TableCell className="text-right space-x-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 px-2 text-gray-500 hover:text-gray-900"
-                        onClick={() => setEditingInstructor(instructor)}
-                        id={`edit-instructor-${instructor.id}`}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <DeactivateButton
-                        id={instructor.id}
-                        isActive={instructor.isActive}
-                      />
                     </TableCell>
                   </TableRow>
                 ))}
