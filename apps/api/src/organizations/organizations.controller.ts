@@ -35,7 +35,7 @@ export class OrganizationsController {
   @Roles('SUPER_ADMIN')
   async approve(
     @Param('id') id: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: { id: string },
   ): Promise<OrganizationActionResponse> {
     const organization = await this.organizationsService.approve(id, user.id);
     return {
