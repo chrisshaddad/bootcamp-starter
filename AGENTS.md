@@ -1,112 +1,93 @@
-# AGENTS.md
+# AGENTS.md — Forward-Mena
 
-Instructions for AI coding assistants (Claude Code, Cursor, Codex, Aider, etc.) working in this repo. Read this file before writing code.
+Instructions for AI coding assistants (Claude Code, Cursor, Codex, Aider, …). This is the source of truth for **how to write code here**. Read it before writing code; live architecture + status is in [docs/CONTEXT.md](docs/CONTEXT.md).
 
 ## What this repo is
 
-A generic full-stack bootcamp starter on Turborepo. Multi-tenant auth (orgs + roles) is pre-wired; everything domain-specific is left for the student to build.
+**Forward-Mena** — a multi-org rental-management SaaS. Property owners subscribe ($20/mo) and manage their own staff (supervisor / finance / maintenance) and tenants in a fully data-isolated workspace. **v1** = platform foundation (auth, multi-org RBAC, subscription/payments, timeline, role-aware dashboard shells); the rentals domain is being built (`Building` / `BuildingAssignment` models exist). Turborepo monorepo.
 
 ## Stack
 
-- **`apps/api`** — NestJS 11 on port 3001
-- **`apps/web`** — Next.js 16 (App Router) + React 19 + Tailwind v4 + shadcn/ui on port 3000
-- **`packages/database`** — Prisma 7 + PostgreSQL 18, exported as `@repo/db`
-- **`packages/contracts`** — Zod schemas shared by api + web, exported as `@repo/contracts`
-- **Docker services** — Postgres :5433, Redis :6380, Mailpit :8025
+- **`apps/web`** (`forward-mena-fe`) — Next.js **16.2.4** + React 19, App Router, bilingual `[lang]` routing (`ar` RTL / `en`), **next-auth v5 (Auth.js) with Keycloak OIDC** (JWT session, no DB adapter), **RTK Query + redux-persist**, Tailwind v4 + shadcn (on `@base-ui/react`), Stripe embedded checkout, **vitest**. **Port 3000.**
+- **`apps/api`** (`forward-mena-be`) — NestJS **11**, **Prisma 7** (`@prisma/adapter-pg`), **passport-jwt + jwks-rsa** (validates Keycloak RS256 JWTs), Stripe 22, nestjs-pino, Swagger at `/docs`, `@nestjs/throttler`, **jest**. **Port 4000.**
+- **`packages/`** — **empty.** There is **no** shared `@repo/contracts` or `@repo/db` package. Types/DTOs live per-app.
+- **Tooling** — **npm** (`npm@11.6.2`, `package-lock.json`), Node **24.11.1** (`.nvmrc`), Turborepo 2.
 
 ## Dev workflow
 
-```bash
-cp apps/api/.env.example apps/api/.env
-cp apps/web/.env.example apps/web/.env
-cp packages/database/.env.example packages/database/.env
+The database is the VPS Postgres reached over an SSH tunnel — see [docs/CONTEXT.md](docs/CONTEXT.md) for the tunnel command and infra. Then:
 
-npm run services:init                          # docker compose up
-npm install
-npx turbo run db:migrate -- --name init        # first run only
-npx turbo run db:generate                      # in case migrate didn't auto-gen
-npx turbo run db:seed                          # optional
-npm run dev                                    # web :3000, api :3001, mailpit :8025
+```bash
+npm install            # root (npm workspaces)
+npm run dev            # turbo: web :3000 + api :4000
+# or per app:
+cd apps/api && npm run start:dev    # NestJS :4000, Swagger /docs
+cd apps/web && npm run dev          # Next.js :3000  → /en or /ar
 ```
 
-## Conventions (read before editing)
+## Conventions (binding — violating these causes real bugs)
 
-### Shared contracts — the most important rule
+### Keycloak is the source of truth for identity, org membership, and roles — NOT the database
+- There are **no `User` or `Membership` tables.** A user *is* their Keycloak `sub`. Org membership is the Keycloak user attribute **`org_id`** (surfaced as a JWT claim via a protocol mapper). Role is a Keycloak **client role** on the web client.
+- Never add User/Membership tables or resolve identity/org/role from the DB. Use the JWT claims and `KeycloakAdminService` (KC Admin API) for user CRUD and role/attribute writes.
+- Roles, highest→lowest precedence: **`org_admin` > `supervisor` > `finance` > `maintenance` > `tenant`** (`apps/api/src/common/enums`, `apps/web/src/auth/roles.ts`).
 
-Every request/response shape on the wire is a Zod schema in `packages/contracts/src/<resource>/`. Both the API and the web app import from `@repo/contracts`.
+### Backend (`apps/api`)
+- One folder per feature under `src/modules/<feature>/` (`{controller,service,module}.ts`); register the module in `app.module.ts`.
+- Global guards (registered in `AppModule`, order matters): **ThrottlerGuard → JwtAuthGuard → RolesGuard**. Every endpoint requires a valid JWT **by default**. Use `@Public()` to bypass (e.g. `/health`, `/webhooks/stripe`), `@Roles(Role.X)` to restrict, `@CurrentUser()` to read the `AuthenticatedUser`.
+- **Org scoping is mandatory.** Every org-scoped action MUST resolve the org via `OrgScopeService.resolveForCaller(user)` (or `resolveOrgId(user)` for pre-payment billing) and filter Prisma with `orgScope.orgWhere(orgId)` (= `{ orgId }`). Never use `user.orgId` directly in a query. Cross-org access → `assertSameOrg` → 403. For `tenant` role, further restrict with `tenantWhere(orgId, userId)`.
+- DB access only via `PrismaService` (`infrastructure/prisma`). Schema: **`apps/api/prisma/schema.prisma`**. Models: `Organization, Subscription, Payment, Event, Building, BuildingAssignment`.
+- **Role is granted only after payment.** `GET /me` provisions the org on first call (advisory-lock) but NEVER assigns a role; `org_admin` is granted in `BillingService.confirmSession()` after Stripe payment.
+- Errors: throw Nest exceptions. Logging: **nestjs-pino** — never `console.log` in `apps/api/src/`. Config: `@nestjs/config` + Joi (`config/env.validation.ts`); boot fails if a required env var is missing.
 
-**Never** define a DTO inline in `apps/api` or a request/response type in `apps/web`. If it's on the wire, it lives in contracts. This is the single most-violated rule and the source of most type-drift bugs.
+### Frontend (`apps/web`)
+- Server components by default; add `'use client'` only when you need state/effects/browser APIs.
+- All pages live under `app/[lang]/` (`ar` RTL / `en`, default `en`). Every user-facing string comes from `i18n/dictionaries/` — **add both locales** for any new string.
+- **The browser never calls the backend (`:4000`) directly.** Client calls go through the Next.js BFF at `/api/*` via RTK Query (`baseUrl: '/api'`, `store/api/base-api.ts`).
+- **Every BFF route handler under `app/api/` MUST use `forwardRoute('/path')`** (`lib/api/forward.ts`) — e.g. `export const GET = forwardRoute('/me')`. It wraps `auth(...)` so Auth.js writes the rotated Keycloak token back via `Set-Cookie`. A bare `await auth()` inside a handler refreshes in-memory only → eventual `invalid_grant`.
+- `session.update()` MUST carry a payload (e.g. `update({ refresh: Date.now() })`) — a bare `update()` is a no-op that never triggers the `jwt` callback. (See memory: post-payment role refresh depended on this.)
+- RSC guards `requireSession` / `requireRole` / `requireActiveOrg` (`auth/guards.ts`) are defense-in-depth. `proxy.ts` middleware handles locale + route gating; **paywall gating is intentionally NOT in middleware** (a lagging role claim causes redirect loops) — gate in RSC/components.
+- Forms: react-hook-form + zod. UI: shadcn (base-ui) in `components/ui/` — **don't hand-edit**; use the shadcn MCP or CLI. Tailwind v4 tokens. State persisted via redux-persist (`ui`, `auth`, `api` under key `forward-mena`).
 
-After changing contracts, run `npx tsc -p packages/contracts` to rebuild before downstream type-checking.
+### Billing (Stripe)
+Embedded checkout: `POST /api/billing/checkout-session` → `{clientSecret}`; after redirect, `BillingConfirmOrchestrator` calls `POST /api/billing/confirm { sessionId }` → backend activates the org + assigns `org_admin` in Keycloak. **Stripe webhooks hit `POST /webhooks/stripe` directly** (`@Public()`, raw body, signature-verified) — never via the BFF.
 
-### Multi-tenant auth
-
-Three roles: `SUPER_ADMIN` (platform), `ORG_ADMIN` (one org), `MEMBER` (regular user). Most tenant-scoped models will have an `organizationId` FK indexed with `@@index([organizationId])`.
-
-**Every Prisma query on a tenant-scoped model must filter by `organizationId`.** No exceptions. Even `findUnique` should be `findFirst({ where: { id, organizationId } })`. Cross-tenant leakage is the #1 security bug in multi-tenant SaaS.
-
-### NestJS (`apps/api`)
-
-- One folder per feature: `src/<feature>/<feature>.{controller,service,module}.ts`. Register the module in `app.module.ts`.
-- Validate every request body / query with `ZodValidationPipe` from `src/common/pipes/`. Schemas come from `@repo/contracts`.
-- Database access only through `DatabaseService` (extends `PrismaClient`). Never `new PrismaClient()` outside `packages/database`.
-- Routes are protected by default (global `AuthGuard`). Use `@Public()` to opt out, `@Roles(...)` to restrict by role, `@CurrentUser()` to get the calling user.
-- Cookie-based sessions (`bootcamp_starter_session`, `HttpOnly`, 30-day TTL). Magic-link auth only — no passwords.
-- Async work goes through BullMQ. See `src/mail/` for the canonical pattern: constants → module → service → processor.
-- Errors: throw NestJS exceptions (`NotFoundException`, `UnauthorizedException`, `BadRequestException`). Don't return error envelopes.
-- Logging: every service uses NestJS's `Logger` (`private readonly logger = new Logger(MyService.name)`). **Never `console.log` in `apps/api/src/`.** `console.*` is fine in CLI scripts under `packages/database/prisma/seeders/` because they're one-shot scripts, not the running server.
-
-### Next.js (`apps/web`)
-
-- Default to server components. Add `'use client'` only when you need state, effects, hooks, or browser APIs.
-- Protected routes go under `app/(authenticated)/`. The `proxy.ts` middleware short-circuits unauthed access.
-- Data fetching = SWR hooks under `hooks/`, one per resource. Type with `@repo/contracts` types. See `hooks/use-organizations.ts` for the pattern.
-- API calls go through `lib/api.ts`. Errors become `ApiError` instances — catch in submit handlers and toast.
-- Forms = `react-hook-form` + `zodResolver(<schema from contracts>)`. See `app/login/page.tsx`.
-- UI primitives live in `components/ui/` and come from shadcn. **Don't hand-edit them.** Use `npx shadcn@latest add <component>` or the shadcn MCP server (configured in `.vscode/mcp.json`).
-- Tailwind v4. Use the design tokens (`primary-base`, `primary-100`, `gray-*`, `error`) defined in `globals.css`.
-- Error / loading UX: `app/loading.tsx`, `app/error.tsx`, `app/not-found.tsx` provide global defaults. Add route-scoped versions under any segment (e.g., `app/(authenticated)/projects/error.tsx`) when a specific area needs different treatment.
-- Don't leave `console.log` in committed code. Use `console.error` for unexpected failures you want surfaced (the `app/error.tsx` boundary already does this); for everything else, surface to the user via `toast`.
-
-### Prisma (`packages/database`)
-
-- Two schemas: `public` for user-facing models, `private` for sensitive data (`Session`, `MagicLink`). Every model declares `@@schema(...)`.
-- UUID primary keys (`@id @default(uuid())`), `createdAt`/`updatedAt` on every mutable model.
-- Index every FK with `@@index([fkField])`.
-- Cascade for owned children, `SetNull` for soft refs.
-- Never hand-edit migration SQL. Edit the schema, then run `npx turbo run db:migrate -- --name <change>`.
-- Migrations and `prisma generate` are interactive — when scripting, always pass `--name <name>` explicitly to avoid hangs.
-
-### Contracts (`packages/contracts`)
-
-- One schema per file. Filename matches purpose: `<resource>-create.request.ts`, `<resource>-list.response.ts`, `<resource>.response.ts`.
-- Export both the schema and the inferred type:
-  ```ts
-  export const fooSchema = z.object({ ... });
-  export type Foo = z.infer<typeof fooSchema>;
-  ```
-- Update both the folder `index.ts` and `packages/contracts/src/index.ts` after adding a file.
-- No business logic (`.refine()` with DB lookups, etc.) — shape only.
+### Env
+Web env is validated by zod at import (`apps/web/src/lib/env.ts`); API env by Joi at boot (`apps/api/src/config/env.validation.ts`). Never print/echo secret values from env files.
 
 ## Quality gates
 
-There are **no local git hooks**. CI runs on every PR (`.github/workflows/ci.yml`):
-
 ```bash
-npx turbo run lint
-npx turbo run check-types
-npm run format:check
+npm run lint          # turbo run lint across apps
+npm run check-types   # turbo run check-types
+npm run format:check  # prettier
 ```
-
-Run those three commands locally before pushing if you want a pre-flight check.
+CI (`.github/workflows/ci.yml`, on PR + push to `main`) runs **lint + check-types + format:check**. ⚠️ **CI does not run tests.** Tests exist (web: vitest — `npm run test:run`; api: jest — `npm test`, `npm run test:e2e`) but are not enforced — run them locally for anything behavioral.
 
 ## Things NOT to do
+- Don't add `User`/`Membership` tables or resolve identity/roles from the DB — **Keycloak is the source of truth**.
+- Don't grant a role at `/me` — roles are granted only after payment (`confirmSession`).
+- Don't call the backend (`:4000`) directly from the browser — go through the `/api/*` BFF.
+- Don't write a BFF route handler without `forwardRoute` — it drops Keycloak token rotation.
+- Don't call `session.update()` without a payload.
+- Don't query org-scoped data without `OrgScopeService` — cross-org leakage is the #1 risk.
+- Don't hand-edit `apps/web/src/components/ui/`. Don't `console.log` in `apps/api/src/` (use pino).
+- Don't assume shared packages — `packages/` is empty (no `@repo/contracts`).
 
-- Don't commit `.env` files.
-- Don't add Husky / lint-staged / pre-commit hooks. Quality gates live in CI.
-- Don't define DTOs in `apps/api` or `apps/web` — put them in `packages/contracts`.
-- Don't access Prisma directly from controllers — go through a service that uses `DatabaseService`.
-- Don't filter tenant-scoped queries without `organizationId`.
-- Don't hand-edit files under `apps/web/components/ui/`.
-- Don't hand-edit migration SQL.
-- Don't run `prisma migrate dev` without `--name` in scripts — it prompts and will hang.
+<!-- gitnexus:start -->
+## GitNexus — Code Intelligence
+
+Indexed by GitNexus as **Forward-Mena**. Use the GitNexus MCP tools to navigate, assess impact, and refactor safely (run `gitnexus analyze` if a tool reports the index is stale; add `--embeddings` for semantic search). Full rules are in [CLAUDE.md](CLAUDE.md) and `~/.claude/CLAUDE.md`.
+
+- **Before editing a symbol:** `gitnexus_impact({target, direction:"upstream"})` — report blast radius; warn on HIGH/CRITICAL.
+- **Explore** with `gitnexus_query` / `gitnexus_context` instead of broad grep/Read.
+- **Before committing:** `gitnexus_detect_changes()` (the commit gate enforces this).
+- **Renames:** `gitnexus_rename`, never find-and-replace.
+
+| Resource | Use for |
+|----------|---------|
+| `gitnexus://repo/Forward-Mena/context` | Codebase overview, index freshness |
+| `gitnexus://repo/Forward-Mena/clusters` | Functional areas |
+| `gitnexus://repo/Forward-Mena/processes` | Execution flows |
+| `gitnexus://repo/Forward-Mena/process/{name}` | Step-by-step trace |
+<!-- gitnexus:end -->

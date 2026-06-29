@@ -11,3 +11,8 @@ apps/web/next-env.d.ts
 # Lockfile / vendored
 package-lock.json
 node_modules/
+
+# Private / local-only docs (gitignored — never committed, don't format-check)
+docs/
+CLAUDE.md
+.claude/

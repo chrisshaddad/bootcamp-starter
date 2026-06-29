@@ -9,11 +9,11 @@
     "dev": "tsc --watch"
   },
   "dependencies": {
-    "zod": "^4.3.5",
-    "typescript": "^5.9.2"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@repo/typescript-config": "*",
+    "typescript": "^5.9.2",
     "prettier": "^3.4.2"
   },
   "exports": {

@@ -10,5 +10,5 @@
     "rootDir": "src"
   },
   "include": ["src/**/*"],
-  "exclude": ["seeders", "node_modules", "dist", "generated"]
+  "exclude": ["node_modules", "dist"]
 }
