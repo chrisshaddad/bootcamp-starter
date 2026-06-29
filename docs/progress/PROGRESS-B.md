@@ -7,12 +7,12 @@
 > Build phases in order: build → test → merge → next. Don't start a phase until the
 > previous is ✅. Status legend: ⬜ Not started · 🟡 In progress · ✅ Done · 🚧 Blocked.
 
-**Owner:** Antigravity (AI) · **Status: 1 / 4 done — 🟡 In progress.**
+**Owner:** Antigravity (AI) · **Status: 2 / 4 done — 🟡 In progress.**
 
 | Phase | Scope                                                                           | Dev         | Status | Date       | Notes / PR                          |
 | ----- | ------------------------------------------------------------------------------- | ----------- | ------ | ---------- | ----------------------------------- |
 | B0    | Instructors CRUD + `GET /instructors/available` (overlap detection)             | Antigravity | ✅     | 2026-06-29 | feat/feature-b-phase-b0-instructors |
-| B1    | Sessions admin schedule (CRUD + cancel, `_count.bookings`, instructor dropdown) | —           | ⬜     | —          | —                                   |
+| B1    | Sessions admin schedule (CRUD + cancel, `_count.bookings`, instructor dropdown) | Antigravity | ✅     | 2026-06-29 | feat/feature-b-phase-b1-sessions    |
 | B2    | Bookings + per-session capacity (reject full/duplicate)                         | —           | ⬜     | —          | —                                   |
 | B3    | Member "My bookings" portal view (`GET /me/bookings`) — needs A4 shell          | —           | ⬜     | —          | —                                   |
 

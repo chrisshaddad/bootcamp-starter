@@ -12,6 +12,7 @@ import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { MePortalModule } from './me-portal/me-portal.module';
 import { InstructorsModule } from './instructors/instructors.module';
 import { DatabaseModule } from './database/database.module';
+import { SessionsModule } from './sessions/sessions.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { DatabaseModule } from './database/database.module';
     SubscriptionsModule,
     MePortalModule,
     InstructorsModule,
+    SessionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
