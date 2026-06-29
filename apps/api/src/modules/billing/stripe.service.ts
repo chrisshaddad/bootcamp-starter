@@ -1,6 +1,7 @@
 import {
   BadGatewayException,
   Injectable,
+  InternalServerErrorException,
   Logger,
   OnModuleInit,
 } from '@nestjs/common';
@@ -17,12 +18,15 @@ export class StripeService implements OnModuleInit {
   private readonly logger = new Logger(StripeService.name);
   private readonly priceId: string;
   private readonly webhookSecret: string;
+  private readonly isProduction: boolean;
   readonly stripe: ReturnType<typeof createStripeClient>;
 
   constructor(private readonly configService: ConfigService) {
     this.priceId = this.configService.getOrThrow<string>('stripe.priceId');
     this.webhookSecret =
       this.configService.get<string>('stripe.webhookSecret') ?? '';
+    this.isProduction =
+      this.configService.get<string>('app.nodeEnv') === 'production';
     this.stripe = createStripeClient(
       this.configService.getOrThrow<string>('stripe.secretKey'),
     );
@@ -135,6 +139,16 @@ export class StripeService implements OnModuleInit {
   /** Verify + parse a Stripe webhook event. */
   constructWebhookEvent(rawBody: Buffer, signature: string): Stripe.Event {
     if (!this.webhookSecret) {
+      // Fail closed in production: with no secret we cannot verify the signature,
+      // so an empty secret would let anyone POST forged events to the public
+      // /webhooks/stripe endpoint (org activation, org_admin grants). Only allow
+      // the unverified parse outside production for local webhook testing.
+      if (this.isProduction) {
+        throw new InternalServerErrorException({
+          code: 'STRIPE_WEBHOOK_NOT_CONFIGURED',
+          message: 'Stripe webhook secret is not configured.',
+        });
+      }
       this.logger.warn(
         '*** DEV ONLY: STRIPE_WEBHOOK_SECRET is empty — parsing webhook unverified! DO NOT use in production. ***',
       );
