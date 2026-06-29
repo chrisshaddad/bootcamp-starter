@@ -2,6 +2,7 @@
   Warnings:
 
   - The values [MEMBER] on the enum `UserRole` will be removed. If these variants are still used in the database, this will fail.
+  - Added the required column `updatedAt` to the `MagicLink` table without a default value. This is not possible if the table is not empty.
 
 */
 -- CreateEnum
@@ -25,6 +26,12 @@ ALTER TYPE "UserRole_new" RENAME TO "UserRole";
 DROP TYPE "public"."UserRole_old";
 ALTER TABLE "User" ALTER COLUMN "role" SET DEFAULT 'EMPLOYEE';
 COMMIT;
+
+-- DropIndex
+DROP INDEX "private"."MagicLink_token_idx";
+
+-- AlterTable
+ALTER TABLE "private"."MagicLink" ADD COLUMN     "updatedAt" TIMESTAMP(3) NOT NULL;
 
 -- AlterTable
 ALTER TABLE "Organization" ADD COLUMN     "requiresManagerApproval" BOOLEAN NOT NULL DEFAULT false;
@@ -55,6 +62,8 @@ CREATE TABLE "Skill" (
     "name" TEXT NOT NULL,
     "category" TEXT NOT NULL,
     "organizationId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Skill_pkey" PRIMARY KEY ("id")
 );
@@ -94,6 +103,8 @@ CREATE TABLE "OpportunitySkill" (
     "opportunityId" TEXT NOT NULL,
     "skillId" TEXT NOT NULL,
     "requiredLevel" INTEGER NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "OpportunitySkill_pkey" PRIMARY KEY ("opportunityId","skillId")
 );
@@ -122,6 +133,7 @@ CREATE TABLE "CareerPath" (
     "timeframeMonths" INTEGER NOT NULL,
     "milestones" JSONB NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "CareerPath_pkey" PRIMARY KEY ("id")
 );
@@ -130,13 +142,25 @@ CREATE TABLE "CareerPath" (
 CREATE INDEX "Department_organizationId_idx" ON "Department"("organizationId");
 
 -- CreateIndex
+CREATE INDEX "Department_managerId_idx" ON "Department"("managerId");
+
+-- CreateIndex
 CREATE INDEX "Skill_organizationId_idx" ON "Skill"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "UserSkill_skillId_idx" ON "UserSkill"("skillId");
 
 -- CreateIndex
 CREATE INDEX "Opportunity_organizationId_idx" ON "Opportunity"("organizationId");
 
 -- CreateIndex
 CREATE INDEX "Opportunity_departmentId_idx" ON "Opportunity"("departmentId");
+
+-- CreateIndex
+CREATE INDEX "Opportunity_hiringManagerId_idx" ON "Opportunity"("hiringManagerId");
+
+-- CreateIndex
+CREATE INDEX "OpportunitySkill_skillId_idx" ON "OpportunitySkill"("skillId");
 
 -- CreateIndex
 CREATE INDEX "Application_userId_idx" ON "Application"("userId");
@@ -149,6 +173,9 @@ CREATE INDEX "CareerPath_userId_idx" ON "CareerPath"("userId");
 
 -- CreateIndex
 CREATE INDEX "User_departmentId_idx" ON "User"("departmentId");
+
+-- CreateIndex
+CREATE INDEX "User_managerId_idx" ON "User"("managerId");
 
 -- AddForeignKey
 ALTER TABLE "User" ADD CONSTRAINT "User_managerId_fkey" FOREIGN KEY ("managerId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
