@@ -26,11 +26,10 @@ ALTER TABLE "Assignment" ADD COLUMN     "durationMinutes" INTEGER,
 ADD COLUMN     "endsAt" TIMESTAMP(3),
 ADD COLUMN     "noteToStudents" TEXT,
 ADD COLUMN     "startsAt" TIMESTAMP(3),
-ADD COLUMN     "updatedAt" TIMESTAMP(3) NOT NULL;
-
+ADD COLUMN     "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
 -- AlterTable
 ALTER TABLE "ChatThread" ADD COLUMN     "name" TEXT,
-ADD COLUMN     "updatedAt" TIMESTAMP(3) NOT NULL,
+ADD COLUMN     "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 ALTER COLUMN "type" SET DEFAULT 'direct';
 
 -- AlterTable

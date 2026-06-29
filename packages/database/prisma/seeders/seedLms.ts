@@ -76,33 +76,51 @@ export async function seedLms(prisma: PrismaClient) {
     },
   });
 
-  const assignment = await prisma.assignment.create({
-    data: {
-      courseId: course.id,
-      createdById: superAdmin.id,
-      type: 'quiz',
-      title: 'Sample Algebra Quiz',
-      instructions: 'Answer the following sample question.',
-      maxScore: 10,
-      status: 'published',
-    },
-  });
+  await prisma.$transaction(async (tx) => {
+    let existingAssignment = await tx.assignment.findFirst({
+      where: {
+        courseId: course.id,
+        title: 'Sample Algebra Quiz',
+      },
+    });
 
-  await prisma.quizQuestion.create({
-    data: {
-      assignmentId: assignment.id,
-      questionText: 'What is 2 + 2?',
-      questionType: 'mcq',
-      options: [
-        { id: 'A', text: '3' },
-        { id: 'B', text: '4' },
-        { id: 'C', text: '5' },
-      ],
-      correctAnswer: { selectedOptionId: 'B' },
-      points: 10,
-      position: 1,
-    },
-  });
+    if (!existingAssignment) {
+      existingAssignment = await tx.assignment.create({
+        data: {
+          courseId: course.id,
+          createdById: superAdmin.id,
+          type: 'quiz',
+          title: 'Sample Algebra Quiz',
+          instructions: 'Answer the following sample question.',
+          maxScore: 10,
+          status: 'published',
+        },
+      });
+    }
 
-  console.log('LMS seed data created');
+    const existingQuestion = await tx.quizQuestion.findFirst({
+      where: {
+        assignmentId: existingAssignment.id,
+        position: 1,
+      },
+    });
+
+    if (!existingQuestion) {
+      await tx.quizQuestion.create({
+        data: {
+          assignmentId: existingAssignment.id,
+          questionText: 'What is 2 + 2?',
+          questionType: 'mcq',
+          options: [
+            { id: 'A', text: '3' },
+            { id: 'B', text: '4' },
+            { id: 'C', text: '5' },
+          ],
+          correctAnswer: { selectedOptionId: 'B' },
+          points: 10,
+          position: 1,
+        },
+      });
+    }
+  });
 }
