@@ -1,7 +1,10 @@
 const ts = require('typescript');
 const fs = require('fs');
 
-const files = fs.readFileSync('changed-files.txt', 'utf8').split('\n').filter(Boolean);
+const files = fs.readFileSync('changed-files.txt', 'utf8')
+  .split(/\r?\n/)
+  .map(f => f.trim())
+  .filter(Boolean);
 
 function hasDocstring(node, sourceFile) {
   const comments = ts.getLeadingCommentRanges(sourceFile.text, node.getFullStart());
@@ -11,7 +14,13 @@ function hasDocstring(node, sourceFile) {
 
 files.forEach(file => {
   if (!fs.existsSync(file)) return;
-  if (file.includes('.spec.ts')) return; // ignore tests
+  if (
+    file.includes('.spec.ts') ||
+    file.includes('.spec.tsx') ||
+    file.includes('.test.ts') ||
+    file.includes('.test.tsx') ||
+    file.includes('__tests__')
+  ) return; // ignore tests
   const sourceCode = fs.readFileSync(file, 'utf8');
   const sourceFile = ts.createSourceFile(file, sourceCode, ts.ScriptTarget.Latest, true);
   
@@ -43,7 +52,7 @@ files.forEach(file => {
 
     if (targetNode) {
       // Check if it's exported or if it's a class method (public/private/protected)
-      const isClassMethod = ts.isMethodDeclaration(targetNode);
+      const isClassMethod = ts.isMethodDeclaration(targetNode) && ts.isClassDeclaration(targetNode.parent);
       if (isExported(targetNode) || isClassMethod) {
         // Find the right place to insert.
         // It should be right before the decorators, or before the export keyword.
