@@ -44,7 +44,7 @@ export class MailService {
             HTML: params.html || '',
           }),
         });
-        
+
         if (!res.ok) {
           throw new Error(`Mailpit failed: ${res.status} ${await res.text()}`);
         }
