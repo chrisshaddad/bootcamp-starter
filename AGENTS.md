@@ -10,7 +10,7 @@ Instructions for AI coding assistants (Claude Code, Cursor, Codex, Aider, …). 
 
 - **`apps/web`** (`forward-mena-fe`) — Next.js **16.2.4** + React 19, App Router, bilingual `[lang]` routing (`ar` RTL / `en`), **next-auth v5 (Auth.js) with Keycloak OIDC** (JWT session, no DB adapter), **RTK Query + redux-persist**, Tailwind v4 + shadcn (on `@base-ui/react`), Stripe embedded checkout, **vitest**. **Port 3000.**
 - **`apps/api`** (`forward-mena-be`) — NestJS **11**, **Prisma 7** (`@prisma/adapter-pg`), **passport-jwt + jwks-rsa** (validates Keycloak RS256 JWTs), Stripe 22, nestjs-pino, Swagger at `/docs`, `@nestjs/throttler`, **jest**. **Port 4000.**
-- **`packages/`** — **empty.** There is **no** shared `@repo/contracts` or `@repo/db` package. Types/DTOs live per-app.
+- **`packages/`** — shared internal packages: **`@repo/db`** (`packages/database` — Prisma schema/migrations + generated client, the single source of truth for the DB), **`@repo/contracts`** (shared API types/DTOs consumed by both apps), plus **`@repo/typescript-config`** and **`@repo/eslint-config`**. New cross-app types/DTOs belong in `@repo/contracts`, not per-app.
 - **Tooling** — **npm** (`npm@11.6.2`, `package-lock.json`), Node **24.11.1** (`.nvmrc`), Turborepo 2.
 
 ## Dev workflow
@@ -79,7 +79,7 @@ CI (`.github/workflows/ci.yml`, on PR + push to `main`) runs **lint + check-type
 - Don't call `session.update()` without a payload.
 - Don't query org-scoped data without `OrgScopeService` — cross-org leakage is the #1 risk.
 - Don't hand-edit `apps/web/src/components/ui/`. Don't `console.log` in `apps/api/src/` (use pino).
-- Don't assume shared packages — `packages/` is empty (no `@repo/contracts`).
+- Don't duplicate cross-app types per-app — put shared API types/DTOs in `@repo/contracts`, and import the DB client/types from `@repo/db` (never re-declare them).
 
 <!-- gitnexus:start -->
 
