@@ -119,6 +119,12 @@ export class InstructorsController {
     type: Number,
     description: 'Page size (default 25)',
   })
+  @ApiQuery({
+    name: 'isActive',
+    required: false,
+    type: Boolean,
+    description: 'Filter by active status',
+  })
   @ApiResponse({
     status: 200,
     description: 'Paginated list of instructors',

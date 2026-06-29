@@ -29,14 +29,14 @@ export class InstructorsService {
   /** List all instructors for a gym with pagination */
   async findAll(
     gymId: string,
-    options: { page?: number; limit?: number },
+    options: { page?: number; limit?: number; isActive?: boolean },
   ): Promise<InstructorListResponse> {
-    const { page = 1, limit = 25 } = options;
+    const { page = 1, limit = 25, isActive } = options;
     if (page < 1 || limit < 1) {
       throw new BadRequestException('page and limit must be positive integers');
     }
     const skip = (page - 1) * limit;
-    const where = { gymId };
+    const where = { gymId, ...(isActive !== undefined && { isActive }) };
 
     const [instructors, total] = await Promise.all([
       this.prisma.instructor.findMany({

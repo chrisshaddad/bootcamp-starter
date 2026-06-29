@@ -15,6 +15,7 @@ export const INSTRUCTORS_PAGE_SIZE = 25;
 
 interface UseInstructorsOptions {
   page?: number;
+  isActive?: boolean;
   enabled?: boolean;
 }
 
@@ -30,11 +31,14 @@ interface UseInstructorsReturn {
 export function useInstructors(
   options: UseInstructorsOptions = {},
 ): UseInstructorsReturn {
-  const { page = 1, enabled = true } = options;
+  const { page = 1, isActive, enabled = true } = options;
   const params = new URLSearchParams({
     page: String(page),
     limit: String(INSTRUCTORS_PAGE_SIZE),
   });
+  if (isActive !== undefined) {
+    params.set('isActive', String(isActive));
+  }
   const endpoint = `/instructors?${params.toString()}`;
 
   const {

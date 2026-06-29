@@ -4,10 +4,13 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import { Users, Plus, CheckCircle2, XCircle } from 'lucide-react';
+import { Users, Plus, CheckCircle2, XCircle, Pencil } from 'lucide-react';
 import {
   instructorCreateRequestSchema,
+  instructorUpdateRequestSchema,
   type InstructorCreateRequest,
+  type InstructorUpdateRequest,
+  type InstructorResponse,
 } from '@repo/contracts';
 import {
   useInstructors,
@@ -32,6 +35,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -306,14 +316,185 @@ export function AddInstructorDialog({
   );
 }
 
+// ── Edit instructor dialog ───────────────────────────────────────────────────
+
+export function EditInstructorDialog({
+  instructor,
+  open,
+  onClose,
+}: {
+  instructor: InstructorResponse | null;
+  open: boolean;
+  onClose: () => void;
+}) {
+  const { update } = useInstructor(instructor?.id ?? '', { enabled: false });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<InstructorUpdateRequest>({
+    resolver: zodResolver(instructorUpdateRequestSchema),
+    mode: 'onTouched',
+    values: instructor
+      ? {
+          name: instructor.name,
+          email: instructor.email ?? '',
+          specialization: instructor.specialization ?? '',
+        }
+      : undefined,
+  });
+
+  async function onSubmit(data: InstructorUpdateRequest) {
+    if (!instructor) return;
+    setIsSubmitting(true);
+    try {
+      await update(data);
+      toast.success('Instructor updated successfully');
+      reset();
+      onClose();
+    } catch (err) {
+      const msg =
+        err instanceof ApiError ? err.message : 'Failed to update instructor';
+      toast.error(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  function handleClose() {
+    reset();
+    onClose();
+  }
+
+  return (
+    <Dialog
+      open={open && !!instructor}
+      onOpenChange={(v) => !v && handleClose()}
+    >
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Edit Instructor</DialogTitle>
+          <DialogDescription>
+            Update details for this instructor.
+          </DialogDescription>
+        </DialogHeader>
+
+        <form
+          id="edit-instructor-form"
+          onSubmit={handleSubmit(onSubmit)}
+          noValidate
+          className="space-y-4"
+        >
+          {/* Name */}
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-instructor-name">
+              Name <span className="text-error">*</span>
+            </Label>
+            <Input
+              id="edit-instructor-name"
+              placeholder="e.g. Alice Trainer"
+              aria-invalid={!!errors.name}
+              aria-describedby={
+                errors.name ? 'edit-instructor-name-error' : undefined
+              }
+              {...register('name')}
+            />
+            {errors.name && (
+              <p id="edit-instructor-name-error" className="text-xs text-error">
+                {errors.name.message}
+              </p>
+            )}
+          </div>
+
+          {/* Email */}
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-instructor-email">Email (optional)</Label>
+            <Input
+              id="edit-instructor-email"
+              type="email"
+              placeholder="alice@gym.com"
+              aria-invalid={!!errors.email}
+              aria-describedby={
+                errors.email ? 'edit-instructor-email-error' : undefined
+              }
+              {...register('email')}
+            />
+            {errors.email && (
+              <p
+                id="edit-instructor-email-error"
+                className="text-xs text-error"
+              >
+                {errors.email.message}
+              </p>
+            )}
+          </div>
+
+          {/* Specialization */}
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-instructor-specialization">
+              Specialization (optional)
+            </Label>
+            <Input
+              id="edit-instructor-specialization"
+              placeholder="e.g. Yoga, CrossFit, HIIT"
+              aria-invalid={!!errors.specialization}
+              aria-describedby={
+                errors.specialization
+                  ? 'edit-instructor-specialization-error'
+                  : undefined
+              }
+              {...register('specialization')}
+            />
+            {errors.specialization && (
+              <p
+                id="edit-instructor-specialization-error"
+                className="text-xs text-error"
+              >
+                {errors.specialization.message}
+              </p>
+            )}
+          </div>
+        </form>
+
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={handleClose}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            form="edit-instructor-form"
+            disabled={isSubmitting}
+            className="bg-primary-base hover:bg-primary-400 text-white"
+          >
+            {isSubmitting ? 'Saving…' : 'Save Changes'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ── Page ─────────────────────────────────────────────────────────────────────
+
+type StatusFilter = 'all' | 'ACTIVE' | 'INACTIVE';
 
 export default function InstructorsPage() {
   const [page, setPage] = useState(1);
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [editingInstructor, setEditingInstructor] =
+    useState<InstructorResponse | null>(null);
 
   const { instructors, total, isLoading, error, mutate } = useInstructors({
     page,
+    isActive: statusFilter === 'all' ? undefined : statusFilter === 'ACTIVE',
   });
   const totalPages = Math.ceil((total ?? 0) / INSTRUCTORS_PAGE_SIZE);
 
@@ -339,6 +520,22 @@ export default function InstructorsPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <Select
+            value={statusFilter}
+            onValueChange={(v) => {
+              setStatusFilter(v as StatusFilter);
+              setPage(1);
+            }}
+          >
+            <SelectTrigger className="w-36">
+              <SelectValue placeholder="All statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="ACTIVE">Active</SelectItem>
+              <SelectItem value="INACTIVE">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
           <Button
             id="open-add-instructor-dialog"
             onClick={() => setShowAddDialog(true)}
@@ -410,7 +607,16 @@ export default function InstructorsPage() {
                     <TableCell>
                       <ActiveBadge isActive={instructor.isActive} />
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right space-x-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-2 text-gray-500 hover:text-gray-900"
+                        onClick={() => setEditingInstructor(instructor)}
+                        id={`edit-instructor-${instructor.id}`}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
                       <DeactivateButton
                         id={instructor.id}
                         isActive={instructor.isActive}
@@ -460,6 +666,13 @@ export default function InstructorsPage() {
       <AddInstructorDialog
         open={showAddDialog}
         onClose={() => setShowAddDialog(false)}
+      />
+
+      {/* Edit dialog */}
+      <EditInstructorDialog
+        instructor={editingInstructor}
+        open={!!editingInstructor}
+        onClose={() => setEditingInstructor(null)}
       />
     </div>
   );
