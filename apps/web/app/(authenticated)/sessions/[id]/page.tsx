@@ -42,6 +42,9 @@ import { Pencil } from 'lucide-react';
 import type { SessionResponse } from '@repo/contracts';
 import { sessionUpdateRequestSchema } from '@repo/contracts';
 
+/**
+ * Renders a row of information with an icon, label, and value
+ */
 function InfoRow({
   icon: Icon,
   label,
@@ -89,6 +92,9 @@ const formSchema = sessionUpdateRequestSchema
 
 type FormValues = z.infer<typeof formSchema>;
 
+/**
+ * Dialog component for editing an existing session
+ */
 function EditSessionDialog({
   session,
   open,
@@ -331,6 +337,9 @@ function EditSessionDialog({
   );
 }
 
+/**
+ * Main detail page component for viewing a single session
+ */
 export default function SessionDetailPage() {
   const params = useParams();
   const router = useRouter();

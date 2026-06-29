@@ -102,6 +102,9 @@ const superAdminSecondaryNavItems: NavItem[] = [
   },
 ];
 
+/**
+ * Main sidebar navigation component for authenticated users
+ */
 export function AppSidebar() {
   const pathname = usePathname();
   const { logout } = useAuth();

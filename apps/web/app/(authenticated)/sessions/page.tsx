@@ -61,6 +61,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
+/** Displays a loading skeleton for the sessions page */
 function LoadingSkeleton() {
   return (
     <div className="space-y-6">
@@ -74,6 +75,9 @@ function LoadingSkeleton() {
   );
 }
 
+/**
+ * Dialog component for adding a new session
+ */
 function AddSessionDialog({
   open,
   onClose,
@@ -331,6 +335,7 @@ function AddSessionDialog({
   );
 }
 
+/** Main page component for managing and displaying gym sessions */
 export default function SessionsPage() {
   const [showAddDialog, setShowAddDialog] = useState(false);
 

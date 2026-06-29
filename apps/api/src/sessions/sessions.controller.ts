@@ -42,6 +42,7 @@ import { sessionSchema } from './sessions.swagger';
 export class SessionsController {
   constructor(private readonly sessionsService: SessionsService) {}
 
+  /** Get a list of sessions in the caller's gym */
   @Get()
   @Roles('ORG_ADMIN')
   @ApiOperation({
@@ -71,7 +72,6 @@ export class SessionsController {
   })
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   @ApiResponse({ status: 403, description: 'Insufficient role' })
-  /** Get a list of sessions in the caller's gym */
   async findAll(
     @CurrentUser() user: User,
     @Query(new ZodValidationPipe(sessionListQuerySchema))
@@ -80,6 +80,7 @@ export class SessionsController {
     return this.sessionsService.findAll(user.gymId!, query);
   }
 
+  /** Get a single session by ID */
   @Get(':id')
   @Roles('ORG_ADMIN')
   @ApiOperation({ summary: 'Get a session by ID' })
@@ -92,7 +93,6 @@ export class SessionsController {
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   @ApiResponse({ status: 403, description: 'Insufficient role' })
   @ApiResponse({ status: 404, description: 'Session not found' })
-  /** Get a single session by ID */
   async findOne(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: User,
@@ -100,6 +100,7 @@ export class SessionsController {
     return this.sessionsService.findOne(id, user.gymId!);
   }
 
+  /** Create a new session */
   @Post()
   @Roles('ORG_ADMIN')
   @HttpCode(201)
@@ -132,7 +133,6 @@ export class SessionsController {
   @ApiResponse({ status: 400, description: 'Validation error' })
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   @ApiResponse({ status: 403, description: 'Insufficient role' })
-  /** Create a new session */
   async create(
     @Body(new ZodValidationPipe(sessionCreateRequestSchema))
     dto: SessionCreateRequest,
@@ -141,6 +141,7 @@ export class SessionsController {
     return this.sessionsService.create(user.gymId!, dto);
   }
 
+  /** Update a session's details */
   @Patch(':id')
   @Roles('ORG_ADMIN')
   @ApiOperation({
@@ -170,7 +171,6 @@ export class SessionsController {
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   @ApiResponse({ status: 403, description: 'Insufficient role' })
   @ApiResponse({ status: 404, description: 'Session not found' })
-  /** Update a session's details */
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body(new ZodValidationPipe(sessionUpdateRequestSchema))
@@ -180,6 +180,7 @@ export class SessionsController {
     return this.sessionsService.update(id, user.gymId!, dto);
   }
 
+  /** Cancel a session */
   @Patch(':id/cancel')
   @Roles('ORG_ADMIN')
   @ApiOperation({
@@ -195,7 +196,6 @@ export class SessionsController {
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   @ApiResponse({ status: 403, description: 'Insufficient role' })
   @ApiResponse({ status: 404, description: 'Session not found' })
-  /** Cancel a session */
   async cancel(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: User,
