@@ -13,8 +13,9 @@ datasource db {
 
 enum UserRole {
   SUPER_ADMIN // Manages all organizations (can also accept org registrations)
-  ORG_ADMIN // Manages a single organization (can also invite members to their org)
-  MEMBER
+  ORG_ADMIN // Administers a single library organization
+  LIBRARIAN // Library staff user
+  MEMBER // Library patron with a login account
 
   @@schema("public")
 }
@@ -25,6 +26,24 @@ enum OrganizationStatus {
   REJECTED // Denied by super admin
   SUSPENDED
   INACTIVE
+
+  @@schema("public")
+}
+
+enum LibraryMemberStatus {
+  ACTIVE
+  EXPIRED
+  SUSPENDED
+  PENDING
+  CANCELLED
+
+  @@schema("public")
+}
+
+enum LibraryMembershipType {
+  STUDENT
+  ADULT
+  PREMIUM
 
   @@schema("public")
 }
@@ -42,6 +61,7 @@ model User {
   sessions              Session[]
   magicLinks            MagicLink[]
   profile               UserProfile?
+  libraryMember         LibraryMember?
   organization          Organization?  @relation("OrganizationMembers", fields: [organizationId], references: [id], onDelete: SetNull)
   createdOrganization   Organization?  @relation("OrganizationCreator")
   approvedOrganizations Organization[] @relation("OrganizationApprover")
@@ -118,8 +138,28 @@ model Organization {
   createdBy  User   @relation("OrganizationCreator", fields: [createdById], references: [id])
   approvedBy User?  @relation("OrganizationApprover", fields: [approvedById], references: [id])
   users      User[] @relation("OrganizationMembers")
+  members    LibraryMember[]
 
   @@index([approvedById])
   @@index([status])
+  @@schema("public")
+}
+
+model LibraryMember {
+  id                  String                @id @default(uuid())
+  organizationId      String
+  userId              String?               @unique
+  libraryCardNumber   String
+  membershipType      LibraryMembershipType
+  membershipStatus    LibraryMemberStatus
+  membershipStartDate DateTime              @default(now())
+  membershipEndDate   DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, libraryCardNumber])
+  @@index([organizationId])
+  @@index([userId])
   @@schema("public")
 }

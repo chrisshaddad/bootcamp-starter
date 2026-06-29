@@ -10,6 +10,7 @@ interface OrganizationSeed {
   createdAt: Date;
   approvedAt?: Date;
   adminEmail: string; // Email of the org admin who created this org
+  librarianEmails?: string[];
 }
 
 // Sample organizations with varied statuses
@@ -25,6 +26,7 @@ const ORGANIZATIONS: OrganizationSeed[] = [
     createdAt: new Date('2025-10-15'),
     approvedAt: new Date('2025-10-18'),
     adminEmail: 'admin@techcorp.example.com',
+    librarianEmails: ['librarian@techcorp.example.com'],
   },
   {
     name: 'Green Energy Partners',
@@ -37,6 +39,7 @@ const ORGANIZATIONS: OrganizationSeed[] = [
     createdAt: new Date('2025-11-01'),
     approvedAt: new Date('2025-11-03'),
     adminEmail: 'admin@greenenergy.example.com',
+    librarianEmails: ['librarian@greenenergy.example.com'],
   },
   {
     name: 'HealthFirst Medical Group',
@@ -48,6 +51,7 @@ const ORGANIZATIONS: OrganizationSeed[] = [
     status: 'PENDING',
     createdAt: new Date('2026-01-20'),
     adminEmail: 'admin@healthfirst.example.com',
+    librarianEmails: ['librarian@healthfirst.example.com'],
   },
   {
     name: 'Urban Construction Ltd',
@@ -135,6 +139,13 @@ export async function seedOrganizations(prisma: PrismaClient) {
       where: { id: orgAdmin.id },
       data: { organizationId: createdOrg.id },
     });
+
+    if (org.librarianEmails?.length) {
+      await prisma.user.updateMany({
+        where: { email: { in: org.librarianEmails }, role: 'LIBRARIAN' },
+        data: { organizationId: createdOrg.id },
+      });
+    }
 
     console.log(
       `  Created organization: ${org.name} (${org.status}) - Admin: ${orgAdmin.email}`,
