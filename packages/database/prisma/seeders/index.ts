@@ -1,6 +1,7 @@
 import { prisma } from '../../src/client';
 import { seedSuperAdmins, seedOrgAdmins, seedLibrarians } from './seedUsers';
 import { seedOrganizations } from './seedOrganizations';
+import { seedCatalog } from './seedCatalog';
 import { seedLibraryMembers } from './seedLibraryMembers';
 
 async function main() {
@@ -11,6 +12,9 @@ async function main() {
 
   // Seed organizations (links org admins to their orgs)
   await seedOrganizations(prisma);
+
+  // Seed catalog data after organizations exist
+  await seedCatalog(prisma);
 
   // Seed library members after organizations exist
   await seedLibraryMembers(prisma);
