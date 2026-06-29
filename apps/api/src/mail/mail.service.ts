@@ -33,20 +33,29 @@ export class MailService {
   }): Promise<boolean> {
     try {
       if (!this.isProduction && process.env.MAILPIT_URL) {
-        const res = await fetch(`${process.env.MAILPIT_URL}/api/v1/send`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            To: [{ Email: params.to }],
-            From: { Email: params.from || 'no-reply@bootcamp-starter.local' },
-            Subject: params.subject,
-            Text: params.text || '',
-            HTML: params.html || '',
-          }),
-        });
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5_000);
+        try {
+          const res = await fetch(`${process.env.MAILPIT_URL}/api/v1/send`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            signal: controller.signal,
+            body: JSON.stringify({
+              To: [{ Email: params.to }],
+              From: { Email: params.from || 'no-reply@bootcamp-starter.local' },
+              Subject: params.subject,
+              Text: params.text || '',
+              HTML: params.html || '',
+            }),
+          });
 
-        if (!res.ok) {
-          throw new Error(`Mailpit failed: ${res.status} ${await res.text()}`);
+          if (!res.ok) {
+            throw new Error(
+              `Mailpit failed: ${res.status} ${await res.text()}`,
+            );
+          }
+        } finally {
+          clearTimeout(timeout);
         }
       }
 

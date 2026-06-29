@@ -132,9 +132,9 @@ Run this after `npm run dev` is up.
 
 1. Create instructor "Alice" (active).
 2. Create a GymSession (via seeder or B1 once built) for Alice from 10:00–11:00.
-3. Call `GET /instructors/available?startsAt=<10:00>&endsAt=<11:00>`.
+3. Call `GET /instructors/available?startsAt=2026-10-15T10:00:00Z&endsAt=2026-10-15T11:00:00Z`.
 4. **Alice should NOT appear** (overlapping session).
-5. Call with a non-overlapping window (e.g., 12:00–13:00).
+5. Call with a non-overlapping window (e.g., `startsAt=2026-10-15T12:00:00Z&endsAt=2026-10-15T13:00:00Z`).
 6. **Alice SHOULD appear**.
 7. Deactivate Alice and call again — she should be excluded even in the free window.
 8. Cancel the session (status → CANCELLED) and call with the original window again.

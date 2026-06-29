@@ -75,8 +75,9 @@ export class InstructorsService {
       data: {
         gymId,
         name: dto.name,
-        email: dto.email ?? null,
-        specialization: dto.specialization ?? null,
+        email: dto.email === '' ? null : (dto.email ?? null),
+        specialization:
+          dto.specialization === '' ? null : (dto.specialization ?? null),
       },
       select: INSTRUCTOR_SELECT,
     });
@@ -88,23 +89,26 @@ export class InstructorsService {
     gymId: string,
     dto: InstructorUpdateRequest,
   ): Promise<InstructorResponse> {
-    const existing = await this.prisma.instructor.findFirst({
+    const result = await this.prisma.instructor.updateMany({
       where: { id, gymId },
-    });
-    if (!existing) {
-      throw new NotFoundException(`Instructor with ID ${id} not found`);
-    }
-
-    return this.prisma.instructor.update({
-      where: { id },
       data: {
         ...(dto.name !== undefined && { name: dto.name }),
-        ...(dto.email !== undefined && { email: dto.email }),
+        ...(dto.email !== undefined && {
+          email: dto.email === '' ? null : dto.email,
+        }),
         ...(dto.specialization !== undefined && {
-          specialization: dto.specialization,
+          specialization: dto.specialization === '' ? null : dto.specialization,
         }),
         ...(dto.isActive !== undefined && { isActive: dto.isActive }),
       },
+    });
+
+    if (result.count === 0) {
+      throw new NotFoundException(`Instructor with ID ${id} not found`);
+    }
+
+    return this.prisma.instructor.findUniqueOrThrow({
+      where: { id },
       select: INSTRUCTOR_SELECT,
     });
   }
@@ -119,6 +123,10 @@ export class InstructorsService {
     startsAt: Date,
     endsAt: Date,
   ): Promise<InstructorResponse[]> {
+    if (endsAt <= startsAt) {
+      throw new BadRequestException('endsAt must be after startsAt');
+    }
+
     const instructors = await this.prisma.instructor.findMany({
       where: {
         gymId,

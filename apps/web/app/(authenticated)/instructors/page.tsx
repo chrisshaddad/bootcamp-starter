@@ -77,15 +77,7 @@ function LoadingSkeleton() {
 
 // ── Deactivate toggle ────────────────────────────────────────────────────────
 
-function DeactivateButton({
-  id,
-  isActive,
-  onDone,
-}: {
-  id: string;
-  isActive: boolean;
-  onDone: () => void;
-}) {
+function DeactivateButton({ id, isActive }: { id: string; isActive: boolean }) {
   const { update } = useInstructor(id, { enabled: false });
   const [loading, setLoading] = useState(false);
 
@@ -96,7 +88,6 @@ function DeactivateButton({
       toast.success(
         isActive ? 'Instructor deactivated' : 'Instructor reactivated',
       );
-      onDone();
     } catch (err) {
       const msg =
         err instanceof ApiError ? err.message : 'Failed to update instructor';
@@ -122,14 +113,12 @@ function DeactivateButton({
 
 // ── Add instructor dialog ────────────────────────────────────────────────────
 
-function AddInstructorDialog({
+export function AddInstructorDialog({
   open,
   onClose,
-  onCreated,
 }: {
   open: boolean;
   onClose: () => void;
-  onCreated: () => void;
 }) {
   const { create } = useCreateInstructor();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -150,7 +139,6 @@ function AddInstructorDialog({
       await create(data);
       toast.success('Instructor added successfully');
       reset();
-      onCreated();
       onClose();
     } catch (err) {
       const msg =
@@ -185,7 +173,7 @@ function AddInstructorDialog({
           {/* Name */}
           <div className="space-y-1.5">
             <Label htmlFor="instructor-name">
-              Name <span className="text-red-500">*</span>
+              Name <span className="text-error">*</span>
             </Label>
             <Input
               id="instructor-name"
@@ -193,7 +181,7 @@ function AddInstructorDialog({
               {...register('name')}
             />
             {errors.name && (
-              <p className="text-xs text-red-500">{errors.name.message}</p>
+              <p className="text-xs text-error">{errors.name.message}</p>
             )}
           </div>
 
@@ -207,7 +195,7 @@ function AddInstructorDialog({
               {...register('email')}
             />
             {errors.email && (
-              <p className="text-xs text-red-500">{errors.email.message}</p>
+              <p className="text-xs text-error">{errors.email.message}</p>
             )}
           </div>
 
@@ -222,7 +210,7 @@ function AddInstructorDialog({
               {...register('specialization')}
             />
             {errors.specialization && (
-              <p className="text-xs text-red-500">
+              <p className="text-xs text-error">
                 {errors.specialization.message}
               </p>
             )}
@@ -265,7 +253,7 @@ export default function InstructorsPage() {
   if (error) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-        <p className="text-sm text-red-500">Failed to load instructors.</p>
+        <p className="text-sm text-error">Failed to load instructors.</p>
         <Button variant="outline" size="sm" onClick={() => mutate()}>
           Retry
         </Button>
@@ -358,7 +346,6 @@ export default function InstructorsPage() {
                       <DeactivateButton
                         id={instructor.id}
                         isActive={instructor.isActive}
-                        onDone={mutate}
                       />
                     </TableCell>
                   </TableRow>
@@ -405,7 +392,6 @@ export default function InstructorsPage() {
       <AddInstructorDialog
         open={showAddDialog}
         onClose={() => setShowAddDialog(false)}
-        onCreated={mutate}
       />
     </div>
   );

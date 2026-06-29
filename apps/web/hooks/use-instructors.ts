@@ -8,6 +8,7 @@ import type {
   InstructorResponse,
   InstructorCreateRequest,
   InstructorUpdateRequest,
+  InstructorAvailabilityResponse,
 } from '@repo/contracts';
 
 export const INSTRUCTORS_PAGE_SIZE = 25;
@@ -128,9 +129,8 @@ export function useAvailableInstructors(
     ? `/instructors/available?startsAt=${encodeURIComponent(startsAt!)}&endsAt=${encodeURIComponent(endsAt!)}`
     : null;
 
-  const { data, error, isLoading } = useSWR<{
-    instructors: InstructorResponse[];
-  }>(endpoint);
+  const { data, error, isLoading } =
+    useSWR<InstructorAvailabilityResponse>(endpoint);
 
   return {
     availableInstructors: data?.instructors,
