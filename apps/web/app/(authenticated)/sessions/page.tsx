@@ -1,18 +1,19 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { CalendarDays, Plus, Clock, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { z } from 'zod';
+import { sessionCreateRequestSchema } from '@repo/contracts';
+import Link from 'next/link';
 
-const formSchema = z
-  .object({
-    title: z.string().min(1, 'Title is required'),
-    description: z.string().optional(),
+const formSchema = sessionCreateRequestSchema
+  .omit({ startsAt: true, endsAt: true })
+  .extend({
     date: z.string().min(1, 'Date is required'),
     startTime: z.string().min(1, 'Start time is required'),
     endTime: z.string().min(1, 'End time is required'),
@@ -331,7 +332,6 @@ function AddSessionDialog({
 }
 
 export default function SessionsPage() {
-  const router = useRouter();
   const [showAddDialog, setShowAddDialog] = useState(false);
 
   // We could add state for startDate and endDate filtering
@@ -408,46 +408,46 @@ export default function SessionsPage() {
               </h2>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {groupedSessions![day]!.map((session) => (
-                  <Card
-                    key={session.id}
-                    className={`cursor-pointer hover:border-primary-base transition-colors ${session.status === 'CANCELLED' ? 'opacity-60 bg-gray-50' : ''}`}
-                    onClick={() => router.push(`/sessions/${session.id}`)}
-                  >
-                    <CardHeader className="pb-2">
-                      <div className="flex justify-between items-start">
-                        <CardTitle className="text-base truncate pr-2">
-                          {session.title}
-                        </CardTitle>
-                        {session.status === 'CANCELLED' && (
-                          <span className="text-xs font-semibold text-error bg-error-light px-2 py-0.5 rounded-full">
-                            Cancelled
-                          </span>
-                        )}
-                        {session.status === 'COMPLETED' && (
-                          <span className="text-xs font-semibold text-gray-600 bg-gray-200 px-2 py-0.5 rounded-full">
-                            Completed
-                          </span>
-                        )}
-                      </div>
-                    </CardHeader>
-                    <CardContent className="pt-0 space-y-2">
-                      <div className="flex items-center text-sm text-gray-600">
-                        <Clock className="mr-2 h-4 w-4 shrink-0" />
-                        {format(new Date(session.startsAt), 'h:mm a')} -{' '}
-                        {format(new Date(session.endsAt), 'h:mm a')}
-                      </div>
-                      <div className="flex items-center text-sm text-gray-600">
-                        <Users className="mr-2 h-4 w-4 shrink-0" />
-                        {session._count?.bookings ?? 0} / {session.capacity}{' '}
-                        booked
-                      </div>
-                      <div className="text-sm text-gray-500 mt-2 truncate">
-                        {session.instructor
-                          ? `Instructor: ${session.instructor.name}`
-                          : 'No instructor assigned'}
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <Link href={`/sessions/${session.id}`} key={session.id} className="block outline-none focus-visible:ring-2 focus-visible:ring-primary-base rounded-xl">
+                    <Card
+                      className={`h-full cursor-pointer hover:border-primary-base transition-colors ${session.status === 'CANCELLED' ? 'opacity-60 bg-gray-50' : ''}`}
+                    >
+                      <CardHeader className="pb-2">
+                        <div className="flex justify-between items-start">
+                          <CardTitle className="text-base truncate pr-2">
+                            {session.title}
+                          </CardTitle>
+                          {session.status === 'CANCELLED' && (
+                            <span className="text-xs font-semibold text-error bg-error-light px-2 py-0.5 rounded-full">
+                              Cancelled
+                            </span>
+                          )}
+                          {session.status === 'COMPLETED' && (
+                            <span className="text-xs font-semibold text-gray-600 bg-gray-200 px-2 py-0.5 rounded-full">
+                              Completed
+                            </span>
+                          )}
+                        </div>
+                      </CardHeader>
+                      <CardContent className="pt-0 space-y-2">
+                        <div className="flex items-center text-sm text-gray-600">
+                          <Clock className="mr-2 h-4 w-4 shrink-0" />
+                          {format(new Date(session.startsAt), 'h:mm a')} -{' '}
+                          {format(new Date(session.endsAt), 'h:mm a')}
+                        </div>
+                        <div className="flex items-center text-sm text-gray-600">
+                          <Users className="mr-2 h-4 w-4 shrink-0" />
+                          {session._count?.bookings ?? 0} / {session.capacity}{' '}
+                          booked
+                        </div>
+                        <div className="text-sm text-gray-500 mt-2 truncate">
+                          {session.instructor
+                            ? `Instructor: ${session.instructor.name}`
+                            : 'No instructor assigned'}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
                 ))}
               </div>
             </div>

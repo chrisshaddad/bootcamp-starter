@@ -55,6 +55,7 @@ const orgNavItems: NavItem[] = [
     title: 'Schedule',
     url: '/sessions',
     icon: CalendarDays,
+    roles: ['ORG_ADMIN'],
   },
   {
     title: 'Instructors',

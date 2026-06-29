@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
+import { Logger } from '@nestjs/common';
 import type {
   SessionListResponse,
   SessionResponse,
@@ -42,6 +43,8 @@ const SESSION_SELECT = {
 
 @Injectable()
 export class SessionsService {
+  private readonly logger = new Logger(SessionsService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   /** List all sessions for a gym with optional date filtering */
@@ -171,8 +174,8 @@ export class SessionsService {
       throw new NotFoundException(`Session with ID ${id} not found`);
     }
 
-    const session = await this.prisma.gymSession.findUniqueOrThrow({
-      where: { id },
+    const session = await this.prisma.gymSession.findFirstOrThrow({
+      where: { id, gymId },
       select: SESSION_SELECT,
     });
 
@@ -190,8 +193,8 @@ export class SessionsService {
       throw new NotFoundException(`Session with ID ${id} not found`);
     }
 
-    const session = await this.prisma.gymSession.findUniqueOrThrow({
-      where: { id },
+    const session = await this.prisma.gymSession.findFirstOrThrow({
+      where: { id, gymId },
       select: SESSION_SELECT,
     });
     return session as unknown as SessionResponse;

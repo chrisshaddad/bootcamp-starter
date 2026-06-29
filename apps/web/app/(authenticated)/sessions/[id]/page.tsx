@@ -40,6 +40,7 @@ import {
 } from '@/components/ui/select';
 import { Pencil } from 'lucide-react';
 import type { SessionResponse } from '@repo/contracts';
+import { sessionUpdateRequestSchema } from '@repo/contracts';
 
 function InfoRow({
   icon: Icon,
@@ -61,10 +62,9 @@ function InfoRow({
   );
 }
 
-const formSchema = z
-  .object({
-    title: z.string().min(1, 'Title is required'),
-    description: z.string().optional(),
+const formSchema = sessionUpdateRequestSchema
+  .omit({ startsAt: true, endsAt: true })
+  .extend({
     date: z.string().min(1, 'Date is required'),
     startTime: z.string().min(1, 'Start time is required'),
     endTime: z.string().min(1, 'End time is required'),
