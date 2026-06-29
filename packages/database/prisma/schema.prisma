@@ -1,123 +1,102 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
-  schemas  = ["public", "private"]
 }
 
-enum UserRole {
-  SUPER_ADMIN // Manages all organizations (can also accept org registrations)
-  ORG_ADMIN // Manages a single organization (can also invite members to their org)
-  MEMBER
-
-  @@schema("public")
+enum OrgStatus {
+  PENDING
+  ACTIVE
+  PAST_DUE
+  CANCELED
 }
 
-enum OrganizationStatus {
-  PENDING // Awaiting super admin approval
-  ACTIVE // Approved and operational
-  REJECTED // Denied by super admin
-  SUSPENDED
-  INACTIVE
-
-  @@schema("public")
-}
-
-model User {
-  id             String   @id @default(uuid())
-  email          String   @unique
-  isConfirmed    Boolean  @default(false)
-  name           String
-  role           UserRole @default(MEMBER)
-  organizationId String? // null for SUPER_ADMIN users
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  sessions              Session[]
-  magicLinks            MagicLink[]
-  profile               UserProfile?
-  organization          Organization?  @relation("OrganizationMembers", fields: [organizationId], references: [id], onDelete: SetNull)
-  createdOrganization   Organization?  @relation("OrganizationCreator")
-  approvedOrganizations Organization[] @relation("OrganizationApprover")
-
-  @@index([organizationId])
-  @@schema("public")
-}
-
-model UserProfile {
-  id          String    @id @default(uuid())
-  userId      String    @unique
-  dateOfBirth DateTime?
-  bio         String?   @db.Text
-  phoneNumber String?
-
-  // Address fields
-  street1    String?
-  street2    String?
-  city       String?
-  state      String?
-  postalCode String?
-  country    String?
-
-  profilePictureUrl String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@schema("public")
-}
-
-model Session {
-  id        String   @id
-  userId    String
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@schema("private")
-}
-
-model MagicLink {
-  id        String    @id @default(uuid())
-  userId    String
-  token     String    @unique // securely generated random token, not a UUID
-  expiresAt DateTime
-  usedAt    DateTime?
-  createdAt DateTime  @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([token])
-  @@index([userId])
-  @@schema("private")
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
 }
 
 model Organization {
-  id           String             @id @default(uuid())
-  name         String
-  status       OrganizationStatus @default(PENDING)
-  description  String?            @db.Text
-  website      String?
-  createdById  String             @unique // User can only create one organization
-  approvedById String?
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
-  approvedAt   DateTime? // When super admin approved
+  id               String        @id @default(cuid())
+  name             String
+  status           OrgStatus     @default(PENDING)
+  stripeCustomerId String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  subscription     Subscription?
+  payments         Payment[]
+  events           Event[]
+  buildings        Building[]
+}
 
-  createdBy  User   @relation("OrganizationCreator", fields: [createdById], references: [id])
-  approvedBy User?  @relation("OrganizationApprover", fields: [approvedById], references: [id])
-  users      User[] @relation("OrganizationMembers")
+model Subscription {
+  id                   String       @id @default(cuid())
+  orgId                String       @unique
+  stripeSubscriptionId String?      @unique
+  stripeCustomerId     String?
+  status               String
+  priceId              String?
+  planKey              String?
+  currentPeriodEnd     DateTime?
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+  org                  Organization @relation(fields: [orgId], references: [id])
+}
 
-  @@index([approvedById])
-  @@index([status])
-  @@schema("public")
+model Payment {
+  id              String        @id @default(cuid())
+  orgId           String
+  stripeInvoiceId String?       @unique
+  stripeSessionId String?
+  amount          Decimal       @db.Decimal(12, 2)
+  currency        String
+  status          PaymentStatus @default(PENDING)
+  paidAt          DateTime?
+  rawPayload      Json
+  createdAt       DateTime      @default(now())
+  org             Organization  @relation(fields: [orgId], references: [id])
+}
+
+model Event {
+  id         String       @id @default(cuid())
+  orgId      String
+  actorId    String?
+  action     String
+  targetType String?
+  targetId   String?
+  metadata   Json         @default("{}")
+  createdAt  DateTime     @default(now())
+  org        Organization @relation(fields: [orgId], references: [id])
+}
+
+model Building {
+  id          String               @id @default(cuid())
+  orgId       String
+  name        String
+  address     String?
+  code        String?
+  notes       String?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  org         Organization         @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  assignments BuildingAssignment[]
+
+  @@index([orgId])
+}
+
+model BuildingAssignment {
+  id         String   @id @default(cuid())
+  userId     String
+  orgId      String
+  buildingId String
+  createdAt  DateTime @default(now())
+  building   Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, buildingId])
+  @@index([orgId])
+  @@index([userId])
 }

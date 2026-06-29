@@ -1,15 +1,12 @@
 import { prisma } from '../../src/client';
-import { seedSuperAdmins, seedOrgAdmins } from './seedUsers';
-import { seedOrganizations } from './seedOrganizations';
 
+// No seeders yet for Forward-Mena. Add seed functions here and call them below.
+// Example:
+//   await seedOrganizations(prisma);
 async function main() {
-  // Seed users first (org admins need to exist before organizations)
-  await seedSuperAdmins(prisma);
-  await seedOrgAdmins(prisma);
-
-  // Seed organizations (links org admins to their orgs)
-  await seedOrganizations(prisma);
+  console.log('[@repo/db] No seeders defined yet — nothing to seed.');
 }
+
 main()
   .then(async () => {
     await prisma.$disconnect();
