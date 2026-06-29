@@ -104,9 +104,11 @@ model MagicLink {
 model Organization {
   id           String             @id @default(uuid())
   name         String
+  slug         String             @unique
   status       OrganizationStatus @default(PENDING)
   description  String?            @db.Text
   website      String?
+  logoUrl      String?
   createdById  String             @unique // User can only create one organization
   approvedById String?
   createdAt    DateTime           @default(now())

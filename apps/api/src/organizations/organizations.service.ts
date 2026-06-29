@@ -32,8 +32,10 @@ export class OrganizationsService {
         select: {
           id: true,
           name: true,
+          slug: true,
           status: true,
           website: true,
+          logoUrl: true,
           createdAt: true,
           createdBy: {
             select: {
@@ -64,9 +66,11 @@ export class OrganizationsService {
       select: {
         id: true,
         name: true,
+        slug: true,
         status: true,
         description: true,
         website: true,
+        logoUrl: true,
         createdAt: true,
         updatedAt: true,
         approvedAt: true,
@@ -125,9 +129,11 @@ export class OrganizationsService {
       select: {
         id: true,
         name: true,
+        slug: true,
         status: true,
         description: true,
         website: true,
+        logoUrl: true,
         createdAt: true,
         updatedAt: true,
         approvedAt: true,
@@ -177,9 +183,11 @@ export class OrganizationsService {
       select: {
         id: true,
         name: true,
+        slug: true,
         status: true,
         description: true,
         website: true,
+        logoUrl: true,
         createdAt: true,
         updatedAt: true,
         approvedAt: true,
