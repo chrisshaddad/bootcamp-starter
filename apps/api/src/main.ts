@@ -36,6 +36,7 @@ async function bootstrap() {
     .addTag('members', 'Gym member management (ORG_ADMIN)')
     .addTag('plans', 'Membership plan catalog (ORG_ADMIN)')
     .addTag('subscriptions', 'Member subscription tracking (ORG_ADMIN)')
+    .addTag('instructors', 'Instructor management (ORG_ADMIN)')
     .addTag('sessions', 'Scheduled gym sessions / classes (ORG_ADMIN)')
     .addTag('bookings', 'Session bookings + capacity (ORG_ADMIN)')
     .addTag('checkins', 'Live occupancy + QR check-in (ORG_ADMIN / MEMBER)')

@@ -7,14 +7,14 @@
 > Build phases in order: build → test → merge → next. Don't start a phase until the
 > previous is ✅. Status legend: ⬜ Not started · 🟡 In progress · ✅ Done · 🚧 Blocked.
 
-**Owner:** _unassigned_ · **Status: 0 / 4 done — ⬜ Not started.**
+**Owner:** Antigravity (AI) · **Status: 1 / 4 done — 🟡 In progress.**
 
-| Phase | Scope                                                                           | Dev | Status | Date | Notes / PR |
-| ----- | ------------------------------------------------------------------------------- | --- | ------ | ---- | ---------- |
-| B0    | Instructors CRUD + `GET /instructors/available` (overlap detection)             | —   | ⬜     | —    | —          |
-| B1    | Sessions admin schedule (CRUD + cancel, `_count.bookings`, instructor dropdown) | —   | ⬜     | —    | —          |
-| B2    | Bookings + per-session capacity (reject full/duplicate)                         | —   | ⬜     | —    | —          |
-| B3    | Member "My bookings" portal view (`GET /me/bookings`) — needs A4 shell          | —   | ⬜     | —    | —          |
+| Phase | Scope                                                                           | Dev         | Status | Date       | Notes / PR                          |
+| ----- | ------------------------------------------------------------------------------- | ----------- | ------ | ---------- | ----------------------------------- |
+| B0    | Instructors CRUD + `GET /instructors/available` (overlap detection)             | Antigravity | ✅     | 2026-06-29 | feat/feature-b-phase-b0-instructors |
+| B1    | Sessions admin schedule (CRUD + cancel, `_count.bookings`, instructor dropdown) | —           | ⬜     | —          | —                                   |
+| B2    | Bookings + per-session capacity (reject full/duplicate)                         | —           | ⬜     | —          | —                                   |
+| B3    | Member "My bookings" portal view (`GET /me/bookings`) — needs A4 shell          | —           | ⬜     | —          | —                                   |
 
 > B0 must be ✅ before starting B1 — sessions reference `instructorId` and the
 > "Add session" dialog calls the availability endpoint.
@@ -23,7 +23,16 @@
 
 ## Decisions & deviations
 
-_(none yet)_
+- **B0 (2026-06-29):** `GET /instructors/available` declared _before_ `GET /instructors/:id` in the
+  controller so NestJS matches the literal path `"available"` first and does not treat it as a UUID param.
+  This is the correct NestJS route ordering pattern and is documented in the controller.
+- **B0:** Availability overlap condition: `session.startsAt < endsAt AND session.endsAt > startsAt AND status ≠ CANCELLED`.
+  A cancelled session does NOT block a slot — only active/completed sessions do.
+- **B0:** `INSTRUCTOR_PAGE_SIZE = 25` exported from `use-instructors.ts` (same pattern as `MEMBERS_PAGE_SIZE`).
+- **B0:** No `console.log` in service or controller — `Logger` is not added since no `this.logger` calls are made in the service (convention: only add Logger if actually used).
+- **B0:** Added `instructors` tag to `main.ts` Swagger builder (was not pre-registered).
+- **B0:** Added `docs/TESTING.md` — project-wide testing guide covering setup, magic-link login,
+  tenant isolation, B0 checklist (API + UI + availability), and Feature A regression checklist.
 
 ## Notes for the next agent
 
