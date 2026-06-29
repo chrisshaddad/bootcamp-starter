@@ -1,75 +1,100 @@
-import { PrismaClient, Prisma } from '../../src/generated/prisma/client';
+import { PrismaClient } from '../../src/generated/prisma/client';
 
-const SUPER_ADMINS: Prisma.UserCreateManyInput[] = [
-  {
-    email: 'admin@bootcamp-starter.local',
-    name: 'Super Admin',
-  },
-  // Add more super admins as needed
-];
+export async function seedUsers(prisma: PrismaClient) {
+  console.log('Seeding users and profiles...');
 
-// Org admins - these will be linked to organizations in seedOrganizations.ts
-// The order here matches the order in seedOrganizations.ts
-const ORG_ADMINS: Prisma.UserCreateManyInput[] = [
-  {
-    email: 'admin@techcorp.example.com',
-    name: 'Sarah Chen',
-  },
-  {
-    email: 'admin@greenenergy.example.com',
-    name: 'Michael Green',
-  },
-  {
-    email: 'admin@healthfirst.example.com',
-    name: 'Dr. Emily Watson',
-  },
-  {
-    email: 'admin@urbanconstruction.example.com',
-    name: 'Robert Martinez',
-  },
-  {
-    email: 'admin@fraudulent.example.com',
-    name: 'John Suspicious',
-  },
-  {
-    email: 'admin@datasync.example.com',
-    name: 'Anna Data',
-  },
-  {
-    email: 'mohamadfarhat720@gmail.com',
-    name: 'Mohamad',
-  },
-  
-];
-
-export async function seedSuperAdmins(prisma: PrismaClient) {
-  console.log('Seeding super admins...');
-
-  await prisma.user.createMany({
-    data: SUPER_ADMINS.map((admin) => ({
-      ...admin,
+  // 1. Super Admin
+  await prisma.user.upsert({
+    where: { email: 'admin@bootcamp-starter.local' },
+    update: {},
+    create: {
+      email: 'admin@bootcamp-starter.local',
+      passwordHash: 'dummy_hash',
+      accountType: 'SUPER_ADMIN',
       isConfirmed: true,
-      role: 'SUPER_ADMIN',
-    })),
+    },
   });
 
-  console.log(
-    `Super admins: ${SUPER_ADMINS.map((u) => u.email).join(', ')} seeded.`,
-  );
-}
+  // 2. Developer Users with Profiles
+  const devs = [
+    {
+      email: 'dev.sarah@example.com',
+      publicSlug: 'sarah-chen',
+      displayName: 'Sarah Chen',
+      headline: 'Senior Full Stack Developer',
+      bio: 'Specialist in building highly scalable React & Node.js applications with Turborepos.',
+      location: 'San Francisco, CA',
+    },
+    {
+      email: 'dev.alex@example.com',
+      publicSlug: 'alex-koval',
+      displayName: 'Alex Koval',
+      headline: 'DevOps & Backend Engineer',
+      bio: 'Passionate about Docker orchestration, Postgres performance tuning, and Redis caching systems.',
+      location: 'Berlin, Germany',
+    },
+  ];
 
-export async function seedOrgAdmins(prisma: PrismaClient) {
-  console.log('Seeding org admins...');
+  for (const dev of devs) {
+    await prisma.user.upsert({
+      where: { email: dev.email },
+      update: {},
+      create: {
+        email: dev.email,
+        passwordHash: 'dummy_hash',
+        accountType: 'DEVELOPER',
+        isConfirmed: true,
+        developerProfile: {
+          create: {
+            publicSlug: dev.publicSlug,
+            displayName: dev.displayName,
+            headline: dev.headline,
+            bio: dev.bio,
+            location: dev.location,
+          },
+        },
+      },
+    });
+  }
 
-  await prisma.user.createMany({
-    data: ORG_ADMINS.map((admin) => ({
-      ...admin,
-      isConfirmed: true,
-      role: 'ORG_ADMIN',
-    })),
-  });
+  // 3. Hiring Managers with Profiles
+  const hiringManagers = [
+    {
+      email: 'hiring.watson@example.com',
+      organizationName: 'HealthFirst Medical Group',
+      organizationType: 'COMPANY' as const,
+      jobTitle: 'VP of Engineering',
+      organizationWebsiteUrl: 'https://healthfirst.example.com',
+    },
+    {
+      email: 'hiring.green@example.com',
+      organizationName: 'Green Energy Partners',
+      organizationType: 'AGENCY' as const,
+      jobTitle: 'Lead Recruiter',
+      organizationWebsiteUrl: 'https://greenenergy.example.com',
+    },
+  ];
 
-  console.log(
-    `Org admins: ${ORG_ADMINS.map((u) => u.email).join(', ')} seeded.`,
-  );
+  for (const hm of hiringManagers) {
+    await prisma.user.upsert({
+      where: { email: hm.email },
+      update: {},
+      create: {
+        email: hm.email,
+        passwordHash: 'dummy_hash',
+        accountType: 'HIRING',
+        isConfirmed: true,
+        hiringProfile: {
+          create: {
+            organizationName: hm.organizationName,
+            organizationType: hm.organizationType,
+            jobTitle: hm.jobTitle,
+            organizationWebsiteUrl: hm.organizationWebsiteUrl,
+          },
+        },
+      },
+    });
+  }
+
+  console.log('Users and profiles seeded.');
 }

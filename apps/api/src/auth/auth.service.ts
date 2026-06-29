@@ -23,9 +23,13 @@ export class AuthService {
    * Creates a magic link token and queues an email to be sent
    */
   async requestMagicLink(email: string): Promise<{ success: boolean }> {
-    // Find user by email
+    // Find user by email and include profiles for names
     const user = await this.prisma.user.findUnique({
       where: { email: email.toLowerCase() },
+      include: {
+        developerProfile: true,
+        hiringProfile: true,
+      },
     });
 
     if (!user) {
@@ -59,6 +63,14 @@ export class AuthService {
       },
     });
 
+    // Resolve a user display name dynamically
+    let userName = 'User';
+    if (user.developerProfile?.displayName) {
+      userName = user.developerProfile.displayName;
+    } else if (user.hiringProfile?.organizationName) {
+      userName = user.hiringProfile.organizationName;
+    }
+
     // Build magic link URL
     const appUrl = process.env.APP_URL;
     const magicLinkUrl = `${appUrl}/auth/verify?token=${token}`;
@@ -67,7 +79,7 @@ export class AuthService {
     await this.mailQueue.add(MAIL_JOBS.SEND_MAGIC_LINK, {
       email: user.email,
       magicLink: magicLinkUrl,
-      userName: user.name,
+      userName: userName,
     });
 
     this.logger.log(`Magic link queued for user ${user.id}`);
@@ -82,22 +94,27 @@ export class AuthService {
     sessionId: string;
     user: { id: string; email: string; name: string; role: string };
   }> {
-    // Find the magic link
+    // Find the magic link and load associated profiles
     const magicLink = await this.prisma.magicLink.findUnique({
       where: { token },
-      include: { user: true },
+      include: {
+        user: {
+          include: {
+            developerProfile: true,
+            hiringProfile: true,
+          },
+        },
+      },
     });
 
     if (!magicLink) {
       throw new NotFoundException('Invalid or expired magic link');
     }
 
-    // Check if already used
     if (magicLink.usedAt) {
       throw new NotFoundException('This magic link has already been used');
     }
 
-    // Check if expired
     if (magicLink.expiresAt < new Date()) {
       throw new NotFoundException('This magic link has expired');
     }
@@ -121,13 +138,29 @@ export class AuthService {
 
     this.logger.log(`User ${magicLink.userId} authenticated via magic link`);
 
+    // Dynamically map display properties to maintain compatibility with client contracts
+    let name = 'User';
+    if (magicLink.user.developerProfile?.displayName) {
+      name = magicLink.user.developerProfile.displayName;
+    } else if (magicLink.user.hiringProfile?.organizationName) {
+      name = magicLink.user.hiringProfile.organizationName;
+    }
+
+    // Maps your new AccountType to the client package expected roles
+    let role = 'MEMBER';
+    if (magicLink.user.accountType === 'SUPER_ADMIN') {
+      role = 'SUPER_ADMIN';
+    } else if (magicLink.user.accountType === 'HIRING') {
+      role = 'ORG_ADMIN';
+    }
+
     return {
       sessionId,
       user: {
         id: magicLink.user.id,
         email: magicLink.user.email,
-        name: magicLink.user.name,
-        role: magicLink.user.role,
+        name,
+        role,
       },
     };
   }
@@ -148,12 +181,25 @@ export class AuthService {
       return null;
     }
 
+    let name = 'User';
+    if (user.developerProfile?.displayName) {
+      name = user.developerProfile.displayName;
+    } else if (user.hiringProfile?.organizationName) {
+      name = user.hiringProfile.organizationName;
+    }
+
+    let role = 'MEMBER';
+    if (user.accountType === 'SUPER_ADMIN') {
+      role = 'SUPER_ADMIN';
+    } else if (user.accountType === 'HIRING') {
+      role = 'ORG_ADMIN';
+    }
+
     return {
       id: user.id,
       email: user.email,
-      name: user.name,
-      role: user.role,
-      organizationId: user.organizationId,
+      name,
+      role,
       isConfirmed: user.isConfirmed,
     };
   }

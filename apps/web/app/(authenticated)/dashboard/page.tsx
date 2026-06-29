@@ -21,8 +21,8 @@ export default function DashboardPage() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">
           Welcome,{' '}
-          {user?.profile?.firstName ||
-            user?.name ||
+          {user?.developerProfile?.displayName ||
+            user?.hiringProfile?.organizationName ||
             user?.email?.split('@')[0] ||
             'User'}
           !
@@ -46,9 +46,11 @@ export default function DashboardPage() {
                 <dd className="mt-1 text-sm text-gray-900">{user.email}</dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-gray-500">Role</dt>
+                <dt className="text-sm font-medium text-gray-500">
+                  Account Type
+                </dt>
                 <dd className="mt-1 text-sm capitalize text-gray-900">
-                  {user.role.toLowerCase().replace('_', ' ')}
+                  {user.accountType.toLowerCase().replace('_', ' ')}
                 </dd>
               </div>
             </dl>

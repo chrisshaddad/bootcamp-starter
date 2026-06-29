@@ -1,23 +1,36 @@
 import { z } from 'zod';
-import { userRoleSchema } from './user-role.schema';
+import { accountTypeSchema } from './user-role.schema';
 
-// User profile (optional nested object)
-const userProfileSchema = z.object({
-  firstName: z.string().nullable(),
-  lastName: z.string().nullable(),
-  phone: z.string().nullable(),
-  avatarUrl: z.string().nullable(),
-  dateOfBirth: z.string().nullable(),
+export const developerProfileSchema = z.object({
+  id: z.string().uuid(),
+  publicSlug: z.string(),
+  displayName: z.string(),
+  headline: z.string().nullable().optional(),
+  bio: z.string().nullable().optional(),
+  location: z.string().nullable().optional(),
+  profilePictureUrl: z.string().nullable().optional(),
+  githubUsername: z.string().nullable().optional(),
 });
 
-// Response from /auth/me endpoint
+export const hiringProfileSchema = z.object({
+  id: z.string().uuid(),
+  organizationName: z.string(),
+  organizationType: z.enum([
+    'COMPANY',
+    'AGENCY',
+    'INDIVIDUAL',
+    'FREELANCE_CLIENT',
+  ]),
+  jobTitle: z.string().nullable().optional(),
+});
+
 export const userResponseSchema = z.object({
-  id: z.uuid(),
-  email: z.email(),
-  name: z.string().nullable(),
-  role: userRoleSchema,
-  organizationId: z.uuid().nullable(),
+  id: z.string().uuid(),
+  email: z.string().email(),
+  accountType: accountTypeSchema,
   isConfirmed: z.boolean(),
-  profile: userProfileSchema.nullable().optional(),
+  developerProfile: developerProfileSchema.nullable().optional(),
+  hiringProfile: hiringProfileSchema.nullable().optional(),
 });
+
 export type UserResponse = z.infer<typeof userResponseSchema>;
