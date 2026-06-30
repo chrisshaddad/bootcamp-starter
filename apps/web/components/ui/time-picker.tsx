@@ -28,9 +28,9 @@ interface TimePickerProps {
 export function TimePicker({ value, onChange, disabled }: TimePickerProps) {
   return (
     <Select value={value} onValueChange={onChange} disabled={disabled}>
-      <SelectTrigger className="w-full bg-white">
+      <SelectTrigger className="w-full">
         <div className="flex items-center">
-          <Clock className="mr-2 h-4 w-4 text-gray-500 shrink-0" />
+          <Clock className="mr-2 h-4 w-4 text-muted-foreground shrink-0" />
           <SelectValue placeholder="Select time" />
         </div>
       </SelectTrigger>
