@@ -8,7 +8,7 @@ import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import type { User } from '@repo/db';
 import { SessionService } from '../session.service';
-import { IS_PUBLIC_KEY } from '../decorators';
+import { ALLOW_PENDING_KEY, IS_PUBLIC_KEY } from '../decorators';
 
 const SESSION_COOKIE_NAME = 'bootcamp_starter_session';
 
@@ -49,11 +49,24 @@ export class AuthGuard implements CanActivate {
     }
 
     // Status enforcement on every request: a session stays valid only while the
-    // account can authenticate. SUSPENDED/INACTIVE are hard-blocked even if they
-    // hold a live session. PENDING is allowed through so invited staff can reach
-    // the set-password step that completes onboarding.
+    // account can authenticate. SUSPENDED/INACTIVE are always hard-blocked even
+    // if they hold a live session.
     if (user.status === 'SUSPENDED' || user.status === 'INACTIVE') {
       throw new UnauthorizedException('This account is no longer active');
+    }
+
+    // PENDING (invited-but-not-yet-activated) accounts are default-denied so
+    // they cannot reach normal handlers. Onboarding routes — set-password —
+    // opt back in explicitly via @AllowPending().
+    if (user.status === 'PENDING') {
+      const allowPending = this.reflector.getAllAndOverride<boolean>(
+        ALLOW_PENDING_KEY,
+        [context.getHandler(), context.getClass()],
+      );
+
+      if (!allowPending) {
+        throw new UnauthorizedException('Account onboarding is not complete');
+      }
     }
 
     // Attach user and session ID to request for later use

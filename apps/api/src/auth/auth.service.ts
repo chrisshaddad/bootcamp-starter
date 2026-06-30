@@ -8,7 +8,7 @@ import {
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { createHash, randomBytes } from 'crypto';
-import type { User } from '@repo/db';
+import { Prisma, type User } from '@repo/db';
 import type { UserResponse } from '@repo/contracts';
 import { PrismaService } from '../database/prisma.service';
 import { SessionService } from './session.service';
@@ -43,15 +43,13 @@ export class AuthService {
     });
 
     if (!user) {
-      this.logger.warn(
-        `Magic link requested for non-existent email: ${normalizedEmail}`,
-      );
+      this.logger.warn('Magic link requested for non-existent email');
       return { success: true };
     }
 
     if (!this.canAuthenticate(user)) {
       this.logger.warn(
-        `Magic link requested for ${user.status} account ${user.id}; not sending`,
+        'Magic link requested for a non-authenticatable account; not sending',
       );
       return { success: true };
     }
@@ -90,10 +88,12 @@ export class AuthService {
 
     this.assertCanAuthenticate(magicLink.user);
 
-    // Atomically consume the link: only mark used if it is still unused. This
-    // closes the race where the same token is verified twice concurrently.
+    // Atomically consume the link: only mark used if it is still unused and not
+    // yet expired. This closes both the race where the same token is verified
+    // twice concurrently and the one where it expires between the checks above
+    // and this write.
     const consumed = await this.prisma.magicLink.updateMany({
-      where: { id: magicLink.id, usedAt: null },
+      where: { id: magicLink.id, usedAt: null, expiresAt: { gt: new Date() } },
       data: { usedAt: new Date() },
     });
 
@@ -162,20 +162,36 @@ export class AuthService {
     });
 
     if (!existing) {
-      await this.prisma.user.create({
-        data: {
-          firstName: input.firstName,
-          lastName: input.lastName,
-          email,
-          phoneNumber: input.phoneNumber ?? null,
-          role: 'CLIENT',
-          status: 'ACTIVE',
-        },
-      });
-      this.logger.log(`New CLIENT registered: ${email}`);
+      try {
+        await this.prisma.user.create({
+          data: {
+            firstName: input.firstName,
+            lastName: input.lastName,
+            email,
+            phoneNumber: input.phoneNumber ?? null,
+            role: 'CLIENT',
+            status: 'ACTIVE',
+          },
+        });
+        this.logger.log('New CLIENT registered');
+      } catch (error) {
+        // A concurrent signup for the same email can win the race between the
+        // findUnique above and this create, raising a unique-constraint
+        // violation. Treat it like the pre-existing case: still send a link.
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2002'
+        ) {
+          this.logger.warn(
+            'Concurrent signup for the same email; sending login link instead',
+          );
+        } else {
+          throw error;
+        }
+      }
     } else {
       this.logger.warn(
-        `Signup for existing email ${email}; sending login link instead`,
+        'Signup for an existing email; sending login link instead',
       );
     }
 

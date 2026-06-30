@@ -1,5 +1,6 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { createHash } from 'crypto';
+import { Prisma } from '@repo/db';
 import { AuthService } from './auth.service';
 import { SessionService } from './session.service';
 import { PasswordService } from './password.service';
@@ -165,7 +166,13 @@ describe('AuthService', () => {
       const result = await service.verifyMagicLink(rawToken);
 
       expect(prisma.magicLink.updateMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { id: 'ml-1', usedAt: null } }),
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: 'ml-1',
+            usedAt: null,
+            expiresAt: { gt: expect.any(Date) },
+          }),
+        }),
       );
       expect(sessionService.createSession).toHaveBeenCalledWith(ACTIVE_USER.id);
       expect(result.sessionId).toEqual('sess-1');
@@ -293,6 +300,43 @@ describe('AuthService', () => {
         }),
       ).resolves.toEqual({ success: true });
       expect(prisma.user.create).not.toHaveBeenCalled();
+    });
+
+    it('treats a concurrent duplicate (P2002) as success and still sends a link', async () => {
+      // Lookup misses (race), but the create loses the unique-constraint race.
+      prisma.user.findUnique
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ ...ACTIVE_USER });
+      prisma.user.create.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+          code: 'P2002',
+          clientVersion: 'test',
+        }),
+      );
+      prisma.magicLink.updateMany.mockResolvedValue({ count: 0 });
+      prisma.magicLink.create.mockResolvedValue({});
+
+      await expect(
+        service.signup({
+          firstName: 'Jane',
+          lastName: 'Doe',
+          email: ACTIVE_USER.email,
+        }),
+      ).resolves.toEqual({ success: true });
+      expect(mailQueue.add).toHaveBeenCalled();
+    });
+
+    it('rethrows non-duplicate create errors', async () => {
+      prisma.user.findUnique.mockResolvedValue(null);
+      prisma.user.create.mockRejectedValue(new Error('db is down'));
+
+      await expect(
+        service.signup({
+          firstName: 'Jane',
+          lastName: 'Doe',
+          email: ACTIVE_USER.email,
+        }),
+      ).rejects.toThrow('db is down');
     });
   });
 

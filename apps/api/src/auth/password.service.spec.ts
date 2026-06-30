@@ -36,4 +36,20 @@ describe('PasswordService', () => {
   it('verifyAgainstDummy always resolves to false', async () => {
     await expect(service.verifyAgainstDummy('anything')).resolves.toBe(false);
   });
+
+  it('retries dummy-hash init after a failure instead of caching the rejection', async () => {
+    const argon2 = require('argon2');
+    const hashSpy = jest
+      .spyOn(argon2, 'hash')
+      .mockRejectedValueOnce(new Error('argon2 unavailable'));
+
+    // First call: initialization fails and propagates.
+    await expect(service.verifyAgainstDummy('anything')).rejects.toThrow(
+      'argon2 unavailable',
+    );
+
+    // Spy restored -> next call must re-initialize (not replay the rejection).
+    hashSpy.mockRestore();
+    await expect(service.verifyAgainstDummy('anything')).resolves.toBe(false);
+  });
 });

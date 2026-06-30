@@ -4,7 +4,7 @@ import { z } from 'zod';
 // Password is validated for presence only — strength rules are enforced when
 // a password is *set*, not when an existing one is checked.
 export const passwordLoginRequestSchema = z.object({
-  email: z.email().transform((email) => email.toLowerCase().trim()),
+  email: z.string().trim().toLowerCase().pipe(z.email()),
   password: z.string().min(1, 'Password is required'),
 });
 export type PasswordLoginRequest = z.infer<typeof passwordLoginRequestSchema>;

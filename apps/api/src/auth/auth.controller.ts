@@ -12,7 +12,7 @@ import {
 import { Throttle } from '@nestjs/throttler';
 import type { CookieOptions, Response } from 'express';
 import { AuthService } from './auth.service';
-import { CurrentUser, Public } from './decorators';
+import { AllowPending, CurrentUser, Public } from './decorators';
 import {
   SESSION_COOKIE_NAME,
   type AuthenticatedRequest,
@@ -33,7 +33,7 @@ import {
 import type { User } from '@repo/db';
 import { ZodValidationPipe } from '../common/pipes';
 
-const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 function sessionCookieOptions(maxAgeMs?: number): CookieOptions {
   return {
@@ -112,6 +112,7 @@ export class AuthController {
     return this.authService.signup(body);
   }
 
+  @AllowPending()
   @Post('set-password')
   @HttpCode(HttpStatus.OK)
   async setPassword(

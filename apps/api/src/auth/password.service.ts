@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import * as argon2 from 'argon2';
 
 /**
@@ -11,6 +11,8 @@ import * as argon2 from 'argon2';
  */
 @Injectable()
 export class PasswordService {
+  private readonly logger = new Logger(PasswordService.name);
+
   // argon2id with parameters above OWASP minimums (19 MiB, 2 iterations).
   private readonly options: argon2.Options = {
     type: argon2.argon2id,
@@ -30,8 +32,16 @@ export class PasswordService {
   async verify(hash: string, password: string): Promise<boolean> {
     try {
       return await argon2.verify(hash, password);
-    } catch {
-      // Malformed/corrupt hash — treat as a failed verification, never throw.
+    } catch (error) {
+      // Malformed/corrupt hash or argon2 failure — treat as a failed
+      // verification, never throw. Log a sanitized warning so this is
+      // distinguishable from an ordinary wrong-password result during incident
+      // response. Never log the hash or password.
+      this.logger.warn(
+        `Password verification failed unexpectedly: ${
+          error instanceof Error ? error.message : 'unknown error'
+        }`,
+      );
       return false;
     }
   }
@@ -42,10 +52,15 @@ export class PasswordService {
    */
   async verifyAgainstDummy(password: string): Promise<false> {
     if (!this.dummyHashPromise) {
-      this.dummyHashPromise = argon2.hash(
-        'argon2-dummy-password',
-        this.options,
-      );
+      // Don't cache a rejected promise: if initialization fails, clear the
+      // cache so the next call retries instead of replaying the rejection
+      // forever (which would turn this path into permanent 500s).
+      this.dummyHashPromise = argon2
+        .hash('argon2-dummy-password', this.options)
+        .catch((error) => {
+          this.dummyHashPromise = null;
+          throw error;
+        });
     }
     const dummy = await this.dummyHashPromise;
     await this.verify(dummy, password);
