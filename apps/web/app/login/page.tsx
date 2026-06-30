@@ -7,7 +7,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import { AuthShell } from '@/components/auth-shell';
-import { PasswordInput } from '@/components/password-input';
 import { loginFormSchema, type LoginFormValues } from '@/components/auth-schemas';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,7 +28,7 @@ export default function LoginPage() {
     setIsSubmitting(true);
     // Mock submit — no backend integration yet.
     await new Promise((resolve) => setTimeout(resolve, 800));
-    toast.success('Logged in (mock) — no backend connected yet.');
+    toast.success('Magic link sent (mock) — check your email.');
     reset();
     setIsSubmitting(false);
   };
@@ -37,7 +36,7 @@ export default function LoginPage() {
   return (
     <AuthShell
       title="Welcome back"
-      description="Log in to continue to Deployfolio."
+      description="Enter your email and we'll send you a magic link to log in."
       footer={
         <>
           Don&apos;t have an account?{' '}
@@ -62,21 +61,6 @@ export default function LoginPage() {
           )}
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
-          <PasswordInput
-            id="password"
-            placeholder="••••••••"
-            aria-invalid={!!errors.password}
-            {...register('password')}
-          />
-          {errors.password && (
-            <p className="text-sm text-destructive">
-              {errors.password.message}
-            </p>
-          )}
-        </div>
-
         <Button
           type="submit"
           className="h-12 w-full bg-blue text-white hover:bg-blue/90"
@@ -85,10 +69,10 @@ export default function LoginPage() {
           {isSubmitting ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              Logging in...
+              Sending magic link...
             </>
           ) : (
-            'Log in'
+            'Send magic link'
           )}
         </Button>
       </form>
