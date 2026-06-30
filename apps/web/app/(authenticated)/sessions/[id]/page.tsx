@@ -235,6 +235,7 @@ function EditSessionDialog({
             <Textarea
               id="session-description"
               rows={3}
+              maxLength={500}
               {...form.register('description')}
             />
             <div className="flex justify-between items-center">

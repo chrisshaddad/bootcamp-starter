@@ -223,6 +223,7 @@ function AddSessionDialog({
               id="session-description"
               placeholder="A brief description of the class"
               rows={3}
+              maxLength={500}
               {...form.register('description')}
             />
             <div className="flex justify-between items-center">
