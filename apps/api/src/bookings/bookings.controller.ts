@@ -15,8 +15,9 @@ import {
   ApiOperation,
   ApiResponse,
   ApiParam,
-  ApiQuery,
   ApiBody,
+  ApiQuery,
+  getSchemaPath,
 } from '@nestjs/swagger';
 import { BookingsService } from './bookings.service';
 import { Roles, CurrentUser } from '../auth/decorators';
@@ -25,8 +26,12 @@ import type {
   BookingListResponse,
   BookingResponse,
   BookingCreateRequest,
+  BookingListRequest,
 } from '@repo/contracts';
-import { bookingCreateRequestSchema } from '@repo/contracts';
+import {
+  bookingCreateRequestSchema,
+  bookingListRequestSchema,
+} from '@repo/contracts';
 import { ZodValidationPipe } from '../common/pipes';
 import { bookingSchema } from './bookings.swagger';
 
@@ -48,20 +53,23 @@ export class BookingsController {
     required: true,
     type: String,
     description: 'Session UUID to list bookings for',
+    schema: { format: 'uuid' },
   })
   @ApiResponse({
     status: 200,
     description: 'List of bookings',
     schema: { type: 'array', items: bookingSchema },
   })
+  @ApiResponse({ status: 400, description: 'Validation error' })
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   @ApiResponse({ status: 403, description: 'Insufficient role' })
   @ApiResponse({ status: 404, description: 'Session not found' })
   async findAll(
-    @Query('sessionId', ParseUUIDPipe) sessionId: string,
+    @Query(new ZodValidationPipe(bookingListRequestSchema))
+    query: BookingListRequest,
     @CurrentUser() user: User,
   ): Promise<BookingListResponse> {
-    return this.bookingsService.findAllBySession(user.gymId!, sessionId);
+    return this.bookingsService.findAllBySession(user.gymId!, query.sessionId);
   }
 
   /** Register a member to a session */
@@ -73,16 +81,7 @@ export class BookingsController {
     description:
       'Registers a member for a session. Rejects if session is full, cancelled, or member is already booked.',
   })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      required: ['sessionId', 'memberId'],
-      properties: {
-        sessionId: { type: 'string', format: 'uuid' },
-        memberId: { type: 'string', format: 'uuid' },
-      },
-    },
-  })
+  @ApiBody({ schema: { $ref: getSchemaPath(bookingCreateRequestSchema) } })
   @ApiResponse({
     status: 201,
     description: 'Booking created',

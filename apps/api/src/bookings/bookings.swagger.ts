@@ -1,6 +1,16 @@
 /** Shared inline JSON Schema for a booking, reused across Swagger @ApiResponse decorators */
 export const bookingSchema = {
   type: 'object',
+  required: [
+    'id',
+    'gymId',
+    'sessionId',
+    'memberId',
+    'status',
+    'createdAt',
+    'updatedAt',
+    'member',
+  ],
   properties: {
     id: { type: 'string', format: 'uuid' },
     gymId: { type: 'string', format: 'uuid' },
@@ -11,6 +21,7 @@ export const bookingSchema = {
     updatedAt: { type: 'string', format: 'date-time' },
     member: {
       type: 'object',
+      required: ['id', 'name', 'email'],
       properties: {
         id: { type: 'string', format: 'uuid' },
         name: { type: 'string' },

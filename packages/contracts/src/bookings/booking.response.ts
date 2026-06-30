@@ -2,15 +2,11 @@ import { z } from 'zod';
 import { dateSchema } from '../common';
 
 /** Allowed booking status values */
-export const bookingStatusSchema = z.enum([
-  'BOOKED',
-  'CHECKED_IN',
-  'CANCELLED',
-]);
+const bookingStatusSchema = z.enum(['BOOKED', 'CHECKED_IN', 'CANCELLED']);
 export type BookingStatus = z.infer<typeof bookingStatusSchema>;
 
 /** Embedded member summary returned inside a booking response */
-export const bookingMemberSchema = z.object({
+const bookingMemberSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
   email: z.string().email(),
