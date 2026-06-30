@@ -11,6 +11,8 @@ import {
   Users,
   User,
   XCircle,
+  Plus,
+  Minus,
 } from 'lucide-react';
 import { useSession } from '@/hooks/use-sessions';
 import { ApiError } from '@/lib/api';
@@ -40,6 +42,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Pencil } from 'lucide-react';
+import { DatePicker } from '@/components/ui/date-picker';
+import { TimePicker } from '@/components/ui/time-picker';
 import type { SessionResponse } from '@repo/contracts';
 import { sessionUpdateRequestSchema } from '@repo/contracts';
 
@@ -163,7 +167,6 @@ function EditSessionDialog({
   const endTimeVal = form.watch('endTime');
   const descriptionVal = form.watch('description') ?? '';
 
-  /** Combine a date string and a time string into an ISO datetime string */
   const getIsoString = (d: string, t: string) => {
     if (!d || !t) return null;
     try {
@@ -269,14 +272,19 @@ function EditSessionDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="session-date">
+            <Label>
               Date <span className="text-error">*</span>
             </Label>
-            <Input
-              id="session-date"
-              type="date"
-              min={MIN_DATE}
-              {...form.register('date')}
+            <Controller
+              control={form.control}
+              name="date"
+              render={({ field }) => (
+                <DatePicker
+                  value={field.value}
+                  onChange={field.onChange}
+                  minDate={new Date(MIN_DATE)}
+                />
+              )}
             />
             {form.formState.errors.date && (
               <p className="text-xs text-error">
@@ -287,23 +295,32 @@ function EditSessionDialog({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label htmlFor="session-start">
+              <Label>
                 Start Time <span className="text-error">*</span>
               </Label>
-              <Input
-                id="session-start"
-                type="time"
-                {...form.register('startTime')}
+              <Controller
+                control={form.control}
+                name="startTime"
+                render={({ field }) => (
+                  <TimePicker value={field.value} onChange={field.onChange} />
+                )}
               />
+              {form.formState.errors.startTime && (
+                <p className="text-xs text-error">
+                  {form.formState.errors.startTime.message}
+                </p>
+              )}
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="session-end">
+              <Label>
                 End Time <span className="text-error">*</span>
               </Label>
-              <Input
-                id="session-end"
-                type="time"
-                {...form.register('endTime')}
+              <Controller
+                control={form.control}
+                name="endTime"
+                render={({ field }) => (
+                  <TimePicker value={field.value} onChange={field.onChange} />
+                )}
               />
               {form.formState.errors.endTime && (
                 <p className="text-xs text-error">
@@ -317,11 +334,54 @@ function EditSessionDialog({
             <Label htmlFor="session-capacity">
               Capacity <span className="text-error">*</span>
             </Label>
-            <Input
-              id="session-capacity"
-              type="number"
-              {...form.register('capacity', { valueAsNumber: true })}
-            />
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => {
+                  const current = form.getValues('capacity') || 1;
+                  form.setValue('capacity', Math.max(1, current - 1), {
+                    shouldValidate: true,
+                  });
+                }}
+              >
+                <Minus className="h-4 w-4" />
+              </Button>
+              <Input
+                id="session-capacity"
+                type="number"
+                className="w-24 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                {...form.register('capacity', { valueAsNumber: true })}
+                onKeyDown={(e) => {
+                  if (
+                    !/^[0-9]$/.test(e.key) &&
+                    ![
+                      'Backspace',
+                      'ArrowLeft',
+                      'ArrowRight',
+                      'Tab',
+                      'Delete',
+                    ].includes(e.key)
+                  ) {
+                    e.preventDefault();
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => {
+                  const current = form.getValues('capacity') || 0;
+                  form.setValue('capacity', current + 1, {
+                    shouldValidate: true,
+                  });
+                }}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
             {form.formState.errors.capacity && (
               <p className="text-xs text-error">
                 {form.formState.errors.capacity.message}
