@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-export const authResponseSchema = z.object({
-  user: z.object({
+export const authResponseSchema = z.strictObject({
+  user: z.strictObject({
     id: z.string().uuid(),
     email: z.string().email(),
     name: z.string(),
