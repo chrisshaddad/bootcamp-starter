@@ -24,7 +24,6 @@
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
-    "@nestjs/throttler": "^6.5.0",
     "@repo/contracts": "*",
     "@repo/db": "*",
     "argon2": "^0.44.0",
