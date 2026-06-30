@@ -1,3 +1,4 @@
+import argon2 from 'argon2';
 import { PasswordService } from './password.service';
 
 describe('PasswordService', () => {
@@ -38,7 +39,6 @@ describe('PasswordService', () => {
   });
 
   it('retries dummy-hash init after a failure instead of caching the rejection', async () => {
-    const argon2 = require('argon2');
     const hashSpy = jest
       .spyOn(argon2, 'hash')
       .mockRejectedValueOnce(new Error('argon2 unavailable'));
