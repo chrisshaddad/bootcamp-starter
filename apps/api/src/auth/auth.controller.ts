@@ -19,8 +19,12 @@ import {
 import {
   magicLinkRequestSchema,
   magicLinkVerifyRequestSchema,
+  loginRequestSchema,
+  signupRequestSchema,
   type MagicLinkRequest,
   type MagicLinkVerifyRequest,
+  type LoginRequest,
+  type SignupRequest,
   type UserResponse,
 } from '@repo/contracts';
 import { ZodValidationPipe } from '../common/pipes';
@@ -50,6 +54,48 @@ export class AuthController {
     const { sessionId, user } = await this.authService.verifyMagicLink(
       body.token,
     );
+
+    response.cookie(SESSION_COOKIE_NAME, sessionId, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: SESSION_MAX_AGE_MS,
+      path: '/',
+    });
+
+    return { user };
+  }
+
+  @Public()
+  @Post('signup')
+  @HttpCode(HttpStatus.CREATED)
+  @UsePipes(new ZodValidationPipe(signupRequestSchema))
+  async signup(
+    @Body() body: SignupRequest,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const { sessionId, user } = await this.authService.signup(body);
+
+    response.cookie(SESSION_COOKIE_NAME, sessionId, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: SESSION_MAX_AGE_MS,
+      path: '/',
+    });
+
+    return { user };
+  }
+
+  @Public()
+  @Post('login')
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ZodValidationPipe(loginRequestSchema))
+  async login(
+    @Body() body: LoginRequest,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const { sessionId, user } = await this.authService.login(body);
 
     response.cookie(SESSION_COOKIE_NAME, sessionId, {
       httpOnly: true,

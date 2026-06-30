@@ -1,12 +1,43 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  ConflictException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import * as crypto from 'crypto';
 import { PrismaService } from '../database/prisma.service';
 import { SessionService } from './session.service';
 import { MAIL_QUEUE, MAIL_JOBS } from '../mail/mail.constants';
+import { SignupRequest, LoginRequest } from '@repo/contracts';
 
 const MAGIC_LINK_EXPIRY_MINUTES = 15;
+
+function hashPassword(password: string): string {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const derivedKey = crypto.scryptSync(password, salt, 64).toString('hex');
+  return `${salt}:${derivedKey}`;
+}
+
+function verifyPassword(password: string, hash: string): boolean {
+  try {
+    if (!hash || typeof hash !== 'string' || !hash.includes(':')) return false;
+    const parts = hash.split(':');
+    if (parts.length !== 2) return false;
+
+    // Explicit assertions to appease strict TypeScript rules
+    const salt = parts[0] as string;
+    const key = parts[1] as string;
+
+    const keyBuffer = Buffer.from(key, 'hex');
+    const derivedKey = crypto.scryptSync(password, salt, 64);
+    return crypto.timingSafeEqual(keyBuffer, derivedKey as Buffer);
+  } catch (e) {
+    return false;
+  }
+}
 
 @Injectable()
 export class AuthService {
@@ -17,6 +48,133 @@ export class AuthService {
     private readonly sessionService: SessionService,
     @InjectQueue(MAIL_QUEUE) private readonly mailQueue: Queue,
   ) {}
+
+  async signup(data: SignupRequest) {
+    // 1. Check if email already exists
+    const existing = await this.prisma.user.findUnique({
+      where: { email: data.email },
+    });
+
+    if (existing) {
+      throw new ConflictException('User already exists');
+    }
+
+    // 2. Safely verify that publicSlug is unique for developers to prevent raw 500 DB errors
+    if (data.accountType === 'DEVELOPER' && data.publicSlug) {
+      const existingSlug = await this.prisma.developerProfile.findUnique({
+        where: { publicSlug: data.publicSlug },
+      });
+      if (existingSlug) {
+        throw new ConflictException(
+          'The requested public slug is already taken',
+        );
+      }
+    }
+
+    const passwordHash = hashPassword(data.password);
+
+    const user = await this.prisma.user.create({
+      data: {
+        email: data.email,
+        passwordHash,
+        accountType: data.accountType,
+        isConfirmed: false,
+        developerProfile:
+          data.accountType === 'DEVELOPER'
+            ? {
+                create: {
+                  displayName: data.displayName!,
+                  publicSlug: data.publicSlug!,
+                },
+              }
+            : undefined,
+        hiringProfile:
+          data.accountType === 'HIRING'
+            ? {
+                create: {
+                  organizationName: data.organizationName!,
+                  organizationType: data.organizationType!,
+                },
+              }
+            : undefined,
+      },
+      include: {
+        developerProfile: true,
+        hiringProfile: true,
+      },
+    });
+
+    const sessionId = await this.sessionService.createSession(user.id);
+
+    let name = 'User';
+    if (user.developerProfile?.displayName) {
+      name = user.developerProfile.displayName;
+    } else if (user.hiringProfile?.organizationName) {
+      name = user.hiringProfile.organizationName;
+    }
+
+    let role = 'MEMBER';
+    if (user.accountType === 'SUPER_ADMIN') {
+      role = 'SUPER_ADMIN';
+    } else if (user.accountType === 'HIRING') {
+      role = 'ORG_ADMIN';
+    }
+
+    return {
+      sessionId,
+      user: {
+        id: user.id,
+        email: user.email,
+        name,
+        role,
+      },
+    };
+  }
+
+  async login(data: LoginRequest) {
+    const user = await this.prisma.user.findUnique({
+      where: { email: data.email.toLowerCase() },
+      include: {
+        developerProfile: true,
+        hiringProfile: true,
+      },
+    });
+
+    if (!user || !user.passwordHash) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
+
+    const isValid = verifyPassword(data.password, user.passwordHash);
+    if (!isValid) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
+
+    const sessionId = await this.sessionService.createSession(user.id);
+
+    let name = 'User';
+    if (user.developerProfile?.displayName) {
+      name = user.developerProfile.displayName;
+    } else if (user.hiringProfile?.organizationName) {
+      name = user.hiringProfile.organizationName;
+    }
+
+    let role = 'MEMBER';
+    if (user.accountType === 'SUPER_ADMIN') {
+      role = 'SUPER_ADMIN';
+    } else if (user.accountType === 'HIRING') {
+      role = 'ORG_ADMIN';
+    }
+
+    return {
+      sessionId,
+      user: {
+        id: user.id,
+        email: user.email,
+        name,
+        role,
+      },
+    };
+  }
 
   /**
    * Request a magic link for the given email
