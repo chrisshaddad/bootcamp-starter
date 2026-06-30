@@ -48,6 +48,14 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException('Invalid or expired session');
     }
 
+    // Status enforcement on every request: a session stays valid only while the
+    // account can authenticate. SUSPENDED/INACTIVE are hard-blocked even if they
+    // hold a live session. PENDING is allowed through so invited staff can reach
+    // the set-password step that completes onboarding.
+    if (user.status === 'SUSPENDED' || user.status === 'INACTIVE') {
+      throw new UnauthorizedException('This account is no longer active');
+    }
+
     // Attach user and session ID to request for later use
     (request as AuthenticatedRequest).user = user;
     (request as AuthenticatedRequest).sessionId = sessionId;
