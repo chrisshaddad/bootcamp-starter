@@ -13,6 +13,7 @@ import { MePortalModule } from './me-portal/me-portal.module';
 import { InstructorsModule } from './instructors/instructors.module';
 import { DatabaseModule } from './database/database.module';
 import { SessionsModule } from './sessions/sessions.module';
+import { BookingsModule } from './bookings/bookings.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { SessionsModule } from './sessions/sessions.module';
     MePortalModule,
     InstructorsModule,
     SessionsModule,
+    BookingsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

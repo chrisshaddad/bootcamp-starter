@@ -38,7 +38,11 @@ const SESSION_SELECT = {
     },
   },
   _count: {
-    select: { bookings: true },
+    select: {
+      bookings: {
+        where: { status: { not: 'CANCELLED' } },
+      },
+    },
   },
 } as const;
 

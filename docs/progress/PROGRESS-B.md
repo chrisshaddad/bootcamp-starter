@@ -7,13 +7,13 @@
 > Build phases in order: build → test → merge → next. Don't start a phase until the
 > previous is ✅. Status legend: ⬜ Not started · 🟡 In progress · ✅ Done · 🚧 Blocked.
 
-**Owner:** Antigravity (AI) · **Status: 2 / 4 done — 🟡 In progress.**
+**Owner:** Antigravity (AI) · **Status: 3 / 4 done — 🟡 In progress.**
 
 | Phase | Scope                                                                           | Dev         | Status | Date       | Notes / PR                          |
 | ----- | ------------------------------------------------------------------------------- | ----------- | ------ | ---------- | ----------------------------------- |
 | B0    | Instructors CRUD + `GET /instructors/available` (overlap detection)             | Antigravity | ✅     | 2026-06-29 | feat/feature-b-phase-b0-instructors |
 | B1    | Sessions admin schedule (CRUD + cancel, `_count.bookings`, instructor dropdown) | Antigravity | ✅     | 2026-06-29 | feat/feature-b-phase-b1-sessions    |
-| B2    | Bookings + per-session capacity (reject full/duplicate)                         | —           | ⬜     | —          | —                                   |
+| B2    | Bookings + per-session capacity (reject full/duplicate)                         | Antigravity | ✅     | 2026-06-30 | feat/feature-b-phase-b2-bookings    |
 | B3    | Member "My bookings" portal view (`GET /me/bookings`) — needs A4 shell          | —           | ⬜     | —          | —                                   |
 
 > B0 must be ✅ before starting B1 — sessions reference `instructorId` and the
@@ -41,6 +41,7 @@
   5. **Year ≥ 2026 validation** — added `.refine(isDateInAllowedRange)` to `startsAt` and `endsAt` in `sessionCreateRequestSchema`; added `min="2026-01-01"` to date inputs; Zod form schema also validates `date >= '2026-01-01'`.
   6. **Past sessions cannot be edited** — `SessionsService.update()` throws `BadRequestException` if `existing.startsAt < new Date()`; frontend hides Edit/Cancel buttons when `isPast` is true (session detail page).
   7. **Docstrings** — added meaningful `/** ... */` JSDoc to all public methods in sessions service/controller, all helper functions in sessions pages, and all functions in instructors page. Removed `where: any` lint smell in sessions service by inlining typed spread into Prisma `where` object.
+- **B2 (2026-06-30):** `_count.bookings` in `SESSION_SELECT` changed to exclude `CANCELLED` bookings so the capacity bar accurately reflects available slots. Prisma model is `sessionBooking` not `booking`.
 
 ## Notes for the next agent
 

@@ -15,6 +15,13 @@ import {
   Minus,
 } from 'lucide-react';
 import { useSession } from '@/hooks/use-sessions';
+import {
+  useBookings,
+  useCreateBooking,
+  useCancelBooking,
+  useCheckInBooking,
+} from '@/hooks/use-bookings';
+import { useMembers } from '@/hooks/use-members';
 import { ApiError } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -469,6 +476,16 @@ export default function SessionDetailPage() {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
 
+  const { bookings, isLoading: bookingsLoading } = useBookings(sessionId);
+  const { createBooking } = useCreateBooking();
+  const { cancelBooking } = useCancelBooking();
+  const { checkInBooking } = useCheckInBooking();
+  const { members } = useMembers({ enabled: true });
+
+  const [selectedMemberId, setSelectedMemberId] = useState<string>('');
+  const [isBooking, setIsBooking] = useState(false);
+  const [bookingStatusFilter, setBookingStatusFilter] = useState<string>('ALL');
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -500,6 +517,57 @@ export default function SessionDetailPage() {
     100,
     Math.round((bookedCount / session.capacity) * 100),
   );
+
+  const filteredBookings =
+    bookings?.filter((b) =>
+      bookingStatusFilter === 'ALL' ? true : b.status === bookingStatusFilter,
+    ) ?? [];
+
+  const bookedMemberIds = new Set(
+    bookings?.filter((b) => b.status !== 'CANCELLED').map((b) => b.memberId) ??
+      [],
+  );
+  const availableMembers =
+    members?.filter((m) => !bookedMemberIds.has(m.id)) ?? [];
+
+  /** Register the selected member to this session */
+  async function handleBookMember() {
+    if (!selectedMemberId) return;
+    setIsBooking(true);
+    try {
+      await createBooking({ sessionId, memberId: selectedMemberId });
+      toast.success('Member registered successfully');
+      setSelectedMemberId('');
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : 'Failed to register member',
+      );
+    } finally {
+      setIsBooking(false);
+    }
+  }
+
+  /** Cancel the given booking */
+  async function handleCancelBooking(bookingId: string) {
+    try {
+      await cancelBooking(bookingId);
+      toast.success('Booking cancelled');
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : 'Failed to cancel booking',
+      );
+    }
+  }
+
+  /** Check in the given booking */
+  async function handleCheckIn(bookingId: string) {
+    try {
+      await checkInBooking(bookingId);
+      toast.success('Member checked in');
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Failed to check in');
+    }
+  }
 
   /** Confirm and cancel the session via the API */
   const handleCancelSession = async () => {
@@ -631,15 +699,126 @@ export default function SessionDetailPage() {
               </div>
             </div>
 
-            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 mt-6">
-              <div className="text-sm font-medium text-gray-700">
-                Bookings feature coming soon!
-              </div>
-              <p className="mt-1 text-sm text-gray-500">
-                Member registration for this session will be available in Phase
-                B2.
-              </p>
+            {/* Register Member control — only for active, future sessions with available capacity */}
+            {!isPast &&
+              !isCancelled &&
+              !isCompleted &&
+              bookedCount < session.capacity && (
+                <div className="flex gap-4 items-end mt-4">
+                  <div className="flex-1 space-y-1.5">
+                    <Label>Register a Member</Label>
+                    <Select
+                      value={selectedMemberId}
+                      onValueChange={setSelectedMemberId}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a member..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableMembers.map((m) => (
+                          <SelectItem key={m.id} value={m.id}>
+                            {m.name} ({m.email})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button
+                    onClick={handleBookMember}
+                    disabled={!selectedMemberId || isBooking}
+                  >
+                    {isBooking ? 'Registering...' : 'Register'}
+                  </Button>
+                </div>
+              )}
+
+            {/* Status filter pills */}
+            <div className="flex gap-2 mt-6 mb-4">
+              {['ALL', 'BOOKED', 'CHECKED_IN', 'CANCELLED'].map((status) => (
+                <button
+                  key={status}
+                  onClick={() => setBookingStatusFilter(status)}
+                  className={`px-3 py-1 rounded-full text-sm border transition-colors ${
+                    bookingStatusFilter === status
+                      ? 'bg-primary-base text-white border-primary-base'
+                      : 'border-gray-200 text-gray-600 hover:border-primary-base hover:text-primary-base'
+                  }`}
+                >
+                  {status === 'CHECKED_IN'
+                    ? 'Checked In'
+                    : status.charAt(0) + status.slice(1).toLowerCase()}
+                </button>
+              ))}
             </div>
+
+            {/* Bookings roster */}
+            {bookingsLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+              </div>
+            ) : filteredBookings.length === 0 ? (
+              <p className="text-sm text-gray-500 text-center py-4">
+                {bookingStatusFilter === 'ALL'
+                  ? 'No bookings yet.'
+                  : `No ${bookingStatusFilter.toLowerCase().replace('_', ' ')} bookings.`}
+              </p>
+            ) : (
+              <div className="divide-y divide-gray-100">
+                {filteredBookings.map((booking) => (
+                  <div
+                    key={booking.id}
+                    className="flex items-center justify-between py-3"
+                  >
+                    <div>
+                      <div className="text-sm font-medium text-gray-900">
+                        {booking.member.name}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {booking.member.email}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {/* Status badge */}
+                      <span
+                        className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
+                          booking.status === 'BOOKED'
+                            ? 'bg-blue-50 text-blue-700 border-blue-200'
+                            : booking.status === 'CHECKED_IN'
+                              ? 'bg-green-50 text-green-700 border-green-200'
+                              : 'bg-gray-100 text-gray-500 border-gray-200'
+                        }`}
+                      >
+                        {booking.status === 'CHECKED_IN'
+                          ? 'Checked In'
+                          : booking.status.charAt(0) +
+                            booking.status.slice(1).toLowerCase()}
+                      </span>
+                      {/* Action buttons */}
+                      {booking.status === 'BOOKED' && !isPast && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleCheckIn(booking.id)}
+                          >
+                            Check In
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-error"
+                            onClick={() => handleCancelBooking(booking.id)}
+                          >
+                            Cancel
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
