@@ -5,7 +5,7 @@ export const authResponseSchema = z.strictObject({
     id: z.string().uuid(),
     email: z.string().email(),
     name: z.string(),
-    role: z.string(),
+    role: z.enum(['MEMBER', 'ORG_ADMIN', 'SUPER_ADMIN']),
   }),
 });
 
