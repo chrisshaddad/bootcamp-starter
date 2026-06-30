@@ -80,7 +80,7 @@ function LoadingSkeleton() {
   );
 }
 
-/** Auto-generated docstring */
+
 export default function AvailablePlansPage() {
   const { plans, total, isLoading, error } = useMePlans();
 

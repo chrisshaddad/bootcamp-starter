@@ -22,6 +22,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAvailableInstructors } from '@/hooks/use-instructors';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import {
   Dialog,
@@ -42,8 +43,11 @@ import { Pencil } from 'lucide-react';
 import type { SessionResponse } from '@repo/contracts';
 import { sessionUpdateRequestSchema } from '@repo/contracts';
 
+/** Today's date in yyyy-MM-dd format — the minimum allowed date when editing a session */
+const MIN_DATE = format(new Date(), 'yyyy-MM-dd');
+
 /**
- * Renders a row of information with an icon, label, and value
+ * Renders a labeled info row with an icon, used in the session detail card.
  */
 function InfoRow({
   icon: Icon,
@@ -65,12 +69,25 @@ function InfoRow({
   );
 }
 
+/**
+ * Local form schema for editing a session.
+ * Splits startsAt/endsAt into separate date + time pickers.
+ */
 const formSchema = sessionUpdateRequestSchema
   .omit({ startsAt: true, endsAt: true })
   .extend({
-    date: z.string().min(1, 'Date is required'),
+    date: z
+      .string()
+      .min(1, 'Date is required')
+      .refine((d) => d >= MIN_DATE, {
+        message: 'Sessions cannot be scheduled in the past',
+      }),
     startTime: z.string().min(1, 'Start time is required'),
     endTime: z.string().min(1, 'End time is required'),
+    description: z
+      .string()
+      .max(500, 'Description cannot exceed 500 characters')
+      .optional(),
     capacity: z.number().int().positive('Capacity must be positive'),
     instructorId: z.string().optional(),
   })
@@ -93,7 +110,8 @@ const formSchema = sessionUpdateRequestSchema
 type FormValues = z.infer<typeof formSchema>;
 
 /**
- * Dialog component for editing an existing session
+ * Dialog for editing an existing session's details.
+ * The dialog is disabled (not rendered) when the session is in the past.
  */
 function EditSessionDialog({
   session,
@@ -127,8 +145,9 @@ function EditSessionDialog({
   const dateVal = form.watch('date');
   const startTimeVal = form.watch('startTime');
   const endTimeVal = form.watch('endTime');
+  const descriptionVal = form.watch('description') ?? '';
 
-  /** Helper to combine date and time strings into ISO string */
+  /** Combine a date string and a time string into an ISO datetime string */
   const getIsoString = (d: string, t: string) => {
     if (!d || !t) return null;
     try {
@@ -146,7 +165,7 @@ function EditSessionDialog({
   const { availableInstructors, isLoading: loadingInstructors } =
     useAvailableInstructors(startsAtIso, endsAtIso);
 
-  /** Handle form submission */
+  /** Handle form submission — build ISO timestamps and invoke the update callback */
   async function onSubmit(data: FormValues) {
     const startIso = getIsoString(data.date, data.startTime);
     const endIso = getIsoString(data.date, data.endTime);
@@ -177,7 +196,7 @@ function EditSessionDialog({
     }
   }
 
-  /** Handle dialog close and reset form */
+  /** Reset form state and close the dialog */
   function handleClose() {
     form.reset();
     onClose();
@@ -196,6 +215,7 @@ function EditSessionDialog({
         <form
           id="edit-session-form"
           onSubmit={form.handleSubmit(onSubmit)}
+          noValidate
           className="space-y-4"
         >
           <div className="space-y-1.5">
@@ -212,14 +232,35 @@ function EditSessionDialog({
 
           <div className="space-y-1.5">
             <Label htmlFor="session-description">Description (optional)</Label>
-            <Input id="session-description" {...form.register('description')} />
+            <Textarea
+              id="session-description"
+              rows={3}
+              {...form.register('description')}
+            />
+            <div className="flex justify-between items-center">
+              {form.formState.errors.description ? (
+                <p className="text-xs text-error">
+                  {form.formState.errors.description.message}
+                </p>
+              ) : (
+                <span />
+              )}
+              <p className="text-xs text-gray-400 ml-auto">
+                {descriptionVal.length}/500
+              </p>
+            </div>
           </div>
 
           <div className="space-y-1.5">
             <Label htmlFor="session-date">
               Date <span className="text-error">*</span>
             </Label>
-            <Input id="session-date" type="date" {...form.register('date')} />
+            <Input
+              id="session-date"
+              type="date"
+              min={MIN_DATE}
+              {...form.register('date')}
+            />
             {form.formState.errors.date && (
               <p className="text-xs text-error">
                 {form.formState.errors.date.message}
@@ -340,9 +381,7 @@ function EditSessionDialog({
   );
 }
 
-/**
- * Main detail page component for viewing a single session
- */
+/** Main detail page for viewing and managing a single gym session */
 export default function SessionDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -378,13 +417,14 @@ export default function SessionDetailPage() {
 
   const isCancelled = session.status === 'CANCELLED';
   const isCompleted = session.status === 'COMPLETED';
+  const isPast = new Date(session.startsAt) < new Date();
   const bookedCount = session._count?.bookings ?? 0;
   const capacityPct = Math.min(
     100,
     Math.round((bookedCount / session.capacity) * 100),
   );
 
-  /** Action to cancel the current session */
+  /** Confirm and cancel the session via the API */
   const handleCancelSession = async () => {
     setIsCancelling(true);
     try {
@@ -426,6 +466,9 @@ export default function SessionDetailPage() {
             >
               {session.status}
             </span>
+            {isPast && !isCancelled && !isCompleted && (
+              <span className="text-xs text-gray-400 italic">Past session</span>
+            )}
             {session.description && (
               <span className="text-sm text-gray-500 ml-2">
                 {session.description}
@@ -435,7 +478,8 @@ export default function SessionDetailPage() {
         </div>
 
         <div className="flex gap-3">
-          {!isCancelled && !isCompleted && (
+          {/* Edit and cancel actions are only available for active, future sessions */}
+          {!isCancelled && !isCompleted && !isPast && (
             <>
               <Button
                 variant="outline"
@@ -491,7 +535,7 @@ export default function SessionDetailPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <Users className="h-5 w-5" />
-              Capacity & Bookings
+              Capacity &amp; Bookings
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0 space-y-4">
@@ -552,7 +596,7 @@ export default function SessionDetailPage() {
         </DialogContent>
       </Dialog>
 
-      {session && (
+      {session && !isPast && (
         <EditSessionDialog
           session={session}
           open={showEditDialog}

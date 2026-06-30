@@ -56,7 +56,7 @@ const INSTRUCTORS: InstructorSeed[] = [
   },
 ];
 
-/** Auto-generated docstring */
+
 export async function seedInstructors(prisma: PrismaClient) {
   console.log('Seeding instructors...');
 

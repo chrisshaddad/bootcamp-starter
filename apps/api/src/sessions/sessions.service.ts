@@ -12,6 +12,7 @@ import type {
   SessionUpdateRequest,
 } from '@repo/contracts';
 
+/** Prisma select shape reused across all session queries */
 const SESSION_SELECT = {
   id: true,
   gymId: true,
@@ -41,31 +42,37 @@ const SESSION_SELECT = {
   },
 } as const;
 
-/**
- * Service for managing gym sessions and related logic
- */
+/** Service for managing gym sessions and related business logic */
 @Injectable()
 export class SessionsService {
   private readonly logger = new Logger(SessionsService.name);
 
   constructor(private readonly prisma: DatabaseService) {}
 
-  /** List all sessions for a gym with optional date filtering */
+  /** List all sessions for a gym with optional date and status filtering */
   async findAll(
     gymId: string,
-    options: { startDate?: string; endDate?: string },
+    options: {
+      startDate?: string;
+      endDate?: string;
+      status?: 'SCHEDULED' | 'CANCELLED' | 'COMPLETED';
+    },
   ): Promise<SessionListResponse> {
-    const { startDate, endDate } = options;
-    const where: any = { gymId };
-
-    if (startDate || endDate) {
-      where.startsAt = {};
-      if (startDate) where.startsAt.gte = new Date(startDate);
-      if (endDate) where.startsAt.lte = new Date(endDate);
-    }
+    const { startDate, endDate, status } = options;
 
     const sessions = await this.prisma.gymSession.findMany({
-      where,
+      where: {
+        gymId,
+        ...(status && { status }),
+        ...(startDate || endDate
+          ? {
+              startsAt: {
+                ...(startDate && { gte: new Date(startDate) }),
+                ...(endDate && { lte: new Date(endDate) }),
+              },
+            }
+          : {}),
+      },
       orderBy: { startsAt: 'asc' },
       select: SESSION_SELECT,
     });
@@ -126,7 +133,10 @@ export class SessionsService {
     return session as unknown as SessionResponse;
   }
 
-  /** Update a session's details, scoped to the caller's gym */
+  /**
+   * Update a session's details, scoped to the caller's gym.
+   * Throws BadRequestException if the session's start time is in the past.
+   */
   async update(
     id: string,
     gymId: string,
@@ -137,6 +147,10 @@ export class SessionsService {
     });
     if (!existing) {
       throw new NotFoundException(`Session with ID ${id} not found`);
+    }
+
+    if (existing.startsAt < new Date()) {
+      throw new BadRequestException('Past sessions cannot be edited');
     }
 
     const startsAt = dto.startsAt ? new Date(dto.startsAt) : existing.startsAt;
@@ -185,7 +199,7 @@ export class SessionsService {
     return session as unknown as SessionResponse;
   }
 
-  /** Cancel a session */
+  /** Cancel a session, marking its status as CANCELLED */
   async cancel(id: string, gymId: string): Promise<SessionResponse> {
     const result = await this.prisma.gymSession.updateMany({
       where: { id, gymId },

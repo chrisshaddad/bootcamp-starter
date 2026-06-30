@@ -67,7 +67,7 @@ const SESSIONS: SessionSeed[] = [
   },
 ];
 
-/** Auto-generated docstring */
+
 export async function seedSessions(prisma: PrismaClient) {
   console.log('Seeding gym sessions...');
 

@@ -4,7 +4,6 @@ import { useEffect } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-/** Auto-generated docstring */
 export default function GlobalError({
   error,
   reset,

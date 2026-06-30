@@ -4,7 +4,6 @@ import { MailService } from './mail.service';
 import { MailProcessor } from './mail.processor';
 import { MAIL_QUEUE } from './mail.constants';
 
-/** Auto-generated docstring */
 @Module({
   imports: [
     BullModule.registerQueue({

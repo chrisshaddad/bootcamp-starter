@@ -9,12 +9,10 @@ import type { UserRole } from '@repo/db';
 import { ROLES_KEY } from '../decorators';
 import type { AuthenticatedRequest } from './auth.guard';
 
-/** Auto-generated docstring */
 @Injectable()
 export class RolesGuard implements CanActivate {
   constructor(private readonly reflector: Reflector) {}
 
-  /** Auto-generated docstring */
   canActivate(context: ExecutionContext): boolean {
     const requiredRoles = this.reflector.getAllAndOverride<UserRole[]>(
       ROLES_KEY,

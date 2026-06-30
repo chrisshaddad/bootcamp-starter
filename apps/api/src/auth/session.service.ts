@@ -12,7 +12,6 @@ export interface SessionData {
   expiresAt: Date;
 }
 
-/** Auto-generated docstring */
 @Injectable()
 export class SessionService {
   private readonly logger = new Logger(SessionService.name);

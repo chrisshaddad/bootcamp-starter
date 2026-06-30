@@ -2,13 +2,16 @@ import { z } from 'zod';
 import { dateSchema } from '../common';
 import { instructorResponseSchema } from '../instructors/instructor.response';
 
+/** Allowed values for a gym session's lifecycle status */
 export const sessionStatusSchema = z.enum([
   'SCHEDULED',
   'CANCELLED',
   'COMPLETED',
 ]);
+/** Inferred type for GymSessionStatus */
 export type GymSessionStatus = z.infer<typeof sessionStatusSchema>;
 
+/** Full session response shape returned by the API, including optional instructor and booking count */
 export const sessionResponseSchema = z.object({
   id: z.string().uuid(),
   gymId: z.string().uuid(),

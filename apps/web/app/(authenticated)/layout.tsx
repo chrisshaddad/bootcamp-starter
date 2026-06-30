@@ -5,7 +5,6 @@ import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/app-sidebar';
 import { TopNavbar } from '@/components/top-navbar';
 
-/** Auto-generated docstring */
 export default function DashboardLayout({
   children,
 }: {

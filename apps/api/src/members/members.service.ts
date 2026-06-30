@@ -36,7 +36,6 @@ const MEMBER_SELECT = {
   updatedAt: true,
 } as const;
 
-/** Auto-generated docstring */
 @Injectable()
 export class MembersService {
   private readonly logger = new Logger(MembersService.name);

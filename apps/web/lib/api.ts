@@ -1,6 +1,6 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-/** Auto-generated docstring */
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -11,7 +11,7 @@ export class ApiError extends Error {
   }
 }
 
-/** Auto-generated docstring */
+
 export async function fetcher<T>(endpoint: string): Promise<T> {
   const res = await fetch(`${API_URL}${endpoint}`, {
     credentials: 'include',
@@ -27,7 +27,7 @@ export async function fetcher<T>(endpoint: string): Promise<T> {
   return res.json();
 }
 
-/** Auto-generated docstring */
+
 export async function apiPost<T>(endpoint: string, data?: unknown): Promise<T> {
   const res = await fetch(`${API_URL}${endpoint}`, {
     method: 'POST',
@@ -48,7 +48,7 @@ export async function apiPost<T>(endpoint: string, data?: unknown): Promise<T> {
   return res.json();
 }
 
-/** Auto-generated docstring */
+
 export async function apiPatch<T>(
   endpoint: string,
   data?: unknown,

@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Settings } from 'lucide-react';
 
-/** Auto-generated docstring */
+
 export default function SettingsPage() {
   return (
     <div className="space-y-6">

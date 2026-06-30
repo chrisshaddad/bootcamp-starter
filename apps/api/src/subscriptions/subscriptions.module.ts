@@ -5,7 +5,6 @@ import { SubscriptionsController } from './subscriptions.controller';
 import { SubscriptionExpiryProcessor } from './subscription-expiry.processor';
 import { SUBSCRIPTION_EXPIRY_QUEUE } from './subscriptions.constants';
 
-/** Auto-generated docstring */
 @Module({
   imports: [
     BullModule.registerQueue({

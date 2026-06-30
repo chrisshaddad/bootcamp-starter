@@ -65,6 +65,12 @@ export class SessionsController {
     type: String,
     description: 'Filter sessions starting on or before this ISO datetime',
   })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    enum: ['SCHEDULED', 'CANCELLED', 'COMPLETED'],
+    description: 'Filter sessions by status',
+  })
   @ApiResponse({
     status: 200,
     description: 'List of sessions',

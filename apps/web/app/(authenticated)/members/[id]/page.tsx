@@ -94,7 +94,7 @@ function LoadingSkeleton() {
   );
 }
 
-/** Auto-generated docstring */
+
 export default function MemberDetailPage() {
   const params = useParams();
   const router = useRouter();

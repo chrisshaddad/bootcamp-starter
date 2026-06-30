@@ -1,5 +1,6 @@
 import { instructorSchema } from '../instructors/instructors.swagger';
 
+/** Shared inline JSON Schema object describing a session, reused across Swagger @ApiResponse decorators */
 export const sessionSchema = {
   type: 'object',
   properties: {

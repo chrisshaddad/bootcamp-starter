@@ -35,7 +35,6 @@ import {
 import { ZodValidationPipe } from '../common/pipes';
 import { subscriptionSchema } from './subscriptions.swagger';
 
-/** Auto-generated docstring */
 @ApiTags('subscriptions')
 @ApiCookieAuth('session-cookie')
 @Controller()

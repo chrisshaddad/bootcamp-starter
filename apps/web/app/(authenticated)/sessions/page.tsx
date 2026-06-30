@@ -11,12 +11,28 @@ import { z } from 'zod';
 import { sessionCreateRequestSchema } from '@repo/contracts';
 import Link from 'next/link';
 
+/** Today's date in yyyy-MM-dd format, used as the minimum allowed session date */
+const MIN_DATE = format(new Date(), 'yyyy-MM-dd');
+
+/**
+ * Local form schema — splits startsAt/endsAt into separate date + time fields
+ * so the browser renders native date/time pickers instead of free-text inputs.
+ */
 const formSchema = sessionCreateRequestSchema
   .omit({ startsAt: true, endsAt: true })
   .extend({
-    date: z.string().min(1, 'Date is required'),
+    date: z
+      .string()
+      .min(1, 'Date is required')
+      .refine((d) => d >= MIN_DATE, {
+        message: 'Sessions cannot be scheduled in the past',
+      }),
     startTime: z.string().min(1, 'Start time is required'),
     endTime: z.string().min(1, 'End time is required'),
+    description: z
+      .string()
+      .max(500, 'Description cannot exceed 500 characters')
+      .optional(),
     capacity: z.number().int().positive('Capacity must be positive'),
     instructorId: z.string().optional(),
   })
@@ -43,6 +59,7 @@ import { ApiError } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -61,6 +78,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
+/** Allowed status filter values for the sessions list */
+type StatusFilter = 'ALL' | 'SCHEDULED' | 'CANCELLED' | 'COMPLETED';
+
 /** Displays a loading skeleton for the sessions page */
 function LoadingSkeleton() {
   return (
@@ -76,7 +96,8 @@ function LoadingSkeleton() {
 }
 
 /**
- * Dialog component for adding a new session
+ * Dialog component for adding a new session.
+ * Uses separate date and time pickers to avoid manual ISO string entry.
  */
 function AddSessionDialog({
   open,
@@ -105,8 +126,9 @@ function AddSessionDialog({
   const dateVal = form.watch('date');
   const startTimeVal = form.watch('startTime');
   const endTimeVal = form.watch('endTime');
+  const descriptionVal = form.watch('description') ?? '';
 
-  /** Combine date and time to ISO string */
+  /** Combine a date string and time string into an ISO datetime string */
   const getIsoString = (d: string, t: string) => {
     if (!d || !t) return null;
     try {
@@ -124,7 +146,7 @@ function AddSessionDialog({
   const { availableInstructors, isLoading: loadingInstructors } =
     useAvailableInstructors(startsAtIso, endsAtIso);
 
-  /** Handle form submission */
+  /** Handle form submission — build ISO timestamps and call the create hook */
   async function onSubmit(data: FormValues) {
     const startIso = getIsoString(data.date, data.startTime);
     const endIso = getIsoString(data.date, data.endTime);
@@ -157,7 +179,7 @@ function AddSessionDialog({
     }
   }
 
-  /** Handle dialog close and reset form */
+  /** Reset form and close the dialog */
   function handleClose() {
     form.reset();
     onClose();
@@ -197,23 +219,36 @@ function AddSessionDialog({
 
           <div className="space-y-1.5">
             <Label htmlFor="session-description">Description (optional)</Label>
-            <Input
+            <Textarea
               id="session-description"
               placeholder="A brief description of the class"
+              rows={3}
               {...form.register('description')}
             />
-            {form.formState.errors.description && (
-              <p className="text-xs text-error">
-                {form.formState.errors.description.message}
+            <div className="flex justify-between items-center">
+              {form.formState.errors.description ? (
+                <p className="text-xs text-error">
+                  {form.formState.errors.description.message}
+                </p>
+              ) : (
+                <span />
+              )}
+              <p className="text-xs text-gray-400 ml-auto">
+                {descriptionVal.length}/500
               </p>
-            )}
+            </div>
           </div>
 
           <div className="space-y-1.5">
             <Label htmlFor="session-date">
               Date <span className="text-error">*</span>
             </Label>
-            <Input id="session-date" type="date" {...form.register('date')} />
+            <Input
+              id="session-date"
+              type="date"
+              min={MIN_DATE}
+              {...form.register('date')}
+            />
             {form.formState.errors.date && (
               <p className="text-xs text-error">
                 {form.formState.errors.date.message}
@@ -337,11 +372,27 @@ function AddSessionDialog({
   );
 }
 
+/** Labels and colors for each session status badge */
+const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
+  SCHEDULED: {
+    label: 'Scheduled',
+    className: 'bg-primary-100 text-primary-base border-primary-200',
+  },
+  CANCELLED: {
+    label: 'Cancelled',
+    className: 'bg-error-light text-error border-error-light',
+  },
+  COMPLETED: {
+    label: 'Completed',
+    className: 'bg-gray-200 text-gray-600 border-gray-300',
+  },
+};
+
 /** Main page component for managing and displaying gym sessions */
 export default function SessionsPage() {
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
 
-  // We could add state for startDate and endDate filtering
   const { sessions, isLoading, error, mutate } = useSessions({});
 
   if (error) {
@@ -355,15 +406,21 @@ export default function SessionsPage() {
     );
   }
 
-  // Group sessions by day
-  const groupedSessions = sessions?.reduce(
+  // Apply client-side status filter
+  const filteredSessions =
+    statusFilter === 'ALL'
+      ? sessions
+      : sessions?.filter((s) => s.status === statusFilter);
+
+  // Group filtered sessions by day
+  const groupedSessions = filteredSessions?.reduce(
     (acc, session) => {
       const day = format(new Date(session.startsAt), 'yyyy-MM-dd');
       if (!acc[day]) acc[day] = [];
       acc[day].push(session);
       return acc;
     },
-    {} as Record<string, typeof sessions>,
+    {} as Record<string, typeof filteredSessions>,
   );
 
   const sortedDays = Object.keys(groupedSessions || {}).sort((a, b) =>
@@ -390,20 +447,45 @@ export default function SessionsPage() {
         </div>
       </div>
 
+      {/* Status filter tabs */}
+      <div className="flex gap-2 flex-wrap">
+        {(['ALL', 'SCHEDULED', 'CANCELLED', 'COMPLETED'] as StatusFilter[]).map(
+          (s) => (
+            <button
+              key={s}
+              onClick={() => setStatusFilter(s)}
+              className={`px-3 py-1 rounded-full text-sm font-medium border transition-colors ${
+                statusFilter === s
+                  ? 'bg-primary-base text-white border-primary-base'
+                  : 'bg-white text-gray-600 border-gray-200 hover:border-primary-base hover:text-primary-base'
+              }`}
+            >
+              {s === 'ALL' ? 'All' : (STATUS_CONFIG[s]?.label ?? s)}
+            </button>
+          ),
+        )}
+      </div>
+
       {isLoading ? (
         <LoadingSkeleton />
-      ) : !sessions || sessions.length === 0 ? (
+      ) : !filteredSessions || filteredSessions.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center gap-3 py-16 text-center">
             <CalendarDays className="h-10 w-10 text-gray-300" />
-            <p className="text-sm text-gray-500">No sessions scheduled.</p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowAddDialog(true)}
-            >
-              Schedule your first session
-            </Button>
+            <p className="text-sm text-gray-500">
+              {statusFilter === 'ALL'
+                ? 'No sessions scheduled.'
+                : `No ${STATUS_CONFIG[statusFilter]?.label.toLowerCase()} sessions.`}
+            </p>
+            {statusFilter === 'ALL' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAddDialog(true)}
+              >
+                Schedule your first session
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -428,14 +510,12 @@ export default function SessionsPage() {
                           <CardTitle className="text-base truncate pr-2">
                             {session.title}
                           </CardTitle>
-                          {session.status === 'CANCELLED' && (
-                            <span className="text-xs font-semibold text-error bg-error-light px-2 py-0.5 rounded-full">
-                              Cancelled
-                            </span>
-                          )}
-                          {session.status === 'COMPLETED' && (
-                            <span className="text-xs font-semibold text-gray-600 bg-gray-200 px-2 py-0.5 rounded-full">
-                              Completed
+                          {session.status !== 'SCHEDULED' && (
+                            <span
+                              className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${STATUS_CONFIG[session.status]?.className ?? ''}`}
+                            >
+                              {STATUS_CONFIG[session.status]?.label ??
+                                session.status}
                             </span>
                           )}
                         </div>

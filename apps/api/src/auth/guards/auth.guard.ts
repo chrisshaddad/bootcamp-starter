@@ -17,7 +17,6 @@ export interface AuthenticatedRequest extends Request {
   sessionId?: string;
 }
 
-/** Auto-generated docstring */
 @Injectable()
 export class AuthGuard implements CanActivate {
   constructor(
@@ -25,7 +24,6 @@ export class AuthGuard implements CanActivate {
     private readonly sessionService: SessionService,
   ) {}
 
-  /** Auto-generated docstring */
   async canActivate(context: ExecutionContext): Promise<boolean> {
     // Check if route is marked as public
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [

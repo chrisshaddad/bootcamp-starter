@@ -64,7 +64,6 @@ const PLANS: PlanSeed[] = [
   },
 ];
 
-/** Auto-generated docstring */
 export async function seedPlans(prisma: PrismaClient) {
   console.log('Seeding membership plans...');
 

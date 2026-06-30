@@ -61,7 +61,7 @@ const CHECK_INS: CheckInSeed[] = [
   },
 ];
 
-/** Auto-generated docstring */
+
 export async function seedCheckIns(prisma: PrismaClient) {
   console.log('Seeding check-ins...');
 

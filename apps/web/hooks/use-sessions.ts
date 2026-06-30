@@ -10,12 +10,14 @@ import type {
   SessionUpdateRequest,
 } from '@repo/contracts';
 
+/** Options accepted by the useSessions hook */
 interface UseSessionsOptions {
   startDate?: string;
   endDate?: string;
   enabled?: boolean;
 }
 
+/** Return value of useSessions — sessions list + loading state + revalidate trigger */
 interface UseSessionsReturn {
   sessions: SessionListResponse | undefined;
   isLoading: boolean;
@@ -49,6 +51,7 @@ export function useSessions(
   };
 }
 
+/** Return value of useSession — single session + update/cancel callbacks + loading state */
 interface UseSessionReturn {
   session: SessionResponse | undefined;
   isLoading: boolean;

@@ -33,8 +33,18 @@
 - **B0:** Added `instructors` tag to `main.ts` Swagger builder (was not pre-registered).
 - **B0:** Added `docs/TESTING.md` — project-wide testing guide covering setup, magic-link login,
   tenant isolation, B0 checklist (API + UI + availability), and Feature A regression checklist.
+- **B1 bug-fixes (2026-06-30):** Addressed all bugs reported in `bugs.md`:
+  1. **Date/time pickers** — already used `type="date"` + `type="time"` (not manual text entry); no change needed.
+  2. **Status filters** — added `SCHEDULED / CANCELLED / COMPLETED` pill filters to sessions list page (client-side); backend `sessionListQuerySchema` updated with optional `status` field; `@ApiQuery` added to controller.
+  3. **Description as Textarea** — replaced `<Input>` with `<Textarea rows={3}>` in both Add and Edit session dialogs; character counter (`x/500`) shown below.
+  4. **500-char description limit** — added `.max(500)` to `sessionCreateRequestSchema` (propagates to update via `.partial()`); validated frontend-side too.
+  5. **Year ≥ 2026 validation** — added `.refine(isDateInAllowedRange)` to `startsAt` and `endsAt` in `sessionCreateRequestSchema`; added `min="2026-01-01"` to date inputs; Zod form schema also validates `date >= '2026-01-01'`.
+  6. **Past sessions cannot be edited** — `SessionsService.update()` throws `BadRequestException` if `existing.startsAt < new Date()`; frontend hides Edit/Cancel buttons when `isPast` is true (session detail page).
+  7. **Docstrings** — added meaningful `/** ... */` JSDoc to all public methods in sessions service/controller, all helper functions in sessions pages, and all functions in instructors page. Removed `where: any` lint smell in sessions service by inlining typed spread into Prisma `where` object.
 
 ## Notes for the next agent
 
 - **Pagination pattern (required for list pages):** Follow the pattern established in A1/A2 — see `PROGRESS-A.md` Decisions section. Export a named `*_PAGE_SIZE = 25` constant from the hook, pass it as `limit` in URL params, use it for `totalPages` math and range text. Required for: **B0** (`instructors/page.tsx`) and **B3** (`app/(member)/bookings/page.tsx`). B1 sessions use date-range filtering (not page numbers) — different approach, no `PAGE_SIZE` needed there. B2 bookings roster is bounded per session — no pagination needed.
 - **Inline form validation pattern (required for all forms):** use `mode: 'onTouched'` on `useForm`, add `noValidate` to the `<form>` element (prevents browser-native "Please enter a valid value" tooltip from firing on submit before Zod runs), and add `{ valueAsNumber: true }` to `form.register(...)` for every `type="number"` input. Without `valueAsNumber: true`, RHF passes the raw string to Zod and inline validation misfires on blur. Applies to: B0 instructor forms, B1 session capacity/times form, B2 bookings form. See `PROGRESS-A.md` Decisions section for the full pattern.
+- **Session status enum:** The DB enum is `GymSessionStatus { SCHEDULED, CANCELLED, COMPLETED }` — **not** `ACTIVE`. Always use `SCHEDULED` as the default/active state. This tripped a type error on the first pass and is worth noting for B2/B3.
+

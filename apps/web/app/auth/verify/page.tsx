@@ -97,7 +97,7 @@ function VerifyContent() {
   );
 }
 
-/** Auto-generated docstring */
+
 export default function VerifyPage() {
   return (
     <Suspense

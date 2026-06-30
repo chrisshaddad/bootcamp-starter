@@ -9,7 +9,6 @@ interface SWRProviderProps {
   children: React.ReactNode;
 }
 
-/** Auto-generated docstring */
 export function SWRProvider({ children }: SWRProviderProps) {
   const router = useRouter();
   const pathname = usePathname();

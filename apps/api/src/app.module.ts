@@ -14,7 +14,6 @@ import { InstructorsModule } from './instructors/instructors.module';
 import { DatabaseModule } from './database/database.module';
 import { SessionsModule } from './sessions/sessions.module';
 
-/** Auto-generated docstring */
 @Module({
   imports: [
     ConfigModule.forRoot(),

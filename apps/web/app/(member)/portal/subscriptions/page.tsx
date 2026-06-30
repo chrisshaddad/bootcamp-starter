@@ -66,7 +66,7 @@ function LoadingSkeleton() {
   );
 }
 
-/** Auto-generated docstring */
+
 export default function MySubscriptionsPage() {
   const { subscriptions, total, isLoading, error } = useMeSubscriptions();
 

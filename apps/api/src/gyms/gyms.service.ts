@@ -41,7 +41,6 @@ const GYM_DETAIL_SELECT = {
   },
 } as const;
 
-/** Auto-generated docstring */
 @Injectable()
 export class GymsService {
   private readonly logger = new Logger(GymsService.name);

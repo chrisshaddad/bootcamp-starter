@@ -3,7 +3,6 @@ import { MembersService } from './members.service';
 import { MembersController } from './members.controller';
 import { MailModule } from '../mail/mail.module';
 
-/** Auto-generated docstring */
 @Module({
   imports: [MailModule],
   providers: [MembersService],

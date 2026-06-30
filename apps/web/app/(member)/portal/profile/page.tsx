@@ -30,7 +30,7 @@ function InfoRow({
   );
 }
 
-/** Auto-generated docstring */
+
 export default function MyProfilePage() {
   const { profile, isLoading, error } = useMeProfile();
 
