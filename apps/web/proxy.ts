@@ -50,14 +50,6 @@ export function proxy(request: NextRequest) {
 
   // Redirect authenticated users away from public pages (e.g. /login while logged in)
   if (isPublicRoute(pathname) && isAuthenticated) {
-    if (request.nextUrl.searchParams.has('redirect')) {
-      // The client-side app redirected here because the API returned 401.
-      // Clear the stale cookies and let them see the login page.
-      const response = NextResponse.next();
-      response.cookies.delete(SESSION_COOKIE_NAME);
-      response.cookies.delete(ROLE_COOKIE_NAME);
-      return response;
-    }
     return NextResponse.redirect(new URL(homeForRole(role), request.url));
   }
 

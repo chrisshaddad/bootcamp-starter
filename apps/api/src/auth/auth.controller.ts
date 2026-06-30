@@ -81,10 +81,11 @@ export class AuthController {
     @Req() request: AuthenticatedRequest,
     @Res({ passthrough: true }) response: Response,
   ) {
-    const cookieSessionId = request.cookies?.[SESSION_COOKIE_NAME];
+    const cookies = request.cookies as Record<string, string> | undefined;
+    const cookieSessionId = cookies?.[SESSION_COOKIE_NAME];
     const finalSessionId = request.sessionId || cookieSessionId;
 
-    if (finalSessionId) {
+    if (typeof finalSessionId === 'string') {
       await this.authService.logout(finalSessionId);
     }
 
