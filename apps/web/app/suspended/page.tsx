@@ -6,7 +6,6 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ShieldX } from 'lucide-react';
 
-
 export default function SuspendedPage() {
   const { user, isLoading } = useUser({ redirectOnUnauthenticated: false });
   const { logout } = useAuth();

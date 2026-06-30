@@ -74,16 +74,18 @@ export class AuthController {
     return { user };
   }
 
+  @Public()
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   async logout(
     @Req() request: AuthenticatedRequest,
     @Res({ passthrough: true }) response: Response,
   ) {
-    const sessionId = request.sessionId;
+    const cookieSessionId = request.cookies?.[SESSION_COOKIE_NAME];
+    const finalSessionId = request.sessionId || cookieSessionId;
 
-    if (sessionId) {
-      await this.authService.logout(sessionId);
+    if (finalSessionId) {
+      await this.authService.logout(finalSessionId);
     }
 
     // Clear session cookie

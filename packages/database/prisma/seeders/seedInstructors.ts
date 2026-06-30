@@ -56,7 +56,6 @@ const INSTRUCTORS: InstructorSeed[] = [
   },
 ];
 
-
 export async function seedInstructors(prisma: PrismaClient) {
   console.log('Seeding instructors...');
 

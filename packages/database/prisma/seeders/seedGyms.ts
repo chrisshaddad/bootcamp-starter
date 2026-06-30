@@ -96,7 +96,6 @@ const GYMS: GymSeed[] = [
   },
 ];
 
-
 export async function seedGyms(prisma: PrismaClient) {
   console.log('Seeding gyms...');
 

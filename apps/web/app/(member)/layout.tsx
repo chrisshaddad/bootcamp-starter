@@ -7,7 +7,6 @@ import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { MemberSidebar } from '@/components/member-sidebar';
 import { TopNavbar } from '@/components/top-navbar';
 
-
 export default function MemberPortalLayout({
   children,
 }: {

@@ -97,7 +97,6 @@ const SUBSCRIPTIONS: SubscriptionSeed[] = [
   },
 ];
 
-
 export async function seedSubscriptions(prisma: PrismaClient) {
   console.log('Seeding subscriptions...');
 

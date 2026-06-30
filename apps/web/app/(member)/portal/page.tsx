@@ -84,7 +84,6 @@ function ActiveSubscriptionCard() {
   );
 }
 
-
 export default function PortalHomePage() {
   const { profile, isLoading } = useMeProfile();
 

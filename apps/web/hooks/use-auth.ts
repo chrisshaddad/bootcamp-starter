@@ -23,7 +23,6 @@ interface UseUserReturn {
   mutate: () => void;
 }
 
-
 export function useUser(options: UseUserOptions = {}): UseUserReturn {
   const { redirectOnUnauthenticated = true } = options;
   const router = useRouter();
@@ -58,7 +57,6 @@ export function useUser(options: UseUserOptions = {}): UseUserReturn {
     mutate,
   };
 }
-
 
 export function useAuth() {
   const { mutate } = useUser();

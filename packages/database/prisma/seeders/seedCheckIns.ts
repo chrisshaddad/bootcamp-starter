@@ -61,7 +61,6 @@ const CHECK_INS: CheckInSeed[] = [
   },
 ];
 
-
 export async function seedCheckIns(prisma: PrismaClient) {
   console.log('Seeding check-ins...');
 

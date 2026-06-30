@@ -94,7 +94,6 @@ function LoadingSkeleton() {
   );
 }
 
-
 export default function MemberDetailPage() {
   const params = useParams();
   const router = useRouter();

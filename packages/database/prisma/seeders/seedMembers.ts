@@ -106,7 +106,6 @@ const MEMBERS: MemberSeed[] = [
   },
 ];
 
-
 export async function seedMembers(prisma: PrismaClient) {
   console.log('Seeding members...');
 

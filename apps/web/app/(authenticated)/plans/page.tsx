@@ -552,7 +552,6 @@ function EditPlanDialog({
   );
 }
 
-
 export default function PlansPage() {
   const [activeFilter, setActiveFilter] = useState<ActiveFilter>('all');
   const [page, setPage] = useState(1);

@@ -19,6 +19,7 @@ When implementing a new feature or phase, the agent MUST follow these steps befo
 **Before writing any frontend feature, verify what the backend actually supports.** Do not hardcode UI behaviour that the API cannot back up.
 
 Checklist before building a new frontend component or hook:
+
 - Read the relevant NestJS controller (`apps/api/src/<feature>/<feature>.controller.ts`) and check which routes exist, which query params are accepted, and which roles are required.
 - Read the contract schema (`packages/contracts/src/<feature>/`) to understand the exact request/response shapes.
 - Only build UI for operations the API actually exposes. If a filter, sort, or action isn't in the contract + controller, don't fake it client-side and call it done — either implement the backend first or note it as out-of-scope.
@@ -26,15 +27,17 @@ Checklist before building a new frontend component or hook:
 
 ## Docstring Standards
 
-**Every exported function, component, hook, and public service method must have a meaningful `/** ... */` JSDoc comment.** The comment must describe what the function does, not just restate the function name.
+**Every exported function, component, hook, and public service method must have a meaningful `/** ... \*/` JSDoc comment.\*\* The comment must describe what the function does, not just restate the function name.
 
 Rules:
+
 - ✅ Good: `/** Returns the list of active instructors available in the given time window */`
 - ❌ Bad: `/** Get available instructors */` (too terse — just the name)
 - ❌ Bad: `/** Auto-generated docstring */` or `/** TODO */` — never commit placeholder docstrings
 - ❌ Bad: Multi-line novels for a five-line helper — one line is enough for simple functions
 
 Where docstrings are required in this project:
+
 - **NestJS services**: all public `async` methods (already enforced by AGENTS.md in the root)
 - **NestJS controllers**: all route handler methods (already enforced)
 - **Next.js pages**: the default export function and every named helper component/function in the file
@@ -55,12 +58,17 @@ Where docstrings are required in this project:
 **Always verify DB enum values before writing business logic or UI.** This project's session status is `GymSessionStatus { SCHEDULED, CANCELLED, COMPLETED }` — the default/active state is `SCHEDULED`, not `ACTIVE`. Never assume enum names; read `packages/database/prisma/schema.prisma` first.
 
 Pattern for checking status in UI:
+
 ```tsx
 // Correct — 'SCHEDULED' is the live/active state
-{session.status !== 'SCHEDULED' && <StatusBadge status={session.status} />}
+{
+  session.status !== 'SCHEDULED' && <StatusBadge status={session.status} />;
+}
 
 // Wrong — 'ACTIVE' does not exist in this schema
-{session.status !== 'ACTIVE' && <StatusBadge />}
+{
+  session.status !== 'ACTIVE' && <StatusBadge />;
+}
 ```
 
 ## Status Filters on List Pages
@@ -94,6 +102,7 @@ if (status) where.status = status;
 ## Textarea vs Input for Long Text
 
 **Description fields must always use `<Textarea>` not `<Input>`.** A single-line `<Input>` truncates long text visually and is inaccessible for paragraph-length content. Always:
+
 - Use `<Textarea rows={3}>` (or more) for any field that might contain more than ~60 characters.
 - Show a live character counter below the field when a `maxLength` applies: `<p className="text-xs text-gray-400 ml-auto">{value.length}/500</p>`.
 - Watch the field with `form.watch('fieldName') ?? ''` to feed the counter.

@@ -21,16 +21,12 @@ export const sessionCreateRequestSchema = z.object({
     .max(500, 'Description cannot exceed 500 characters')
     .optional(),
   instructorId: z.string().uuid().optional().nullable(),
-  startsAt: z
-    .union([z.string().datetime(), z.date()])
-    .refine(isNotPastDate, {
-      message: 'Sessions cannot be scheduled in the past',
-    }),
-  endsAt: z
-    .union([z.string().datetime(), z.date()])
-    .refine(isNotPastDate, {
-      message: 'Sessions cannot be scheduled in the past',
-    }),
+  startsAt: z.union([z.string().datetime(), z.date()]).refine(isNotPastDate, {
+    message: 'Sessions cannot be scheduled in the past',
+  }),
+  endsAt: z.union([z.string().datetime(), z.date()]).refine(isNotPastDate, {
+    message: 'Sessions cannot be scheduled in the past',
+  }),
   capacity: z.number().int().positive('Capacity must be greater than 0'),
 });
 

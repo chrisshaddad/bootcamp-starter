@@ -80,7 +80,6 @@ function LoadingSkeleton() {
   );
 }
 
-
 export default function AvailablePlansPage() {
   const { plans, total, isLoading, error } = useMePlans();
 

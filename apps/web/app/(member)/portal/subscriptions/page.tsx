@@ -66,7 +66,6 @@ function LoadingSkeleton() {
   );
 }
 
-
 export default function MySubscriptionsPage() {
   const { subscriptions, total, isLoading, error } = useMeSubscriptions();
 

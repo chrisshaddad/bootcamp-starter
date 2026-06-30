@@ -30,7 +30,6 @@ function InfoRow({
   );
 }
 
-
 export default function MyProfilePage() {
   const { profile, isLoading, error } = useMeProfile();
 

@@ -1,6 +1,5 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -10,7 +9,6 @@ export class ApiError extends Error {
     this.name = 'ApiError';
   }
 }
-
 
 export async function fetcher<T>(endpoint: string): Promise<T> {
   const res = await fetch(`${API_URL}${endpoint}`, {
@@ -26,7 +24,6 @@ export async function fetcher<T>(endpoint: string): Promise<T> {
 
   return res.json();
 }
-
 
 export async function apiPost<T>(endpoint: string, data?: unknown): Promise<T> {
   const res = await fetch(`${API_URL}${endpoint}`, {
@@ -47,7 +44,6 @@ export async function apiPost<T>(endpoint: string, data?: unknown): Promise<T> {
 
   return res.json();
 }
-
 
 export async function apiPatch<T>(
   endpoint: string,

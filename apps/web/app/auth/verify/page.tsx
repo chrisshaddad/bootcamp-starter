@@ -97,7 +97,6 @@ function VerifyContent() {
   );
 }
 
-
 export default function VerifyPage() {
   return (
     <Suspense

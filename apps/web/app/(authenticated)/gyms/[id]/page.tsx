@@ -113,7 +113,6 @@ function charCount(value: string): number {
   return value.length;
 }
 
-
 export default function GymDetailPage() {
   const params = useParams();
   const router = useRouter();
