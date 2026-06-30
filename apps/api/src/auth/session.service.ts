@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { randomBytes } from 'crypto';
 import Redis from 'ioredis';
-import { PrismaService } from '../database/prisma.service';
+import { DatabaseService } from '../database/database.service';
 import { User } from '@repo/db';
 
 const SESSION_PREFIX = 'session:';
@@ -17,7 +17,7 @@ export class SessionService {
   private readonly logger = new Logger(SessionService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly prisma: DatabaseService,
     @Inject('REDIS_CLIENT') private readonly redis: Redis,
   ) {}
 

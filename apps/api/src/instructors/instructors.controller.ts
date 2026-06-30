@@ -38,6 +38,9 @@ import {
 import { ZodValidationPipe } from '../common/pipes';
 import { instructorSchema } from './instructors.swagger';
 
+/**
+ * Controller for managing gym instructors
+ */
 @ApiTags('instructors')
 @ApiCookieAuth('session-cookie')
 @Controller('instructors')
@@ -50,25 +53,27 @@ export class InstructorsController {
    * treat it as a UUID param.
    */
 
+  /** Find available instructors for a given time slot */
   @Get('available')
   @Roles('ORG_ADMIN')
   @ApiOperation({
-    summary: 'List available instructors for a time slot',
+    summary: 'Find available instructors',
     description:
-      'Returns active instructors who have no overlapping non-CANCELLED session in the given window. ' +
-      'An instructor is blocked when any of their sessions satisfies: `session.startsAt < endsAt AND session.endsAt > startsAt`.',
+      'Returns instructors that do not have overlapping sessions in the given time window.',
   })
   @ApiQuery({
     name: 'startsAt',
     required: true,
     type: String,
-    description: 'ISO-8601 datetime — start of the slot to check',
+    description: 'Start time of the session (ISO-8601 offset datetime)',
+    example: '2026-06-29T09:00:00Z',
   })
   @ApiQuery({
     name: 'endsAt',
     required: true,
     type: String,
-    description: 'ISO-8601 datetime — end of the slot to check',
+    description: 'End time of the session (ISO-8601 offset datetime)',
+    example: '2026-06-29T10:00:00Z',
   })
   @ApiResponse({
     status: 200,
@@ -76,17 +81,20 @@ export class InstructorsController {
     schema: {
       type: 'object',
       properties: {
-        instructors: { type: 'array', items: instructorSchema },
+        instructors: {
+          type: 'array',
+          items: instructorSchema,
+        },
       },
     },
   })
   @ApiResponse({
     status: 400,
-    description: 'Validation error — missing or invalid datetime params',
+    description:
+      'Validation error — missing/invalid datetime params, or endsAt not after startsAt',
   })
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   @ApiResponse({ status: 403, description: 'Insufficient role' })
-  /** Find available instructors for a given time slot */
   async findAvailable(
     @Query(new ZodValidationPipe(instructorAvailabilityQuerySchema))
     query: InstructorAvailabilityQuery,
@@ -100,24 +108,27 @@ export class InstructorsController {
     return { instructors };
   }
 
+  /**
+   * Get a paginated list of all instructors in the caller's gym.
+   * Can be optionally filtered by active status.
+   */
   @Get()
   @Roles('ORG_ADMIN')
   @ApiOperation({
     summary: 'List all instructors',
-    description:
-      "Returns a paginated list of the gym's instructors. ORG_ADMIN only.",
+    description: "Returns a list of the gym's instructors. ORG_ADMIN only.",
   })
   @ApiQuery({
     name: 'page',
     required: false,
     type: Number,
-    description: 'Page number (default 1)',
+    description: 'Page number (default 1, min 1)',
   })
   @ApiQuery({
     name: 'limit',
     required: false,
     type: Number,
-    description: 'Page size (default 25)',
+    description: 'Page size (default 25, min 1, max 100)',
   })
   @ApiQuery({
     name: 'isActive',
@@ -131,14 +142,16 @@ export class InstructorsController {
     schema: {
       type: 'object',
       properties: {
-        instructors: { type: 'array', items: instructorSchema },
+        instructors: {
+          type: 'array',
+          items: instructorSchema,
+        },
         total: { type: 'number', example: 10 },
       },
     },
   })
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   @ApiResponse({ status: 403, description: 'Insufficient role' })
-  /** Get a paginated list of all instructors in the caller's gym */
   async findAll(
     @CurrentUser() user: User,
     @Query(new ZodValidationPipe(instructorListQuerySchema))
@@ -147,6 +160,7 @@ export class InstructorsController {
     return this.instructorsService.findAll(user.gymId!, query);
   }
 
+  /** Get a single instructor by ID */
   @Get(':id')
   @Roles('ORG_ADMIN')
   @ApiOperation({ summary: 'Get an instructor by ID' })
@@ -159,7 +173,6 @@ export class InstructorsController {
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   @ApiResponse({ status: 403, description: 'Insufficient role' })
   @ApiResponse({ status: 404, description: 'Instructor not found' })
-  /** Get a single instructor by ID */
   async findOne(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: User,
@@ -167,6 +180,7 @@ export class InstructorsController {
     return this.instructorsService.findOne(id, user.gymId!);
   }
 
+  /** Create a new instructor */
   @Post()
   @Roles('ORG_ADMIN')
   @HttpCode(201)
@@ -177,11 +191,15 @@ export class InstructorsController {
   @ApiBody({
     schema: {
       type: 'object',
-      required: ['name'],
+      required: ['name', 'email'],
       properties: {
-        name: { type: 'string', example: 'Alice Trainer' },
-        email: { type: 'string', format: 'email', example: 'alice@gym.com' },
-        specialization: { type: 'string', example: 'Yoga' },
+        name: { type: 'string', example: 'John Doe' },
+        email: {
+          type: 'string',
+          format: 'email',
+          example: 'john@ironpeak.example.com',
+        },
+        specialization: { type: 'string', example: 'Yoga, Pilates' },
       },
     },
   })
@@ -193,7 +211,6 @@ export class InstructorsController {
   @ApiResponse({ status: 400, description: 'Validation error' })
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   @ApiResponse({ status: 403, description: 'Insufficient role' })
-  /** Create a new instructor */
   async create(
     @Body(new ZodValidationPipe(instructorCreateRequestSchema))
     dto: InstructorCreateRequest,
@@ -202,6 +219,7 @@ export class InstructorsController {
     return this.instructorsService.create(user.gymId!, dto);
   }
 
+  /** Update an instructor's details or active status */
   @Patch(':id')
   @Roles('ORG_ADMIN')
   @ApiOperation({
@@ -213,14 +231,13 @@ export class InstructorsController {
     schema: {
       type: 'object',
       properties: {
-        name: { type: 'string', example: 'Alice Trainer' },
+        name: { type: 'string', example: 'John Doe' },
         email: {
           type: 'string',
           format: 'email',
-          nullable: true,
-          example: 'alice@gym.com',
+          example: 'john@ironpeak.example.com',
         },
-        specialization: { type: 'string', nullable: true, example: 'CrossFit' },
+        specialization: { type: 'string', example: 'Yoga, Pilates' },
         isActive: { type: 'boolean', example: false },
       },
     },
@@ -234,7 +251,6 @@ export class InstructorsController {
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   @ApiResponse({ status: 403, description: 'Insufficient role' })
   @ApiResponse({ status: 404, description: 'Instructor not found' })
-  /** Update an instructor's details or active status */
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body(new ZodValidationPipe(instructorUpdateRequestSchema))

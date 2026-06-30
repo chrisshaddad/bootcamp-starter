@@ -36,7 +36,12 @@ export function useUser(options: UseUserOptions = {}): UseUserReturn {
 
     // Session gone → redirect to login
     if (redirectOnUnauthenticated && error?.status === 401) {
-      router.replace(`/login?redirect=${encodeURIComponent(pathname)}`);
+      // Clear session via API first to drop the HttpOnly cookie, preventing proxy loop
+      apiPost('/auth/logout')
+        .catch(() => {})
+        .finally(() => {
+          router.replace(`/login?redirect=${encodeURIComponent(pathname)}`);
+        });
       return;
     }
 

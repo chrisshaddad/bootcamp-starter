@@ -50,6 +50,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 // ── Small helper components ─────────────────────────────────────────────────
 
+/** Renders a coloured badge showing whether an instructor is active or inactive */
 function ActiveBadge({ isActive }: { isActive: boolean }) {
   return (
     <span
@@ -72,6 +73,7 @@ function ActiveBadge({ isActive }: { isActive: boolean }) {
   );
 }
 
+/** Renders a skeleton placeholder for the instructors list while data is loading */
 function LoadingSkeleton() {
   return (
     <div className="space-y-6">
@@ -87,6 +89,7 @@ function LoadingSkeleton() {
 
 // ── Add instructor dialog ────────────────────────────────────────────────────
 
+/** Dialog for adding a new instructor to the gym */
 export function AddInstructorDialog({
   open,
   onClose,
@@ -107,6 +110,7 @@ export function AddInstructorDialog({
     mode: 'onTouched',
   });
 
+  /** Submit the add-instructor form and call the create API */
   async function onSubmit(data: InstructorCreateRequest) {
     setIsSubmitting(true);
     try {
@@ -123,6 +127,7 @@ export function AddInstructorDialog({
     }
   }
 
+  /** Reset form fields and close the add-instructor dialog */
   function handleClose() {
     reset();
     onClose();
@@ -236,6 +241,7 @@ export function AddInstructorDialog({
 
 // ── Edit instructor dialog ───────────────────────────────────────────────────
 
+/** Dialog for editing an existing instructor's details or toggling their active status */
 export function EditInstructorDialog({
   instructor,
   open,
@@ -267,6 +273,7 @@ export function EditInstructorDialog({
       : undefined,
   });
 
+  /** Submit the edit-instructor form and call the update API */
   async function onSubmit(data: InstructorUpdateRequest) {
     if (!instructor) return;
     setIsSubmitting(true);
@@ -284,11 +291,13 @@ export function EditInstructorDialog({
     }
   }
 
+  /** Reset form fields and close the edit-instructor dialog */
   function handleClose() {
     reset();
     onClose();
   }
 
+  /** Toggle the instructor's active/inactive status and close the dialog */
   const handleToggleStatus = async () => {
     if (!instructor) return;
     setIsTogglingStatus(true);
@@ -505,6 +514,7 @@ export function EditInstructorDialog({
 
 type StatusFilter = 'all' | 'ACTIVE' | 'INACTIVE';
 
+/** Main page for managing gym instructors — paginated list with add, edit, and status-toggle actions */
 export default function InstructorsPage() {
   const [page, setPage] = useState(1);
   const [showAddDialog, setShowAddDialog] = useState(false);

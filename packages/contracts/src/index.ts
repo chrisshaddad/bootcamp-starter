@@ -7,3 +7,4 @@ export * from './plans';
 export * from './subscriptions';
 export * from './me';
 export * from './instructors';
+export * from './sessions';

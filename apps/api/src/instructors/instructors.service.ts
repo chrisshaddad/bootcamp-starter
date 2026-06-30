@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { PrismaService } from '../database/prisma.service';
+import { DatabaseService } from '../database/database.service';
 import type {
   InstructorListResponse,
   InstructorResponse,
@@ -22,9 +22,12 @@ const INSTRUCTOR_SELECT = {
   updatedAt: true,
 } as const;
 
+/**
+ * Service for managing gym instructors and related logic
+ */
 @Injectable()
 export class InstructorsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: DatabaseService) {}
 
   /** List all instructors for a gym with pagination */
   async findAll(

@@ -1,4 +1,9 @@
 reviews:
+  profile: "chill"
+  instructions: |
+    - Focus on severe logic errors, security issues, and bugs.
+    - Ignore minor nitpicks, UI styling choices, and formatting issues.
+    - Do not complain about unused variables if they are a work-in-progress.
   auto_review:
     enabled: true
     base_branches:
