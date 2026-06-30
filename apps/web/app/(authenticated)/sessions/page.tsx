@@ -50,6 +50,22 @@ const formSchema = sessionCreateRequestSchema
       message: 'End time must be after start time',
       path: ['endTime'],
     },
+  )
+  .refine(
+    (data) => {
+      try {
+        const start = new Date(`${data.date}T${data.startTime}`);
+        // 5-minute grace period
+        const nowWithGrace = new Date(Date.now() - 5 * 60 * 1000);
+        return start >= nowWithGrace;
+      } catch {
+        return true;
+      }
+    },
+    {
+      message: 'Start time cannot be in the past',
+      path: ['startTime'],
+    },
   );
 
 type FormValues = z.infer<typeof formSchema>;

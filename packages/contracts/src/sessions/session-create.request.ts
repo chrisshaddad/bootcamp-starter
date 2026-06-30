@@ -7,10 +7,9 @@ import { z } from 'zod';
 function isNotPastDate(value: string | Date): boolean {
   const d = value instanceof Date ? value : new Date(value);
   if (isNaN(d.getTime())) return false;
-  // Compare at day granularity — strip time so a session starting today at 00:00 is still valid
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return d >= today;
+  // Compare against current time with a 5-minute grace period to account for form-filling time
+  const nowWithGrace = new Date(Date.now() - 5 * 60 * 1000);
+  return d >= nowWithGrace;
 }
 
 /** Request schema for creating a new gym session */
