@@ -17,7 +17,6 @@ import {
   ApiParam,
   ApiBody,
   ApiQuery,
-  getSchemaPath,
 } from '@nestjs/swagger';
 import { BookingsService } from './bookings.service';
 import { Roles, CurrentUser } from '../auth/decorators';
@@ -81,7 +80,16 @@ export class BookingsController {
     description:
       'Registers a member for a session. Rejects if session is full, cancelled, or member is already booked.',
   })
-  @ApiBody({ schema: { $ref: getSchemaPath(bookingCreateRequestSchema) } })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['sessionId', 'memberId'],
+      properties: {
+        sessionId: { type: 'string', format: 'uuid' },
+        memberId: { type: 'string', format: 'uuid' },
+      },
+    },
+  })
   @ApiResponse({
     status: 201,
     description: 'Booking created',
