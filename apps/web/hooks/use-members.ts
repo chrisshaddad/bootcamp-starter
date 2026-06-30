@@ -11,7 +11,7 @@ import type {
   MemberStatus,
 } from '@repo/contracts';
 
-export const MEMBERS_PAGE_SIZE = 25;
+export const MEMBERS_PAGE_SIZE = 100;
 
 interface UseMembersOptions {
   status?: MemberStatus;

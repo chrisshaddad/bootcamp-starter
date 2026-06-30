@@ -14,6 +14,7 @@ node_modules
 
 # Testing
 coverage
+missing_docstrings.md
 
 # Turbo
 .turbo
