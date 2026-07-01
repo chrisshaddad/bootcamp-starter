@@ -1,2 +1,3 @@
 export * from './user-role.schema';
+export * from './user-status.schema';
 export * from './user.response';

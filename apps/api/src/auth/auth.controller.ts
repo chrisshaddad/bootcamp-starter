@@ -9,9 +9,9 @@ import {
   HttpStatus,
   UsePipes,
 } from '@nestjs/common';
-import type { Response } from 'express';
+import type { CookieOptions, Response } from 'express';
 import { AuthService } from './auth.service';
-import { CurrentUser, Public } from './decorators';
+import { AllowPending, CurrentUser, Public } from './decorators';
 import {
   SESSION_COOKIE_NAME,
   type AuthenticatedRequest,
@@ -19,14 +19,30 @@ import {
 import {
   magicLinkRequestSchema,
   magicLinkVerifyRequestSchema,
+  passwordLoginRequestSchema,
+  signupRequestSchema,
+  setPasswordRequestSchema,
   type MagicLinkRequest,
   type MagicLinkVerifyRequest,
+  type PasswordLoginRequest,
+  type SignupRequest,
+  type SetPasswordRequest,
   type UserResponse,
 } from '@repo/contracts';
 import type { User } from '@repo/db';
 import { ZodValidationPipe } from '../common/pipes';
 
-const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+function sessionCookieOptions(maxAgeMs?: number): CookieOptions {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    ...(maxAgeMs !== undefined ? { maxAge: maxAgeMs } : {}),
+  };
+}
 
 @Controller('auth')
 export class AuthController {
@@ -47,20 +63,61 @@ export class AuthController {
   async verifyMagicLink(
     @Body() body: MagicLinkVerifyRequest,
     @Res({ passthrough: true }) response: Response,
-  ) {
+  ): Promise<{ user: UserResponse }> {
     const { sessionId, user } = await this.authService.verifyMagicLink(
       body.token,
     );
 
-    // Set session cookie
-    response.cookie(SESSION_COOKIE_NAME, sessionId, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: SESSION_MAX_AGE_MS,
-      path: '/',
-    });
+    response.cookie(
+      SESSION_COOKIE_NAME,
+      sessionId,
+      sessionCookieOptions(SESSION_MAX_AGE_MS),
+    );
 
+    return { user };
+  }
+
+  @Public()
+  @Post('login')
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ZodValidationPipe(passwordLoginRequestSchema))
+  async login(
+    @Body() body: PasswordLoginRequest,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<{ user: UserResponse }> {
+    const { sessionId, user } = await this.authService.loginWithPassword(
+      body.email,
+      body.password,
+    );
+
+    response.cookie(
+      SESSION_COOKIE_NAME,
+      sessionId,
+      sessionCookieOptions(SESSION_MAX_AGE_MS),
+    );
+
+    return { user };
+  }
+
+  @Public()
+  @Post('signup')
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ZodValidationPipe(signupRequestSchema))
+  async signup(@Body() body: SignupRequest) {
+    return this.authService.signup(body);
+  }
+
+  @AllowPending()
+  @Post('set-password')
+  @HttpCode(HttpStatus.OK)
+  async setPassword(
+    @CurrentUser('id') userId: string,
+    // Pipe is scoped to the body param: @UsePipes would also run it against the
+    // @CurrentUser('id') string and reject it as "not an object".
+    @Body(new ZodValidationPipe(setPasswordRequestSchema))
+    body: SetPasswordRequest,
+  ): Promise<{ user: UserResponse }> {
+    const user = await this.authService.setPassword(userId, body.password);
     return { user };
   }
 
@@ -76,13 +133,7 @@ export class AuthController {
       await this.authService.logout(sessionId);
     }
 
-    // Clear session cookie
-    response.clearCookie(SESSION_COOKIE_NAME, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-    });
+    response.clearCookie(SESSION_COOKIE_NAME, sessionCookieOptions());
 
     return { success: true };
   }
@@ -95,6 +146,9 @@ export class AuthController {
       firstName: user.firstName,
       lastName: user.lastName,
       role: user.role,
+      status: user.status,
+      pharmacyId: user.pharmacyId,
+      branchId: user.branchId,
     };
   }
 }

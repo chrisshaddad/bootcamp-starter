@@ -6,6 +6,7 @@ import { AuthController } from './auth.controller';
 import { AuthGuard } from './guards/auth.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { SessionService } from './session.service';
+import { PasswordService } from './password.service';
 import { MailModule } from '../mail/mail.module';
 
 @Module({
@@ -13,6 +14,7 @@ import { MailModule } from '../mail/mail.module';
   providers: [
     AuthService,
     SessionService,
+    PasswordService,
     {
       provide: 'REDIS_CLIENT',
       useFactory: () => {

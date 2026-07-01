@@ -26,6 +26,7 @@
     "@nestjs/platform-express": "^11.0.1",
     "@repo/contracts": "*",
     "@repo/db": "*",
+    "argon2": "^0.44.0",
     "bullmq": "^5.66.4",
     "cookie-parser": "^1.4.7",
     "ioredis": "^5.8.2",
