@@ -18,27 +18,33 @@ const STATUS_COLORS: Record<string, string> = {
   CANCELLED: 'bg-error-light text-error border border-error/20',
 };
 
+function CardLoadingSkeleton() {
+  return (
+    <div className="space-y-3">
+      <Skeleton className="h-16 w-full" />
+      <Skeleton className="h-16 w-full" />
+    </div>
+  );
+}
+
+function CardErrorState({ message }: { message: string }) {
+  return (
+    <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-center">
+      <p className="text-sm font-medium text-error">{message}</p>
+      <p className="mt-1 text-sm text-gray-500">Please refresh the page.</p>
+    </div>
+  );
+}
+
 function ActiveSubscriptionCard() {
   const { subscriptions, isLoading, error } = useMeSubscriptions();
 
   if (isLoading) {
-    return (
-      <div className="space-y-3">
-        <Skeleton className="h-16 w-full" />
-        <Skeleton className="h-16 w-full" />
-      </div>
-    );
+    return <CardLoadingSkeleton />;
   }
 
   if (error) {
-    return (
-      <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-center">
-        <p className="text-sm font-medium text-error">
-          Failed to load subscriptions
-        </p>
-        <p className="mt-1 text-sm text-gray-500">Please refresh the page.</p>
-      </div>
-    );
+    return <CardErrorState message="Failed to load subscriptions" />;
   }
 
   const active = subscriptions?.filter((s) => s.status === 'ACTIVE') ?? [];
@@ -106,26 +112,15 @@ function UpcomingBookingsCard() {
   const { bookings, isLoading, error } = useMeBookings({
     status: 'BOOKED',
     page: 1,
+    limit: 3,
   });
 
   if (isLoading) {
-    return (
-      <div className="space-y-3">
-        <Skeleton className="h-16 w-full" />
-        <Skeleton className="h-16 w-full" />
-      </div>
-    );
+    return <CardLoadingSkeleton />;
   }
 
   if (error) {
-    return (
-      <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-center">
-        <p className="text-sm font-medium text-error">
-          Failed to load upcoming bookings
-        </p>
-        <p className="mt-1 text-sm text-gray-500">Please refresh the page.</p>
-      </div>
-    );
+    return <CardErrorState message="Failed to load upcoming bookings" />;
   }
 
   const upcoming = bookings ?? [];

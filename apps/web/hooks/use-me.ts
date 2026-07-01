@@ -69,16 +69,22 @@ export function useMePlans() {
 
 interface UseMeBookingsOptions {
   page?: number;
+  limit?: number;
   status?: BookingStatus;
   enabled?: boolean;
 }
 
 /** Fetch paginated list of bookings for the logged-in portal member */
 export function useMeBookings(options: UseMeBookingsOptions = {}) {
-  const { page = 1, status, enabled = true } = options;
+  const {
+    page = 1,
+    limit = MY_BOOKINGS_PAGE_SIZE,
+    status,
+    enabled = true,
+  } = options;
   const params = new URLSearchParams({
     page: String(page),
-    limit: String(MY_BOOKINGS_PAGE_SIZE),
+    limit: String(limit),
   });
   if (status) {
     params.set('status', status);
