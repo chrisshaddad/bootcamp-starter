@@ -81,7 +81,7 @@ CREATE TABLE "Course" (
     "teacherId" TEXT NOT NULL,
     "subjectId" TEXT NOT NULL,
     "sectionId" TEXT,
-    "organizationId" TEXT,
+    "organizationId" TEXT NOT NULL,
     "title" TEXT NOT NULL,
     "description" TEXT,
     "coverImageUrl" TEXT,
@@ -181,7 +181,10 @@ CREATE TABLE "Grade" (
     "gradedById" TEXT,
     "gradedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "Grade_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "Grade_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "Grade_exactly_one_source_check" CHECK (
+        (("submissionId" IS NOT NULL)::int + ("quizAttemptId" IS NOT NULL)::int) = 1
+    )
 );
 
 -- CreateTable
@@ -369,6 +372,9 @@ CREATE INDEX "Assignment_courseId_status_idx" ON "Assignment"("courseId", "statu
 CREATE INDEX "Assignment_dueAt_idx" ON "Assignment"("dueAt");
 
 -- CreateIndex
+CREATE INDEX "Assignment_createdById_idx" ON "Assignment"("createdById");
+
+-- CreateIndex
 CREATE INDEX "QuizQuestion_assignmentId_idx" ON "QuizQuestion"("assignmentId");
 
 -- CreateIndex
@@ -402,7 +408,13 @@ CREATE INDEX "Grade_submissionId_idx" ON "Grade"("submissionId");
 CREATE INDEX "Grade_quizAttemptId_idx" ON "Grade"("quizAttemptId");
 
 -- CreateIndex
+CREATE INDEX "Grade_gradedById_idx" ON "Grade"("gradedById");
+
+-- CreateIndex
 CREATE INDEX "Meeting_courseId_scheduledAt_idx" ON "Meeting"("courseId", "scheduledAt");
+
+-- CreateIndex
+CREATE INDEX "Meeting_hostId_idx" ON "Meeting"("hostId");
 
 -- CreateIndex
 CREATE INDEX "MeetingParticipant_userId_idx" ON "MeetingParticipant"("userId");
@@ -465,7 +477,7 @@ ALTER TABLE "Course" ADD CONSTRAINT "Course_subjectId_fkey" FOREIGN KEY ("subjec
 ALTER TABLE "Course" ADD CONSTRAINT "Course_sectionId_fkey" FOREIGN KEY ("sectionId") REFERENCES "Section"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Course" ADD CONSTRAINT "Course_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "Course" ADD CONSTRAINT "Course_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Enrollment" ADD CONSTRAINT "Enrollment_courseId_fkey" FOREIGN KEY ("courseId") REFERENCES "Course"("id") ON DELETE CASCADE ON UPDATE CASCADE;

@@ -293,7 +293,7 @@ model Course {
   teacherId      String
   subjectId      String
   sectionId      String?
-  organizationId String?
+  organizationId String
   title          String
   description    String?      @db.Text
   coverImageUrl  String?
@@ -302,10 +302,10 @@ model Course {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @default(now()) @updatedAt
 
-  teacher      User          @relation("TeacherCourses", fields: [teacherId], references: [id])
-  subject      Subject       @relation(fields: [subjectId], references: [id])
-  section      Section?      @relation(fields: [sectionId], references: [id])
-  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  teacher      User         @relation("TeacherCourses", fields: [teacherId], references: [id])
+  subject      Subject      @relation(fields: [subjectId], references: [id])
+  section      Section?     @relation(fields: [sectionId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
 
   enrollments Enrollment[]
   assignments Assignment[]
@@ -366,6 +366,7 @@ model Assignment {
 
   @@index([courseId, status])
   @@index([dueAt])
+  @@index([createdById])
   @@schema("public")
 }
 
@@ -460,6 +461,7 @@ model Grade {
 
   @@index([submissionId])
   @@index([quizAttemptId])
+  @@index([gradedById])
   @@schema("public")
 }
 
@@ -479,6 +481,7 @@ model Meeting {
   participants MeetingParticipant[]
 
   @@index([courseId, scheduledAt])
+  @@index([hostId])
   @@schema("public")
 }
 
