@@ -381,6 +381,7 @@ model QuizQuestion {
 
   assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
 
+  @@unique([assignmentId, position])
   @@index([assignmentId])
   @@schema("public")
 }
