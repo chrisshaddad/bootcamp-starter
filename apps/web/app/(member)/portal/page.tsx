@@ -1,8 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { ClipboardList, User } from 'lucide-react';
-import { useMeProfile, useMeSubscriptions } from '@/hooks/use-me';
+import { format } from 'date-fns';
+import { ClipboardList, Calendar, ArrowRight } from 'lucide-react';
+import {
+  useMeProfile,
+  useMeSubscriptions,
+  useMeBookings,
+} from '@/hooks/use-me';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -13,73 +18,170 @@ const STATUS_COLORS: Record<string, string> = {
   CANCELLED: 'bg-error-light text-error border border-error/20',
 };
 
+function CardLoadingSkeleton() {
+  return (
+    <div className="space-y-3">
+      <Skeleton className="h-16 w-full" />
+      <Skeleton className="h-16 w-full" />
+    </div>
+  );
+}
+
+function CardErrorState({ message }: { message: string }) {
+  return (
+    <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-center">
+      <p className="text-sm font-medium text-error">{message}</p>
+      <p className="mt-1 text-sm text-gray-500">Please refresh the page.</p>
+    </div>
+  );
+}
+
 function ActiveSubscriptionCard() {
   const { subscriptions, isLoading, error } = useMeSubscriptions();
 
   if (isLoading) {
-    return (
-      <div className="space-y-3">
-        <Skeleton className="h-16 w-full" />
-        <Skeleton className="h-16 w-full" />
-      </div>
-    );
+    return <CardLoadingSkeleton />;
   }
 
   if (error) {
-    return (
-      <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-center">
-        <p className="text-sm font-medium text-error">
-          Failed to load subscriptions
-        </p>
-        <p className="mt-1 text-sm text-gray-500">Please refresh the page.</p>
-      </div>
-    );
+    return <CardErrorState message="Failed to load subscriptions" />;
   }
 
   const active = subscriptions?.filter((s) => s.status === 'ACTIVE') ?? [];
 
   if (active.length === 0) {
     return (
-      <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-center">
-        <p className="text-sm font-medium text-gray-700">
+      <div className="rounded-lg border border-gray-200 bg-gray-50 p-6 text-center">
+        <ClipboardList className="mx-auto h-8 w-8 text-gray-300" />
+        <p className="mt-2 text-sm font-medium text-gray-700">
           No active subscription
         </p>
-        <p className="mt-1 text-sm text-gray-500">
-          Contact your gym to get a membership plan.
+        <p className="mt-1 text-xs text-gray-500">
+          Contact your gym desk to get a membership plan.
         </p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-2">
-      {active.map((sub) => {
-        const endDate = new Date(sub.endDate).toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-        });
-        return (
-          <div key={sub.id} className="rounded-lg bg-primary-100 p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-primary-base">
-                  {sub.plan?.name ?? 'Membership Plan'}
-                </p>
-                <p className="mt-0.5 text-sm text-gray-600">
-                  Active until{' '}
-                  <span className="font-medium text-gray-800">{endDate}</span>
-                </p>
+    <div className="space-y-3">
+      <div className="space-y-2">
+        {active.map((sub) => {
+          const endDate = new Date(sub.endDate).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          });
+          return (
+            <div key={sub.id} className="rounded-lg bg-primary-100 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-primary-base">
+                    {sub.plan?.name ?? 'Membership Plan'}
+                  </p>
+                  <p className="mt-0.5 text-xs text-gray-600">
+                    Active until{' '}
+                    <span className="font-medium text-gray-800">{endDate}</span>
+                  </p>
+                </div>
+                <span
+                  className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${STATUS_COLORS.ACTIVE}`}
+                >
+                  Active
+                </span>
               </div>
-              <span
-                className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${STATUS_COLORS.ACTIVE}`}
-              >
-                Active
-              </span>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
+      <Button
+        asChild
+        variant="ghost"
+        className="w-full justify-between text-xs text-primary-base hover:bg-primary-50 hover:text-primary-base"
+      >
+        <Link href="/portal/subscriptions">
+          <span>View all subscriptions</span>
+          <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
+      </Button>
+    </div>
+  );
+}
+
+function UpcomingBookingsCard() {
+  const { bookings, isLoading, error } = useMeBookings({
+    status: 'BOOKED',
+    page: 1,
+    limit: 3,
+  });
+
+  if (isLoading) {
+    return <CardLoadingSkeleton />;
+  }
+
+  if (error) {
+    return <CardErrorState message="Failed to load upcoming bookings" />;
+  }
+
+  const upcoming = bookings ?? [];
+
+  if (upcoming.length === 0) {
+    return (
+      <div className="rounded-lg border border-gray-200 bg-gray-50 p-6 text-center">
+        <Calendar className="mx-auto h-8 w-8 text-gray-300" />
+        <p className="mt-2 text-sm font-medium text-gray-700">
+          No upcoming bookings
+        </p>
+        <p className="mt-1 text-xs text-gray-500">
+          Contact your gym desk to register for scheduled sessions.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="space-y-2">
+        {upcoming.slice(0, 3).map((booking) => {
+          const session = booking.session;
+          if (!session) return null;
+          const startDate = format(new Date(session.startsAt), 'MMM d, yyyy');
+          const startTime = format(new Date(session.startsAt), 'h:mm a');
+          return (
+            <div
+              key={booking.id}
+              className="rounded-lg border border-gray-100 bg-gray-50/50 p-3.5 transition-colors hover:bg-gray-50"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <p className="truncate text-sm font-semibold text-gray-900">
+                  {session.title}
+                </p>
+                <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+                  {startTime}
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-gray-500">
+                {startDate}
+                {session.instructor && (
+                  <span className="ml-1 text-gray-400">
+                    · {session.instructor.name}
+                  </span>
+                )}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+      <Button
+        asChild
+        variant="ghost"
+        className="w-full justify-between text-xs text-primary-base hover:bg-primary-50 hover:text-primary-base"
+      >
+        <Link href="/portal/bookings">
+          <span>View all bookings</span>
+          <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
+      </Button>
     </div>
   );
 }
@@ -98,14 +200,15 @@ export default function PortalHomePage() {
           </h1>
         )}
         <p className="mt-1 text-sm text-gray-500">
-          Here&apos;s an overview of your membership.
+          Here&apos;s an overview of your membership and schedule.
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 items-start">
+      <div className="grid gap-6 sm:grid-cols-2 items-start">
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold text-gray-700">
+            <CardTitle className="flex items-center gap-2 text-base font-semibold text-gray-700">
+              <ClipboardList className="h-4 w-4 text-gray-500" />
               Active Subscriptions
             </CardTitle>
           </CardHeader>
@@ -116,41 +219,13 @@ export default function PortalHomePage() {
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold text-gray-700">
-              Quick Links
+            <CardTitle className="flex items-center gap-2 text-base font-semibold text-gray-700">
+              <Calendar className="h-4 w-4 text-gray-500" />
+              Upcoming Bookings
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-0 space-y-2">
-            <Button
-              asChild
-              variant="outline"
-              className="w-full justify-start gap-2 text-gray-700"
-            >
-              <Link href="/portal/subscriptions">
-                <ClipboardList className="h-4 w-4 text-gray-500" />
-                View all subscriptions
-              </Link>
-            </Button>
-            <Button
-              asChild
-              variant="outline"
-              className="w-full justify-start gap-2 text-gray-700"
-            >
-              <Link href="/portal/plans">
-                <ClipboardList className="h-4 w-4 text-gray-500" />
-                Browse available plans
-              </Link>
-            </Button>
-            <Button
-              asChild
-              variant="outline"
-              className="w-full justify-start gap-2 text-gray-700"
-            >
-              <Link href="/portal/profile">
-                <User className="h-4 w-4 text-gray-500" />
-                My profile
-              </Link>
-            </Button>
+          <CardContent className="pt-0">
+            <UpcomingBookingsCard />
           </CardContent>
         </Card>
       </div>

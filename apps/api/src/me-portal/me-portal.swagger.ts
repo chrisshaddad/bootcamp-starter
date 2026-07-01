@@ -45,3 +45,39 @@ export const mePlanSchema = {
     isActive: { type: 'boolean' },
   },
 };
+
+export const meBookingSchema = {
+  type: 'object',
+  properties: {
+    id: { type: 'string', format: 'uuid' },
+    gymId: { type: 'string', format: 'uuid' },
+    sessionId: { type: 'string', format: 'uuid' },
+    memberId: { type: 'string', format: 'uuid' },
+    status: { type: 'string', enum: ['BOOKED', 'CHECKED_IN', 'CANCELLED'] },
+    createdAt: { type: 'string', format: 'date-time' },
+    updatedAt: { type: 'string', format: 'date-time' },
+    session: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', format: 'uuid' },
+        title: { type: 'string' },
+        description: { type: 'string', nullable: true },
+        startsAt: { type: 'string', format: 'date-time' },
+        endsAt: { type: 'string', format: 'date-time' },
+        capacity: { type: 'number' },
+        status: {
+          type: 'string',
+          enum: ['SCHEDULED', 'CANCELLED', 'COMPLETED'],
+        },
+        instructor: {
+          nullable: true,
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            name: { type: 'string' },
+          },
+        },
+      },
+    },
+  },
+};

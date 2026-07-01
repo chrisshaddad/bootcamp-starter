@@ -195,6 +195,7 @@ Run those three commands locally before pushing if you want a pre-flight check.
 
 ## Things NOT to do
 
+- Don't force push (`git push -f` or `git push --force`). Never use `git commit --amend` or `git rebase` on pushed branches; always create brand-new, additive commits for any fixes or PR feedback.
 - Don't commit `.env` files.
 - Don't add Husky / lint-staged / pre-commit hooks. Quality gates live in CI.
 - Don't define DTOs in `apps/api` or `apps/web` — put them in `packages/contracts`.
