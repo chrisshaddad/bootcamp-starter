@@ -258,7 +258,7 @@ export function EventCalendar({
                 disabled={!hasEvents}
                 onClick={() => handleDayClick(dateKey, hasEvents)}
                 className={cn(
-                  'relative flex min-h-[4.5rem] flex-col items-stretch p-1.5 text-left transition-colors sm:min-h-[5.5rem] sm:p-2',
+                  'relative flex min-h-16 flex-col items-stretch p-1.5 text-left transition-colors sm:min-h-20 sm:p-2',
                   inCurrentMonth ? 'bg-white' : 'bg-gray-100',
                   hasEvents &&
                     'cursor-pointer hover:bg-primary-100 focus-visible:ring-2 focus-visible:ring-primary-base focus-visible:outline-none',
@@ -295,7 +295,7 @@ export function EventCalendar({
                         />
                       ))}
                     </div>
-                    <span className="block truncate text-[10px] font-medium text-gray-600 sm:text-xs">
+                    <span className="block truncate text-xs font-medium text-gray-600 sm:text-xs">
                       {dayEvents.length === 1
                         ? dayEvents[0]!.eventName
                         : `${dayEvents.length} events`}
@@ -346,7 +346,7 @@ export function EventCalendar({
                     )}
                   </p>
                   {event.isRegistered && (
-                    <span className="mt-2 inline-flex rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
+                    <span className="mt-2 inline-flex rounded-full bg-primary-100 px-2 py-0.5 text-xs font-medium text-primary-base">
                       Registered
                     </span>
                   )}

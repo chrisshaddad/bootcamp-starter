@@ -1,16 +1,20 @@
+import { createHash } from 'node:crypto';
 import { PrismaClient } from '../../src/generated/prisma/client';
 
 interface MemberSeed {
   username: string;
   role: 'ADMIN' | 'PRESENTER';
   organizationName: string;
+  organizationAdminEmail: string;
   userEmail?: string;
 }
 
 interface EventSeed {
+  seedKey: string;
   eventName: string;
   presenterUsername: string;
   organizationName: string;
+  organizationAdminEmail: string;
   startsAt: Date;
 }
 
@@ -21,69 +25,115 @@ function daysFromNow(days: number): Date {
   return date;
 }
 
+function seedEventId(seedKey: string): string {
+  const hash = createHash('sha256')
+    .update(`coordly:event:${seedKey}`)
+    .digest('hex');
+
+  return [
+    hash.slice(0, 8),
+    hash.slice(8, 12),
+    hash.slice(12, 16),
+    `4${hash.slice(17, 20)}`,
+    hash.slice(20, 32),
+  ].join('-');
+}
+
 const MEMBERS: MemberSeed[] = [
   {
     username: 'jsmith',
     role: 'ADMIN',
     organizationName: 'TechCorp Solutions',
+    organizationAdminEmail: 'admin@techcorp.example.com',
     userEmail: 'admin@techcorp.example.com',
   },
   {
     username: 'alee',
     role: 'PRESENTER',
     organizationName: 'TechCorp Solutions',
+    organizationAdminEmail: 'admin@techcorp.example.com',
     userEmail: 'presenter@techcorp.example.com',
   },
   {
     username: 'mchen',
     role: 'ADMIN',
     organizationName: 'Green Energy Partners',
+    organizationAdminEmail: 'admin@greenenergy.example.com',
     userEmail: 'admin@greenenergy.example.com',
   },
   {
     username: 'rwilson',
     role: 'PRESENTER',
     organizationName: 'Green Energy Partners',
+    organizationAdminEmail: 'admin@greenenergy.example.com',
   },
   {
     username: 'tpatel',
     role: 'PRESENTER',
     organizationName: 'DataSync Analytics',
+    organizationAdminEmail: 'admin@datasync.example.com',
   },
 ];
 
 const EVENTS: EventSeed[] = [
   {
+    seedKey: 'techcorp-leadership-workshop',
     eventName: 'Leadership Workshop',
     presenterUsername: 'jsmith',
     organizationName: 'TechCorp Solutions',
+    organizationAdminEmail: 'admin@techcorp.example.com',
     startsAt: daysFromNow(7),
   },
   {
+    seedKey: 'techcorp-team-sync-meeting',
     eventName: 'Team Sync Meeting',
     presenterUsername: 'alee',
     organizationName: 'TechCorp Solutions',
+    organizationAdminEmail: 'admin@techcorp.example.com',
     startsAt: daysFromNow(14),
   },
   {
+    seedKey: 'green-energy-sustainability-camp',
     eventName: 'Sustainability Camp',
     presenterUsername: 'mchen',
     organizationName: 'Green Energy Partners',
+    organizationAdminEmail: 'admin@greenenergy.example.com',
     startsAt: daysFromNow(-7),
   },
   {
+    seedKey: 'green-energy-renewable-seminar',
     eventName: 'Renewable Energy Seminar',
     presenterUsername: 'mchen',
     organizationName: 'Green Energy Partners',
+    organizationAdminEmail: 'admin@greenenergy.example.com',
     startsAt: daysFromNow(10),
   },
   {
+    seedKey: 'datasync-analytics-bootcamp',
     eventName: 'Data Analytics Bootcamp',
     presenterUsername: 'tpatel',
     organizationName: 'DataSync Analytics',
+    organizationAdminEmail: 'admin@datasync.example.com',
     startsAt: daysFromNow(21),
   },
 ];
+
+async function findOrganizationByAdminEmail(
+  prisma: PrismaClient,
+  adminEmail: string,
+) {
+  const orgAdmin = await prisma.user.findUnique({
+    where: { email: adminEmail },
+  });
+
+  if (!orgAdmin) {
+    return null;
+  }
+
+  return prisma.organization.findUnique({
+    where: { createdById: orgAdmin.id },
+  });
+}
 
 export async function seedCoordly(prisma: PrismaClient) {
   console.log('Seeding Coordly members and events...');
@@ -91,9 +141,10 @@ export async function seedCoordly(prisma: PrismaClient) {
   const memberIdsByKey = new Map<string, string>();
 
   for (const member of MEMBERS) {
-    const organization = await prisma.organization.findFirst({
-      where: { name: member.organizationName },
-    });
+    const organization = await findOrganizationByAdminEmail(
+      prisma,
+      member.organizationAdminEmail,
+    );
 
     if (!organization) {
       console.warn(
@@ -147,9 +198,10 @@ export async function seedCoordly(prisma: PrismaClient) {
   }
 
   for (const event of EVENTS) {
-    const organization = await prisma.organization.findFirst({
-      where: { name: event.organizationName },
-    });
+    const organization = await findOrganizationByAdminEmail(
+      prisma,
+      event.organizationAdminEmail,
+    );
 
     if (!organization) {
       console.warn(
@@ -178,36 +230,24 @@ export async function seedCoordly(prisma: PrismaClient) {
       continue;
     }
 
-    const existingEvent = await prisma.event.findFirst({
-      where: {
-        eventName: event.eventName,
-        organizationId: organization.id,
-      },
-    });
-
-    if (existingEvent) {
-      await prisma.event.update({
-        where: { id: existingEvent.id },
-        data: {
-          presenterId,
-          startsAt: event.startsAt,
-        },
-      });
-      console.log(`  Event updated: ${event.eventName}`);
-      continue;
-    }
-
-    await prisma.event.create({
-      data: {
+    await prisma.event.upsert({
+      where: { id: seedEventId(event.seedKey) },
+      create: {
+        id: seedEventId(event.seedKey),
         eventName: event.eventName,
         presenterId,
         organizationId: organization.id,
         startsAt: event.startsAt,
       },
+      update: {
+        eventName: event.eventName,
+        presenterId,
+        startsAt: event.startsAt,
+      },
     });
 
     console.log(
-      `  Created event: ${event.eventName} (presenter: ${event.presenterUsername})`,
+      `  Event ready: ${event.eventName} (presenter: ${event.presenterUsername})`,
     );
   }
 

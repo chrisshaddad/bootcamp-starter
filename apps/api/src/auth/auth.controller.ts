@@ -23,14 +23,18 @@ import {
   type MagicLinkVerifyRequest,
   type UserResponse,
 } from '@repo/contracts';
-import type { User } from '@repo/db';
+import type { User, MemberRole } from '@repo/db';
 import { ZodValidationPipe } from '../common/pipes';
+import { PrismaService } from '../database/prisma.service';
 
 const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   @Public()
   @Post('magic-link')
@@ -88,7 +92,20 @@ export class AuthController {
   }
 
   @Get('me')
-  getCurrentUser(@CurrentUser() user: User): UserResponse {
+  async getCurrentUser(@CurrentUser() user: User): Promise<UserResponse> {
+    // Fetch member role if user is in an organization
+    let memberRole: MemberRole | null = null;
+    if (user.organizationId) {
+      const member = await this.prisma.member.findFirst({
+        where: {
+          userId: user.id,
+          organizationId: user.organizationId,
+        },
+        select: { role: true },
+      });
+      memberRole = member?.role ?? null;
+    }
+
     return {
       id: user.id,
       email: user.email,
@@ -96,6 +113,7 @@ export class AuthController {
       role: user.role,
       organizationId: user.organizationId,
       isConfirmed: user.isConfirmed,
+      memberRole,
     };
   }
 }

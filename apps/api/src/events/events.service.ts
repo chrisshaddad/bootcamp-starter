@@ -5,7 +5,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import type { User } from '@repo/db';
+import { Prisma, type User } from '@repo/db';
 import { PrismaService } from '../database/prisma.service';
 import { resolveOrganizationScope } from '../common/organization-scope';
 import type {
@@ -53,20 +53,35 @@ export class EventsService {
     });
   }
 
-  private async evaluateRegistrationEligibility(
+  private async getPresenterMemberId(
     userId: string,
+    organizationId: string,
+  ): Promise<string | null> {
+    const membership = await this.getOrgMembership(userId, organizationId);
+    if (membership && membership.role === 'PRESENTER') {
+      return membership.id;
+    }
+    return null;
+  }
+
+  private async evaluateRegistrationEligibility(
+    user: Pick<User, 'id' | 'role'>,
     event: {
       organizationId: string;
       startsAt: Date;
       presenterId: string | null;
     },
   ): Promise<boolean> {
+    if (user.role !== 'MEMBER') {
+      return false;
+    }
+
     if (!this.isUpcoming(event.startsAt)) {
       return false;
     }
 
     const membership = await this.getOrgMembership(
-      userId,
+      user.id,
       event.organizationId,
     );
 
@@ -82,17 +97,23 @@ export class EventsService {
       return event.presenterId !== membership.id;
     }
 
-    return false;
+    return true;
   }
 
   private async assertCanRegister(
-    userId: string,
+    user: Pick<User, 'id' | 'role'>,
     event: {
       organizationId: string;
       startsAt: Date;
       presenterId: string | null;
     },
   ): Promise<void> {
+    if (user.role !== 'MEMBER') {
+      throw new ForbiddenException(
+        'Only organization members can register as event attendees',
+      );
+    }
+
     if (!this.isUpcoming(event.startsAt)) {
       throw new BadRequestException(
         'Registration is only available for upcoming events',
@@ -100,7 +121,7 @@ export class EventsService {
     }
 
     const membership = await this.getOrgMembership(
-      userId,
+      user.id,
       event.organizationId,
     );
 
@@ -121,14 +142,14 @@ export class EventsService {
   }
 
   private async canUserRegister(
-    userId: string,
+    user: Pick<User, 'id' | 'role'>,
     event: {
       organizationId: string;
       startsAt: Date;
       presenterId: string | null;
     },
   ): Promise<boolean> {
-    return this.evaluateRegistrationEligibility(userId, event);
+    return this.evaluateRegistrationEligibility(user, event);
   }
 
   private async getRegisteredEventIds(
@@ -160,8 +181,20 @@ export class EventsService {
     const skip = (page - 1) * limit;
 
     const organizationId = resolveOrganizationScope(user, requestedOrgId);
+
+    // Check if user is a presenter in the organization
+    let presenterMemberId: string | null = null;
+    if (user.role === 'MEMBER' && organizationId) {
+      presenterMemberId = await this.getPresenterMemberId(
+        user.id,
+        organizationId,
+      );
+    }
+
     const where = {
       ...(organizationId ? { organizationId } : {}),
+      // If user is a presenter, filter by their presented events
+      ...(presenterMemberId ? { presenterId: presenterMemberId } : {}),
       ...(upcoming === true ? { startsAt: { gt: new Date() } } : {}),
       ...(upcoming === false ? { startsAt: { lte: new Date() } } : {}),
     };
@@ -184,6 +217,11 @@ export class EventsService {
               username: true,
             },
           },
+          _count: {
+            select: {
+              attendees: true,
+            },
+          },
         },
       }),
       this.prisma.event.count({ where }),
@@ -196,12 +234,13 @@ export class EventsService {
 
     this.logger.log(`Listed ${rows.length} events (total: ${total})`);
 
-    const events = rows.map(({ presenter, startsAt, ...event }) => ({
+    const events = rows.map(({ presenter, startsAt, _count, ...event }) => ({
       ...event,
       startsAt,
       presenter: presenter ?? null,
       isRegistered: registeredEventIds.has(event.id),
       isUpcoming: this.isUpcoming(startsAt),
+      attendeeCount: _count.attendees,
     }));
 
     return { events, total };
@@ -211,10 +250,21 @@ export class EventsService {
     const organizationId =
       user.role === 'SUPER_ADMIN' ? undefined : resolveOrganizationScope(user);
 
+    // Check if user is a presenter in the organization
+    let presenterMemberId: string | null = null;
+    if (user.role === 'MEMBER' && organizationId) {
+      presenterMemberId = await this.getPresenterMemberId(
+        user.id,
+        organizationId,
+      );
+    }
+
     const event = await this.prisma.event.findFirst({
       where: {
         id,
         ...(organizationId ? { organizationId } : {}),
+        // If user is a presenter, ensure they can only view their own events
+        ...(presenterMemberId ? { presenterId: presenterMemberId } : {}),
       },
       select: this.eventSelect,
     });
@@ -239,8 +289,7 @@ export class EventsService {
       presenter: presenter ?? null,
       isRegistered,
       isUpcoming,
-      canRegister:
-        !isRegistered && (await this.canUserRegister(user.id, event)),
+      canRegister: !isRegistered && (await this.canUserRegister(user, event)),
       attendeeCount: _count.attendees,
     };
   }
@@ -260,28 +309,27 @@ export class EventsService {
       throw new NotFoundException(`Event with ID ${eventId} not found`);
     }
 
-    await this.assertCanRegister(user.id, event);
+    await this.assertCanRegister(user, event);
 
-    const existingRegistration = await this.prisma.eventAttendee.findFirst({
-      where: {
-        eventId,
-        userId: user.id,
-      },
-    });
-
-    if (existingRegistration) {
-      throw new BadRequestException(
-        'You are already registered for this event',
-      );
+    try {
+      await this.prisma.eventAttendee.create({
+        data: {
+          eventId,
+          userId: user.id,
+          organizationId: event.organizationId,
+        },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new BadRequestException(
+          'You are already registered for this event',
+        );
+      }
+      throw error;
     }
-
-    await this.prisma.eventAttendee.create({
-      data: {
-        eventId,
-        userId: user.id,
-        organizationId: event.organizationId,
-      },
-    });
 
     this.logger.log(`User ${user.id} registered for event ${eventId}`);
 
