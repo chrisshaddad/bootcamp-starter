@@ -84,10 +84,7 @@ export function useAuth() {
 
   const login = useCallback(
     async (data: LoginRequest) => {
-      const result = await apiPost<{ user: UserResponse }>(
-        '/auth/login',
-        data,
-      );
+      const result = await apiPost<{ user: UserResponse }>('/auth/login', data);
       mutate();
       return result;
     },
