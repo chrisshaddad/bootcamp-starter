@@ -63,16 +63,16 @@ We extend the existing `MePortalModule` created in Phase A4.
    - Define `ME_BOOKING_SELECT` constant selecting fields matching `meBookingResponseSchema`.
    - Implement `async getBookings(userId: string, gymId: string, page: number, limit: number, status?: BookingStatus): Promise<MeBookingListResponse>`:
      - Resolve portal user to their `Member` record via existing `resolveMember(userId, gymId)`.
-     - Query `prisma.sessionBooking.findMany` and `count` using pagination (`skip`, `take`) and sorting (`orderBy: { session: { startsAt: 'desc' } }`).
-     - Enforce tenant isolation by strictly filtering `where: { memberId: member.id, gymId }`.
+     - Query `prisma.sessionBooking.findMany` and `count` using pagination (`skip`, `take`) and sorting (`orderBy: { session: { startsAt: status === 'BOOKED' ? 'asc' : 'desc' } }` — sorting upcoming booked sessions nearest-first and past/history sessions newest-first).
+     - Enforce tenant and member isolation by strictly filtering `where: { memberId: member.id, gymId }`.
    - Implement `async cancelBooking(userId: string, gymId: string, bookingId: string): Promise<MeBookingResponse>`:
      - Guard checks: verify booking exists under caller's `memberId` + `gymId`, is not already `CANCELLED`, and `session.startsAt > new Date()` (cannot cancel past sessions).
      - Update booking status to `CANCELLED` and return updated record.
    - Add 1-line JSDoc comments to all public methods.
 3. **Update `me-portal.controller.ts`**:
-   - Add `GET /me/bookings` decorated with `@Roles('MEMBER')`, `@ApiOperation`, `@ApiCookieAuth`, and `@ApiResponse(200, { schema: ... })`.
-   - Use built-in NestJS query pipes: `@Query('page', new DefaultValuePipe(1), ParseIntPipe)` and `@Query('limit', new DefaultValuePipe(25), ParseIntPipe)`.
-   - Add `PATCH /me/bookings/:id/cancel` for member cancellation (fulfilling backend/frontend parity).
+   - Add `GET /me/bookings` decorated with `@Roles('MEMBER')`, `@ApiOperation`, `@ApiCookieAuth`, `@ApiQuery` (for `page`, `limit`, and `status`), and complete `@ApiResponse` definitions (`200`, `401`, `403`).
+   - Use built-in NestJS query pipes: `@Query('page', new DefaultValuePipe(1), ParseIntPipe)`, `@Query('limit', new DefaultValuePipe(25), ParseIntPipe)`, and `@Query('status', new ParseEnumPipe(BookingStatusEnum, { optional: true }))`.
+   - Add `PATCH /me/bookings/:id/cancel` for member cancellation (fulfilling backend/frontend parity rule), decorated with `@ApiParam` and complete `@ApiResponse` definitions (`200`, `400`, `401`, `403`, `404`).
    - Add 1-line JSDoc comments to all route handlers.
 
 ---
@@ -117,7 +117,8 @@ Before declaring work complete, we run all project quality checks:
    - Test status filter tabs (`ALL`, `BOOKED`, `CHECKED_IN`, `CANCELLED`).
    - Test pagination controls.
    - Test cancellation flow for an upcoming booked session.
-   - Verify multi-tenant isolation: confirm no bookings from other gyms appear.
+   - Verify cross-gym multi-tenant isolation: confirm no bookings from other gyms appear.
+   - Verify member-to-member isolation within the same gym: confirm a logged-in member cannot see bookings belonging to another member (`where: { memberId }` verification).
 
 ---
 

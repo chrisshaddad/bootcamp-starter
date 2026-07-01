@@ -147,7 +147,9 @@ export class MePortalService {
     const [bookings, total] = await Promise.all([
       this.prisma.sessionBooking.findMany({
         where,
-        orderBy: { session: { startsAt: 'desc' } },
+        orderBy: {
+          session: { startsAt: status === 'BOOKED' ? 'asc' : 'desc' },
+        },
         skip,
         take: limit,
         select: ME_BOOKING_SELECT,
