@@ -124,6 +124,12 @@ a {
   --color-blue: #2f78ee;
   --color-purple: #8c62ff;
 
+  /* Library Palette (tenant branding) */
+  --color-library-accent: #eba946; /* amber — logos, accent borders */
+  --color-library-primary: #c4761a; /* caramel — primary CTAs, links */
+  --color-library-ink: #4a3218; /* dark brown — dark surfaces & headings */
+  --color-library-paper: #f6efe3; /* cream — light surfaces */
+
   /* Typography - Font Sizes */
   --font-size-xs: 0.625rem; /* 10px */
   --font-size-sm: 0.75rem; /* 12px */

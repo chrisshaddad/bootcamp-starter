@@ -37,6 +37,21 @@ const ORG_ADMINS: Prisma.UserCreateManyInput[] = [
   },
 ];
 
+const LIBRARIANS: Prisma.UserCreateManyInput[] = [
+  {
+    email: 'librarian@techcorp.example.com',
+    name: 'Taylor Brooks',
+  },
+  {
+    email: 'librarian@greenenergy.example.com',
+    name: 'Morgan Patel',
+  },
+  {
+    email: 'librarian@healthfirst.example.com',
+    name: 'Samira Haddad',
+  },
+];
+
 export async function seedSuperAdmins(prisma: PrismaClient) {
   console.log('Seeding super admins...');
 
@@ -66,5 +81,21 @@ export async function seedOrgAdmins(prisma: PrismaClient) {
 
   console.log(
     `Org admins: ${ORG_ADMINS.map((u) => u.email).join(', ')} seeded.`,
+  );
+}
+
+export async function seedLibrarians(prisma: PrismaClient) {
+  console.log('Seeding librarians...');
+
+  await prisma.user.createMany({
+    data: LIBRARIANS.map((librarian) => ({
+      ...librarian,
+      isConfirmed: true,
+      role: 'LIBRARIAN',
+    })),
+  });
+
+  console.log(
+    `Librarians: ${LIBRARIANS.map((u) => u.email).join(', ')} seeded.`,
   );
 }

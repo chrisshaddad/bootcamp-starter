@@ -13,8 +13,9 @@ datasource db {
 
 enum UserRole {
   SUPER_ADMIN // Manages all organizations (can also accept org registrations)
-  ORG_ADMIN // Manages a single organization (can also invite members to their org)
-  MEMBER
+  ORG_ADMIN // Administers a single library organization
+  LIBRARIAN // Library staff user
+  MEMBER // Library patron with a login account
 
   @@schema("public")
 }
@@ -25,6 +26,63 @@ enum OrganizationStatus {
   REJECTED // Denied by super admin
   SUSPENDED
   INACTIVE
+
+  @@schema("public")
+}
+
+enum LibraryMemberStatus {
+  ACTIVE
+  EXPIRED
+  SUSPENDED
+  PENDING
+  CANCELLED
+
+  @@schema("public")
+}
+
+enum LibraryMembershipType {
+  STUDENT
+  ADULT
+  PREMIUM
+
+  @@schema("public")
+}
+
+enum BookCopyStatus {
+  AVAILABLE
+  ON_LOAN
+  RESERVED
+  LOST
+  MAINTENANCE
+
+  @@schema("public")
+}
+
+enum BookCopyCondition {
+  NEW
+  GOOD
+  FAIR
+  POOR
+  DAMAGED
+
+  @@schema("public")
+}
+
+enum RentalStatus {
+  ACTIVE
+  RETURNED
+  OVERDUE
+  LOST
+
+  @@schema("public")
+}
+
+enum ReservationStatus {
+  ACTIVE
+  READY_FOR_PICKUP
+  FULFILLED
+  EXPIRED
+  CANCELLED
 
   @@schema("public")
 }
@@ -42,6 +100,8 @@ model User {
   sessions              Session[]
   magicLinks            MagicLink[]
   profile               UserProfile?
+  libraryMember         LibraryMember?
+  processedRentals      Rental[]       @relation("RentalStaff")
   organization          Organization?  @relation("OrganizationMembers", fields: [organizationId], references: [id], onDelete: SetNull)
   createdOrganization   Organization?  @relation("OrganizationCreator")
   approvedOrganizations Organization[] @relation("OrganizationApprover")
@@ -104,20 +164,242 @@ model MagicLink {
 model Organization {
   id           String             @id @default(uuid())
   name         String
+  slug         String             @unique
   status       OrganizationStatus @default(PENDING)
   description  String?            @db.Text
   website      String?
+  logoUrl      String?
   createdById  String             @unique // User can only create one organization
   approvedById String?
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
   approvedAt   DateTime? // When super admin approved
 
-  createdBy  User   @relation("OrganizationCreator", fields: [createdById], references: [id])
-  approvedBy User?  @relation("OrganizationApprover", fields: [approvedById], references: [id])
-  users      User[] @relation("OrganizationMembers")
+  createdBy      User            @relation("OrganizationCreator", fields: [createdById], references: [id])
+  approvedBy     User?           @relation("OrganizationApprover", fields: [approvedById], references: [id])
+  users          User[]          @relation("OrganizationMembers")
+  members        LibraryMember[]
+  authors        Author[]
+  categories     Category[]
+  publishers     Publisher[]
+  books          Book[]
+  bookAuthors    BookAuthor[]
+  bookCategories BookCategory[]
+  bookCopies     BookCopy[]
+  rentals        Rental[]
+  reservations   Reservation[]
 
   @@index([approvedById])
   @@index([status])
+  @@schema("public")
+}
+
+model LibraryMember {
+  id                  String                @id @default(uuid())
+  organizationId      String
+  userId              String?               @unique
+  libraryCardNumber   String
+  membershipType      LibraryMembershipType
+  membershipStatus    LibraryMemberStatus
+  membershipStartDate DateTime              @default(now())
+  membershipEndDate   DateTime?
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  rentals      Rental[]
+  reservations Reservation[]
+
+  @@unique([organizationId, libraryCardNumber])
+  @@index([organizationId])
+  @@index([userId])
+  @@schema("public")
+}
+
+model Author {
+  id             String   @id @default(uuid())
+  organizationId String
+  name           String
+  bio            String?  @db.Text
+  nationality    String?
+  birthYear      Int?
+  photoUrl       String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  books        BookAuthor[]
+
+  @@index([organizationId])
+  @@index([organizationId, name])
+  @@schema("public")
+}
+
+model Category {
+  id             String  @id @default(uuid())
+  organizationId String
+  name           String
+  description    String? @db.Text
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  books        BookCategory[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@schema("public")
+}
+
+model Publisher {
+  id             String   @id @default(uuid())
+  organizationId String
+  name           String
+  email          String?
+  website        String?
+  address        String?  @db.Text
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  books        Book[]
+
+  @@index([organizationId])
+  @@index([organizationId, name])
+  @@schema("public")
+}
+
+model Book {
+  id             String    @id @default(uuid())
+  organizationId String
+  publisherId    String?
+  isbn           String?
+  title          String
+  description    String?   @db.Text
+  publishedDate  DateTime?
+  language       String?
+  pageCount      Int?
+  coverUrl       String?
+  salePrice      Decimal?  @db.Decimal(10, 2)
+  edition        String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  publisher    Publisher?     @relation(fields: [publisherId], references: [id], onDelete: SetNull)
+  authors      BookAuthor[]
+  categories   BookCategory[]
+  copies       BookCopy[]
+  reservations Reservation[]
+
+  @@index([organizationId])
+  @@index([publisherId])
+  @@index([organizationId, title])
+  @@index([organizationId, isbn])
+  @@schema("public")
+}
+
+model BookAuthor {
+  id             String @id @default(uuid())
+  organizationId String
+  bookId         String
+  authorId       String
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  book         Book         @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  author       Author       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@unique([bookId, authorId])
+  @@index([organizationId])
+  @@index([authorId])
+  @@schema("public")
+}
+
+model BookCategory {
+  id             String @id @default(uuid())
+  organizationId String
+  bookId         String
+  categoryId     String
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  book         Book         @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  category     Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([bookId, categoryId])
+  @@index([organizationId])
+  @@index([categoryId])
+  @@schema("public")
+}
+
+model BookCopy {
+  id             String            @id @default(uuid())
+  organizationId String
+  bookId         String
+  barcode        String
+  status         BookCopyStatus    @default(AVAILABLE)
+  condition      BookCopyCondition @default(GOOD)
+  acquiredAt     DateTime          @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  book         Book         @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  rentals      Rental[]
+
+  @@unique([organizationId, barcode])
+  @@index([organizationId])
+  @@index([bookId])
+  @@index([organizationId, status])
+  @@schema("public")
+}
+
+model Rental {
+  id             String       @id @default(uuid())
+  organizationId String
+  bookCopyId     String
+  memberId       String
+  staffId        String
+  rentedAt       DateTime     @default(now())
+  dueDate        DateTime
+  returnedAt     DateTime?
+  status         RentalStatus @default(ACTIVE)
+  fineAmount     Decimal      @default(0) @db.Decimal(10, 2)
+  finePaid       Boolean      @default(false)
+  notes          String?      @db.Text
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bookCopy     BookCopy      @relation(fields: [bookCopyId], references: [id], onDelete: Restrict)
+  member       LibraryMember @relation(fields: [memberId], references: [id], onDelete: Restrict)
+  staff        User          @relation("RentalStaff", fields: [staffId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId])
+  @@index([bookCopyId])
+  @@index([memberId])
+  @@index([staffId])
+  @@index([organizationId, status])
+  @@index([organizationId, dueDate])
+  @@schema("public")
+}
+
+model Reservation {
+  id             String            @id @default(uuid())
+  organizationId String
+  bookId         String
+  memberId       String
+  reservedAt     DateTime          @default(now())
+  expiresAt      DateTime?
+  status         ReservationStatus @default(ACTIVE)
+  notifiedAt     DateTime?
+  fulfilledAt    DateTime?
+  cancelledAt    DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  book         Book          @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  member       LibraryMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([bookId])
+  @@index([memberId])
+  @@index([organizationId, status])
+  @@index([organizationId, expiresAt])
   @@schema("public")
 }

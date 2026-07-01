@@ -13,9 +13,11 @@ const organizationUserSchema = z.object({
 export const organizationDetailResponseSchema = z.object({
   id: z.uuid(),
   name: z.string(),
+  slug: z.string(),
   status: organizationStatusSchema,
   description: z.string().nullable(),
   website: z.string().nullable(),
+  logoUrl: z.string().nullable(),
   createdAt: dateSchema,
   updatedAt: dateSchema,
   approvedAt: dateSchema.nullable(),

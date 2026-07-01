@@ -33,7 +33,7 @@ interface NavItem {
   disabled?: boolean;
 }
 
-// Navigation items for ORG_ADMIN and MEMBER roles
+// Navigation items for ORG_ADMIN, LIBRARIAN, and MEMBER roles
 const orgNavItems: NavItem[] = [
   {
     title: 'Dashboard',
