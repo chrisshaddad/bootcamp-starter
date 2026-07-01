@@ -209,8 +209,8 @@ export default function PortalHomePage() {
         </p>
       </div>
 
-      <div className="grid gap-6 sm:grid-cols-2">
-        <Card className="flex flex-col justify-between">
+      <div className="grid gap-6 sm:grid-cols-2 items-start">
+        <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base font-semibold text-gray-700">
               <ClipboardList className="h-4 w-4 text-gray-500" />
@@ -222,7 +222,7 @@ export default function PortalHomePage() {
           </CardContent>
         </Card>
 
-        <Card className="flex flex-col justify-between">
+        <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base font-semibold text-gray-700">
               <Calendar className="h-4 w-4 text-gray-500" />
