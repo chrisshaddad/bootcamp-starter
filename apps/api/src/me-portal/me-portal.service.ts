@@ -1,9 +1,16 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
 import type {
   MeProfileResponse,
   SubscriptionListResponse,
   PlanListResponse,
+  MeBookingListResponse,
+  MeBookingResponse,
+  BookingStatus,
 } from '@repo/contracts';
 
 const SUBSCRIPTION_SELECT = {
@@ -25,6 +32,33 @@ const SUBSCRIPTION_SELECT = {
   },
   createdAt: true,
   updatedAt: true,
+} as const;
+
+const ME_BOOKING_SELECT = {
+  id: true,
+  gymId: true,
+  sessionId: true,
+  memberId: true,
+  status: true,
+  createdAt: true,
+  updatedAt: true,
+  session: {
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      startsAt: true,
+      endsAt: true,
+      capacity: true,
+      status: true,
+      instructor: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
+  },
 } as const;
 
 @Injectable()
@@ -91,5 +125,79 @@ export class MePortalService {
     ]);
 
     return { plans, total };
+  }
+
+  /** Return the portal member's bookings (paginated, sorted by session start date) */
+  async getBookings(
+    userId: string,
+    gymId: string,
+    page: number = 1,
+    limit: number = 25,
+    status?: BookingStatus,
+  ): Promise<MeBookingListResponse> {
+    const member = await this.resolveMember(userId, gymId);
+    const skip = (page - 1) * limit;
+
+    const where = {
+      memberId: member.id,
+      gymId,
+      ...(status && { status }),
+    };
+
+    const [bookings, total] = await Promise.all([
+      this.prisma.sessionBooking.findMany({
+        where,
+        orderBy: { session: { startsAt: 'desc' } },
+        skip,
+        take: limit,
+        select: ME_BOOKING_SELECT,
+      }),
+      this.prisma.sessionBooking.count({ where }),
+    ]);
+
+    return {
+      bookings: bookings as unknown as MeBookingResponse[],
+      total,
+    };
+  }
+
+  /** Cancel an upcoming booking for the logged-in portal member */
+  async cancelBooking(
+    userId: string,
+    gymId: string,
+    bookingId: string,
+  ): Promise<MeBookingResponse> {
+    const member = await this.resolveMember(userId, gymId);
+
+    const booking = await this.prisma.sessionBooking.findFirst({
+      where: { id: bookingId, memberId: member.id, gymId },
+      include: { session: true },
+    });
+
+    if (!booking) {
+      throw new NotFoundException(`Booking with ID ${bookingId} not found`);
+    }
+
+    if (booking.status === 'CANCELLED') {
+      throw new BadRequestException('Booking is already cancelled');
+    }
+
+    if (booking.session.startsAt < new Date()) {
+      throw new BadRequestException(
+        'Cannot cancel a session that has already started',
+      );
+    }
+
+    await this.prisma.sessionBooking.updateMany({
+      where: { id: bookingId, memberId: member.id, gymId },
+      data: { status: 'CANCELLED' },
+    });
+
+    const updated = await this.prisma.sessionBooking.findFirst({
+      where: { id: bookingId, memberId: member.id, gymId },
+      select: ME_BOOKING_SELECT,
+    });
+
+    return updated as unknown as MeBookingResponse;
   }
 }

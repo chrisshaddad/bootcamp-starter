@@ -3,7 +3,13 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { LucideIcon } from 'lucide-react';
-import { LayoutDashboard, ClipboardList, User, LogOut } from 'lucide-react';
+import {
+  LayoutDashboard,
+  ClipboardList,
+  Calendar,
+  User,
+  LogOut,
+} from 'lucide-react';
 import { useAuth, useUser } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
 import {
@@ -28,6 +34,7 @@ interface NavItem {
 
 const portalNavItems: NavItem[] = [
   { title: 'Home', url: '/portal', icon: LayoutDashboard },
+  { title: 'My Bookings', url: '/portal/bookings', icon: Calendar },
   {
     title: 'My Subscriptions',
     url: '/portal/subscriptions',

@@ -7,14 +7,14 @@
 > Build phases in order: build → test → merge → next. Don't start a phase until the
 > previous is ✅. Status legend: ⬜ Not started · 🟡 In progress · ✅ Done · 🚧 Blocked.
 
-**Owner:** Antigravity (AI) · **Status: 3 / 4 done — 🟡 In progress.**
+**Owner:** Antigravity (AI) · **Status: 4 / 4 done — ✅ Done.**
 
 | Phase | Scope                                                                           | Dev         | Status | Date       | Notes / PR                          |
 | ----- | ------------------------------------------------------------------------------- | ----------- | ------ | ---------- | ----------------------------------- |
 | B0    | Instructors CRUD + `GET /instructors/available` (overlap detection)             | Antigravity | ✅     | 2026-06-29 | feat/feature-b-phase-b0-instructors |
 | B1    | Sessions admin schedule (CRUD + cancel, `_count.bookings`, instructor dropdown) | Antigravity | ✅     | 2026-06-29 | feat/feature-b-phase-b1-sessions    |
 | B2    | Bookings + per-session capacity (reject full/duplicate)                         | Antigravity | ✅     | 2026-06-30 | feat/feature-b-phase-b2-bookings    |
-| B3    | Member "My bookings" portal view (`GET /me/bookings`) — needs A4 shell          | —           | ⬜     | —          | —                                   |
+| B3    | Member "My bookings" portal view (`GET /me/bookings`) — needs A4 shell          | Antigravity | ✅     | 2026-07-01 | feat/feature-b-phase-b3-my-bookings |
 
 > B0 must be ✅ before starting B1 — sessions reference `instructorId` and the
 > "Add session" dialog calls the availability endpoint.
@@ -23,6 +23,7 @@
 
 ## Decisions & deviations
 
+- **B3 (2026-07-01):** Implemented member portal bookings view (`app/(member)/portal/bookings/page.tsx`) and supporting backend endpoints (`GET /me/bookings`, `PATCH /me/bookings/:id/cancel`). Added cancellation capability for members to fulfill backend/frontend parity rule. Exported `MY_BOOKINGS_PAGE_SIZE = 25` from `use-me.ts` and applied mandatory status filter UI tabs (`ALL`, `BOOKED`, `CHECKED_IN`, `CANCELLED`). Added "My Bookings" to member sidebar navigation.
 - **B0 (2026-06-29):** `GET /instructors/available` declared _before_ `GET /instructors/:id` in the
   controller so NestJS matches the literal path `"available"` first and does not treat it as a UUID param.
   This is the correct NestJS route ordering pattern and is documented in the controller.
