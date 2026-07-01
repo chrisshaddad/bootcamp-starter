@@ -17,7 +17,9 @@ interface CreateUserInput {
   sectionName?: string;
 }
 
-function isEmailUniqueConstraintError(error: unknown): boolean {
+const MAX_STUDENT_CODE_RETRIES = 5;
+
+function isUniqueConstraintError(error: unknown, field: string): boolean {
   if (
     error instanceof Prisma.PrismaClientKnownRequestError &&
     error.code === 'P2002'
@@ -25,11 +27,19 @@ function isEmailUniqueConstraintError(error: unknown): boolean {
     const target = error.meta?.target;
 
     return Array.isArray(target)
-      ? target.includes('email')
-      : typeof target === 'string' && target.includes('email');
+      ? target.includes(field)
+      : typeof target === 'string' && target.includes(field);
   }
 
   return false;
+}
+
+function isEmailUniqueConstraintError(error: unknown): boolean {
+  return isUniqueConstraintError(error, 'email');
+}
+
+function isStudentCodeUniqueConstraintError(error: unknown): boolean {
+  return isUniqueConstraintError(error, 'studentCode');
 }
 
 @Injectable()
@@ -134,107 +144,126 @@ export class UsersService {
       throw new BadRequestException('Invalid date of birth');
     }
 
-    try {
-      const result = await this.prisma.$transaction(async (tx) => {
-        const gradeLevel = await tx.gradeLevel.upsert({
-          where: {
-            name: className,
-          },
-          update: {},
-          create: {
-            name: className,
-          },
-        });
+    for (let attempt = 0; attempt < MAX_STUDENT_CODE_RETRIES; attempt += 1) {
+      try {
+        const result = await this.prisma.$transaction(async (tx) => {
+          const gradeLevel = await tx.gradeLevel.upsert({
+            where: {
+              name: className,
+            },
+            update: {},
+            create: {
+              name: className,
+            },
+          });
 
-        const section = await tx.section.upsert({
-          where: {
-            gradeLevelId_name: {
+          const section = await tx.section.upsert({
+            where: {
+              gradeLevelId_name: {
+                gradeLevelId: gradeLevel.id,
+                name: sectionName,
+              },
+            },
+            update: {},
+            create: {
               gradeLevelId: gradeLevel.id,
               name: sectionName,
             },
-          },
-          update: {},
-          create: {
-            gradeLevelId: gradeLevel.id,
-            name: sectionName,
-          },
-        });
-
-        const user = await tx.user.create({
-          data: {
-            name: input.name,
-            email: input.email,
-            role: 'MEMBER',
-            isConfirmed: true,
-          },
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-            createdAt: true,
-          },
-        });
-
-        let nextNumber = await tx.studentProfile.count();
-        let studentCode = '';
-
-        while (true) {
-          nextNumber += 1;
-          studentCode = `STU-${nextNumber.toString().padStart(4, '0')}`;
-
-          const existingProfile = await tx.studentProfile.findUnique({
-            where: { studentCode },
           });
 
-          if (!existingProfile) {
-            break;
-          }
-        }
+          const user = await tx.user.create({
+            data: {
+              name: input.name,
+              email: input.email,
+              role: 'MEMBER',
+              isConfirmed: true,
+            },
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              role: true,
+              createdAt: true,
+            },
+          });
 
-        const studentProfile = await tx.studentProfile.create({
-          data: {
-            userId: user.id,
-            studentCode,
-            dateOfBirth,
-            sectionId: section.id,
-          },
-          select: {
-            id: true,
-            studentCode: true,
-            dateOfBirth: true,
-            section: {
-              select: {
-                id: true,
-                name: true,
-                gradeLevel: {
-                  select: {
-                    id: true,
-                    name: true,
+          let nextNumber = await tx.studentProfile.count();
+          let studentCode = '';
+
+          while (true) {
+            nextNumber += 1;
+            studentCode = `STU-${nextNumber.toString().padStart(4, '0')}`;
+
+            const existingProfile = await tx.studentProfile.findUnique({
+              where: { studentCode },
+            });
+
+            if (!existingProfile) {
+              break;
+            }
+          }
+
+          const studentProfile = await tx.studentProfile.create({
+            data: {
+              userId: user.id,
+              studentCode,
+              dateOfBirth,
+              sectionId: section.id,
+            },
+            select: {
+              id: true,
+              studentCode: true,
+              dateOfBirth: true,
+              section: {
+                select: {
+                  id: true,
+                  name: true,
+                  gradeLevel: {
+                    select: {
+                      id: true,
+                      name: true,
+                    },
                   },
                 },
               },
             },
-          },
+          });
+
+          return {
+            user,
+            studentProfile,
+          };
         });
 
         return {
-          user,
-          studentProfile,
+          message:
+            'Student created successfully. They can now log in using magic link.',
+          ...result,
         };
-      });
+      } catch (error) {
+        if (isEmailUniqueConstraintError(error)) {
+          throw new ConflictException('A user with this email already exists');
+        }
 
-      return {
-        message:
-          'Student created successfully. They can now log in using magic link.',
-        ...result,
-      };
-    } catch (error) {
-      if (isEmailUniqueConstraintError(error)) {
-        throw new ConflictException('A user with this email already exists');
+        if (
+          isStudentCodeUniqueConstraintError(error) &&
+          attempt < MAX_STUDENT_CODE_RETRIES - 1
+        ) {
+          continue;
+        }
+
+        if (isStudentCodeUniqueConstraintError(error)) {
+          throw new ConflictException(
+            'Could not allocate a unique student code. Please try again.',
+          );
+        }
+
+        throw error;
       }
-
-      throw error;
     }
+
+    throw new ConflictException(
+      'Could not allocate a unique student code. Please try again.',
+    );
   }
 }
