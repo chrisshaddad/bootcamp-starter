@@ -35,7 +35,7 @@ export class EventsController {
   }
 
   @Post(':id/register')
-  @Roles('MEMBER')
+  @Roles('SUPER_ADMIN', 'ORG_ADMIN', 'MEMBER')
   async register(
     @Param('id') id: string,
     @CurrentUser() user: User,

@@ -67,6 +67,20 @@ const memberNavItems: NavItem[] = [
   },
 ];
 
+// Navigation items for presenter members
+const presenterNavItems: NavItem[] = [
+  {
+    title: 'Dashboard',
+    url: '/dashboard',
+    icon: LayoutDashboard,
+  },
+  {
+    title: 'My Events',
+    url: '/events',
+    icon: Calendar,
+  },
+];
+
 // Navigation items for SUPER_ADMIN role
 const superAdminNavItems: NavItem[] = [
   {
@@ -107,6 +121,11 @@ const superAdminSecondaryNavItems: NavItem[] = [
   },
 ];
 
+/**
+ * Renders the application sidebar with role-based navigation and a logout action.
+ *
+ * @returns The sidebar navigation layout.
+ */
 export function AppSidebar() {
   const pathname = usePathname();
   const { logout } = useAuth();
@@ -114,11 +133,16 @@ export function AppSidebar() {
 
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   const isOrgAdmin = user?.role === 'ORG_ADMIN';
+  const isPresenter =
+    user?.role === 'MEMBER' && user?.memberRole === 'PRESENTER';
+
   const mainNavItems = isSuperAdmin
     ? superAdminNavItems
     : isOrgAdmin
       ? orgAdminNavItems
-      : memberNavItems;
+      : isPresenter
+        ? presenterNavItems
+        : memberNavItems;
   const secondaryNavItems = isSuperAdmin
     ? superAdminSecondaryNavItems
     : orgSecondaryNavItems;

@@ -2,16 +2,178 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import type { EventListResponse, UserResponse } from '@repo/contracts';
 import { useUser } from '@/hooks/use-auth';
 import { useEvents } from '@/hooks/use-events';
 import { EventCalendar } from '@/components/event-calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CalendarDays } from 'lucide-react';
+import { CalendarDays, Clock, Users, Bell } from 'lucide-react';
 
+interface PresenterDashboardProps {
+  user: UserResponse;
+  events?: EventListResponse['events'];
+  eventsLoading: boolean;
+}
+
+/**
+ * Renders the presenter dashboard.
+ *
+ * @param user - Presenter user details used in the greeting and event summary.
+ * @param events - Events shown in the calendar and used to find the next upcoming event.
+ * @param eventsLoading - Controls the loading state of the event calendar.
+ * @returns The presenter dashboard layout.
+ */
+function PresenterDashboard({
+  user,
+  events = [],
+  eventsLoading,
+}: PresenterDashboardProps) {
+  // Get next upcoming event
+  const upcomingEvent = events.reduce<
+    EventListResponse['events'][number] | undefined
+  >((next, event) => {
+    if (!event.isUpcoming) return next;
+    if (!next) return event;
+
+    return new Date(event.startsAt).getTime() <
+      new Date(next.startsAt).getTime()
+      ? event
+      : next;
+  }, undefined);
+
+  const formatDate = (date: string | Date) => {
+    const d = new Date(date);
+    return d.toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
+
+  const formatTime = (date: string | Date) => {
+    const d = new Date(date);
+    return d.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">
+          Welcome, Presenter {user?.name?.split(' ')[0]}!
+        </h1>
+        <p className="mt-1 text-sm text-gray-500">
+          Here&apos;s an overview of your upcoming events.
+        </p>
+      </div>
+
+      {/* Upcoming Event Panel */}
+      {eventsLoading ? (
+        <Card className="border-gray-200 bg-white shadow-sm">
+          <CardHeader>
+            <Skeleton className="h-6 w-48" />
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Skeleton className="h-7 w-64" />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-5 w-32" />
+            </div>
+          </CardContent>
+        </Card>
+      ) : upcomingEvent ? (
+        <Card className="border-primary-200 bg-gradient-to-br from-primary-50 to-white shadow-md">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold text-gray-900">
+              Next Upcoming Event
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <h3 className="text-xl font-bold text-gray-900">
+                {upcomingEvent.eventName}
+              </h3>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <div className="flex items-center gap-2 text-gray-600">
+                  <Clock className="h-5 w-5 text-primary-base" />
+                  <span className="text-sm">
+                    {formatDate(upcomingEvent.startsAt)} at{' '}
+                    {formatTime(upcomingEvent.startsAt)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-gray-600">
+                  <Users className="h-5 w-5 text-primary-base" />
+                  <span className="text-sm">
+                    {upcomingEvent.attendeeCount} attendee
+                    {upcomingEvent.attendeeCount !== 1 ? 's' : ''}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="border-gray-200 bg-white shadow-sm">
+          <CardContent className="pt-6">
+            <p className="text-center text-gray-500">
+              No upcoming events scheduled
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Two-column layout: Announcements + Calendar */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Left: Announcements (1/3 width) */}
+        <div className="lg:col-span-1">
+          <Card className="border-gray-200 bg-white shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+                <Bell className="h-5 w-5" />
+                Announcements
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <Bell className="h-12 w-12 text-gray-300 mb-3" />
+              <p className="text-center text-sm text-gray-500">Coming soon</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right: Event Calendar (2/3 width) */}
+        <div className="lg:col-span-2">
+          <Card className="border-gray-200 bg-white shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+                <CalendarDays className="h-5 w-5" />
+                Your Events
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <EventCalendar events={events} isLoading={eventsLoading} />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Renders the dashboard for the current user and routes super admins to the admin area.
+ *
+ * @returns The dashboard content, a loading skeleton, or the presenter-specific dashboard.
+ */
 export default function DashboardPage() {
   const router = useRouter();
   const { user, isLoading } = useUser();
+  const isPresenter =
+    user?.role === 'MEMBER' && user?.memberRole === 'PRESENTER';
   const { events, isLoading: eventsLoading } = useEvents({
     enabled:
       !isLoading && (user?.role === 'ORG_ADMIN' || user?.role === 'MEMBER'),
@@ -32,6 +194,18 @@ export default function DashboardPage() {
     );
   }
 
+  // Presenter dashboard
+  if (isPresenter) {
+    return (
+      <PresenterDashboard
+        user={user}
+        events={events}
+        eventsLoading={eventsLoading}
+      />
+    );
+  }
+
+  // Default dashboard for other users
   return (
     <div className="space-y-6">
       <div>
