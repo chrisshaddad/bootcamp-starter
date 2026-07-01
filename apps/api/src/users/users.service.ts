@@ -3,6 +3,7 @@ import {
   ConflictException,
   Injectable,
 } from '@nestjs/common';
+import { Prisma } from '@repo/database';
 import { PrismaService } from '../database/prisma.service';
 
 type CreateUserRole = 'ORG_ADMIN' | 'MEMBER';
@@ -14,6 +15,21 @@ interface CreateUserInput {
   dateOfBirth?: string;
   className?: string;
   sectionName?: string;
+}
+
+function isEmailUniqueConstraintError(error: unknown): boolean {
+  if (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === 'P2002'
+  ) {
+    const target = error.meta?.target;
+
+    return Array.isArray(target)
+      ? target.includes('email')
+      : typeof target === 'string' && target.includes('email');
+  }
+
+  return false;
 }
 
 @Injectable()
@@ -61,27 +77,35 @@ export class UsersService {
   }
 
   private async createTeacher(input: { name: string; email: string }) {
-    const user = await this.prisma.user.create({
-      data: {
-        name: input.name,
-        email: input.email,
-        role: 'ORG_ADMIN',
-        isConfirmed: true,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        createdAt: true,
-      },
-    });
+    try {
+      const user = await this.prisma.user.create({
+        data: {
+          name: input.name,
+          email: input.email,
+          role: 'ORG_ADMIN',
+          isConfirmed: true,
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          createdAt: true,
+        },
+      });
 
-    return {
-      message:
-        'Teacher/Admin created successfully. They can now log in using magic link.',
-      user,
-    };
+      return {
+        message:
+          'Teacher/Admin created successfully. They can now log in using magic link.',
+        user,
+      };
+    } catch (error) {
+      if (isEmailUniqueConstraintError(error)) {
+        throw new ConflictException('A user with this email already exists');
+      }
+
+      throw error;
+    }
   }
 
   private async createStudent(input: {
@@ -110,99 +134,107 @@ export class UsersService {
       throw new BadRequestException('Invalid date of birth');
     }
 
-    const result = await this.prisma.$transaction(async (tx) => {
-      const gradeLevel = await tx.gradeLevel.upsert({
-        where: {
-          name: className,
-        },
-        update: {},
-        create: {
-          name: className,
-        },
-      });
+    try {
+      const result = await this.prisma.$transaction(async (tx) => {
+        const gradeLevel = await tx.gradeLevel.upsert({
+          where: {
+            name: className,
+          },
+          update: {},
+          create: {
+            name: className,
+          },
+        });
 
-      const section = await tx.section.upsert({
-        where: {
-          gradeLevelId_name: {
+        const section = await tx.section.upsert({
+          where: {
+            gradeLevelId_name: {
+              gradeLevelId: gradeLevel.id,
+              name: sectionName,
+            },
+          },
+          update: {},
+          create: {
             gradeLevelId: gradeLevel.id,
             name: sectionName,
           },
-        },
-        update: {},
-        create: {
-          gradeLevelId: gradeLevel.id,
-          name: sectionName,
-        },
-      });
-
-      const user = await tx.user.create({
-        data: {
-          name: input.name,
-          email: input.email,
-          role: 'MEMBER',
-          isConfirmed: true,
-        },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          role: true,
-          createdAt: true,
-        },
-      });
-
-      let nextNumber = await tx.studentProfile.count();
-      let studentCode = '';
-
-      while (true) {
-        nextNumber += 1;
-        studentCode = `STU-${nextNumber.toString().padStart(4, '0')}`;
-
-        const existingProfile = await tx.studentProfile.findUnique({
-          where: { studentCode },
         });
 
-        if (!existingProfile) {
-          break;
-        }
-      }
+        const user = await tx.user.create({
+          data: {
+            name: input.name,
+            email: input.email,
+            role: 'MEMBER',
+            isConfirmed: true,
+          },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            createdAt: true,
+          },
+        });
 
-      const studentProfile = await tx.studentProfile.create({
-        data: {
-          userId: user.id,
-          studentCode,
-          dateOfBirth,
-          sectionId: section.id,
-        },
-        select: {
-          id: true,
-          studentCode: true,
-          dateOfBirth: true,
-          section: {
-            select: {
-              id: true,
-              name: true,
-              gradeLevel: {
-                select: {
-                  id: true,
-                  name: true,
+        let nextNumber = await tx.studentProfile.count();
+        let studentCode = '';
+
+        while (true) {
+          nextNumber += 1;
+          studentCode = `STU-${nextNumber.toString().padStart(4, '0')}`;
+
+          const existingProfile = await tx.studentProfile.findUnique({
+            where: { studentCode },
+          });
+
+          if (!existingProfile) {
+            break;
+          }
+        }
+
+        const studentProfile = await tx.studentProfile.create({
+          data: {
+            userId: user.id,
+            studentCode,
+            dateOfBirth,
+            sectionId: section.id,
+          },
+          select: {
+            id: true,
+            studentCode: true,
+            dateOfBirth: true,
+            section: {
+              select: {
+                id: true,
+                name: true,
+                gradeLevel: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
                 },
               },
             },
           },
-        },
+        });
+
+        return {
+          user,
+          studentProfile,
+        };
       });
 
       return {
-        user,
-        studentProfile,
+        message:
+          'Student created successfully. They can now log in using magic link.',
+        ...result,
       };
-    });
+    } catch (error) {
+      if (isEmailUniqueConstraintError(error)) {
+        throw new ConflictException('A user with this email already exists');
+      }
 
-    return {
-      message:
-        'Student created successfully. They can now log in using magic link.',
-      ...result,
-    };
+      throw error;
+    }
   }
 }
