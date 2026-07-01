@@ -44,14 +44,14 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-white">
+    <div className="flex min-h-screen bg-library-paper">
       {/* Left Panel - Hero Section */}
-      <div className="relative hidden w-1/2 bg-gray-900 lg:flex lg:flex-col lg:justify-end">
+      <div className="relative hidden w-1/2 bg-library-ink lg:flex lg:flex-col lg:justify-end">
         {/* Background Image */}
         <div className="relative flex-1">
           <Image
-            src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1200&q=80"
-            alt="Team collaboration"
+            src="https://images.unsplash.com/photo-1507842217343-583bb7270b66?auto=format&fit=crop&w=1200&q=80"
+            alt="Library bookshelves"
             fill
             className="object-cover"
             priority
@@ -59,25 +59,28 @@ export default function LoginPage() {
         </div>
 
         {/* Content Section with green top border */}
-        <div className="flex flex-col gap-6 border-t-[5px] border-primary-base bg-gray-900 px-12.5 pb-15 pt-10">
+        <div className="flex flex-col gap-6 border-t-[5px] border-library-accent bg-library-ink px-12.5 pb-15 pt-10">
           {/* Logo */}
           <div className="flex items-center gap-2.5">
-            <div className="flex h-6 w-6 items-center justify-center">
-              <span className="text-2xl text-primary-base">✦</span>
-            </div>
-            <span className="text-xl font-semibold text-white">
-              Bootcamp Starter
-            </span>
+            <Image
+              src="/nextshelf-icon.svg"
+              alt="NextShelf"
+              width={32}
+              height={32}
+              priority
+              className="h-8 w-8"
+            />
+            <span className="text-xl font-semibold text-white">NextShelf</span>
           </div>
 
           {/* Headline */}
           <h1 className="text-5xl font-bold leading-[1.2] tracking-[-0.5px] text-white">
-            Build your next project on a solid foundation.
+            Every book, every borrower, back on the shelf.
           </h1>
 
           {/* Subtext */}
           <p className="text-lg leading-normal text-white">
-            A generic full-stack starter for your bootcamp project.
+            Sign in to manage your catalog, members, and loans in one place — or register your library to bring your whole collection online.
           </p>
         </div>
       </div>
@@ -88,7 +91,7 @@ export default function LoginPage() {
         <div className="flex flex-1 items-center justify-center px-6 py-12">
           <div className="flex w-full max-w-120 flex-col items-center gap-8">
             {/* Title */}
-            <h2 className="w-full text-center text-2xl font-bold leading-[1.3] text-gray-900">
+            <h2 className="w-full text-center text-2xl font-bold leading-[1.3] text-library-ink">
               Login first to your account
             </h2>
 
@@ -100,7 +103,7 @@ export default function LoginPage() {
               <div className="flex flex-col gap-2.5">
                 <Label
                   htmlFor="email"
-                  className="flex gap-0.5 text-sm font-medium leading-[1.6] text-gray-900"
+                  className="flex gap-0.5 text-sm font-medium leading-[1.6] text-library-ink"
                 >
                   <span>Email Address</span>
                   <span className="text-error">*</span>
@@ -119,7 +122,7 @@ export default function LoginPage() {
 
               <Button
                 type="submit"
-                className="h-14 w-full rounded-[10px] bg-gray-900 text-base font-bold leading-normal tracking-[0.3px] text-white hover:bg-gray-900/90 disabled:bg-gray-200 disabled:text-gray-500"
+                className="h-14 w-full rounded-[10px] bg-library-primary text-base font-bold leading-normal tracking-[0.3px] text-white hover:bg-library-ink disabled:bg-gray-200 disabled:text-gray-500"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (
@@ -145,7 +148,7 @@ export default function LoginPage() {
               <span className="text-gray-500">
                 Don&apos;t have a organization?{' '}
               </span>
-              <a href="/register" className="text-primary-base hover:underline">
+              <a href="/register" className="text-library-primary hover:underline">
                 Create an Org
               </a>
             </p>
@@ -156,18 +159,18 @@ export default function LoginPage() {
         <footer className="px-6 py-6">
           <div className="flex flex-wrap items-center justify-center gap-2.5 text-sm font-medium leading-[1.6]">
             <span className="text-gray-500">
-              © {new Date().getFullYear()} Bootcamp Starter. All rights
+              © {new Date().getFullYear()} NextShelf. All rights
               reserved.
             </span>
             <a
               href="/terms"
-              className="text-gray-900 hover:text-primary-base hover:underline"
+              className="text-library-ink hover:text-library-primary hover:underline"
             >
               Terms & Conditions
             </a>
             <a
               href="/privacy"
-              className="text-gray-900 hover:text-primary-base hover:underline"
+              className="text-library-ink hover:text-library-primary hover:underline"
             >
               Privacy Policy
             </a>
