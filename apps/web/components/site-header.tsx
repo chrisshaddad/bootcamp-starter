@@ -19,7 +19,7 @@ export function SiteHeader() {
         </span>
       </Link>
 
-      <nav className="flex items-center gap-6">
+      <nav className="flex items-center gap-4 sm:gap-6">
         {NAV_LINKS.map((label) => (
           <button
             key={label}

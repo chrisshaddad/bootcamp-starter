@@ -21,7 +21,7 @@ export function SiteFooter() {
         © {new Date().getFullYear()} Deployfolio. All rights reserved.
       </p>
 
-      <div className="flex items-center gap-6">
+      <div className="flex flex-wrap items-center justify-center gap-4 sm:flex-nowrap sm:gap-6">
         {LEGAL_LINKS.map((label) => (
           <button
             key={label}

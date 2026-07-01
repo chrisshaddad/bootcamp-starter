@@ -26,7 +26,7 @@ export function AuthShell({
     <div className="dark flex min-h-screen flex-col bg-background">
       <SiteHeader />
 
-      <main className="relative flex flex-1 items-center justify-center overflow-hidden px-6 py-12">
+      <main className="relative flex flex-1 items-center justify-center overflow-hidden px-6 py-6 sm:py-12">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(47,120,238,0.25),transparent_60%)]" />
         <div className="relative w-full max-w-md">
           <Card className="border-white/10 shadow-[0_0_60px_-15px_rgba(47,120,238,0.45)]">
