@@ -378,6 +378,8 @@ model QuizQuestion {
   correctAnswer Json?
   points        Decimal      @default(1) @db.Decimal(6, 2)
   position      Int          @default(0)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @default(now()) @updatedAt
 
   assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
 
@@ -401,6 +403,8 @@ model Submission {
   teacherNote String? @db.Text
 
   submittedAt DateTime         @default(now())
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @default(now()) @updatedAt
   status      SubmissionStatus @default(submitted)
 
   assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
@@ -424,6 +428,8 @@ model QuizAttempt {
   totalPoints Decimal? @db.Decimal(6, 2)
 
   startedAt   DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now()) @updatedAt
   submittedAt DateTime?
 
   assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
@@ -445,6 +451,8 @@ model Grade {
   aiFeedback    String?  @db.Text
   gradedById    String?
   gradedAt      DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now()) @updatedAt
 
   submission  Submission?  @relation(fields: [submissionId], references: [id], onDelete: Cascade)
   quizAttempt QuizAttempt? @relation(fields: [quizAttemptId], references: [id], onDelete: Cascade)
@@ -464,7 +472,7 @@ model Meeting {
   durationMin Int           @default(60)
   meetingUrl  String?
   status      MeetingStatus @default(scheduled)
-  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @default(now()) @updatedAt
 
   course       Course               @relation(fields: [courseId], references: [id], onDelete: Cascade)
   host         User                 @relation("MeetingHost", fields: [hostId], references: [id])
@@ -480,6 +488,8 @@ model MeetingParticipant {
   userId    String
   joinedAt  DateTime?
   leftAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now()) @updatedAt
 
   meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -585,6 +595,8 @@ model CourseDailyStat {
   activeStudents Int      @default(0)
   submissions    Int      @default(0)
   avgScore       Decimal? @db.Decimal(6, 2)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @default(now()) @updatedAt
 
   course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
