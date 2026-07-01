@@ -13,6 +13,10 @@ export async function seedLms(prisma: PrismaClient) {
 
   const organization = await prisma.organization.findFirst();
 
+  if (!organization) {
+    throw new Error('Organization not found. Run seedOrganizations first.');
+  }
+
   const gradeLevel = await prisma.gradeLevel.upsert({
     where: { name: 'Grade 9' },
     update: {},
@@ -53,7 +57,7 @@ export async function seedLms(prisma: PrismaClient) {
       teacherId: superAdmin.id,
       subjectId: subject.id,
       sectionId: section.id,
-      organizationId: organization?.id,
+      organizationId: organization.id,
       title: 'Mathematics - Grade 9 Section A',
       description: 'Sample LMS course for Grade 9 Section A.',
       joinCode: 'MATH9A',
