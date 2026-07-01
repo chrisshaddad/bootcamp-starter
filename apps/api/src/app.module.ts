@@ -14,6 +14,7 @@ import { InstructorsModule } from './instructors/instructors.module';
 import { DatabaseModule } from './database/database.module';
 import { SessionsModule } from './sessions/sessions.module';
 import { BookingsModule } from './bookings/bookings.module';
+import { CheckInsModule } from './checkins/checkins.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { BookingsModule } from './bookings/bookings.module';
     InstructorsModule,
     SessionsModule,
     BookingsModule,
+    CheckInsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
