@@ -1,15 +1,13 @@
 'use client';
 
-import Link from 'next/link';
 import { format } from 'date-fns';
-import { ClipboardList, Calendar, ArrowRight } from 'lucide-react';
+import { ClipboardList, Calendar } from 'lucide-react';
 import {
   useMeProfile,
   useMeSubscriptions,
   useMeBookings,
 } from '@/hooks/use-me';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -58,46 +56,34 @@ function ActiveSubscriptionCard() {
   }
 
   return (
-    <div className="space-y-3">
-      <div className="space-y-2">
-        {active.map((sub) => {
-          const endDate = new Date(sub.endDate).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-          });
-          return (
-            <div key={sub.id} className="rounded-lg bg-primary-100 p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-primary-base">
-                    {sub.plan?.name ?? 'Membership Plan'}
-                  </p>
-                  <p className="mt-0.5 text-xs text-gray-600">
-                    Active until{' '}
-                    <span className="font-medium text-gray-800">{endDate}</span>
-                  </p>
-                </div>
-                <span
-                  className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${STATUS_COLORS.ACTIVE}`}
-                >
-                  Active
-                </span>
+    <div className="space-y-2">
+      {active.map((sub) => {
+        const endDate = new Date(sub.endDate).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        });
+        return (
+          <div key={sub.id} className="rounded-lg bg-primary-100 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-primary-base">
+                  {sub.plan?.name ?? 'Membership Plan'}
+                </p>
+                <p className="mt-0.5 text-xs text-gray-600">
+                  Active until{' '}
+                  <span className="font-medium text-gray-800">{endDate}</span>
+                </p>
               </div>
+              <span
+                className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${STATUS_COLORS.ACTIVE}`}
+              >
+                Active
+              </span>
             </div>
-          );
-        })}
-      </div>
-      <Button
-        asChild
-        variant="ghost"
-        className="w-full justify-between text-xs text-primary-base hover:bg-primary-50 hover:text-primary-base"
-      >
-        <Link href="/portal/subscriptions">
-          <span>View all subscriptions</span>
-          <ArrowRight className="h-3.5 w-3.5" />
-        </Link>
-      </Button>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -145,48 +131,36 @@ function UpcomingBookingsCard() {
   }
 
   return (
-    <div className="space-y-3">
-      <div className="space-y-2">
-        {upcoming.slice(0, 3).map((booking) => {
-          const session = booking.session;
-          if (!session) return null;
-          const startDate = format(new Date(session.startsAt), 'MMM d, yyyy');
-          const startTime = format(new Date(session.startsAt), 'h:mm a');
-          return (
-            <div
-              key={booking.id}
-              className="rounded-lg border border-gray-100 bg-gray-50/50 p-3.5 transition-colors hover:bg-gray-50"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <p className="truncate text-sm font-semibold text-gray-900">
-                  {session.title}
-                </p>
-                <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
-                  {startTime}
-                </span>
-              </div>
-              <p className="mt-1 text-xs text-gray-500">
-                {startDate}
-                {session.instructor && (
-                  <span className="ml-1 text-gray-400">
-                    · {session.instructor.name}
-                  </span>
-                )}
+    <div className="space-y-2">
+      {upcoming.slice(0, 3).map((booking) => {
+        const session = booking.session;
+        if (!session) return null;
+        const startDate = format(new Date(session.startsAt), 'MMM d, yyyy');
+        const startTime = format(new Date(session.startsAt), 'h:mm a');
+        return (
+          <div
+            key={booking.id}
+            className="rounded-lg border border-gray-100 bg-gray-50/50 p-3.5 transition-colors hover:bg-gray-50"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <p className="truncate text-sm font-semibold text-gray-900">
+                {session.title}
               </p>
+              <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+                {startTime}
+              </span>
             </div>
-          );
-        })}
-      </div>
-      <Button
-        asChild
-        variant="ghost"
-        className="w-full justify-between text-xs text-primary-base hover:bg-primary-50 hover:text-primary-base"
-      >
-        <Link href="/portal/bookings">
-          <span>View all bookings</span>
-          <ArrowRight className="h-3.5 w-3.5" />
-        </Link>
-      </Button>
+            <p className="mt-1 text-xs text-gray-500">
+              {startDate}
+              {session.instructor && (
+                <span className="ml-1 text-gray-400">
+                  · {session.instructor.name}
+                </span>
+              )}
+            </p>
+          </div>
+        );
+      })}
     </div>
   );
 }
