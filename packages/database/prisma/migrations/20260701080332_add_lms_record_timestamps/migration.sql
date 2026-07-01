@@ -1,9 +1,3 @@
-/*
-  Warnings:
-
-  - You are about to drop the column `createdAt` on the `Meeting` table. All the data in the column will be lost.
-
-*/
 -- AlterTable
 ALTER TABLE "CourseDailyStat" ADD COLUMN     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 ADD COLUMN     "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
@@ -13,8 +7,7 @@ ALTER TABLE "Grade" ADD COLUMN     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CUR
 ADD COLUMN     "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
 
 -- AlterTable
-ALTER TABLE "Meeting" DROP COLUMN "createdAt",
-ADD COLUMN     "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "Meeting" ADD COLUMN     "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
 
 -- AlterTable
 ALTER TABLE "MeetingParticipant" ADD COLUMN     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -31,3 +24,11 @@ ADD COLUMN     "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
 -- AlterTable
 ALTER TABLE "Submission" ADD COLUMN     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 ADD COLUMN     "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+-- AddCheckConstraint
+ALTER TABLE "Grade"
+ADD CONSTRAINT "Grade_exactly_one_target_chk"
+CHECK (
+  (CASE WHEN "submissionId" IS NULL THEN 0 ELSE 1 END) +
+  (CASE WHEN "quizAttemptId" IS NULL THEN 0 ELSE 1 END) = 1
+);
