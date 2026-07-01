@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { MailModule } from './mail/mail.module';
 import { OrganizationsModule } from './organizations/organizations.module';
 import { DatabaseModule } from './database/database.module';
+import { ChatModule } from './chat/chat.module';
 
 // Margin feature modules
 import { ProductsModule } from './products/products.module';
@@ -42,6 +43,7 @@ import { AiInsightsModule } from './ai-insights/ai-insights.module';
     GoalsModule,
     AlertsModule,
     AiInsightsModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [AppService],
