@@ -97,8 +97,20 @@ export async function seedOrganizations(prisma: PrismaClient) {
       continue;
     }
 
-    const createdOrg = await prisma.organization.create({
-      data: {
+    const createdOrg = await prisma.organization.upsert({
+      where: { createdById: orgAdmin.id },
+      update: {
+        name: org.name,
+        description: org.description,
+        website: org.website,
+        status: org.status,
+        approvedById:
+          org.status === 'ACTIVE' || org.status === 'SUSPENDED'
+            ? superAdmin.id
+            : null,
+        approvedAt: org.approvedAt || null,
+      },
+      create: {
         name: org.name,
         description: org.description,
         website: org.website,
