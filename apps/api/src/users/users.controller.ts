@@ -1,15 +1,8 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Post, UsePipes } from '@nestjs/common';
+import { createUserSchema, type CreateUserBody } from '@repo/contracts';
 import { UsersService } from './users.service';
 import { Roles } from '../auth/decorators';
-
-interface CreateUserBody {
-  name: string;
-  email: string;
-  role: 'ORG_ADMIN' | 'MEMBER';
-  dateOfBirth?: string;
-  className?: string;
-  sectionName?: string;
-}
+import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 
 @Controller('users')
 export class UsersController {
@@ -17,6 +10,7 @@ export class UsersController {
 
   @Post()
   @Roles('SUPER_ADMIN')
+  @UsePipes(new ZodValidationPipe(createUserSchema))
   async create(@Body() body: CreateUserBody) {
     return this.usersService.create(body);
   }
