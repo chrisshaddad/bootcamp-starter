@@ -1,15 +1,28 @@
 'use client';
 
-import { useState, useRef } from 'react';
-import type { FormEvent, ChangeEvent } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { createUserSchema, type CreateUserBody } from '@repo/contracts/users';
 import Link from 'next/link';
+import { useRef, useState } from 'react';
+import type { ChangeEvent } from 'react';
+import { useForm } from 'react-hook-form';
+import { apiPost } from '../../../../lib/api';
 
-type ImportedStudent = {
-  fullName: string;
-  email: string;
-  dateOfBirth: string;
-  className: string;
-  sectionName: string;
+type ImportedStudent = CreateUserBody & {
+  role: 'MEMBER';
+};
+
+type CreateUserResponse = {
+  message?: string;
+};
+
+const defaultFormValues: CreateUserBody = {
+  name: '',
+  email: '',
+  role: 'MEMBER',
+  dateOfBirth: '',
+  className: '',
+  sectionName: '',
 };
 
 function escapeCsvCell(value: string) {
@@ -62,16 +75,50 @@ function parseCsvLine(line: string) {
   return values;
 }
 
-export default function CreateUserPage() {
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    role: 'MEMBER',
-    dateOfBirth: '',
-    className: '',
-    sectionName: '',
-  });
+function formatZodErrors(error: unknown) {
+  if (
+    error &&
+    typeof error === 'object' &&
+    'issues' in error &&
+    Array.isArray(error.issues)
+  ) {
+    return error.issues
+      .map((issue) => {
+        const path =
+          'path' in issue && Array.isArray(issue.path)
+            ? issue.path.join('.')
+            : '';
 
+        const message =
+          'message' in issue && typeof issue.message === 'string'
+            ? issue.message
+            : 'Invalid value';
+
+        return path ? `${path}: ${message}` : message;
+      })
+      .join(', ');
+  }
+
+  return 'Invalid row';
+}
+
+function normalizeCreateUserPayload(values: CreateUserBody): CreateUserBody {
+  const payload: CreateUserBody = {
+    name: values.name.trim(),
+    email: values.email.trim().toLowerCase(),
+    role: values.role,
+  };
+
+  if (values.role === 'MEMBER') {
+    payload.dateOfBirth = values.dateOfBirth?.trim() || undefined;
+    payload.className = values.className?.trim();
+    payload.sectionName = values.sectionName?.trim();
+  }
+
+  return payload;
+}
+
+export default function CreateUserPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
 
@@ -88,56 +135,40 @@ export default function CreateUserPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const isStudent = formData.role === 'MEMBER';
-  const isTeacher = formData.role === 'ORG_ADMIN';
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm<CreateUserBody>({
+    resolver: zodResolver(createUserSchema),
+    defaultValues: defaultFormValues,
+  });
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  const role = watch('role');
+  const isStudent = role === 'MEMBER';
+  const isTeacher = role === 'ORG_ADMIN';
 
+  const roleField = register('role');
+
+  async function onSubmit(values: CreateUserBody) {
     setIsSubmitting(true);
     setSuccessMessage('');
     setErrorMessage('');
 
     try {
-      const payload = {
-        name: formData.name,
-        email: formData.email,
-        role: formData.role,
-        ...(isStudent && {
-          dateOfBirth: formData.dateOfBirth || undefined,
-          className: formData.className,
-          sectionName: formData.sectionName,
-        }),
-      };
+      const payload = normalizeCreateUserPayload(values);
 
-      const response = await fetch('http://localhost:3001/users', {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to create user');
-      }
+      const data = await apiPost<CreateUserResponse>('/users', payload);
 
       setSuccessMessage(
         data.message ||
           'User created successfully. They can now log in using magic link.',
       );
 
-      setFormData({
-        name: '',
-        email: '',
-        role: 'MEMBER',
-        dateOfBirth: '',
-        className: '',
-        sectionName: '',
-      });
+      reset(defaultFormValues);
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : 'Something went wrong',
@@ -157,6 +188,7 @@ export default function CreateUserPage() {
   function resetFileSelection() {
     setSelectedFileName('');
     setImportedStudents([]);
+
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -191,23 +223,38 @@ export default function CreateUserPage() {
         return;
       }
 
-      const students = rows
-        .slice(1)
-        .map((row) => {
-          const columns = parseCsvLine(row);
+      const students: ImportedStudent[] = [];
+      const failures: string[] = [];
 
-          return {
-            fullName: columns[0] || '',
-            email: columns[1] || '',
-            dateOfBirth: columns[2] || '',
-            className: columns[3] || '',
-            sectionName: columns[4] || '',
-          };
-        })
-        .filter((student) => student.fullName || student.email);
+      rows.slice(1).forEach((row, index) => {
+        const rowNumber = index + 2;
+        const columns = parseCsvLine(row);
+
+        const parsed = createUserSchema.safeParse({
+          name: columns[0] || '',
+          email: columns[1] || '',
+          role: 'MEMBER',
+          dateOfBirth: columns[2] || undefined,
+          className: columns[3] || '',
+          sectionName: columns[4] || '',
+        });
+
+        if (!parsed.success) {
+          failures.push(`Row ${rowNumber}: ${formatZodErrors(parsed.error)}`);
+          return;
+        }
+
+        students.push(
+          normalizeCreateUserPayload(parsed.data) as ImportedStudent,
+        );
+      });
 
       if (students.length === 0) {
-        setBulkErrorMessage('No valid students were found in the file.');
+        setBulkErrorMessage(
+          failures.length > 0
+            ? failures.join('\n')
+            : 'No valid students were found in the file.',
+        );
         return;
       }
 
@@ -215,6 +262,10 @@ export default function CreateUserPage() {
       setBulkSuccessMessage(
         `${students.length} student(s) loaded from file. Review below, then click Import.`,
       );
+
+      if (failures.length > 0) {
+        setBulkErrorMessage(failures.join('\n'));
+      }
     };
 
     reader.onerror = () => {
@@ -239,50 +290,28 @@ export default function CreateUserPage() {
     const stillPending: ImportedStudent[] = [];
 
     for (const student of importedStudents) {
-      const studentLabel =
-        student.email || student.fullName || 'Unknown student';
+      const studentLabel = student.email || student.name || 'Unknown student';
+      const parsed = createUserSchema.safeParse(student);
 
-      if (
-        !student.fullName ||
-        !student.email ||
-        !student.className ||
-        !student.sectionName
-      ) {
-        failures.push(`${studentLabel}: missing required fields`);
+      if (!parsed.success) {
+        failures.push(`${studentLabel}: ${formatZodErrors(parsed.error)}`);
         stillPending.push(student);
         continue;
       }
 
       try {
-        const response = await fetch('http://localhost:3001/users', {
-          method: 'POST',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            name: student.fullName,
-            email: student.email,
-            role: 'MEMBER',
-            dateOfBirth: student.dateOfBirth || undefined,
-            className: student.className,
-            sectionName: student.sectionName,
-          }),
-        });
-
-        const data = await response.json().catch(() => ({}));
-
-        if (!response.ok) {
-          failures.push(
-            `${studentLabel}: ${data.message || 'Failed to import student'}`,
-          );
-          stillPending.push(student);
-          continue;
-        }
+        await apiPost<CreateUserResponse>(
+          '/users',
+          normalizeCreateUserPayload(parsed.data),
+        );
 
         successCount += 1;
-      } catch {
-        failures.push(`${studentLabel}: failed to import student`);
+      } catch (error) {
+        failures.push(
+          `${studentLabel}: ${
+            error instanceof Error ? error.message : 'Failed to import student'
+          }`,
+        );
         stillPending.push(student);
       }
     }
@@ -297,8 +326,6 @@ export default function CreateUserPage() {
       setBulkErrorMessage(failures.join('\n'));
     }
 
-    // Only keep rows that failed, so re-clicking "Import" doesn't
-    // re-create students that already succeeded.
     setImportedStudents(stillPending);
 
     if (stillPending.length === 0) {
@@ -319,7 +346,7 @@ export default function CreateUserPage() {
       </div>
 
       <form
-        onSubmit={handleSubmit}
+        onSubmit={handleSubmit(onSubmit)}
         className="space-y-5 rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
       >
         <div>
@@ -349,14 +376,13 @@ export default function CreateUserPage() {
           </label>
           <input
             type="text"
-            value={formData.name}
-            onChange={(event) =>
-              setFormData({ ...formData, name: event.target.value })
-            }
+            {...register('name')}
             placeholder="Enter full name"
-            required
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-200"
           />
+          {errors.name?.message && (
+            <p className="mt-1 text-xs text-red-600">{errors.name.message}</p>
+          )}
         </div>
 
         <div>
@@ -365,14 +391,13 @@ export default function CreateUserPage() {
           </label>
           <input
             type="email"
-            value={formData.email}
-            onChange={(event) =>
-              setFormData({ ...formData, email: event.target.value })
-            }
+            {...register('email')}
             placeholder="Enter email address"
-            required
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-200"
           />
+          {errors.email?.message && (
+            <p className="mt-1 text-xs text-red-600">{errors.email.message}</p>
+          )}
         </div>
 
         <div>
@@ -380,21 +405,21 @@ export default function CreateUserPage() {
             Role
           </label>
           <select
-            value={formData.role}
-            onChange={(event) =>
-              setFormData({
-                ...formData,
-                role: event.target.value,
-                dateOfBirth: '',
-                className: '',
-                sectionName: '',
-              })
-            }
+            {...roleField}
+            onChange={(event) => {
+              roleField.onChange(event);
+              setValue('dateOfBirth', '');
+              setValue('className', '');
+              setValue('sectionName', '');
+            }}
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-200"
           >
             <option value="MEMBER">Student / User</option>
             <option value="ORG_ADMIN">Teacher / Admin</option>
           </select>
+          {errors.role?.message && (
+            <p className="mt-1 text-xs text-red-600">{errors.role.message}</p>
+          )}
         </div>
 
         {isStudent && (
@@ -414,15 +439,14 @@ export default function CreateUserPage() {
               </label>
               <input
                 type="date"
-                value={formData.dateOfBirth}
-                onChange={(event) =>
-                  setFormData({
-                    ...formData,
-                    dateOfBirth: event.target.value,
-                  })
-                }
+                {...register('dateOfBirth')}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-200"
               />
+              {errors.dateOfBirth?.message && (
+                <p className="mt-1 text-xs text-red-600">
+                  {errors.dateOfBirth.message}
+                </p>
+              )}
             </div>
 
             <div>
@@ -431,17 +455,15 @@ export default function CreateUserPage() {
               </label>
               <input
                 type="text"
-                value={formData.className}
-                onChange={(event) =>
-                  setFormData({
-                    ...formData,
-                    className: event.target.value,
-                  })
-                }
+                {...register('className')}
                 placeholder="Example: Grade 9"
-                required={isStudent}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-200"
               />
+              {errors.className?.message && (
+                <p className="mt-1 text-xs text-red-600">
+                  {errors.className.message}
+                </p>
+              )}
             </div>
 
             <div>
@@ -450,17 +472,15 @@ export default function CreateUserPage() {
               </label>
               <input
                 type="text"
-                value={formData.sectionName}
-                onChange={(event) =>
-                  setFormData({
-                    ...formData,
-                    sectionName: event.target.value,
-                  })
-                }
+                {...register('sectionName')}
                 placeholder="Example: A"
-                required={isStudent}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-200"
               />
+              {errors.sectionName?.message && (
+                <p className="mt-1 text-xs text-red-600">
+                  {errors.sectionName.message}
+                </p>
+              )}
             </div>
           </div>
         )}
@@ -594,9 +614,9 @@ export default function CreateUserPage() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {importedStudents.map((student, index) => (
-                  <tr key={`${student.email || student.fullName}-${index}`}>
+                  <tr key={`${student.email || student.name}-${index}`}>
                     <td className="px-3 py-2 text-gray-900">
-                      {student.fullName || '—'}
+                      {student.name || '—'}
                     </td>
                     <td className="px-3 py-2 text-gray-900">
                       {student.email || '—'}
