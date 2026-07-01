@@ -3,7 +3,6 @@
 import { useUser } from '@/hooks/use-auth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import Link from 'next/link';
 
 export default function DashboardPage() {
   const { user, isLoading } = useUser();

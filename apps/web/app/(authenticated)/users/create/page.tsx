@@ -1,9 +1,9 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { createUserSchema, type CreateUserBody } from '@repo/contracts/users';
-import Link from 'next/link';
+import { createUserSchema, type CreateUserBody } from '@repo/contracts';
 import { useRef, useState } from 'react';
+import Link from 'next/link';
 import type { ChangeEvent } from 'react';
 import { useForm } from 'react-hook-form';
 import { apiPost } from '../../../../lib/api';
