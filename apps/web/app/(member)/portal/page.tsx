@@ -10,12 +10,6 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
-const STATUS_COLORS: Record<string, string> = {
-  ACTIVE: 'bg-primary-100 text-primary-base border border-primary-200',
-  EXPIRED: 'bg-gray-200 text-gray-600 border border-gray-300',
-  CANCELLED: 'bg-error-light text-error border border-error/20',
-};
-
 function ActiveSubscriptionCard() {
   const { subscriptions, isLoading, error } = useMeSubscriptions();
 
@@ -64,20 +58,21 @@ function ActiveSubscriptionCard() {
           day: 'numeric',
         });
         return (
-          <div key={sub.id} className="rounded-lg bg-primary-100 p-4">
+          <div
+            key={sub.id}
+            className="rounded-lg border border-gray-100 bg-gray-50/50 p-3.5 transition-colors hover:bg-gray-50"
+          >
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-primary-base">
+                <p className="truncate text-sm font-semibold text-gray-900">
                   {sub.plan?.name ?? 'Membership Plan'}
                 </p>
-                <p className="mt-0.5 text-xs text-gray-600">
+                <p className="mt-0.5 text-xs text-gray-500">
                   Active until{' '}
-                  <span className="font-medium text-gray-800">{endDate}</span>
+                  <span className="font-medium text-gray-700">{endDate}</span>
                 </p>
               </div>
-              <span
-                className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium ${STATUS_COLORS.ACTIVE}`}
-              >
+              <span className="shrink-0 rounded-full bg-primary-100 px-2.5 py-0.5 text-xs font-medium text-primary-base">
                 Active
               </span>
             </div>
