@@ -13,6 +13,7 @@ import {
   ClipboardList,
   GraduationCap,
   CalendarDays,
+  Fingerprint,
 } from 'lucide-react';
 import { useAuth, useUser } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
@@ -67,6 +68,12 @@ const orgNavItems: NavItem[] = [
     title: 'Plans',
     url: '/plans',
     icon: ClipboardList,
+    roles: ['ORG_ADMIN'],
+  },
+  {
+    title: 'Check-ins',
+    url: '/checkins',
+    icon: Fingerprint,
     roles: ['ORG_ADMIN'],
   },
 ];

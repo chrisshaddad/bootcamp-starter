@@ -7,13 +7,13 @@
 > Build phases in order: build → test → merge → next. Don't start a phase until the
 > previous is ✅. Status legend: ⬜ Not started · 🟡 In progress · ✅ Done · 🚧 Blocked.
 
-**Owner:** _unassigned_ · **Status: 0 / 3 done — ⬜ Not started.**
+**Owner:** Antigravity · **Status: 1 / 3 done — 🟡 In progress.**
 
-| Phase | Scope                                                                    | Dev | Status | Date | Notes / PR |
-| ----- | ------------------------------------------------------------------------ | --- | ------ | ---- | ---------- |
-| C1    | Manual check-ins + live occupancy                                        | —   | ⬜     | —    | —          |
-| C2    | Dashboard stats + gym settings (`maxCapacity`)                           | —   | ⬜     | —    | —          |
-| C3    | QR check-in: admin rotating token (Redis) + member scan — needs A4 shell | —   | ⬜     | —    | —          |
+| Phase | Scope                                                                    | Dev         | Status | Date       | Notes / PR                                              |
+| ----- | ------------------------------------------------------------------------ | ----------- | ------ | ---------- | ------------------------------------------------------- |
+| C1    | Manual check-ins + live occupancy                                        | Antigravity | ✅     | 2026-07-01 | Manual check-ins + live occupancy dashboard implemented |
+| C2    | Dashboard stats + gym settings (`maxCapacity`)                           | —           | ⬜     | —          | —                                                       |
+| C3    | QR check-in: admin rotating token (Redis) + member scan — needs A4 shell | —           | ⬜     | —          | —                                                       |
 
 > C3 uses A4's `MePortalModule` + the `app/(member)/` shell, and shares the QR token
 > contract + Redis key format with Owner 1 — coordinate, and don't merge C3 until A4
