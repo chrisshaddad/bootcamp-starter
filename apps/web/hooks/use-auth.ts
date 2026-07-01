@@ -5,8 +5,10 @@ import { useCallback, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { apiPost, ApiError } from '@/lib/api';
 import type {
+  LoginRequest,
   MagicLinkRequest,
   MagicLinkVerifyRequest,
+  SignupRequest,
   UserResponse,
 } from '@repo/contracts';
 
@@ -23,7 +25,7 @@ interface UseUserReturn {
 }
 
 // Routes where we should NOT redirect on 401
-const AUTH_ROUTES = ['/login', '/auth'];
+const AUTH_ROUTES = ['/login', '/signup', '/auth'];
 
 function isAuthRoute(pathname: string): boolean {
   return AUTH_ROUTES.some(
@@ -80,6 +82,30 @@ export function useAuth() {
     [mutate],
   );
 
+  const login = useCallback(
+    async (data: LoginRequest) => {
+      const result = await apiPost<{ user: UserResponse }>(
+        '/auth/login',
+        data,
+      );
+      mutate();
+      return result;
+    },
+    [mutate],
+  );
+
+  const signup = useCallback(
+    async (data: SignupRequest) => {
+      const result = await apiPost<{ user: UserResponse }>(
+        '/auth/signup',
+        data,
+      );
+      mutate();
+      return result;
+    },
+    [mutate],
+  );
+
   const logout = useCallback(async () => {
     await apiPost<{ success: boolean }>('/auth/logout');
     mutate();
@@ -88,6 +114,8 @@ export function useAuth() {
   return {
     requestMagicLink,
     verifyMagicLink,
+    login,
+    signup,
     logout,
   };
 }

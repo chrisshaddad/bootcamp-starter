@@ -2,18 +2,26 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
+import { signupRequestSchema, type SignupRequest } from '@repo/contracts';
 import { AuthShell } from '@/components/auth-shell';
-import {
-  signupFormSchema,
-  type SignupFormValues,
-} from '@/components/auth-schemas';
+import { PasswordInput } from '@/components/password-input';
+import { useAuth } from '@/hooks/use-auth';
+import { ApiError } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 
 const ACCOUNT_TYPE_OPTIONS = [
@@ -21,29 +29,50 @@ const ACCOUNT_TYPE_OPTIONS = [
   { value: 'HIRING', label: 'Recruiter / Hiring' },
 ] as const;
 
+const ORGANIZATION_TYPE_OPTIONS = [
+  { value: 'COMPANY', label: 'Company' },
+  { value: 'AGENCY', label: 'Agency' },
+  { value: 'INDIVIDUAL', label: 'Individual' },
+  { value: 'FREELANCE_CLIENT', label: 'Freelance Client' },
+] as const;
+
 export default function SignupPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const router = useRouter();
+  const { signup, requestMagicLink } = useAuth();
 
   const {
     register,
     handleSubmit,
-    reset,
     watch,
     setValue,
     formState: { errors },
-  } = useForm<SignupFormValues>({
-    resolver: zodResolver(signupFormSchema),
+  } = useForm<SignupRequest>({
+    resolver: zodResolver(signupRequestSchema),
     defaultValues: { accountType: 'DEVELOPER' },
   });
 
   const accountType = watch('accountType');
 
-  const onSubmit = async () => {
+  const onSubmit = async (data: SignupRequest) => {
     setIsSubmitting(true);
-    // Mock submit — no backend integration yet.
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    toast.success('Magic link sent (mock) — check your email.');
-    reset({ accountType: 'DEVELOPER' });
+    try {
+      await signup(data);
+    } catch (error) {
+      toast.error(
+        error instanceof ApiError ? error.message : 'Unable to sign up',
+      );
+      setIsSubmitting(false);
+      return;
+    }
+
+    try {
+      await requestMagicLink({ email: data.email });
+    } catch {
+      // Account was already created; a failed confirmation email shouldn't block the user.
+    }
+
+    router.push('/dashboard');
     setIsSubmitting(false);
   };
 
@@ -81,38 +110,6 @@ export default function SignupPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="firstName">First name</Label>
-            <Input
-              id="firstName"
-              placeholder="Ada"
-              aria-invalid={!!errors.firstName}
-              {...register('firstName')}
-            />
-            {errors.firstName && (
-              <p className="text-sm text-destructive">
-                {errors.firstName.message}
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="lastName">Last name</Label>
-            <Input
-              id="lastName"
-              placeholder="Lovelace"
-              aria-invalid={!!errors.lastName}
-              {...register('lastName')}
-            />
-            {errors.lastName && (
-              <p className="text-sm text-destructive">
-                {errors.lastName.message}
-              </p>
-            )}
-          </div>
-        </div>
-
         <div className="space-y-2">
           <Label htmlFor="email">Email address</Label>
           <Input
@@ -127,6 +124,101 @@ export default function SignupPage() {
           )}
         </div>
 
+        <div className="space-y-2">
+          <Label htmlFor="password">Password</Label>
+          <PasswordInput
+            id="password"
+            placeholder="••••••••"
+            aria-invalid={!!errors.password}
+            {...register('password')}
+          />
+          {errors.password && (
+            <p className="text-sm text-destructive">
+              {errors.password.message}
+            </p>
+          )}
+        </div>
+
+        {accountType === 'DEVELOPER' ? (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="displayName">Display name</Label>
+              <Input
+                id="displayName"
+                placeholder="Ada Lovelace"
+                aria-invalid={!!errors.displayName}
+                {...register('displayName')}
+              />
+              {errors.displayName && (
+                <p className="text-sm text-destructive">
+                  {errors.displayName.message}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="publicSlug">Public handle</Label>
+              <Input
+                id="publicSlug"
+                placeholder="ada-lovelace"
+                aria-invalid={!!errors.publicSlug}
+                {...register('publicSlug')}
+              />
+              {errors.publicSlug && (
+                <p className="text-sm text-destructive">
+                  {errors.publicSlug.message}
+                </p>
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="organizationName">Organization name</Label>
+              <Input
+                id="organizationName"
+                placeholder="Acme Inc."
+                aria-invalid={!!errors.organizationName}
+                {...register('organizationName')}
+              />
+              {errors.organizationName && (
+                <p className="text-sm text-destructive">
+                  {errors.organizationName.message}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="organizationType">Organization type</Label>
+              <Select
+                value={watch('organizationType') ?? ''}
+                onValueChange={(value) =>
+                  setValue(
+                    'organizationType',
+                    value as SignupRequest['organizationType'],
+                  )
+                }
+              >
+                <SelectTrigger id="organizationType" className="w-full">
+                  <SelectValue placeholder="Select organization type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ORGANIZATION_TYPE_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.organizationType && (
+                <p className="text-sm text-destructive">
+                  {errors.organizationType.message}
+                </p>
+              )}
+            </div>
+          </>
+        )}
+
         <Button
           type="submit"
           className="h-12 w-full bg-blue text-white hover:bg-blue/90"
@@ -135,10 +227,10 @@ export default function SignupPage() {
           {isSubmitting ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              Sending magic link...
+              Creating account...
             </>
           ) : (
-            'Send magic link'
+            'Create account'
           )}
         </Button>
       </form>

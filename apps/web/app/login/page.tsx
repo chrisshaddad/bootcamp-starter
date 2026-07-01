@@ -2,41 +2,51 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
+import { loginRequestSchema, type LoginRequest } from '@repo/contracts';
 import { AuthShell } from '@/components/auth-shell';
-import { loginFormSchema, type LoginFormValues } from '@/components/auth-schemas';
+import { PasswordInput } from '@/components/password-input';
+import { useAuth } from '@/hooks/use-auth';
+import { ApiError } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const router = useRouter();
+  const { login } = useAuth();
 
   const {
     register,
     handleSubmit,
-    reset,
     formState: { errors },
-  } = useForm<LoginFormValues>({
-    resolver: zodResolver(loginFormSchema),
+  } = useForm<LoginRequest>({
+    resolver: zodResolver(loginRequestSchema),
   });
 
-  const onSubmit = async () => {
+  const onSubmit = async (data: LoginRequest) => {
     setIsSubmitting(true);
-    // Mock submit — no backend integration yet.
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    toast.success('Magic link sent (mock) — check your email.');
-    reset();
-    setIsSubmitting(false);
+    try {
+      await login(data);
+      router.push('/dashboard');
+    } catch (error) {
+      toast.error(
+        error instanceof ApiError ? error.message : 'Unable to log in',
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <AuthShell
       title="Welcome back"
-      description="Enter your email and we'll send you a magic link to log in."
+      description="Enter your email and password to log in."
       footer={
         <>
           Don&apos;t have an account?{' '}
@@ -61,6 +71,21 @@ export default function LoginPage() {
           )}
         </div>
 
+        <div className="space-y-2">
+          <Label htmlFor="password">Password</Label>
+          <PasswordInput
+            id="password"
+            placeholder="••••••••"
+            aria-invalid={!!errors.password}
+            {...register('password')}
+          />
+          {errors.password && (
+            <p className="text-sm text-destructive">
+              {errors.password.message}
+            </p>
+          )}
+        </div>
+
         <Button
           type="submit"
           className="h-12 w-full bg-blue text-white hover:bg-blue/90"
@@ -69,10 +94,10 @@ export default function LoginPage() {
           {isSubmitting ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              Sending magic link...
+              Logging in...
             </>
           ) : (
-            'Send magic link'
+            'Log in'
           )}
         </Button>
       </form>
