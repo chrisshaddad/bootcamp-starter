@@ -572,7 +572,7 @@ model AiInteraction {
   user User @relation(fields: [userId], references: [id])
 
   @@index([userId, createdAt])
-  @@schema("public")
+  @@schema("private")
 }
 
 model ActivityLog {
