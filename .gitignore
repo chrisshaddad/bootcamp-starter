@@ -36,3 +36,31 @@ yarn-error.log*
 # Misc
 .DS_Store
 *.pem
+
+# --- Forward-Mena additions ---
+# Harden env handling: ignore every env file except *.env.example
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
+
+# Secret keys
+*.key
+id_*
+*_rsa
+*_ed25519
+forward_mena_vps*
+
+# Private / local-only docs — NEVER commit to the shared bootcamp repo
+docs/
+CLAUDE.md
+
+# Local tooling
+.claude/
+.gitnexus
+.fallow/
+
+# TypeScript incremental build info
+*.tsbuildinfo
