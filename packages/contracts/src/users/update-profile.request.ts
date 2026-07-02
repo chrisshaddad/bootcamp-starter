@@ -6,7 +6,10 @@ export const updateProfileRequestSchema = z.object({
   publicSlug: z
     .string()
     .min(1, 'Public slug is required')
-    .regex(/^[a-zA-Z0-9-_]+$/, 'Slug can only contain letters, numbers, hyphens, and underscores')
+    .regex(
+      /^[a-zA-Z0-9-_]+$/,
+      'Slug can only contain letters, numbers, hyphens, and underscores',
+    )
     .optional(),
   headline: z.string().nullable().optional(),
   bio: z.string().nullable().optional(),
@@ -31,7 +34,10 @@ export const updateProfileRequestSchema = z.object({
     .optional(),
 
   // Hiring Profile fields
-  organizationName: z.string().min(1, 'Organization name is required').optional(),
+  organizationName: z
+    .string()
+    .min(1, 'Organization name is required')
+    .optional(),
   organizationType: z
     .enum(['COMPANY', 'AGENCY', 'INDIVIDUAL', 'FREELANCE_CLIENT'])
     .optional(),

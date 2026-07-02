@@ -9,7 +9,6 @@ import {
   HttpCode,
   HttpStatus,
   UsePipes,
-  BadRequestException, // Imported to handle payload missing errors gracefully
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { AuthService } from './auth.service';
@@ -77,18 +76,8 @@ export class AuthController {
   @UsePipes(new ZodValidationPipe(signupRequestSchema))
   async signup(
     @Body() body: SignupRequest,
-    @Res({ passthrough: true }) response: Response,
   ): Promise<AuthResponse> {
-    const { sessionId, user } = await this.authService.signup(body);
-
-    response.cookie(SESSION_COOKIE_NAME, sessionId, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: SESSION_MAX_AGE_MS,
-      path: '/',
-    });
-
+    const { user } = await this.authService.signup(body);
     return { user };
   }
 
@@ -152,6 +141,8 @@ export class AuthController {
             location: user.developerProfile.location ?? null,
             profilePictureUrl: user.developerProfile.profilePictureUrl ?? null,
             githubUsername: user.developerProfile.githubUsername ?? null,
+            linkedinUrl: user.developerProfile.linkedinUrl ?? null,
+            personalWebsiteUrl: user.developerProfile.personalWebsiteUrl ?? null,
           }
         : null,
       hiringProfile: user.hiringProfile
@@ -160,16 +151,17 @@ export class AuthController {
             organizationName: user.hiringProfile.organizationName,
             organizationType: user.hiringProfile.organizationType,
             jobTitle: user.hiringProfile.jobTitle ?? null,
+            organizationWebsiteUrl: user.hiringProfile.organizationWebsiteUrl ?? null,
           }
         : null,
     };
   }
 
-@Patch('profile')
+  @Patch('profile')
   @HttpCode(HttpStatus.OK)
   async updateProfile(
     @CurrentUser() user: UserResponse,
-    @Body(new ZodValidationPipe(updateProfileRequestSchema)) body: UpdateProfileRequest, // <-- Move pipe here
+    @Body(new ZodValidationPipe(updateProfileRequestSchema)) body: UpdateProfileRequest,
   ) {
     return this.authService.updateProfile(user.id, body);
   }

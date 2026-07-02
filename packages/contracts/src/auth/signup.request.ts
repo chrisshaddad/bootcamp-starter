@@ -10,32 +10,24 @@ export const signupRequestSchema = z
     password: z.string().min(8, 'Password must be at least 8 characters long'),
     accountType: z.enum(['DEVELOPER', 'HIRING']),
 
-    displayName: z
-      .string()
-      .trim()
-      .min(1, 'Display name is required')
-      .optional(),
-    publicSlug: z.string().trim().min(1, 'Public slug is required').optional(),
+    displayName: z.string().trim().optional(),
+    publicSlug: z.string().trim().optional(),
 
-    organizationName: z
-      .string()
-      .trim()
-      .min(1, 'Organization name is required')
-      .optional(),
+    organizationName: z.string().trim().optional(),
     organizationType: z
       .enum(['COMPANY', 'AGENCY', 'INDIVIDUAL', 'FREELANCE_CLIENT'])
       .optional(),
   })
   .superRefine((data, ctx) => {
     if (data.accountType === 'DEVELOPER') {
-      if (!data.displayName) {
+      if (!data.displayName || data.displayName.trim().length === 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: 'Display name is required for Developers',
           path: ['displayName'],
         });
       }
-      if (!data.publicSlug) {
+      if (!data.publicSlug || data.publicSlug.trim().length === 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: 'Public slug is required for Developers',
@@ -43,7 +35,7 @@ export const signupRequestSchema = z
         });
       }
     } else if (data.accountType === 'HIRING') {
-      if (!data.organizationName) {
+      if (!data.organizationName || data.organizationName.trim().length === 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: 'Organization name is required for Hiring accounts',

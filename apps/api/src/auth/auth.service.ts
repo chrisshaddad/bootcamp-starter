@@ -1,3 +1,4 @@
+
 import {
   Injectable,
   Logger,
@@ -27,14 +28,13 @@ function verifyPassword(password: string, hash: string): boolean {
     const parts = hash.split(':');
     if (parts.length !== 2) return false;
 
-    // Explicit assertions to appease strict TypeScript rules
     const salt = parts[0] as string;
     const key = parts[1] as string;
 
     const keyBuffer = Buffer.from(key, 'hex');
     const derivedKey = crypto.scryptSync(password, salt, 64);
     return crypto.timingSafeEqual(keyBuffer, derivedKey as Buffer);
-  } catch (e) {
+  } catch {
     return false;
   }
 }
@@ -50,7 +50,6 @@ export class AuthService {
   ) {}
 
   async signup(data: SignupRequest) {
-    // 1. Check if email already exists
     const existing = await this.prisma.user.findUnique({
       where: { email: data.email },
     });
@@ -59,7 +58,6 @@ export class AuthService {
       throw new ConflictException('User already exists');
     }
 
-    // 2. Safely verify that publicSlug is unique for developers to prevent raw 500 DB errors
     if (data.accountType === 'DEVELOPER' && data.publicSlug) {
       const existingSlug = await this.prisma.developerProfile.findUnique({
         where: { publicSlug: data.publicSlug },
@@ -104,8 +102,6 @@ export class AuthService {
       },
     });
 
-    const sessionId = await this.sessionService.createSession(user.id);
-
     let name = 'User';
     if (user.developerProfile?.displayName) {
       name = user.developerProfile.displayName;
@@ -121,7 +117,6 @@ export class AuthService {
     }
 
     return {
-      sessionId,
       user: {
         id: user.id,
         email: user.email,
@@ -142,6 +137,10 @@ export class AuthService {
 
     if (!user || !user.passwordHash) {
       throw new UnauthorizedException('Invalid email or password');
+    }
+
+    if (!user.isConfirmed) {
+      throw new UnauthorizedException('Please check your email and click the magic link to verify your account before logging in.');
     }
 
     const isValid = verifyPassword(data.password, user.passwordHash);
@@ -176,12 +175,7 @@ export class AuthService {
     };
   }
 
-  /**
-   * Request a magic link for the given email
-   * Creates a magic link token and queues an email to be sent
-   */
   async requestMagicLink(email: string): Promise<{ success: boolean }> {
-    // Find user by email and include profiles for names
     const user = await this.prisma.user.findUnique({
       where: { email: email.toLowerCase() },
       include: {
@@ -191,28 +185,24 @@ export class AuthService {
     });
 
     if (!user) {
-      // Don't reveal if user exists - still return success
       this.logger.warn(`Magic link requested for non-existent email: ${email}`);
       return { success: true };
     }
 
-    // Generate secure token
     const token = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(
       Date.now() + MAGIC_LINK_EXPIRY_MINUTES * 60 * 1000,
     );
 
-    // Invalidate any existing magic links for this user
     await this.prisma.magicLink.updateMany({
       where: {
         userId: user.id,
         usedAt: null,
         expiresAt: { gt: new Date() },
       },
-      data: { usedAt: new Date() }, // Mark as used to invalidate
+      data: { usedAt: new Date() },
     });
 
-    // Create new magic link
     await this.prisma.magicLink.create({
       data: {
         userId: user.id,
@@ -221,7 +211,6 @@ export class AuthService {
       },
     });
 
-    // Resolve a user display name dynamically
     let userName = 'User';
     if (user.developerProfile?.displayName) {
       userName = user.developerProfile.displayName;
@@ -229,11 +218,9 @@ export class AuthService {
       userName = user.hiringProfile.organizationName;
     }
 
-    // Build magic link URL
     const appUrl = process.env.APP_URL;
     const magicLinkUrl = `${appUrl}/auth/verify?token=${token}`;
 
-    // Queue email
     await this.mailQueue.add(MAIL_JOBS.SEND_MAGIC_LINK, {
       email: user.email,
       magicLink: magicLinkUrl,
@@ -244,15 +231,10 @@ export class AuthService {
     return { success: true };
   }
 
-  /**
-   * Verify a magic link token and create a session
-   * Returns the session ID on success
-   */
   async verifyMagicLink(token: string): Promise<{
     sessionId: string;
     user: { id: string; email: string; name: string; role: 'SUPER_ADMIN' | 'MEMBER' | 'ORG_ADMIN' };
   }> {
-    // Find the magic link and load associated profiles
     const magicLink = await this.prisma.magicLink.findUnique({
       where: { token },
       include: {
@@ -277,13 +259,11 @@ export class AuthService {
       throw new NotFoundException('This magic link has expired');
     }
 
-    // Mark as used
     await this.prisma.magicLink.update({
       where: { id: magicLink.id },
       data: { usedAt: new Date() },
     });
 
-    // Confirm user email if not already confirmed
     if (!magicLink.user.isConfirmed) {
       await this.prisma.user.update({
         where: { id: magicLink.user.id },
@@ -291,12 +271,10 @@ export class AuthService {
       });
     }
 
-    // Create session
     const sessionId = await this.sessionService.createSession(magicLink.userId);
 
     this.logger.log(`User ${magicLink.userId} authenticated via magic link`);
 
-    // Dynamically map display properties to maintain compatibility with client contracts
     let name = 'User';
     if (magicLink.user.developerProfile?.displayName) {
       name = magicLink.user.developerProfile.displayName;
@@ -304,7 +282,6 @@ export class AuthService {
       name = magicLink.user.hiringProfile.organizationName;
     }
 
-    // Maps your new AccountType to the client package expected roles
     let role: 'SUPER_ADMIN' | 'MEMBER' | 'ORG_ADMIN' = 'MEMBER';
     if (magicLink.user.accountType === 'SUPER_ADMIN') {
       role = 'SUPER_ADMIN';
@@ -323,16 +300,10 @@ export class AuthService {
     };
   }
 
-  /**
-   * Logout user by deleting their session
-   */
   async logout(sessionId: string): Promise<void> {
     await this.sessionService.deleteSession(sessionId);
   }
 
-  /**
-   * Get the current user from session
-   */
   async getCurrentUser(sessionId: string) {
     const user = await this.sessionService.validateSession(sessionId);
     if (!user) {
@@ -362,9 +333,6 @@ export class AuthService {
     };
   }
 
-  /**
-   * Update authenticated user's profile
-   */
   async updateProfile(userId: string, data: UpdateProfileRequest): Promise<UserResponse> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -378,7 +346,6 @@ export class AuthService {
       throw new NotFoundException('User not found');
     }
 
-    // If the user is a developer, enforce unique publicSlug constraints to avoid DB-level conflicts
     if (user.accountType === 'DEVELOPER' && data.publicSlug) {
       const existingSlug = await this.prisma.developerProfile.findUnique({
         where: { publicSlug: data.publicSlug },
@@ -388,7 +355,28 @@ export class AuthService {
       }
     }
 
-    const updatePayload: any = {};
+    const updatePayload: {
+      developerProfile?: {
+        update: {
+          displayName?: string;
+          publicSlug?: string;
+          headline?: string | null;
+          bio?: string | null;
+          location?: string | null;
+          profilePictureUrl?: string | null;
+          linkedinUrl?: string | null;
+          personalWebsiteUrl?: string | null;
+        };
+      };
+      hiringProfile?: {
+        update: {
+          organizationName?: string;
+          organizationType?: 'COMPANY' | 'AGENCY' | 'INDIVIDUAL' | 'FREELANCE_CLIENT';
+          jobTitle?: string | null;
+          organizationWebsiteUrl?: string | null;
+        };
+      };
+    } = {};
 
     if (user.accountType === 'DEVELOPER') {
       updatePayload.developerProfile = {
@@ -399,9 +387,8 @@ export class AuthService {
           bio: data.bio,
           location: data.location,
           profilePictureUrl: data.profilePictureUrl,
-          // Un-comment and match with Prisma model if these fields are mapped:
-          // linkedinUrl: data.linkedinUrl,
-          // personalWebsiteUrl: data.personalWebsiteUrl,
+          linkedinUrl: data.linkedinUrl,
+          personalWebsiteUrl: data.personalWebsiteUrl,
         },
       };
     } else if (user.accountType === 'HIRING') {
@@ -410,8 +397,7 @@ export class AuthService {
           organizationName: data.organizationName,
           organizationType: data.organizationType,
           jobTitle: data.jobTitle,
-          // Un-comment and match with Prisma model if this field is mapped:
-          // organizationWebsiteUrl: data.organizationWebsiteUrl,
+          organizationWebsiteUrl: data.organizationWebsiteUrl,
         },
       };
     }
@@ -439,7 +425,9 @@ export class AuthService {
             bio: updatedUser.developerProfile.bio ?? null,
             location: updatedUser.developerProfile.location ?? null,
             profilePictureUrl: updatedUser.developerProfile.profilePictureUrl ?? null,
-            githubUsername: (updatedUser.developerProfile as any).githubUsername ?? null,
+            githubUsername: (updatedUser.developerProfile as { githubUsername?: string | null }).githubUsername ?? null,
+            linkedinUrl: (updatedUser.developerProfile as { linkedinUrl?: string | null }).linkedinUrl ?? null,
+            personalWebsiteUrl: (updatedUser.developerProfile as { personalWebsiteUrl?: string | null }).personalWebsiteUrl ?? null,
           }
         : null,
       hiringProfile: updatedUser.hiringProfile
@@ -448,6 +436,7 @@ export class AuthService {
             organizationName: updatedUser.hiringProfile.organizationName,
             organizationType: updatedUser.hiringProfile.organizationType,
             jobTitle: updatedUser.hiringProfile.jobTitle ?? null,
+            organizationWebsiteUrl: (updatedUser.hiringProfile as { organizationWebsiteUrl?: string | null }).organizationWebsiteUrl ?? null,
           }
         : null,
     };
