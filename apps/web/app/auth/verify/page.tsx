@@ -27,12 +27,16 @@ function VerifyContent() {
 
     const verify = async () => {
       try {
-        await verifyMagicLink({ token });
+        const { user } = await verifyMagicLink({ token });
         setStatus('success');
         toast.success('Successfully logged in!');
+        // Invited staff (PENDING) must set a password before continuing;
+        // everyone else goes straight to the dashboard.
+        const destination =
+          user.status === 'PENDING' ? '/auth/set-password' : '/dashboard';
         // Small delay to show success state before redirecting
         setTimeout(() => {
-          router.replace('/dashboard');
+          router.replace(destination);
         }, 1000);
       } catch (error) {
         setStatus('error');
