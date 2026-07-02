@@ -78,7 +78,7 @@ export function AppSidebar() {
   const { logout } = useAuth();
   const { user } = useUser({ redirectOnUnauthenticated: false });
 
-  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+  const isSuperAdmin = user?.accountType === 'SUPER_ADMIN';
   const mainNavItems = isSuperAdmin ? superAdminNavItems : orgNavItems;
   const secondaryNavItems = isSuperAdmin
     ? superAdminSecondaryNavItems

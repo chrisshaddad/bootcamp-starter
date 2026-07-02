@@ -2,10 +2,16 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { randomBytes } from 'crypto';
 import Redis from 'ioredis';
 import { PrismaService } from '../database/prisma.service';
-import { User } from '@repo/db';
+import { User, DeveloperProfile, HiringProfile } from '@repo/db';
 
 const SESSION_PREFIX = 'session:';
-const SESSION_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days
+const SESSION_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days
+
+// Create a combined type so TS knows profiles are loaded
+export type UserWithProfiles = User & {
+  developerProfile?: DeveloperProfile | null;
+  hiringProfile?: HiringProfile | null;
+};
 
 export interface SessionData {
   userId: string;
@@ -53,7 +59,7 @@ export class SessionService {
    * Validates a session and returns the user if valid
    * Checks Redis first, falls back to DB on cache miss
    */
-  async validateSession(sessionId: string): Promise<User | null> {
+  async validateSession(sessionId: string): Promise<UserWithProfiles | null> {
     // Try Redis first (fast path)
     const cachedSession = await this.redis.get(`${SESSION_PREFIX}${sessionId}`);
 
@@ -66,16 +72,27 @@ export class SessionService {
         return null;
       }
 
-      // Get user from database
+      // Get user from database with profiles
       return this.prisma.user.findUnique({
         where: { id: sessionData.userId },
+        include: {
+          developerProfile: true,
+          hiringProfile: true,
+        },
       });
     }
 
     // Cache miss - check database
     const dbSession = await this.prisma.session.findUnique({
       where: { id: sessionId },
-      include: { user: true },
+      include: {
+        user: {
+          include: {
+            developerProfile: true,
+            hiringProfile: true,
+          },
+        },
+      },
     });
 
     if (!dbSession) {

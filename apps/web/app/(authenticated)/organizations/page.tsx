@@ -90,7 +90,8 @@ export default function OrganizationsPage() {
   const { user, isLoading: userLoading } = useUser();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
-  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+  // FIX: Change 'user?.role' to 'user?.accountType'
+  const isSuperAdmin = user?.accountType === 'SUPER_ADMIN';
 
   const {
     organizations,
@@ -107,8 +108,8 @@ export default function OrganizationsPage() {
     return <LoadingSkeleton />;
   }
 
-  // Show 403 for non-super admins
-  if (user?.role !== 'SUPER_ADMIN') {
+  // FIX: Change 'user?.role' to 'user?.accountType'
+  if (user?.accountType !== 'SUPER_ADMIN') {
     return <ForbiddenPage />;
   }
 

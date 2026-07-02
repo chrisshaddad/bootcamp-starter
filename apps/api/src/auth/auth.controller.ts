@@ -19,14 +19,17 @@ import {
 import {
   magicLinkRequestSchema,
   magicLinkVerifyRequestSchema,
+  loginRequestSchema,
+  signupRequestSchema,
   type MagicLinkRequest,
   type MagicLinkVerifyRequest,
+  type LoginRequest,
+  type SignupRequest,
   type UserResponse,
 } from '@repo/contracts';
-import type { User } from '@repo/db';
 import { ZodValidationPipe } from '../common/pipes';
 
-const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 @Controller('auth')
 export class AuthController {
@@ -52,7 +55,48 @@ export class AuthController {
       body.token,
     );
 
-    // Set session cookie
+    response.cookie(SESSION_COOKIE_NAME, sessionId, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: SESSION_MAX_AGE_MS,
+      path: '/',
+    });
+
+    return { user };
+  }
+
+  @Public()
+  @Post('signup')
+  @HttpCode(HttpStatus.CREATED)
+  @UsePipes(new ZodValidationPipe(signupRequestSchema))
+  async signup(
+    @Body() body: SignupRequest,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const { sessionId, user } = await this.authService.signup(body);
+
+    response.cookie(SESSION_COOKIE_NAME, sessionId, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: SESSION_MAX_AGE_MS,
+      path: '/',
+    });
+
+    return { user };
+  }
+
+  @Public()
+  @Post('login')
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ZodValidationPipe(loginRequestSchema))
+  async login(
+    @Body() body: LoginRequest,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const { sessionId, user } = await this.authService.login(body);
+
     response.cookie(SESSION_COOKIE_NAME, sessionId, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -71,12 +115,10 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ) {
     const sessionId = request.sessionId;
-
     if (sessionId) {
       await this.authService.logout(sessionId);
     }
 
-    // Clear session cookie
     response.clearCookie(SESSION_COOKIE_NAME, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -88,14 +130,33 @@ export class AuthController {
   }
 
   @Get('me')
-  getCurrentUser(@CurrentUser() user: User): UserResponse {
+  getCurrentUser(@CurrentUser() user: UserResponse): UserResponse {
+    // Explicitly mapping true database schema fields to contract shape
     return {
       id: user.id,
       email: user.email,
-      name: user.name,
-      role: user.role,
-      organizationId: user.organizationId,
+      accountType: user.accountType,
       isConfirmed: user.isConfirmed,
+      developerProfile: user.developerProfile
+        ? {
+            id: user.developerProfile.id,
+            publicSlug: user.developerProfile.publicSlug,
+            displayName: user.developerProfile.displayName,
+            headline: user.developerProfile.headline ?? null,
+            bio: user.developerProfile.bio ?? null,
+            location: user.developerProfile.location ?? null,
+            profilePictureUrl: user.developerProfile.profilePictureUrl ?? null,
+            githubUsername: user.developerProfile.githubUsername ?? null,
+          }
+        : null,
+      hiringProfile: user.hiringProfile
+        ? {
+            id: user.hiringProfile.id,
+            organizationName: user.hiringProfile.organizationName,
+            organizationType: user.hiringProfile.organizationType,
+            jobTitle: user.hiringProfile.jobTitle ?? null,
+          }
+        : null,
     };
   }
 }

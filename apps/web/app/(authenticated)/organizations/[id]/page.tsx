@@ -111,7 +111,7 @@ export default function OrganizationDetailPage() {
   const [showRejectDialog, setShowRejectDialog] = useState(false);
 
   const orgId = params.id as string;
-  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+  const isSuperAdmin = user?.accountType === 'SUPER_ADMIN';
 
   const {
     organization: org,
@@ -154,7 +154,7 @@ export default function OrganizationDetailPage() {
   }
 
   // Show 403 for non-super admins
-  if (user?.role !== 'SUPER_ADMIN') {
+  if (user?.accountType !== 'SUPER_ADMIN') {
     return <ForbiddenPage />;
   }
 

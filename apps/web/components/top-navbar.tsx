@@ -21,21 +21,24 @@ export function TopNavbar() {
   const { logout } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
 
-  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+  const isSuperAdmin = user?.accountType === 'SUPER_ADMIN';
 
-  const getInitials = (name?: string | null, email?: string) => {
-    if (name) {
-      const parts = name.split(' ').filter(Boolean);
+  const getInitials = (displayName?: string | null, email?: string) => {
+    if (displayName) {
+      const parts = displayName.split(' ').filter(Boolean);
       if (parts.length >= 2 && parts[0] && parts[1]) {
         return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase();
       }
-      return name.charAt(0).toUpperCase();
+      return displayName.charAt(0).toUpperCase();
     }
     return email?.charAt(0).toUpperCase() || 'U';
   };
 
   const getDisplayName = () => {
-    if (user?.name) return user.name;
+    const name =
+      user?.developerProfile?.displayName ||
+      user?.hiringProfile?.organizationName;
+    if (name) return name;
     if (user?.email) return user.email.split('@')[0];
     return 'User';
   };
@@ -70,7 +73,7 @@ export function TopNavbar() {
               <Avatar className="h-8 w-8">
                 <AvatarImage src={undefined} />
                 <AvatarFallback className="bg-primary-base text-sm font-medium text-white">
-                  {getInitials(user?.name, user?.email)}
+                  {getInitials(getDisplayName(), user?.email)}
                 </AvatarFallback>
               </Avatar>
               <div className="hidden text-left md:block">

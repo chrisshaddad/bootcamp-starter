@@ -1,12 +1,43 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  ConflictException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import * as crypto from 'crypto';
 import { PrismaService } from '../database/prisma.service';
 import { SessionService } from './session.service';
 import { MAIL_QUEUE, MAIL_JOBS } from '../mail/mail.constants';
+import { SignupRequest, LoginRequest } from '@repo/contracts';
 
 const MAGIC_LINK_EXPIRY_MINUTES = 15;
+
+function hashPassword(password: string): string {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const derivedKey = crypto.scryptSync(password, salt, 64).toString('hex');
+  return `${salt}:${derivedKey}`;
+}
+
+function verifyPassword(password: string, hash: string): boolean {
+  try {
+    if (!hash || typeof hash !== 'string' || !hash.includes(':')) return false;
+    const parts = hash.split(':');
+    if (parts.length !== 2) return false;
+
+    // Explicit assertions to appease strict TypeScript rules
+    const salt = parts[0] as string;
+    const key = parts[1] as string;
+
+    const keyBuffer = Buffer.from(key, 'hex');
+    const derivedKey = crypto.scryptSync(password, salt, 64);
+    return crypto.timingSafeEqual(keyBuffer, derivedKey as Buffer);
+  } catch (e) {
+    return false;
+  }
+}
 
 @Injectable()
 export class AuthService {
@@ -18,14 +49,145 @@ export class AuthService {
     @InjectQueue(MAIL_QUEUE) private readonly mailQueue: Queue,
   ) {}
 
+  async signup(data: SignupRequest) {
+    // 1. Check if email already exists
+    const existing = await this.prisma.user.findUnique({
+      where: { email: data.email },
+    });
+
+    if (existing) {
+      throw new ConflictException('User already exists');
+    }
+
+    // 2. Safely verify that publicSlug is unique for developers to prevent raw 500 DB errors
+    if (data.accountType === 'DEVELOPER' && data.publicSlug) {
+      const existingSlug = await this.prisma.developerProfile.findUnique({
+        where: { publicSlug: data.publicSlug },
+      });
+      if (existingSlug) {
+        throw new ConflictException(
+          'The requested public slug is already taken',
+        );
+      }
+    }
+
+    const passwordHash = hashPassword(data.password);
+
+    const user = await this.prisma.user.create({
+      data: {
+        email: data.email,
+        passwordHash,
+        accountType: data.accountType,
+        isConfirmed: false,
+        developerProfile:
+          data.accountType === 'DEVELOPER'
+            ? {
+                create: {
+                  displayName: data.displayName!,
+                  publicSlug: data.publicSlug!,
+                },
+              }
+            : undefined,
+        hiringProfile:
+          data.accountType === 'HIRING'
+            ? {
+                create: {
+                  organizationName: data.organizationName!,
+                  organizationType: data.organizationType!,
+                },
+              }
+            : undefined,
+      },
+      include: {
+        developerProfile: true,
+        hiringProfile: true,
+      },
+    });
+
+    const sessionId = await this.sessionService.createSession(user.id);
+
+    let name = 'User';
+    if (user.developerProfile?.displayName) {
+      name = user.developerProfile.displayName;
+    } else if (user.hiringProfile?.organizationName) {
+      name = user.hiringProfile.organizationName;
+    }
+
+    let role = 'MEMBER';
+    if (user.accountType === 'SUPER_ADMIN') {
+      role = 'SUPER_ADMIN';
+    } else if (user.accountType === 'HIRING') {
+      role = 'ORG_ADMIN';
+    }
+
+    return {
+      sessionId,
+      user: {
+        id: user.id,
+        email: user.email,
+        name,
+        role,
+      },
+    };
+  }
+
+  async login(data: LoginRequest) {
+    const user = await this.prisma.user.findUnique({
+      where: { email: data.email.toLowerCase() },
+      include: {
+        developerProfile: true,
+        hiringProfile: true,
+      },
+    });
+
+    if (!user || !user.passwordHash) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
+
+    const isValid = verifyPassword(data.password, user.passwordHash);
+    if (!isValid) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
+
+    const sessionId = await this.sessionService.createSession(user.id);
+
+    let name = 'User';
+    if (user.developerProfile?.displayName) {
+      name = user.developerProfile.displayName;
+    } else if (user.hiringProfile?.organizationName) {
+      name = user.hiringProfile.organizationName;
+    }
+
+    let role = 'MEMBER';
+    if (user.accountType === 'SUPER_ADMIN') {
+      role = 'SUPER_ADMIN';
+    } else if (user.accountType === 'HIRING') {
+      role = 'ORG_ADMIN';
+    }
+
+    return {
+      sessionId,
+      user: {
+        id: user.id,
+        email: user.email,
+        name,
+        role,
+      },
+    };
+  }
+
   /**
    * Request a magic link for the given email
    * Creates a magic link token and queues an email to be sent
    */
   async requestMagicLink(email: string): Promise<{ success: boolean }> {
-    // Find user by email
+    // Find user by email and include profiles for names
     const user = await this.prisma.user.findUnique({
       where: { email: email.toLowerCase() },
+      include: {
+        developerProfile: true,
+        hiringProfile: true,
+      },
     });
 
     if (!user) {
@@ -59,6 +221,14 @@ export class AuthService {
       },
     });
 
+    // Resolve a user display name dynamically
+    let userName = 'User';
+    if (user.developerProfile?.displayName) {
+      userName = user.developerProfile.displayName;
+    } else if (user.hiringProfile?.organizationName) {
+      userName = user.hiringProfile.organizationName;
+    }
+
     // Build magic link URL
     const appUrl = process.env.APP_URL;
     const magicLinkUrl = `${appUrl}/auth/verify?token=${token}`;
@@ -67,7 +237,7 @@ export class AuthService {
     await this.mailQueue.add(MAIL_JOBS.SEND_MAGIC_LINK, {
       email: user.email,
       magicLink: magicLinkUrl,
-      userName: user.name,
+      userName: userName,
     });
 
     this.logger.log(`Magic link queued for user ${user.id}`);
@@ -82,22 +252,27 @@ export class AuthService {
     sessionId: string;
     user: { id: string; email: string; name: string; role: string };
   }> {
-    // Find the magic link
+    // Find the magic link and load associated profiles
     const magicLink = await this.prisma.magicLink.findUnique({
       where: { token },
-      include: { user: true },
+      include: {
+        user: {
+          include: {
+            developerProfile: true,
+            hiringProfile: true,
+          },
+        },
+      },
     });
 
     if (!magicLink) {
       throw new NotFoundException('Invalid or expired magic link');
     }
 
-    // Check if already used
     if (magicLink.usedAt) {
       throw new NotFoundException('This magic link has already been used');
     }
 
-    // Check if expired
     if (magicLink.expiresAt < new Date()) {
       throw new NotFoundException('This magic link has expired');
     }
@@ -121,13 +296,29 @@ export class AuthService {
 
     this.logger.log(`User ${magicLink.userId} authenticated via magic link`);
 
+    // Dynamically map display properties to maintain compatibility with client contracts
+    let name = 'User';
+    if (magicLink.user.developerProfile?.displayName) {
+      name = magicLink.user.developerProfile.displayName;
+    } else if (magicLink.user.hiringProfile?.organizationName) {
+      name = magicLink.user.hiringProfile.organizationName;
+    }
+
+    // Maps your new AccountType to the client package expected roles
+    let role = 'MEMBER';
+    if (magicLink.user.accountType === 'SUPER_ADMIN') {
+      role = 'SUPER_ADMIN';
+    } else if (magicLink.user.accountType === 'HIRING') {
+      role = 'ORG_ADMIN';
+    }
+
     return {
       sessionId,
       user: {
         id: magicLink.user.id,
         email: magicLink.user.email,
-        name: magicLink.user.name,
-        role: magicLink.user.role,
+        name,
+        role,
       },
     };
   }
@@ -148,12 +339,25 @@ export class AuthService {
       return null;
     }
 
+    let name = 'User';
+    if (user.developerProfile?.displayName) {
+      name = user.developerProfile.displayName;
+    } else if (user.hiringProfile?.organizationName) {
+      name = user.hiringProfile.organizationName;
+    }
+
+    let role = 'MEMBER';
+    if (user.accountType === 'SUPER_ADMIN') {
+      role = 'SUPER_ADMIN';
+    } else if (user.accountType === 'HIRING') {
+      role = 'ORG_ADMIN';
+    }
+
     return {
       id: user.id,
       email: user.email,
-      name: user.name,
-      role: user.role,
-      organizationId: user.organizationId,
+      name,
+      role,
       isConfirmed: user.isConfirmed,
     };
   }
