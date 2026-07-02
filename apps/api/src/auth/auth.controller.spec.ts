@@ -1,18 +1,163 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { AuthController } from './auth.controller';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Res,
+  Req,
+  HttpCode,
+  HttpStatus,
+  UsePipes,
+} from '@nestjs/common';
+import type { Response } from 'express';
+import { AuthService } from './auth.service';
+import { CurrentUser, Public } from './decorators';
+import {
+  SESSION_COOKIE_NAME,
+  type AuthenticatedRequest,
+} from './guards/auth.guard';
+import {
+  magicLinkRequestSchema,
+  magicLinkVerifyRequestSchema,
+  loginRequestSchema,
+  signupRequestSchema,
+  type MagicLinkRequest,
+  type MagicLinkVerifyRequest,
+  type LoginRequest,
+  type SignupRequest,
+  type AuthResponse,
+  type UserResponse,
+} from '@repo/contracts';
+import { ZodValidationPipe } from '../common/pipes';
 
-describe('AuthController', () => {
-  let controller: AuthController;
+const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      controllers: [AuthController],
-    }).compile();
+@Controller('auth')
+export class AuthController {
+  constructor(private readonly authService: AuthService) {}
 
-    controller = module.get<AuthController>(AuthController);
-  });
+  @Public()
+  @Post('magic-link')
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ZodValidationPipe(magicLinkRequestSchema))
+  async requestMagicLink(@Body() body: MagicLinkRequest) {
+    return this.authService.requestMagicLink(body.email);
+  }
 
-  it('should be defined', () => {
-    expect(controller).toBeDefined();
-  });
-});
+  @Public()
+  @Post('magic-link/verify')
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ZodValidationPipe(magicLinkVerifyRequestSchema))
+  async verifyMagicLink(
+    @Body() body: MagicLinkVerifyRequest,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<AuthResponse> {
+    const { sessionId, user } = await this.authService.verifyMagicLink(
+      body.token,
+    );
+
+    response.cookie(SESSION_COOKIE_NAME, sessionId, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: SESSION_MAX_AGE_MS,
+      path: '/',
+    });
+
+    return { user };
+  }
+
+  @Public()
+  @Post('signup')
+  @HttpCode(HttpStatus.CREATED)
+  @UsePipes(new ZodValidationPipe(signupRequestSchema))
+  async signup(
+    @Body() body: SignupRequest,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<AuthResponse> {
+    const { sessionId, user } = await this.authService.signup(body);
+
+    response.cookie(SESSION_COOKIE_NAME, sessionId, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: SESSION_MAX_AGE_MS,
+      path: '/',
+    });
+
+    return { user };
+  }
+
+  @Public()
+  @Post('login')
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ZodValidationPipe(loginRequestSchema))
+  async login(
+    @Body() body: LoginRequest,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<AuthResponse> {
+    const { sessionId, user } = await this.authService.login(body);
+
+    response.cookie(SESSION_COOKIE_NAME, sessionId, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: SESSION_MAX_AGE_MS,
+      path: '/',
+    });
+
+    return { user };
+  }
+
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  async logout(
+    @Req() request: AuthenticatedRequest,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const sessionId = request.sessionId;
+    if (sessionId) {
+      await this.authService.logout(sessionId);
+    }
+
+    response.clearCookie(SESSION_COOKIE_NAME, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+    });
+
+    return { success: true };
+  }
+
+  @Get('me')
+  getCurrentUser(@CurrentUser() user: UserResponse): UserResponse {
+    // Explicitly mapping true database schema fields to contract shape
+    return {
+      id: user.id,
+      email: user.email,
+      accountType: user.accountType,
+      isConfirmed: user.isConfirmed,
+      developerProfile: user.developerProfile
+        ? {
+            id: user.developerProfile.id,
+            publicSlug: user.developerProfile.publicSlug,
+            displayName: user.developerProfile.displayName,
+            headline: user.developerProfile.headline ?? null,
+            bio: user.developerProfile.bio ?? null,
+            location: user.developerProfile.location ?? null,
+            profilePictureUrl: user.developerProfile.profilePictureUrl ?? null,
+            githubUsername: user.developerProfile.githubUsername ?? null,
+          }
+        : null,
+      hiringProfile: user.hiringProfile
+        ? {
+            id: user.hiringProfile.id,
+            organizationName: user.hiringProfile.organizationName,
+            organizationType: user.hiringProfile.organizationType,
+            jobTitle: user.hiringProfile.jobTitle ?? null,
+          }
+        : null,
+    };
+  }
+}

@@ -2,12 +2,14 @@ import {
   Controller,
   Post,
   Get,
+  Patch,
   Body,
   Res,
   Req,
   HttpCode,
   HttpStatus,
   UsePipes,
+  BadRequestException, // Imported to handle payload missing errors gracefully
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { AuthService } from './auth.service';
@@ -21,11 +23,14 @@ import {
   magicLinkVerifyRequestSchema,
   loginRequestSchema,
   signupRequestSchema,
+  updateProfileRequestSchema,
   type MagicLinkRequest,
   type MagicLinkVerifyRequest,
   type LoginRequest,
   type SignupRequest,
+  type AuthResponse,
   type UserResponse,
+  type UpdateProfileRequest,
 } from '@repo/contracts';
 import { ZodValidationPipe } from '../common/pipes';
 
@@ -50,7 +55,7 @@ export class AuthController {
   async verifyMagicLink(
     @Body() body: MagicLinkVerifyRequest,
     @Res({ passthrough: true }) response: Response,
-  ) {
+  ): Promise<AuthResponse> {
     const { sessionId, user } = await this.authService.verifyMagicLink(
       body.token,
     );
@@ -73,7 +78,7 @@ export class AuthController {
   async signup(
     @Body() body: SignupRequest,
     @Res({ passthrough: true }) response: Response,
-  ) {
+  ): Promise<AuthResponse> {
     const { sessionId, user } = await this.authService.signup(body);
 
     response.cookie(SESSION_COOKIE_NAME, sessionId, {
@@ -94,7 +99,7 @@ export class AuthController {
   async login(
     @Body() body: LoginRequest,
     @Res({ passthrough: true }) response: Response,
-  ) {
+  ): Promise<AuthResponse> {
     const { sessionId, user } = await this.authService.login(body);
 
     response.cookie(SESSION_COOKIE_NAME, sessionId, {
@@ -158,5 +163,14 @@ export class AuthController {
           }
         : null,
     };
+  }
+
+@Patch('profile')
+  @HttpCode(HttpStatus.OK)
+  async updateProfile(
+    @CurrentUser() user: UserResponse,
+    @Body(new ZodValidationPipe(updateProfileRequestSchema)) body: UpdateProfileRequest, // <-- Move pipe here
+  ) {
+    return this.authService.updateProfile(user.id, body);
   }
 }

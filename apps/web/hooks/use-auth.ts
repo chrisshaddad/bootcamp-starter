@@ -3,12 +3,13 @@
 import useSWR from 'swr';
 import { useCallback, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { apiPost, ApiError } from '@/lib/api';
+import { apiPost, apiPatch, ApiError } from '@/lib/api';
 import type {
   LoginRequest,
   MagicLinkRequest,
   MagicLinkVerifyRequest,
   SignupRequest,
+  UpdateProfileRequest,
   UserResponse,
 } from '@repo/contracts';
 
@@ -108,11 +109,21 @@ export function useAuth() {
     mutate();
   }, [mutate]);
 
+  const updateProfile = useCallback(
+    async (data: UpdateProfileRequest) => {
+      const result = await apiPatch<UserResponse>('/auth/profile', data);
+      mutate();
+      return result;
+    },
+    [mutate],
+  );
+
   return {
     requestMagicLink,
     verifyMagicLink,
     login,
     signup,
     logout,
+    updateProfile,
   };
 }

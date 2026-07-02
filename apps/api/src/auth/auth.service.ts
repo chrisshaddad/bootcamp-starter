@@ -11,7 +11,7 @@ import * as crypto from 'crypto';
 import { PrismaService } from '../database/prisma.service';
 import { SessionService } from './session.service';
 import { MAIL_QUEUE, MAIL_JOBS } from '../mail/mail.constants';
-import { SignupRequest, LoginRequest } from '@repo/contracts';
+import { SignupRequest, LoginRequest, UpdateProfileRequest, UserResponse } from '@repo/contracts';
 
 const MAGIC_LINK_EXPIRY_MINUTES = 15;
 
@@ -113,7 +113,7 @@ export class AuthService {
       name = user.hiringProfile.organizationName;
     }
 
-    let role = 'MEMBER';
+    let role: 'SUPER_ADMIN' | 'MEMBER' | 'ORG_ADMIN' = 'MEMBER';
     if (user.accountType === 'SUPER_ADMIN') {
       role = 'SUPER_ADMIN';
     } else if (user.accountType === 'HIRING') {
@@ -158,7 +158,7 @@ export class AuthService {
       name = user.hiringProfile.organizationName;
     }
 
-    let role = 'MEMBER';
+    let role: 'SUPER_ADMIN' | 'MEMBER' | 'ORG_ADMIN' = 'MEMBER';
     if (user.accountType === 'SUPER_ADMIN') {
       role = 'SUPER_ADMIN';
     } else if (user.accountType === 'HIRING') {
@@ -250,7 +250,7 @@ export class AuthService {
    */
   async verifyMagicLink(token: string): Promise<{
     sessionId: string;
-    user: { id: string; email: string; name: string; role: string };
+    user: { id: string; email: string; name: string; role: 'SUPER_ADMIN' | 'MEMBER' | 'ORG_ADMIN' };
   }> {
     // Find the magic link and load associated profiles
     const magicLink = await this.prisma.magicLink.findUnique({
@@ -305,7 +305,7 @@ export class AuthService {
     }
 
     // Maps your new AccountType to the client package expected roles
-    let role = 'MEMBER';
+    let role: 'SUPER_ADMIN' | 'MEMBER' | 'ORG_ADMIN' = 'MEMBER';
     if (magicLink.user.accountType === 'SUPER_ADMIN') {
       role = 'SUPER_ADMIN';
     } else if (magicLink.user.accountType === 'HIRING') {
@@ -346,7 +346,7 @@ export class AuthService {
       name = user.hiringProfile.organizationName;
     }
 
-    let role = 'MEMBER';
+    let role: 'SUPER_ADMIN' | 'MEMBER' | 'ORG_ADMIN' = 'MEMBER';
     if (user.accountType === 'SUPER_ADMIN') {
       role = 'SUPER_ADMIN';
     } else if (user.accountType === 'HIRING') {
@@ -359,6 +359,97 @@ export class AuthService {
       name,
       role,
       isConfirmed: user.isConfirmed,
+    };
+  }
+
+  /**
+   * Update authenticated user's profile
+   */
+  async updateProfile(userId: string, data: UpdateProfileRequest): Promise<UserResponse> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        developerProfile: true,
+        hiringProfile: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // If the user is a developer, enforce unique publicSlug constraints to avoid DB-level conflicts
+    if (user.accountType === 'DEVELOPER' && data.publicSlug) {
+      const existingSlug = await this.prisma.developerProfile.findUnique({
+        where: { publicSlug: data.publicSlug },
+      });
+      if (existingSlug && existingSlug.userId !== userId) {
+        throw new ConflictException('The requested public slug is already taken');
+      }
+    }
+
+    const updatePayload: any = {};
+
+    if (user.accountType === 'DEVELOPER') {
+      updatePayload.developerProfile = {
+        update: {
+          displayName: data.displayName,
+          publicSlug: data.publicSlug,
+          headline: data.headline,
+          bio: data.bio,
+          location: data.location,
+          profilePictureUrl: data.profilePictureUrl,
+          // Un-comment and match with Prisma model if these fields are mapped:
+          // linkedinUrl: data.linkedinUrl,
+          // personalWebsiteUrl: data.personalWebsiteUrl,
+        },
+      };
+    } else if (user.accountType === 'HIRING') {
+      updatePayload.hiringProfile = {
+        update: {
+          organizationName: data.organizationName,
+          organizationType: data.organizationType,
+          jobTitle: data.jobTitle,
+          // Un-comment and match with Prisma model if this field is mapped:
+          // organizationWebsiteUrl: data.organizationWebsiteUrl,
+        },
+      };
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: updatePayload,
+      include: {
+        developerProfile: true,
+        hiringProfile: true,
+      },
+    });
+
+    return {
+      id: updatedUser.id,
+      email: updatedUser.email,
+      accountType: updatedUser.accountType,
+      isConfirmed: updatedUser.isConfirmed,
+      developerProfile: updatedUser.developerProfile
+        ? {
+            id: updatedUser.developerProfile.id,
+            publicSlug: updatedUser.developerProfile.publicSlug,
+            displayName: updatedUser.developerProfile.displayName,
+            headline: updatedUser.developerProfile.headline ?? null,
+            bio: updatedUser.developerProfile.bio ?? null,
+            location: updatedUser.developerProfile.location ?? null,
+            profilePictureUrl: updatedUser.developerProfile.profilePictureUrl ?? null,
+            githubUsername: (updatedUser.developerProfile as any).githubUsername ?? null,
+          }
+        : null,
+      hiringProfile: updatedUser.hiringProfile
+        ? {
+            id: updatedUser.hiringProfile.id,
+            organizationName: updatedUser.hiringProfile.organizationName,
+            organizationType: updatedUser.hiringProfile.organizationType,
+            jobTitle: updatedUser.hiringProfile.jobTitle ?? null,
+          }
+        : null,
     };
   }
 }
