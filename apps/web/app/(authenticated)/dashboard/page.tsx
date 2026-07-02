@@ -243,6 +243,14 @@ export default function DashboardPage() {
     enabled: !isLoading && user?.role !== 'SUPER_ADMIN',
     limit: 5,
   });
+  const {
+    announcements,
+    isLoading: announcementsLoading,
+    error: announcementsError,
+  } = useAnnouncements({
+    enabled: !isLoading && user?.role !== 'SUPER_ADMIN',
+    limit: 5,
+  });
 
   useEffect(() => {
     if (!isLoading && user?.role === 'SUPER_ADMIN') {

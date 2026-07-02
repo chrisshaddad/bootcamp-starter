@@ -167,6 +167,14 @@ export default function AdminPage() {
     enabled: isSuperAdmin,
     limit: 5,
   });
+  const {
+    announcements,
+    isLoading: announcementsLoading,
+    error: announcementsError,
+  } = useAnnouncements({
+    enabled: isSuperAdmin,
+    limit: 5,
+  });
 
   if (userLoading) {
     return <LoadingSkeleton />;
