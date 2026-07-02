@@ -1,9 +1,8 @@
 'use client';
-
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
@@ -40,16 +39,17 @@ export default function SignupPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
   const { signup, requestMagicLink } = useAuth();
-
   const {
     register,
     handleSubmit,
     watch,
     setValue,
+    control,
     formState: { errors },
   } = useForm<SignupRequest>({
     resolver: zodResolver(signupRequestSchema),
     defaultValues: { accountType: 'DEVELOPER' },
+    shouldUnregister: true,
   });
 
   const accountType = watch('accountType');
@@ -72,7 +72,8 @@ export default function SignupPage() {
       // Account was already created; a failed confirmation email shouldn't block the user.
     }
 
-    router.push('/dashboard');
+    toast.success('Account created! Please check your email to verify your account.');
+    router.push('/login');
     setIsSubmitting(false);
   };
 
@@ -150,9 +151,7 @@ export default function SignupPage() {
                 {...register('displayName')}
               />
               {errors.displayName && (
-                <p className="text-sm text-destructive">
-                  {errors.displayName.message}
-                </p>
+                <p className="text-sm text-destructive">{errors.displayName.message}</p>
               )}
             </div>
 
@@ -182,34 +181,33 @@ export default function SignupPage() {
                 {...register('organizationName')}
               />
               {errors.organizationName && (
-                <p className="text-sm text-destructive">
-                  {errors.organizationName.message}
-                </p>
+                <p className="text-sm text-destructive">{errors.organizationName.message}</p>
               )}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="organizationType">Organization type</Label>
-              <Select
-                value={watch('organizationType') ?? ''}
-                onValueChange={(value) =>
-                  setValue(
-                    'organizationType',
-                    value as SignupRequest['organizationType'],
-                  )
-                }
-              >
-                <SelectTrigger id="organizationType" className="w-full">
-                  <SelectValue placeholder="Select organization type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ORGANIZATION_TYPE_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Controller
+                control={control}
+                name="organizationType"
+                render={({ field }) => (
+                  <Select
+                    value={field.value ?? ''}
+                    onValueChange={field.onChange}
+                  >
+                    <SelectTrigger id="organizationType" className="w-full">
+                      <SelectValue placeholder="Select organization type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ORGANIZATION_TYPE_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
               {errors.organizationType && (
                 <p className="text-sm text-destructive">
                   {errors.organizationType.message}

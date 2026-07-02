@@ -10,6 +10,8 @@ export const developerProfileSchema = z.object({
   location: z.string().nullable().optional(),
   profilePictureUrl: z.string().nullable().optional(),
   githubUsername: z.string().nullable().optional(),
+  linkedinUrl: z.string().nullable().optional(),
+  personalWebsiteUrl: z.string().nullable().optional(),
 });
 
 export const hiringProfileSchema = z.object({
@@ -22,6 +24,7 @@ export const hiringProfileSchema = z.object({
     'FREELANCE_CLIENT',
   ]),
   jobTitle: z.string().nullable().optional(),
+  organizationWebsiteUrl: z.string().nullable().optional(),
 });
 
 export const userResponseSchema = z.object({

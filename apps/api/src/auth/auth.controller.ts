@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Get,
+  Patch,
   Body,
   Res,
   Req,
@@ -21,11 +22,14 @@ import {
   magicLinkVerifyRequestSchema,
   loginRequestSchema,
   signupRequestSchema,
+  updateProfileRequestSchema,
   type MagicLinkRequest,
   type MagicLinkVerifyRequest,
   type LoginRequest,
   type SignupRequest,
+  type AuthResponse,
   type UserResponse,
+  type UpdateProfileRequest,
 } from '@repo/contracts';
 import { ZodValidationPipe } from '../common/pipes';
 
@@ -50,7 +54,7 @@ export class AuthController {
   async verifyMagicLink(
     @Body() body: MagicLinkVerifyRequest,
     @Res({ passthrough: true }) response: Response,
-  ) {
+  ): Promise<AuthResponse> {
     const { sessionId, user } = await this.authService.verifyMagicLink(
       body.token,
     );
@@ -72,18 +76,8 @@ export class AuthController {
   @UsePipes(new ZodValidationPipe(signupRequestSchema))
   async signup(
     @Body() body: SignupRequest,
-    @Res({ passthrough: true }) response: Response,
-  ) {
-    const { sessionId, user } = await this.authService.signup(body);
-
-    response.cookie(SESSION_COOKIE_NAME, sessionId, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: SESSION_MAX_AGE_MS,
-      path: '/',
-    });
-
+  ): Promise<AuthResponse> {
+    const { user } = await this.authService.signup(body);
     return { user };
   }
 
@@ -94,7 +88,7 @@ export class AuthController {
   async login(
     @Body() body: LoginRequest,
     @Res({ passthrough: true }) response: Response,
-  ) {
+  ): Promise<AuthResponse> {
     const { sessionId, user } = await this.authService.login(body);
 
     response.cookie(SESSION_COOKIE_NAME, sessionId, {
@@ -147,6 +141,8 @@ export class AuthController {
             location: user.developerProfile.location ?? null,
             profilePictureUrl: user.developerProfile.profilePictureUrl ?? null,
             githubUsername: user.developerProfile.githubUsername ?? null,
+            linkedinUrl: user.developerProfile.linkedinUrl ?? null,
+            personalWebsiteUrl: user.developerProfile.personalWebsiteUrl ?? null,
           }
         : null,
       hiringProfile: user.hiringProfile
@@ -155,8 +151,18 @@ export class AuthController {
             organizationName: user.hiringProfile.organizationName,
             organizationType: user.hiringProfile.organizationType,
             jobTitle: user.hiringProfile.jobTitle ?? null,
+            organizationWebsiteUrl: user.hiringProfile.organizationWebsiteUrl ?? null,
           }
         : null,
     };
+  }
+
+  @Patch('profile')
+  @HttpCode(HttpStatus.OK)
+  async updateProfile(
+    @CurrentUser() user: UserResponse,
+    @Body(new ZodValidationPipe(updateProfileRequestSchema)) body: UpdateProfileRequest,
+  ) {
+    return this.authService.updateProfile(user.id, body);
   }
 }
