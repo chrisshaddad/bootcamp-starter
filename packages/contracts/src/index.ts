@@ -10,3 +10,4 @@ export * from './instructors';
 export * from './sessions';
 export * from './bookings';
 export * from './checkins';
+export * from './dashboard';

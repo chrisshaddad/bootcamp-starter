@@ -188,6 +188,7 @@ export default function CheckInsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isCheckingIn, setIsCheckingIn] = useState<string | null>(null);
   const [isCheckingOut, setIsCheckingOut] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'in' | 'out'>('all');
 
   const {
     checkIns,
@@ -244,6 +245,14 @@ export default function CheckInsPage() {
       return bLatest - aLatest;
     });
   }, [checkIns]);
+
+  const visibleGroups = useMemo(() => {
+    if (statusFilter === 'in')
+      return memberGroups.filter((g) => g.activeCheckIn !== null);
+    if (statusFilter === 'out')
+      return memberGroups.filter((g) => g.activeCheckIn === null);
+    return memberGroups;
+  }, [memberGroups, statusFilter]);
 
   /** Members eligible for check-in (active, not currently in gym) */
   const filteredMembers = useMemo(() => {
@@ -420,28 +429,72 @@ export default function CheckInsPage() {
               No check-in records yet.
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  {/* chevron column */}
-                  <TableHead className="w-8" />
-                  <TableHead>Member</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {memberGroups.map((group) => (
-                  <MemberRow
-                    key={group.memberId}
-                    group={group}
-                    isCheckingOut={isCheckingOut}
-                    onCheckOut={handleCheckOut}
-                  />
+            <>
+              <div className="mb-4 flex gap-2">
+                {(
+                  [
+                    { key: 'all', label: `All (${memberGroups.length})` },
+                    {
+                      key: 'in',
+                      label: `Currently In (${memberGroups.filter((g) => g.activeCheckIn).length})`,
+                    },
+                    {
+                      key: 'out',
+                      label: `Checked Out (${memberGroups.filter((g) => !g.activeCheckIn).length})`,
+                    },
+                  ] as const
+                ).map(({ key, label }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setStatusFilter(key)}
+                    className={`rounded-full border px-4 py-1.5 text-sm font-medium transition-colors ${
+                      statusFilter === key
+                        ? 'bg-primary-base text-white border-primary-base'
+                        : 'border-gray-200 text-gray-600 hover:border-primary-base hover:text-primary-base'
+                    }`}
+                  >
+                    {label}
+                  </button>
                 ))}
-              </TableBody>
-            </Table>
+              </div>
+
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    {/* chevron column */}
+                    <TableHead className="w-8" />
+                    <TableHead>Member</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {visibleGroups.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={5}
+                        className="py-10 text-center text-gray-500"
+                      >
+                        {statusFilter === 'in'
+                          ? 'No members are currently in the gym.'
+                          : 'No checked-out members to show.'}
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    visibleGroups.map((group) => (
+                      <MemberRow
+                        key={group.memberId}
+                        group={group}
+                        isCheckingOut={isCheckingOut}
+                        onCheckOut={handleCheckOut}
+                      />
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </>
           )}
         </CardContent>
       </Card>
