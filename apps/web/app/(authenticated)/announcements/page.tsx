@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
@@ -34,6 +34,7 @@ import {
   Globe,
   LockKeyhole,
   Megaphone,
+  Search,
   ShieldX,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -70,6 +71,15 @@ function canAccessAnnouncements(role: string | undefined) {
   return role === 'SUPER_ADMIN' || role === 'ORG_ADMIN' || role === 'MEMBER';
 }
 
+function hasBodyContent(bodyHtml: string | undefined) {
+  return (
+    (bodyHtml ?? '')
+      .replace(/<[^>]*>/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .trim().length > 0
+  );
+}
+
 export default function AnnouncementsPage() {
   const { user, isLoading: userLoading } = useUser();
   const canAccess = canAccessAnnouncements(user?.role);
@@ -78,6 +88,7 @@ export default function AnnouncementsPage() {
   const isPresenter =
     user?.role === 'MEMBER' && user?.memberRole === 'PRESENTER';
   const canCreate = isSuperAdmin || isOrgAdmin || isPresenter;
+  const [eventSearch, setEventSearch] = useState('');
   const {
     register,
     handleSubmit,
@@ -96,9 +107,15 @@ export default function AnnouncementsPage() {
     },
   });
   const scope = watch('scope');
+  const title = watch('title');
   const bodyHtml = watch('bodyHtml');
   const eventId = watch('eventId');
   const audience = watch('audience') ?? 'EVENT_ATTENDEES';
+  const isFormIncomplete =
+    !title?.trim() ||
+    !scope ||
+    !hasBodyContent(bodyHtml) ||
+    (scope === 'EVENT' && (!audience || !eventId));
 
   const {
     announcements,
@@ -111,6 +128,15 @@ export default function AnnouncementsPage() {
     enabled: canCreate && scope === 'EVENT',
     upcoming: true,
   });
+  const filteredEvents = useMemo(() => {
+    const query = eventSearch.trim().toLowerCase();
+    if (!query) {
+      return events;
+    }
+    return events?.filter((event) =>
+      event.eventName.toLowerCase().includes(query),
+    );
+  }, [eventSearch, events]);
 
   const scopeOptions = useMemo(() => {
     const options: { value: AnnouncementScope; label: string }[] = [];
@@ -140,6 +166,7 @@ export default function AnnouncementsPage() {
         fallbackScope === 'EVENT' ? 'EVENT_ATTENDEES' : undefined,
         { shouldValidate: true },
       );
+      setEventSearch('');
     }
   }, [scope, scopeOptions, setValue]);
 
@@ -161,6 +188,7 @@ export default function AnnouncementsPage() {
         audience: data.scope === 'EVENT' ? data.audience : undefined,
         eventId: data.scope === 'EVENT' ? data.eventId : undefined,
       });
+      setEventSearch('');
     } catch (err) {
       if (err instanceof ApiError) {
         toast.error(err.message);
@@ -227,6 +255,7 @@ export default function AnnouncementsPage() {
                         nextScope === 'EVENT' ? 'EVENT_ATTENDEES' : undefined,
                         { shouldValidate: true },
                       );
+                      setEventSearch('');
                     }}
                   >
                     <SelectTrigger className="w-full">
@@ -270,11 +299,30 @@ export default function AnnouncementsPage() {
                         />
                       </SelectTrigger>
                       <SelectContent>
-                        {events?.map((event) => (
+                        <div className="border-b border-gray-200 p-2">
+                          <div className="relative">
+                            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                            <Input
+                              value={eventSearch}
+                              onChange={(event) =>
+                                setEventSearch(event.target.value)
+                              }
+                              onKeyDown={(event) => event.stopPropagation()}
+                              placeholder="Search events"
+                              className="h-9 rounded-md py-2 pl-9 pr-3"
+                            />
+                          </div>
+                        </div>
+                        {filteredEvents?.map((event) => (
                           <SelectItem key={event.id} value={event.id}>
                             {event.eventName}
                           </SelectItem>
                         ))}
+                        {!eventsLoading && filteredEvents?.length === 0 && (
+                          <SelectItem value="no-events-found" disabled>
+                            No events found
+                          </SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
                     {errors.eventId && (
@@ -337,7 +385,7 @@ export default function AnnouncementsPage() {
 
               <Button
                 type="submit"
-                disabled={isSubmitting || (scope === 'EVENT' && !eventId)}
+                disabled={isSubmitting || isFormIncomplete}
                 className="bg-primary-base hover:bg-primary-base/90"
               >
                 {isSubmitting ? 'Posting...' : 'Post announcement'}
