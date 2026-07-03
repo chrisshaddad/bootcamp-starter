@@ -30,7 +30,6 @@ export async function proxy(request: NextRequest) {
         const apiUrl =
           process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-        
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 5000);
         // Make the POST request exactly like Postman does
