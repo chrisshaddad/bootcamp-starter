@@ -155,7 +155,7 @@ export function AuthShowcase({
   const med = MEDICINES[located] ?? DEFAULT_MEDICINE;
 
   return (
-    <div className="max-w-[560px]">
+    <div className="max-w-140">
       <span className="inline-flex items-center gap-2 rounded-full border border-[#e2ede7] bg-white px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.5px] text-primary-hover shadow-sm">
         <span className="h-1.5 w-1.5 rounded-full bg-primary-base shadow-[0_0_0_3px_rgba(39,163,118,0.18)]" />
         {eyebrow}
@@ -171,7 +171,7 @@ export function AuthShowcase({
       <div className="mb-3.5 flex flex-wrap gap-x-4 gap-y-1.5 text-[12.5px] font-semibold text-gray-600">
         {FEATURES.map(({ icon: Icon, label }) => (
           <span key={label} className="inline-flex items-center gap-1.5">
-            <Icon className="h-[15px] w-[15px] text-primary-base" />
+            <Icon className="h-3.75 w-3.75 text-primary-base" />
             {label}
           </span>
         ))}
@@ -183,10 +183,10 @@ export function AuthShowcase({
           className="flex items-center gap-2.5 rounded-[11px] border border-[#e2ede7] bg-[#f5faf7] px-3 py-2.5"
           aria-hidden="true"
         >
-          <Search className="h-[17px] w-[17px] shrink-0 text-primary-base" />
-          <span className="flex min-h-[20px] items-center text-sm font-semibold text-gray-900">
+          <Search className="h-4.25 w-4.25 shrink-0 text-primary-base" />
+          <span className="flex min-h-5 items-center text-sm font-semibold text-gray-900">
             {typed}
-            <span className="medfind-caret ml-0.5 inline-block h-[15px] w-0.5 bg-primary-base" />
+            <span className="medfind-caret ml-0.5 inline-block h-3.75 w-0.5 bg-primary-base" />
           </span>
         </div>
 
@@ -216,7 +216,7 @@ export function AuthShowcase({
             </div>
             <div className="flex items-center gap-2.5 rounded-xl border border-[#e2ede7] bg-[#fbfdfc] p-2.5">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[9px] bg-primary-100 text-primary-hover">
-                <Pill className="h-[19px] w-[19px]" />
+                <Pill className="h-4.75 w-4.75" />
               </div>
               <div className="min-w-0 flex-1">
                 <b className="block truncate text-[13px] font-bold text-gray-900">

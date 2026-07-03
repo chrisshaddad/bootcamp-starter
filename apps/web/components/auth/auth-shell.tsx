@@ -63,7 +63,7 @@ export function AuthShell({
   return (
     <div className="flex min-h-screen flex-col" style={CANVAS_STYLE}>
       <TopBar right={topbarRight} />
-      <main className="mx-auto grid w-full max-w-[1180px] flex-1 items-center gap-6 px-5 py-4 sm:px-12 lg:grid-cols-[0.92fr_1.08fr] lg:gap-[64px]">
+      <main className="mx-auto grid w-full max-w-295 flex-1 items-center gap-6 px-5 py-4 sm:px-12 lg:grid-cols-[0.92fr_1.08fr] lg:gap-16">
         <div className="flex justify-center">{children}</div>
         <div className="hidden lg:block">{showcase}</div>
       </main>

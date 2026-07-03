@@ -128,9 +128,9 @@ export function PasswordFieldsForm({
             className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
           >
             {showPassword ? (
-              <EyeOff className="h-[17px] w-[17px]" />
+              <EyeOff className="h-4.25 w-4.25" />
             ) : (
-              <Eye className="h-[17px] w-[17px]" />
+              <Eye className="h-4.25 w-4.25" />
             )}
           </button>
         </div>
@@ -179,9 +179,9 @@ export function PasswordFieldsForm({
             className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
           >
             {showConfirm ? (
-              <EyeOff className="h-[17px] w-[17px]" />
+              <EyeOff className="h-4.25 w-4.25" />
             ) : (
-              <Eye className="h-[17px] w-[17px]" />
+              <Eye className="h-4.25 w-4.25" />
             )}
           </button>
         </div>
