@@ -12,6 +12,8 @@ import { PrismaService } from '../database/prisma.service';
 import { SessionService } from './session.service';
 import { MAIL_QUEUE, MAIL_JOBS } from '../mail/mail.constants';
 import {
+  AccountType,
+  AuthResponse,
   SignupRequest,
   LoginRequest,
   UpdateProfileRequest,
@@ -19,6 +21,11 @@ import {
 } from '@repo/contracts';
 
 const MAGIC_LINK_EXPIRY_MINUTES = 15;
+type AuthRole = AuthResponse['user']['role'];
+type UserNameSource = {
+  developerProfile?: { displayName: string | null } | null;
+  hiringProfile?: { organizationName: string | null } | null;
+};
 
 function hashPassword(password: string): string {
   const salt = crypto.randomBytes(16).toString('hex');
@@ -52,6 +59,26 @@ export class AuthService {
     private readonly sessionService: SessionService,
     @InjectQueue(MAIL_QUEUE) private readonly mailQueue: Queue,
   ) {}
+
+  private resolveDisplayName(user: UserNameSource): string {
+    return (
+      user.developerProfile?.displayName ??
+      user.hiringProfile?.organizationName ??
+      'User'
+    );
+  }
+
+  private resolveRole(accountType: AccountType): AuthRole {
+    if (accountType === 'SUPER_ADMIN') {
+      return 'SUPER_ADMIN';
+    }
+
+    if (accountType === 'HIRING') {
+      return 'ORG_ADMIN';
+    }
+
+    return 'MEMBER';
+  }
 
   async signup(data: SignupRequest) {
     const existing = await this.prisma.user.findUnique({
@@ -106,26 +133,12 @@ export class AuthService {
       },
     });
 
-    let name = 'User';
-    if (user.developerProfile?.displayName) {
-      name = user.developerProfile.displayName;
-    } else if (user.hiringProfile?.organizationName) {
-      name = user.hiringProfile.organizationName;
-    }
-
-    let role: 'SUPER_ADMIN' | 'MEMBER' | 'ORG_ADMIN' = 'MEMBER';
-    if (user.accountType === 'SUPER_ADMIN') {
-      role = 'SUPER_ADMIN';
-    } else if (user.accountType === 'HIRING') {
-      role = 'ORG_ADMIN';
-    }
-
     return {
       user: {
         id: user.id,
         email: user.email,
-        name,
-        role,
+        name: this.resolveDisplayName(user),
+        role: this.resolveRole(user.accountType),
       },
     };
   }
@@ -156,27 +169,13 @@ export class AuthService {
 
     const sessionId = await this.sessionService.createSession(user.id);
 
-    let name = 'User';
-    if (user.developerProfile?.displayName) {
-      name = user.developerProfile.displayName;
-    } else if (user.hiringProfile?.organizationName) {
-      name = user.hiringProfile.organizationName;
-    }
-
-    let role: 'SUPER_ADMIN' | 'MEMBER' | 'ORG_ADMIN' = 'MEMBER';
-    if (user.accountType === 'SUPER_ADMIN') {
-      role = 'SUPER_ADMIN';
-    } else if (user.accountType === 'HIRING') {
-      role = 'ORG_ADMIN';
-    }
-
     return {
       sessionId,
       user: {
         id: user.id,
         email: user.email,
-        name,
-        role,
+        name: this.resolveDisplayName(user),
+        role: this.resolveRole(user.accountType),
       },
     };
   }
@@ -217,13 +216,6 @@ export class AuthService {
       },
     });
 
-    let userName = 'User';
-    if (user.developerProfile?.displayName) {
-      userName = user.developerProfile.displayName;
-    } else if (user.hiringProfile?.organizationName) {
-      userName = user.hiringProfile.organizationName;
-    }
-
     const appUrl = process.env.APP_URL;
     if (!appUrl) {
       throw new Error('APP_URL environment variable is not configured');
@@ -233,7 +225,7 @@ export class AuthService {
     await this.mailQueue.add(MAIL_JOBS.SEND_MAGIC_LINK, {
       email: user.email,
       magicLink: magicLinkUrl,
-      userName: userName,
+      userName: this.resolveDisplayName(user),
     });
 
     this.logger.log(`Magic link queued for user ${user.id}`);
@@ -289,27 +281,13 @@ export class AuthService {
 
     this.logger.log(`User ${magicLink.userId} authenticated via magic link`);
 
-    let name = 'User';
-    if (magicLink.user.developerProfile?.displayName) {
-      name = magicLink.user.developerProfile.displayName;
-    } else if (magicLink.user.hiringProfile?.organizationName) {
-      name = magicLink.user.hiringProfile.organizationName;
-    }
-
-    let role: 'SUPER_ADMIN' | 'MEMBER' | 'ORG_ADMIN' = 'MEMBER';
-    if (magicLink.user.accountType === 'SUPER_ADMIN') {
-      role = 'SUPER_ADMIN';
-    } else if (magicLink.user.accountType === 'HIRING') {
-      role = 'ORG_ADMIN';
-    }
-
     return {
       sessionId,
       user: {
         id: magicLink.user.id,
         email: magicLink.user.email,
-        name,
-        role,
+        name: this.resolveDisplayName(magicLink.user),
+        role: this.resolveRole(magicLink.user.accountType),
       },
     };
   }
@@ -324,25 +302,11 @@ export class AuthService {
       return null;
     }
 
-    let name = 'User';
-    if (user.developerProfile?.displayName) {
-      name = user.developerProfile.displayName;
-    } else if (user.hiringProfile?.organizationName) {
-      name = user.hiringProfile.organizationName;
-    }
-
-    let role: 'SUPER_ADMIN' | 'MEMBER' | 'ORG_ADMIN' = 'MEMBER';
-    if (user.accountType === 'SUPER_ADMIN') {
-      role = 'SUPER_ADMIN';
-    } else if (user.accountType === 'HIRING') {
-      role = 'ORG_ADMIN';
-    }
-
     return {
       id: user.id,
       email: user.email,
-      name,
-      role,
+      name: this.resolveDisplayName(user),
+      role: this.resolveRole(user.accountType),
       isConfirmed: user.isConfirmed,
     };
   }

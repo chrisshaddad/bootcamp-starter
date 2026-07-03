@@ -1,12 +1,13 @@
 import { Test } from '@nestjs/testing';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { UpdateProfileRequest, UserResponse } from '@repo/contracts';
 
 describe('AuthController', () => {
   let controller: AuthController;
 
   const mockAuthService = {
-    // add only methods used by controller
+    updateProfile: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -25,5 +26,12 @@ describe('AuthController', () => {
 
   it('should be defined', () => {
     expect(controller).toBeDefined();
+  });
+
+  it('should delegate updateProfile to AuthService', async () => {
+    const user = { id: 'user-1' } as UserResponse;
+    const body = { slug: 'new-slug' } as UpdateProfileRequest;
+    await controller.updateProfile(user, body);
+    expect(mockAuthService.updateProfile).toHaveBeenCalledWith(user.id, body);
   });
 });
