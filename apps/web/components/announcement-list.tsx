@@ -6,32 +6,70 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { Bell, ExternalLink } from 'lucide-react';
+import {
+  Bell,
+  Calendar,
+  Eye,
+  ExternalLink,
+  Globe,
+  LockKeyhole,
+  Megaphone,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
 function formatDate(value: string | Date) {
   return new Date(value).toLocaleString();
 }
 
-function scopeLabel(announcement: Announcement) {
-  if (announcement.scope === 'SITE') {
-    return 'Site-wide';
-  }
+const scopeIcons: Record<Announcement['scope'], LucideIcon> = {
+  SITE: Megaphone,
+  ORG: Globe,
+  EVENT: Calendar,
+};
 
-  if (announcement.scope === 'ORG') {
-    return 'Org-wide';
-  }
+const scopeLabels: Record<Announcement['scope'], string> = {
+  SITE: 'Site-wide',
+  ORG: 'Org-wide',
+  EVENT: 'Event-related',
+};
 
-  if (announcement.scope === 'EVENT') {
-    if (announcement.audience === 'EVENT_ATTENDEES') {
-      return 'Event attendees';
-    }
+const audienceIcons: Record<
+  NonNullable<Announcement['audience']>,
+  LucideIcon
+> = {
+  EVENT_ATTENDEES: LockKeyhole,
+  WHOLE_ORG: Eye,
+};
 
-    if (announcement.audience === 'WHOLE_ORG') {
-      return 'Whole organization';
-    }
-  }
+const audienceLabels: Record<NonNullable<Announcement['audience']>, string> = {
+  EVENT_ATTENDEES: 'Event attendees',
+  WHOLE_ORG: 'Whole organization',
+};
 
-  return 'Event';
+function AnnouncementMetaIcons({
+  announcement,
+}: {
+  announcement: Announcement;
+}) {
+  const ScopeIcon = scopeIcons[announcement.scope];
+  const AudienceIcon = announcement.audience
+    ? audienceIcons[announcement.audience]
+    : null;
+
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <ScopeIcon
+        aria-label={scopeLabels[announcement.scope]}
+        className="h-3.5 w-3.5"
+      />
+      {AudienceIcon && announcement.audience && (
+        <AudienceIcon
+          aria-label={audienceLabels[announcement.audience]}
+          className="h-3.5 w-3.5"
+        />
+      )}
+    </span>
+  );
 }
 
 interface AnnouncementListProps {
@@ -95,13 +133,13 @@ export function AnnouncementList({
                     <h3 className="break-words text-sm font-semibold text-gray-900 sm:text-base">
                       {announcement.title}
                     </h3>
-                    <p className="mt-1 break-words text-xs text-gray-500">
-                      {scopeLabel(announcement)}
+                    <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 break-words text-xs text-gray-500">
+                      <AnnouncementMetaIcons announcement={announcement} />
                       {announcement.eventName
-                        ? ` • ${announcement.eventName}`
-                        : ''}{' '}
-                      • {announcement.authorName} •{' '}
-                      {formatDate(announcement.createdAt)}
+                        ? `• ${announcement.eventName}`
+                        : ''}
+                      <span>• {announcement.authorName}</span>
+                      <span>• {formatDate(announcement.createdAt)}</span>
                     </p>
                   </div>
                 </div>

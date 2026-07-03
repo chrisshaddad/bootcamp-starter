@@ -28,7 +28,21 @@ import { useAnnouncements } from '@/hooks/use-announcements';
 import { useEvents } from '@/hooks/use-events';
 import { useUser } from '@/hooks/use-auth';
 import { ApiError } from '@/lib/api';
-import { Megaphone, ShieldX } from 'lucide-react';
+import {
+  Calendar,
+  Eye,
+  Globe,
+  LockKeyhole,
+  Megaphone,
+  ShieldX,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+
+const scopeIcons: Record<AnnouncementScope, LucideIcon> = {
+  SITE: Megaphone,
+  ORG: Globe,
+  EVENT: Calendar,
+};
 
 function ForbiddenPage() {
   return (
@@ -221,7 +235,13 @@ export default function AnnouncementsPage() {
                     <SelectContent>
                       {scopeOptions.map((option) => (
                         <SelectItem key={option.value} value={option.value}>
-                          {option.label}
+                          <span className="flex items-center gap-2">
+                            {(() => {
+                              const Icon = scopeIcons[option.value];
+                              return <Icon className="h-4 w-4" />;
+                            })()}
+                            {option.label}
+                          </span>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -278,10 +298,16 @@ export default function AnnouncementsPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="EVENT_ATTENDEES">
-                          Event attendees
+                          <span className="flex items-center gap-2">
+                            <LockKeyhole className="h-4 w-4" />
+                            Event attendees
+                          </span>
                         </SelectItem>
                         <SelectItem value="WHOLE_ORG">
-                          Whole organization
+                          <span className="flex items-center gap-2">
+                            <Eye className="h-4 w-4" />
+                            Whole organization
+                          </span>
                         </SelectItem>
                       </SelectContent>
                     </Select>
