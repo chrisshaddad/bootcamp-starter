@@ -15,6 +15,7 @@ export class DashboardService {
     const [
       totalMembers,
       totalActiveMembers,
+      activeMembersData,
       expiringSoonSubs,
       currentOccupancy,
       gym,
@@ -28,6 +29,17 @@ export class DashboardService {
             some: { gymId, status: 'ACTIVE', endDate: { gte: now } },
           },
         },
+      }),
+
+      this.prisma.member.findMany({
+        where: {
+          gymId,
+          subscriptions: {
+            some: { gymId, status: 'ACTIVE', endDate: { gte: now } },
+          },
+        },
+        select: { id: true, name: true },
+        orderBy: { name: 'asc' },
       }),
 
       this.prisma.subscription.findMany({
@@ -61,9 +73,15 @@ export class DashboardService {
       endDate: sub.endDate,
     }));
 
+    const activeMembersList = activeMembersData.map((m) => ({
+      memberId: m.id,
+      memberName: m.name,
+    }));
+
     return {
       totalMembers,
       totalActiveMembers,
+      activeMembersList,
       expiringSoon,
       currentOccupancy,
       maxCapacity: gym?.maxCapacity ?? null,

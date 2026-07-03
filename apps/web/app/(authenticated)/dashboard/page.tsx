@@ -65,6 +65,56 @@ function StatCard({
   );
 }
 
+function ActiveMembersCard({
+  count,
+  items,
+}: {
+  count: number;
+  items: { memberId: string; memberName: string }[];
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <Card className="border-gray-200 bg-white shadow-sm">
+      <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
+        <CardTitle className="text-sm font-medium text-gray-500">
+          Active Members
+        </CardTitle>
+        <UserCheck className="h-5 w-5 text-green-600" />
+      </CardHeader>
+      <CardContent>
+        <p className="text-3xl font-extrabold text-gray-900">{count}</p>
+        <p className="mt-1 text-xs text-gray-400">With an active subscription</p>
+        {count > 0 && (
+          <button
+            type="button"
+            onClick={() => setExpanded((p) => !p)}
+            className="mt-3 flex items-center gap-1 text-xs font-medium text-primary-base hover:underline"
+          >
+            {expanded ? (
+              <><ChevronUp className="h-3 w-3" /> Hide list</>
+            ) : (
+              <><ChevronDown className="h-3 w-3" /> Show list</>
+            )}
+          </button>
+        )}
+        {expanded && (
+          <ul className="mt-2 space-y-1.5">
+            {items.map((item) => (
+              <li
+                key={item.memberId}
+                className="flex items-center rounded-md bg-green-50 px-2 py-1.5 text-xs font-medium text-gray-800"
+              >
+                {item.memberName}
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 /** Capacity progress bar card */
 function CapacityCard({
   current,
@@ -238,9 +288,10 @@ function SettingsPanel({
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
+    const parsed = value.trim() === '' ? null : parseInt(value, 10);
+    if (parsed !== null && parsed < 0) return;
     setSaving(true);
     try {
-      const parsed = value.trim() === '' ? null : parseInt(value, 10);
       await onSave(parsed);
       onClose();
     } finally {
@@ -267,10 +318,15 @@ function SettingsPanel({
           <Input
             id="maxCapacity"
             type="number"
-            min={1}
+            min={0}
             placeholder="e.g. 50"
             value={value}
-            onChange={(e) => setValue(e.target.value)}
+            onChange={(e) => {
+              const raw = e.target.value;
+              // Prevent negative values
+              if (raw !== '' && parseInt(raw, 10) < 0) return;
+              setValue(raw);
+            }}
             className="w-full border-gray-300"
           />
         </div>
@@ -336,7 +392,7 @@ export default function DashboardPage() {
           className="flex items-center gap-2 border-gray-200 text-gray-600 hover:border-primary-base hover:text-primary-base"
         >
           <Settings className="h-4 w-4" />
-          Settings
+          Manage Max Capacity
         </Button>
       </div>
 
@@ -357,12 +413,9 @@ export default function DashboardPage() {
           value={stats?.totalMembers ?? 0}
           sub="All registered members"
         />
-        <StatCard
-          icon={UserCheck}
-          label="Active Members"
-          value={stats?.totalActiveMembers ?? 0}
-          sub="With an active subscription"
-          color="text-green-600"
+        <ActiveMembersCard
+          count={stats?.totalActiveMembers ?? 0}
+          items={stats?.activeMembersList ?? []}
         />
         <ExpiringSoonCard
           count={stats?.expiringSoon.length ?? 0}
