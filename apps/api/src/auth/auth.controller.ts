@@ -138,6 +138,10 @@ export class AuthController {
     return { success: true };
   }
 
+  // AllowPending so the client can read a PENDING (invited, not-yet-onboarded)
+  // user's status and route them into the set-password flow instead of treating
+  // them as unauthenticated.
+  @AllowPending()
   @Get('me')
   getCurrentUser(@CurrentUser() user: User): UserResponse {
     return {

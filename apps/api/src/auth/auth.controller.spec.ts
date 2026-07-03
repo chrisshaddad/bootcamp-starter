@@ -32,7 +32,9 @@ describe('AuthController', () => {
     branchId: 'branch-1',
   };
 
-  function mockResponse(): jest.Mocked<Pick<Response, 'cookie' | 'clearCookie'>> {
+  function mockResponse(): jest.Mocked<
+    Pick<Response, 'cookie' | 'clearCookie'>
+  > {
     return {
       cookie: jest.fn(),
       clearCookie: jest.fn(),
