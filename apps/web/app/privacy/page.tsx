@@ -11,8 +11,8 @@ export default function PrivacyPage() {
         </h1>
         <p className="text-sm font-medium leading-relaxed text-gray-600">
           Our full Privacy Policy is being finalized. In the meantime, reach out
-          to your MedFind Lebanon administrator with any questions about how your
-          data is handled.
+          to your MedFind Lebanon administrator with any questions about how
+          your data is handled.
         </p>
         <Link
           href="/login"
