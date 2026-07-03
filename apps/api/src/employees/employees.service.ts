@@ -83,9 +83,11 @@ export class EmployeesService {
       throw new NotFoundException(`Employee with ID ${id} not found`);
     }
 
+    const { userSkills, ...employeeFields } = employee;
+
     return {
-      ...employee,
-      skills: employee.userSkills.map(({ skill, proficiencyLevel }) => ({
+      ...employeeFields,
+      skills: userSkills.map(({ skill, proficiencyLevel }) => ({
         ...skill,
         proficiencyLevel,
       })),

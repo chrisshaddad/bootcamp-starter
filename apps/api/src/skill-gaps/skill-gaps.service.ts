@@ -134,10 +134,10 @@ export class SkillGapsService {
 
     for (const requiredSkill of opportunity.opportunitySkills) {
       const proficiencyLevel = userSkillLevels.get(requiredSkill.skill.id);
-      const contribution = Math.min(
-        (proficiencyLevel ?? 0) / requiredSkill.requiredLevel,
-        1,
-      );
+      const contribution =
+        requiredSkill.requiredLevel === 0
+          ? 1
+          : Math.min((proficiencyLevel ?? 0) / requiredSkill.requiredLevel, 1);
       totalFit += contribution;
 
       const skillPayload = {
@@ -146,7 +146,10 @@ export class SkillGapsService {
         proficiencyLevel: proficiencyLevel ?? null,
       };
 
-      if (proficiencyLevel && proficiencyLevel >= requiredSkill.requiredLevel) {
+      if (
+        proficiencyLevel !== undefined &&
+        proficiencyLevel >= requiredSkill.requiredLevel
+      ) {
         matchedSkills.push({
           ...skillPayload,
           proficiencyLevel,

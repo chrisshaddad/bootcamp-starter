@@ -6,6 +6,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma } from '@repo/db';
 import { PrismaService } from '../database/prisma.service';
 import type { User } from '@repo/db';
 import type {
@@ -59,22 +60,6 @@ export class ApplicationsService {
       );
     }
 
-    const existingApplication = await this.prisma.application.findFirst({
-      where: {
-        userId: currentUser.id,
-        opportunityId: opportunity.id,
-      },
-      select: {
-        id: true,
-      },
-    });
-
-    if (existingApplication) {
-      throw new ConflictException(
-        'You have already applied to this opportunity',
-      );
-    }
-
     const userSkills = await this.prisma.userSkill.findMany({
       where: {
         userId: currentUser.id,
@@ -85,41 +70,53 @@ export class ApplicationsService {
       },
     });
 
-    const application = await this.prisma.application.create({
-      data: {
-        userId: currentUser.id,
-        opportunityId: opportunity.id,
-        coverNote: body.coverNote,
-        status: 'PENDING',
-        fitScore: this.calculateFitScore(
-          opportunity.opportunitySkills,
-          userSkills,
-        ),
-      },
-      select: {
-        id: true,
-        userId: true,
-        opportunityId: true,
-        status: true,
-        fitScore: true,
-        coverNote: true,
-        managerApproved: true,
-        createdAt: true,
-        updatedAt: true,
-        opportunity: {
-          select: {
-            id: true,
-            title: true,
-            type: true,
+    try {
+      const application = await this.prisma.application.create({
+        data: {
+          userId: currentUser.id,
+          opportunityId: opportunity.id,
+          coverNote: body.coverNote,
+          status: 'PENDING',
+          fitScore: this.calculateFitScore(
+            opportunity.opportunitySkills,
+            userSkills,
+          ),
+        },
+        select: {
+          id: true,
+          userId: true,
+          opportunityId: true,
+          status: true,
+          fitScore: true,
+          coverNote: true,
+          managerApproved: true,
+          createdAt: true,
+          updatedAt: true,
+          opportunity: {
+            select: {
+              id: true,
+              title: true,
+              type: true,
+            },
           },
         },
-      },
-    });
+      });
 
-    return {
-      ...application,
-      status: this.toPublicStatus(application.status),
-    };
+      return {
+        ...application,
+        status: this.toPublicStatus(application.status),
+      };
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException(
+          'You have already applied to this opportunity',
+        );
+      }
+      throw error;
+    }
   }
 
   private toPublicStatus(status: DatabaseApplicationStatus): ApplicationStatus {
@@ -146,6 +143,7 @@ export class ApplicationsService {
     );
 
     const total = requiredSkills.reduce((sum, requiredSkill) => {
+      if (requiredSkill.requiredLevel === 0) return sum + 1;
       const proficiencyLevel = userSkillLevels.get(requiredSkill.skillId) ?? 0;
       return sum + Math.min(proficiencyLevel / requiredSkill.requiredLevel, 1);
     }, 0);
