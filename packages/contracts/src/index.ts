@@ -2,3 +2,7 @@ export * from './common';
 export * from './auth';
 export * from './users';
 export * from './organizations';
+export * from './employees';
+export * from './opportunities';
+export * from './applications';
+export * from './skill-gaps';

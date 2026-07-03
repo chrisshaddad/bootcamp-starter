@@ -290,7 +290,7 @@ model Application {
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
+  @@unique([userId, opportunityId])
   @@index([opportunityId])
   @@schema("public")
 }
