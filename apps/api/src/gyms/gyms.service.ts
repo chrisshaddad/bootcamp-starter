@@ -297,4 +297,15 @@ export class GymsService {
       gymId: gym.id,
     };
   }
+
+  async updateSettings(
+    gymId: string,
+    maxCapacity: number | null,
+  ): Promise<{ message: string }> {
+    await this.prisma.gym.updateMany({
+      where: { id: gymId },
+      data: { maxCapacity },
+    });
+    return { message: 'Settings updated successfully' };
+  }
 }

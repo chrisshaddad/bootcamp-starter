@@ -313,4 +313,45 @@ export class GymsController {
     const gym = await this.gymsService.reactivate(id);
     return { message: 'Gym reactivated successfully', gym };
   }
+
+  @Patch('settings')
+  @Roles('ORG_ADMIN')
+  @ApiOperation({
+    summary: 'Update gym settings',
+    description:
+      "Updates the caller's own gym settings (currently maxCapacity). ORG_ADMIN only.",
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['maxCapacity'],
+      properties: {
+        maxCapacity: {
+          type: 'number',
+          nullable: true,
+          example: 50,
+          description: 'Maximum building capacity. Set null for no limit.',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Settings updated',
+    schema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string', example: 'Settings updated successfully' },
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Validation error' })
+  @ApiResponse({ status: 401, description: 'Not authenticated' })
+  @ApiResponse({ status: 403, description: 'Insufficient role' })
+  async updateSettings(
+    @Body() body: { maxCapacity: number | null },
+    @CurrentUser() user: User,
+  ): Promise<{ message: string }> {
+    return this.gymsService.updateSettings(user.gymId!, body.maxCapacity);
+  }
 }

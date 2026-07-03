@@ -15,6 +15,7 @@ import { DatabaseModule } from './database/database.module';
 import { SessionsModule } from './sessions/sessions.module';
 import { BookingsModule } from './bookings/bookings.module';
 import { CheckInsModule } from './checkins/checkins.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { CheckInsModule } from './checkins/checkins.module';
     SessionsModule,
     BookingsModule,
     CheckInsModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [AppService],
