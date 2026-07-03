@@ -2,10 +2,13 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { toast } from 'sonner';
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { ApiError } from '@/lib/api';
+import { AuthCanvas } from '@/components/auth/auth-shell';
+import { AuthCard } from '@/components/auth/auth-card';
 
 type VerifyStatus = 'loading' | 'success' | 'error';
 
@@ -54,49 +57,57 @@ function VerifyContent() {
   }, [searchParams, verifyMagicLink, router]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
+    <AuthCanvas>
+      <AuthCard className="text-center">
         {status === 'loading' && (
           <>
-            <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary-base" />
-            <h1 className="mt-4 text-xl font-semibold text-foreground">
-              Verifying your magic link...
-            </h1>
-            <p className="mt-2 text-muted-foreground">
-              Please wait while we log you in.
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary-100 text-primary-base">
+              <Loader2 className="h-7 w-7 animate-spin" />
+            </div>
+            <h3 className="mb-2 text-lg font-extrabold text-gray-900">
+              Verifying your magic link…
+            </h3>
+            <p className="text-sm font-medium leading-relaxed text-gray-600">
+              Hang tight while we sign you in.
             </p>
           </>
         )}
 
         {status === 'success' && (
           <>
-            <CheckCircle2 className="mx-auto h-12 w-12 text-primary-base" />
-            <h1 className="mt-4 text-xl font-semibold text-foreground">
-              Successfully verified!
-            </h1>
-            <p className="mt-2 text-muted-foreground">
-              Redirecting to dashboard...
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary-100 text-primary-base">
+              <CheckCircle2 className="h-7 w-7" />
+            </div>
+            <h3 className="mb-2 text-lg font-extrabold text-gray-900">
+              You&apos;re verified!
+            </h3>
+            <p className="text-sm font-medium leading-relaxed text-gray-600">
+              Taking you to your dashboard…
             </p>
           </>
         )}
 
         {status === 'error' && (
           <>
-            <XCircle className="mx-auto h-12 w-12 text-destructive" />
-            <h1 className="mt-4 text-xl font-semibold text-foreground">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-error-light text-error">
+              <XCircle className="h-7 w-7" />
+            </div>
+            <h3 className="mb-2 text-lg font-extrabold text-gray-900">
               Verification failed
-            </h1>
-            <p className="mt-2 text-muted-foreground">{errorMessage}</p>
-            <a
+            </h3>
+            <p className="text-sm font-medium leading-relaxed text-gray-600">
+              {errorMessage}
+            </p>
+            <Link
               href="/login"
-              className="mt-4 inline-block text-primary-base hover:underline"
+              className="mt-5 inline-block text-sm font-bold text-primary-base hover:underline"
             >
               Back to login
-            </a>
+            </Link>
           </>
         )}
-      </div>
-    </div>
+      </AuthCard>
+    </AuthCanvas>
   );
 }
 
@@ -104,9 +115,13 @@ export default function VerifyPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen items-center justify-center bg-background">
-          <Loader2 className="h-12 w-12 animate-spin text-primary-base" />
-        </div>
+        <AuthCanvas>
+          <AuthCard className="text-center">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary-100 text-primary-base">
+              <Loader2 className="h-7 w-7 animate-spin" />
+            </div>
+          </AuthCard>
+        </AuthCanvas>
       }
     >
       <VerifyContent />

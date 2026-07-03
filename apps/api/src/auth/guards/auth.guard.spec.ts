@@ -20,7 +20,9 @@ describe('AuthGuard', () => {
   } as User;
 
   function contextWith(sessionId?: string): ExecutionContext {
-    const request = { cookies: sessionId ? { [SESSION_COOKIE_NAME]: sessionId } : {} };
+    const request = {
+      cookies: sessionId ? { [SESSION_COOKIE_NAME]: sessionId } : {},
+    };
     return {
       switchToHttp: () => ({ getRequest: () => request }),
       getHandler: () => undefined,
@@ -59,9 +61,9 @@ describe('AuthGuard', () => {
       ...baseUser,
       status: 'PENDING',
     });
-    await expect(guard.canActivate(contextWith('sess-1'))).rejects.toBeInstanceOf(
-      UnauthorizedException,
-    );
+    await expect(
+      guard.canActivate(contextWith('sess-1')),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
   it('allows PENDING users on routes that opt in via @AllowPending', async () => {
@@ -79,8 +81,8 @@ describe('AuthGuard', () => {
       ...baseUser,
       status: 'SUSPENDED',
     });
-    await expect(guard.canActivate(contextWith('sess-1'))).rejects.toBeInstanceOf(
-      UnauthorizedException,
-    );
+    await expect(
+      guard.canActivate(contextWith('sess-1')),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 });

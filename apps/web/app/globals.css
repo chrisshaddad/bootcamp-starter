@@ -79,6 +79,7 @@ a {
 
   /* Primary Colors (Green) */
   --color-primary-base: #27a376;
+  --color-primary-hover: #1c8a63;
   --color-primary-400: #55c790;
   --color-primary-300: #86d7b0;
   --color-primary-200: #ceefdf;
@@ -339,5 +340,44 @@ a {
   }
   .text-body-xs-regular {
     @apply text-xs font-normal leading-loose;
+  }
+}
+
+/* Decorative map-pin pulse used on the auth showcase (presentational only) */
+.medfind-pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .medfind-pulse {
+    animation: medfind-ping 2.2s ease-out infinite;
+  }
+}
+@keyframes medfind-ping {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.7;
+  }
+  70%,
+  100% {
+    transform: scale(2.8);
+    opacity: 0;
+  }
+}
+
+/* Blinking caret for the auth showcase's typed-out search (presentational) */
+@media (prefers-reduced-motion: no-preference) {
+  .medfind-caret {
+    animation: medfind-blink 1s step-end infinite;
+  }
+}
+@keyframes medfind-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
   }
 }
