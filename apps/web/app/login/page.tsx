@@ -30,7 +30,14 @@ function LoginForm() {
     setIsSubmitting(true);
     try {
       await login(data);
-      const redirectPath = searchParams.get('redirect') || '/dashboard';
+      const rawRedirect = searchParams.get('redirect');
+      const redirectPath =
+        rawRedirect &&
+        rawRedirect.startsWith('/') &&
+        !rawRedirect.startsWith('//')
+          ? rawRedirect
+          : '/dashboard';
+
       router.push(redirectPath);
     } catch (error) {
       toast.error(
