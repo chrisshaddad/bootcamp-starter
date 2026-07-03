@@ -17,16 +17,26 @@ export function getSafeRedirectPath(
     return fallback;
   }
 
-  // Must be an absolute path beginning with a single forward slash.
-  if (!raw.startsWith('/')) {
+  // Must be an absolute path beginning with a single forward slash. Rejects
+  // absolute URLs ("https://…") and protocol-relative ("//host") targets.
+  if (!raw.startsWith('/') || raw.startsWith('//') || raw.startsWith('/\\')) {
     return fallback;
   }
 
-  // Reject protocol-relative ("//host") and backslash-normalized ("/\host")
-  // targets that resolve to a different origin.
-  if (raw.startsWith('//') || raw.startsWith('/\\')) {
+  // Resolve against a fixed, unreachable origin and require the result to stay
+  // on it. The URL parser strips ASCII tab/newline/CR the same way a browser
+  // does during navigation, so control-character tricks like "/\t/evil.com"
+  // (which collapses to "//evil.com") are normalized and caught here rather
+  // than slipping through the prefix checks above. Only the same-origin
+  // pathname + search + hash are returned.
+  const base = 'https://redirect.invalid';
+  try {
+    const url = new URL(raw, base);
+    if (url.origin !== base) {
+      return fallback;
+    }
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
     return fallback;
   }
-
-  return raw;
 }

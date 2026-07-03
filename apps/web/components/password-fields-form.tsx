@@ -123,7 +123,6 @@ export function PasswordFieldsForm({
           <button
             type="button"
             onClick={() => setShowPassword((v) => !v)}
-            tabIndex={-1}
             aria-label={showPassword ? 'Hide password' : 'Show password'}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
           >
@@ -174,7 +173,6 @@ export function PasswordFieldsForm({
           <button
             type="button"
             onClick={() => setShowConfirm((v) => !v)}
-            tabIndex={-1}
             aria-label={showConfirm ? 'Hide password' : 'Show password'}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
           >

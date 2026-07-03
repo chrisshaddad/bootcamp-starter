@@ -3,6 +3,7 @@
 import useSWR, { type KeyedMutator } from 'swr';
 import { useCallback, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import { toast } from 'sonner';
 import { apiPost, ApiError } from '@/lib/api';
 import type {
   MagicLinkRequest,
@@ -120,14 +121,30 @@ export function useAuth() {
         '/auth/set-password',
         data,
       );
-      mutate();
+      // Write the fresh (now-active) user into the cache and wait for it before
+      // resolving. The API returns the updated user, so revalidation is
+      // unnecessary — and resolving early would let callers navigate away while
+      // useUser still holds the PENDING user and bounces them back here.
+      await mutate(result.user, { revalidate: false });
       return result;
     },
     [mutate],
   );
 
   const logout = useCallback(async () => {
-    await apiPost<{ success: boolean }>('/auth/logout');
+    try {
+      await apiPost<{ success: boolean }>('/auth/logout');
+    } catch (error) {
+      // Surface the failure and keep the session intact so the user can retry.
+      // Clearing the cache / redirecting on error would falsely imply they're
+      // signed out while the server session may still be live.
+      if (error instanceof ApiError) {
+        toast.error(error.message);
+      } else {
+        toast.error('Could not log out. Please try again.');
+      }
+      return;
+    }
     // Clear the cached user without revalidating — /auth/me would 401 now and
     // could race a redirect that pins a stale ?redirect= param. Then send the
     // user to login explicitly so logout never depends on another component's
