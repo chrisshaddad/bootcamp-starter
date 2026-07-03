@@ -225,6 +225,9 @@ export class AuthService {
     }
 
     const appUrl = process.env.APP_URL;
+    if (!appUrl) {
+      throw new Error('APP_URL environment variable is not configured');
+    }
     const magicLinkUrl = `${appUrl}/auth/verify?token=${token}`;
 
     await this.mailQueue.add(MAIL_JOBS.SEND_MAGIC_LINK, {

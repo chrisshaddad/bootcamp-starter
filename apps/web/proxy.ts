@@ -30,12 +30,17 @@ export async function proxy(request: NextRequest) {
         const apiUrl =
           process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
+        
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
         // Make the POST request exactly like Postman does
         const apiRes = await fetch(`${apiUrl}/auth/magic-link/verify`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ token }),
+          signal: controller.signal,
         });
+        clearTimeout(timeout);
 
         if (apiRes.ok) {
           const data = await apiRes.json();

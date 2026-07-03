@@ -1,5 +1,10 @@
 import { z } from 'zod';
 
+const optionalUrlSchema = z
+  .url({ error: 'Please enter a valid URL' })
+  .or(z.literal(''))
+  .nullish();
+
 export const updateProfileRequestSchema = z.object({
   // Developer Profile fields
   displayName: z.string().min(1, 'Display name is required').optional(),
@@ -14,24 +19,9 @@ export const updateProfileRequestSchema = z.object({
   headline: z.string().nullable().optional(),
   bio: z.string().nullable().optional(),
   location: z.string().nullable().optional(),
-  profilePictureUrl: z
-    .string()
-    .url('Please enter a valid URL')
-    .or(z.literal(''))
-    .nullable()
-    .optional(),
-  linkedinUrl: z
-    .string()
-    .url('Please enter a valid URL')
-    .or(z.literal(''))
-    .nullable()
-    .optional(),
-  personalWebsiteUrl: z
-    .string()
-    .url('Please enter a valid URL')
-    .or(z.literal(''))
-    .nullable()
-    .optional(),
+  profilePictureUrl: optionalUrlSchema,
+  linkedinUrl: optionalUrlSchema,
+  personalWebsiteUrl: optionalUrlSchema,
 
   // Hiring Profile fields
   organizationName: z
@@ -42,12 +32,7 @@ export const updateProfileRequestSchema = z.object({
     .enum(['COMPANY', 'AGENCY', 'INDIVIDUAL', 'FREELANCE_CLIENT'])
     .optional(),
   jobTitle: z.string().nullable().optional(),
-  organizationWebsiteUrl: z
-    .string()
-    .url('Please enter a valid URL')
-    .or(z.literal(''))
-    .nullable()
-    .optional(),
+  organizationWebsiteUrl: optionalUrlSchema,
 });
 
 export type UpdateProfileRequest = z.infer<typeof updateProfileRequestSchema>;
