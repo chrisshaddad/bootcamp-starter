@@ -1,4 +1,3 @@
-
 import {
   Injectable,
   Logger,
@@ -12,7 +11,12 @@ import * as crypto from 'crypto';
 import { PrismaService } from '../database/prisma.service';
 import { SessionService } from './session.service';
 import { MAIL_QUEUE, MAIL_JOBS } from '../mail/mail.constants';
-import { SignupRequest, LoginRequest, UpdateProfileRequest, UserResponse } from '@repo/contracts';
+import {
+  SignupRequest,
+  LoginRequest,
+  UpdateProfileRequest,
+  UserResponse,
+} from '@repo/contracts';
 
 const MAGIC_LINK_EXPIRY_MINUTES = 15;
 
@@ -140,7 +144,9 @@ export class AuthService {
     }
 
     if (!user.isConfirmed) {
-      throw new UnauthorizedException('Please check your email and click the magic link to verify your account before logging in.');
+      throw new UnauthorizedException(
+        'Please check your email and click the magic link to verify your account before logging in.',
+      );
     }
 
     const isValid = verifyPassword(data.password, user.passwordHash);
@@ -233,7 +239,12 @@ export class AuthService {
 
   async verifyMagicLink(token: string): Promise<{
     sessionId: string;
-    user: { id: string; email: string; name: string; role: 'SUPER_ADMIN' | 'MEMBER' | 'ORG_ADMIN' };
+    user: {
+      id: string;
+      email: string;
+      name: string;
+      role: 'SUPER_ADMIN' | 'MEMBER' | 'ORG_ADMIN';
+    };
   }> {
     const magicLink = await this.prisma.magicLink.findUnique({
       where: { token },
@@ -333,7 +344,10 @@ export class AuthService {
     };
   }
 
-  async updateProfile(userId: string, data: UpdateProfileRequest): Promise<UserResponse> {
+  async updateProfile(
+    userId: string,
+    data: UpdateProfileRequest,
+  ): Promise<UserResponse> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: {
@@ -351,7 +365,9 @@ export class AuthService {
         where: { publicSlug: data.publicSlug },
       });
       if (existingSlug && existingSlug.userId !== userId) {
-        throw new ConflictException('The requested public slug is already taken');
+        throw new ConflictException(
+          'The requested public slug is already taken',
+        );
       }
     }
 
@@ -371,7 +387,11 @@ export class AuthService {
       hiringProfile?: {
         update: {
           organizationName?: string;
-          organizationType?: 'COMPANY' | 'AGENCY' | 'INDIVIDUAL' | 'FREELANCE_CLIENT';
+          organizationType?:
+            | 'COMPANY'
+            | 'AGENCY'
+            | 'INDIVIDUAL'
+            | 'FREELANCE_CLIENT';
           jobTitle?: string | null;
           organizationWebsiteUrl?: string | null;
         };
@@ -424,10 +444,23 @@ export class AuthService {
             headline: updatedUser.developerProfile.headline ?? null,
             bio: updatedUser.developerProfile.bio ?? null,
             location: updatedUser.developerProfile.location ?? null,
-            profilePictureUrl: updatedUser.developerProfile.profilePictureUrl ?? null,
-            githubUsername: (updatedUser.developerProfile as { githubUsername?: string | null }).githubUsername ?? null,
-            linkedinUrl: (updatedUser.developerProfile as { linkedinUrl?: string | null }).linkedinUrl ?? null,
-            personalWebsiteUrl: (updatedUser.developerProfile as { personalWebsiteUrl?: string | null }).personalWebsiteUrl ?? null,
+            profilePictureUrl:
+              updatedUser.developerProfile.profilePictureUrl ?? null,
+            githubUsername:
+              (
+                updatedUser.developerProfile as {
+                  githubUsername?: string | null;
+                }
+              ).githubUsername ?? null,
+            linkedinUrl:
+              (updatedUser.developerProfile as { linkedinUrl?: string | null })
+                .linkedinUrl ?? null,
+            personalWebsiteUrl:
+              (
+                updatedUser.developerProfile as {
+                  personalWebsiteUrl?: string | null;
+                }
+              ).personalWebsiteUrl ?? null,
           }
         : null,
       hiringProfile: updatedUser.hiringProfile
@@ -436,7 +469,12 @@ export class AuthService {
             organizationName: updatedUser.hiringProfile.organizationName,
             organizationType: updatedUser.hiringProfile.organizationType,
             jobTitle: updatedUser.hiringProfile.jobTitle ?? null,
-            organizationWebsiteUrl: (updatedUser.hiringProfile as { organizationWebsiteUrl?: string | null }).organizationWebsiteUrl ?? null,
+            organizationWebsiteUrl:
+              (
+                updatedUser.hiringProfile as {
+                  organizationWebsiteUrl?: string | null;
+                }
+              ).organizationWebsiteUrl ?? null,
           }
         : null,
     };

@@ -72,7 +72,9 @@ export default function SignupPage() {
       // Account was already created; a failed confirmation email shouldn't block the user.
     }
 
-    toast.success('Account created! Please check your email to verify your account.');
+    toast.success(
+      'Account created! Please check your email to verify your account.',
+    );
     router.push('/login');
     setIsSubmitting(false);
   };
@@ -151,7 +153,9 @@ export default function SignupPage() {
                 {...register('displayName')}
               />
               {errors.displayName && (
-                <p className="text-sm text-destructive">{errors.displayName.message}</p>
+                <p className="text-sm text-destructive">
+                  {errors.displayName.message}
+                </p>
               )}
             </div>
 
@@ -181,7 +185,9 @@ export default function SignupPage() {
                 {...register('organizationName')}
               />
               {errors.organizationName && (
-                <p className="text-sm text-destructive">{errors.organizationName.message}</p>
+                <p className="text-sm text-destructive">
+                  {errors.organizationName.message}
+                </p>
               )}
             </div>
 

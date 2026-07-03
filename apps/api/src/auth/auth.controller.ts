@@ -74,9 +74,7 @@ export class AuthController {
   @Post('signup')
   @HttpCode(HttpStatus.CREATED)
   @UsePipes(new ZodValidationPipe(signupRequestSchema))
-  async signup(
-    @Body() body: SignupRequest,
-  ): Promise<AuthResponse> {
+  async signup(@Body() body: SignupRequest): Promise<AuthResponse> {
     const { user } = await this.authService.signup(body);
     return { user };
   }
@@ -142,7 +140,8 @@ export class AuthController {
             profilePictureUrl: user.developerProfile.profilePictureUrl ?? null,
             githubUsername: user.developerProfile.githubUsername ?? null,
             linkedinUrl: user.developerProfile.linkedinUrl ?? null,
-            personalWebsiteUrl: user.developerProfile.personalWebsiteUrl ?? null,
+            personalWebsiteUrl:
+              user.developerProfile.personalWebsiteUrl ?? null,
           }
         : null,
       hiringProfile: user.hiringProfile
@@ -151,7 +150,8 @@ export class AuthController {
             organizationName: user.hiringProfile.organizationName,
             organizationType: user.hiringProfile.organizationType,
             jobTitle: user.hiringProfile.jobTitle ?? null,
-            organizationWebsiteUrl: user.hiringProfile.organizationWebsiteUrl ?? null,
+            organizationWebsiteUrl:
+              user.hiringProfile.organizationWebsiteUrl ?? null,
           }
         : null,
     };
@@ -161,7 +161,8 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async updateProfile(
     @CurrentUser() user: UserResponse,
-    @Body(new ZodValidationPipe(updateProfileRequestSchema)) body: UpdateProfileRequest,
+    @Body(new ZodValidationPipe(updateProfileRequestSchema))
+    body: UpdateProfileRequest,
   ) {
     return this.authService.updateProfile(user.id, body);
   }

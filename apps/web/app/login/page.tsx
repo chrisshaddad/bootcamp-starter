@@ -90,14 +90,14 @@ export default function LoginPage() {
     <AuthShell
       title="Welcome back"
       description="Enter your email and password to log in."
-footer={
-  <>
-    Don&apos;t have an account?{' '}
-    <Link href="/signup" className="text-blue hover:underline">
-      Sign up
-    </Link>
-  </>
-}
+      footer={
+        <>
+          Don&apos;t have an account?{' '}
+          <Link href="/signup" className="text-blue hover:underline">
+            Sign up
+          </Link>
+        </>
+      }
     >
       <Suspense fallback={<div>Loading...</div>}>
         <LoginForm />
