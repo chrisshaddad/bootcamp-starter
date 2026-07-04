@@ -17,6 +17,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useUser } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
 import {
   Bell,
@@ -153,6 +154,8 @@ export function AnnouncementList({
   onDelete,
   deletingId,
 }: AnnouncementListProps) {
+  const { user } = useUser({ redirectOnUnauthenticated: false });
+
   return (
     <Card className="border-gray-200 bg-white shadow-sm">
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -215,7 +218,12 @@ export function AnnouncementList({
                       {announcement.eventName && !announcement.eventId && (
                         <span>• {announcement.eventName}</span>
                       )}
-                      <span>• {announcement.authorName}</span>
+                      <span>
+                        •{' '}
+                        {announcement.authorId === user?.id
+                          ? 'YOU'
+                          : announcement.authorName}
+                      </span>
                       <span>
                         • <PublishedTime value={announcement.createdAt} />
                       </span>
