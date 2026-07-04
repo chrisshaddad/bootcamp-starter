@@ -164,7 +164,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       {isDeveloper ? (
         <>
-          <div className="grid gap-5 sm:grid-cols-2">
+          <div className="grid gap-5 lg:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="displayName">
                 Display name <span className="text-destructive">*</span>
@@ -242,8 +242,8 @@ export function ProfileForm({ user }: ProfileFormProps) {
 
           <div className="space-y-2">
             <Label htmlFor="profilePicture">Profile picture</Label>
-            <div className="flex items-center gap-4">
-              <Avatar className="h-16 w-16">
+            <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-4">
+              <Avatar className="h-16 w-16 shrink-0">
                 <AvatarImage src={profilePictureUrl || undefined} />
                 <AvatarFallback className="bg-primary-base text-lg font-medium text-white">
                   {(user.developerProfile?.displayName ?? user.email)
@@ -251,7 +251,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
                     .toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <div className="flex-1 space-y-1">
+              <div className="w-full min-w-0 flex-1 space-y-1">
                 <Input
                   id="profilePicture"
                   type="file"
@@ -274,7 +274,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
             )}
           </div>
 
-          <div className="grid gap-5 sm:grid-cols-2">
+          <div className="grid gap-5 lg:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="linkedinUrl">LinkedIn URL</Label>
               <Input
