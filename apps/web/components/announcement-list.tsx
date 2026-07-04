@@ -21,9 +21,17 @@ function scopeLabel(announcement: Announcement) {
     return 'Org-wide';
   }
 
-  return announcement.audience === 'EVENT_ATTENDEES'
-    ? 'Event attendees'
-    : 'Event';
+  if (announcement.scope === 'EVENT') {
+    if (announcement.audience === 'EVENT_ATTENDEES') {
+      return 'Event attendees';
+    }
+
+    if (announcement.audience === 'WHOLE_ORG') {
+      return 'Whole organization';
+    }
+  }
+
+  return 'Event';
 }
 
 interface AnnouncementListProps {
