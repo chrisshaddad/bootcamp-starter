@@ -1,11 +1,14 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import type {
-  AnnouncementAudience,
-  AnnouncementCreateRequest,
-  AnnouncementScope,
+import {
+  announcementCreateRequestSchema,
+  type AnnouncementAudience,
+  type AnnouncementCreateRequest,
+  type AnnouncementScope,
 } from '@repo/contracts';
 import { AnnouncementList } from '@/components/announcement-list';
 import { RichTextEditor } from '@/components/rich-text-editor';
@@ -61,15 +64,27 @@ export default function AnnouncementsPage() {
   const isPresenter =
     user?.role === 'MEMBER' && user?.memberRole === 'PRESENTER';
   const canCreate = isSuperAdmin || isOrgAdmin || isPresenter;
-  const [title, setTitle] = useState('');
-  const [bodyHtml, setBodyHtml] = useState('');
-  const [scope, setScope] = useState<AnnouncementScope>(
-    isSuperAdmin ? 'SITE' : isOrgAdmin ? 'ORG' : 'EVENT',
-  );
-  const [audience, setAudience] =
-    useState<AnnouncementAudience>('EVENT_ATTENDEES');
-  const [eventId, setEventId] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    watch,
+    formState: { errors, isSubmitting },
+  } = useForm<AnnouncementCreateRequest>({
+    resolver: zodResolver(announcementCreateRequestSchema),
+    defaultValues: {
+      title: '',
+      bodyHtml: '',
+      scope: 'EVENT',
+      audience: 'EVENT_ATTENDEES',
+      eventId: undefined,
+    },
+  });
+  const scope = watch('scope');
+  const bodyHtml = watch('bodyHtml');
+  const eventId = watch('eventId');
+  const audience = watch('audience') ?? 'EVENT_ATTENDEES';
 
   const {
     announcements,
@@ -104,37 +119,35 @@ export default function AnnouncementsPage() {
       fallbackScope &&
       !scopeOptions.some((option) => option.value === scope)
     ) {
-      setScope(fallbackScope);
-      setEventId('');
+      setValue('scope', fallbackScope, { shouldValidate: true });
+      setValue('eventId', undefined, { shouldValidate: true });
     }
-  }, [scope, scopeOptions]);
+  }, [scope, scopeOptions, setValue]);
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setIsSubmitting(true);
-
-    const payload: AnnouncementCreateRequest = {
-      title,
-      bodyHtml,
-      scope,
-      ...(scope === 'EVENT' ? { audience, eventId } : {}),
-    };
-
+  const onSubmit = async (data: AnnouncementCreateRequest) => {
     try {
-      await create(payload);
+      await create({
+        title: data.title,
+        bodyHtml: data.bodyHtml,
+        scope: data.scope,
+        ...(data.scope === 'EVENT'
+          ? { audience: data.audience, eventId: data.eventId }
+          : {}),
+      });
       toast.success('Announcement posted');
-      setTitle('');
-      setBodyHtml('');
-      setEventId('');
-      setAudience('EVENT_ATTENDEES');
+      reset({
+        title: '',
+        bodyHtml: '',
+        scope: data.scope,
+        audience: data.scope === 'EVENT' ? data.audience : 'EVENT_ATTENDEES',
+        eventId: data.scope === 'EVENT' ? data.eventId : undefined,
+      });
     } catch (err) {
       if (err instanceof ApiError) {
         toast.error(err.message);
       } else {
         toast.error('Failed to post announcement');
       }
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -166,25 +179,29 @@ export default function AnnouncementsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="announcement-title">Title</Label>
                   <Input
                     id="announcement-title"
-                    value={title}
-                    onChange={(event) => setTitle(event.target.value)}
                     maxLength={140}
-                    required
+                    aria-invalid={!!errors.title}
+                    {...register('title')}
                   />
+                  {errors.title && (
+                    <p className="text-sm text-error">{errors.title.message}</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>Scope</Label>
                   <Select
                     value={scope}
                     onValueChange={(value) => {
-                      setScope(value as AnnouncementScope);
-                      setEventId('');
+                      setValue('scope', value as AnnouncementScope, {
+                        shouldValidate: true,
+                      });
+                      setValue('eventId', undefined, { shouldValidate: true });
                     }}
                   >
                     <SelectTrigger className="w-full">
@@ -198,6 +215,9 @@ export default function AnnouncementsPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {errors.scope && (
+                    <p className="text-sm text-error">{errors.scope.message}</p>
+                  )}
                 </div>
               </div>
 
@@ -205,7 +225,12 @@ export default function AnnouncementsPage() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label>Event</Label>
-                    <Select value={eventId} onValueChange={setEventId}>
+                    <Select
+                      value={eventId}
+                      onValueChange={(value) =>
+                        setValue('eventId', value, { shouldValidate: true })
+                      }
+                    >
                       <SelectTrigger className="w-full">
                         <SelectValue
                           placeholder={
@@ -221,13 +246,20 @@ export default function AnnouncementsPage() {
                         ))}
                       </SelectContent>
                     </Select>
+                    {errors.eventId && (
+                      <p className="text-sm text-error">
+                        {errors.eventId.message}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label>Audience</Label>
                     <Select
                       value={audience}
                       onValueChange={(value) =>
-                        setAudience(value as AnnouncementAudience)
+                        setValue('audience', value as AnnouncementAudience, {
+                          shouldValidate: true,
+                        })
                       }
                     >
                       <SelectTrigger className="w-full">
@@ -242,13 +274,28 @@ export default function AnnouncementsPage() {
                         </SelectItem>
                       </SelectContent>
                     </Select>
+                    {errors.audience && (
+                      <p className="text-sm text-error">
+                        {errors.audience.message}
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
 
               <div className="space-y-2">
                 <Label>Message</Label>
-                <RichTextEditor value={bodyHtml} onChange={setBodyHtml} />
+                <RichTextEditor
+                  value={bodyHtml}
+                  onChange={(value) =>
+                    setValue('bodyHtml', value, { shouldValidate: true })
+                  }
+                />
+                {errors.bodyHtml && (
+                  <p className="text-sm text-error">
+                    {errors.bodyHtml.message}
+                  </p>
+                )}
               </div>
 
               <Button
