@@ -1,3 +1,3 @@
 export * from './user-role.schema';
 export * from './user.response';
-export * from './create-user.request';
+export * from './user-create.request';
