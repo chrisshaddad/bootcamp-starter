@@ -121,6 +121,11 @@ export default function AnnouncementsPage() {
     ) {
       setValue('scope', fallbackScope, { shouldValidate: true });
       setValue('eventId', undefined, { shouldValidate: true });
+      setValue(
+        'audience',
+        fallbackScope === 'EVENT' ? 'EVENT_ATTENDEES' : undefined,
+        { shouldValidate: true },
+      );
     }
   }, [scope, scopeOptions, setValue]);
 
@@ -139,7 +144,7 @@ export default function AnnouncementsPage() {
         title: '',
         bodyHtml: '',
         scope: data.scope,
-        audience: data.scope === 'EVENT' ? data.audience : 'EVENT_ATTENDEES',
+        audience: data.scope === 'EVENT' ? data.audience : undefined,
         eventId: data.scope === 'EVENT' ? data.eventId : undefined,
       });
     } catch (err) {
@@ -198,10 +203,16 @@ export default function AnnouncementsPage() {
                   <Select
                     value={scope}
                     onValueChange={(value) => {
+                      const nextScope = value as AnnouncementScope;
                       setValue('scope', value as AnnouncementScope, {
                         shouldValidate: true,
                       });
                       setValue('eventId', undefined, { shouldValidate: true });
+                      setValue(
+                        'audience',
+                        nextScope === 'EVENT' ? 'EVENT_ATTENDEES' : undefined,
+                        { shouldValidate: true },
+                      );
                     }}
                   >
                     <SelectTrigger className="w-full">

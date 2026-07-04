@@ -37,6 +37,14 @@ export const announcementCreateRequestSchema = z
         message: 'Only event announcements can reference an event',
       });
     }
+
+    if (value.audience) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['audience'],
+        message: 'Only event announcements can include an audience',
+      });
+    }
   });
 export type AnnouncementCreateRequest = z.infer<
   typeof announcementCreateRequestSchema
