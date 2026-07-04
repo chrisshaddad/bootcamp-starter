@@ -1,11 +1,22 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import type { User } from '@repo/db';
 import {
   announcementCreateRequestSchema,
   announcementListQuerySchema,
+  announcementUpdateRequestSchema,
   type AnnouncementCreateRequest,
   type AnnouncementListQuery,
   type AnnouncementListResponse,
+  type AnnouncementUpdateRequest,
   type Announcement,
 } from '@repo/contracts';
 import { CurrentUser, Roles } from '../auth/decorators';
@@ -28,6 +39,15 @@ export class AnnouncementsController {
     return this.announcementsService.findAll(query, user);
   }
 
+  @Get(':id')
+  @Roles('SUPER_ADMIN', 'ORG_ADMIN', 'MEMBER')
+  async findOne(
+    @Param('id') id: string,
+    @CurrentUser() user: User,
+  ): Promise<Announcement> {
+    return this.announcementsService.findOne(id, user);
+  }
+
   @Post()
   @Roles('SUPER_ADMIN', 'ORG_ADMIN', 'MEMBER')
   async create(
@@ -40,5 +60,29 @@ export class AnnouncementsController {
     @CurrentUser() user: User,
   ): Promise<Announcement> {
     return this.announcementsService.create(body, user);
+  }
+
+  @Patch(':id')
+  @Roles('SUPER_ADMIN', 'ORG_ADMIN', 'MEMBER')
+  async update(
+    @Param('id') id: string,
+    @Body(
+      new ZodValidationPipe<AnnouncementUpdateRequest>(
+        announcementUpdateRequestSchema,
+      ),
+    )
+    body: AnnouncementUpdateRequest,
+    @CurrentUser() user: User,
+  ): Promise<Announcement> {
+    return this.announcementsService.update(id, body, user);
+  }
+
+  @Delete(':id')
+  @Roles('SUPER_ADMIN', 'ORG_ADMIN', 'MEMBER')
+  async remove(
+    @Param('id') id: string,
+    @CurrentUser() user: User,
+  ): Promise<Announcement> {
+    return this.announcementsService.remove(id, user);
   }
 }

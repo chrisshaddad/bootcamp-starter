@@ -5,6 +5,12 @@ import { useEffect, useState } from 'react';
 import type { Announcement } from '@repo/contracts';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Tooltip,
@@ -20,6 +26,9 @@ import {
   Globe,
   LockKeyhole,
   Megaphone,
+  MoreVertical,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -127,6 +136,10 @@ interface AnnouncementListProps {
   error?: Error;
   compact?: boolean;
   showViewAll?: boolean;
+  canManage?: (announcement: Announcement) => boolean;
+  onEdit?: (announcement: Announcement) => void;
+  onDelete?: (announcement: Announcement) => void;
+  deletingId?: string | null;
 }
 
 export function AnnouncementList({
@@ -135,6 +148,10 @@ export function AnnouncementList({
   error,
   compact = false,
   showViewAll = false,
+  canManage,
+  onEdit,
+  onDelete,
+  deletingId,
 }: AnnouncementListProps) {
   return (
     <Card className="border-gray-200 bg-white shadow-sm">
@@ -204,6 +221,43 @@ export function AnnouncementList({
                       </span>
                     </p>
                   </div>
+                  {canManage?.(announcement) && (onEdit || onDelete) && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label="Announcement actions"
+                          disabled={deletingId === announcement.id}
+                          className="self-start"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {onEdit && (
+                          <DropdownMenuItem
+                            onSelect={() => onEdit(announcement)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                        )}
+                        {onDelete && (
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onSelect={() => onDelete(announcement)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            {deletingId === announcement.id
+                              ? 'Deleting...'
+                              : 'Delete'}
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </div>
                 <div
                   className={cn(

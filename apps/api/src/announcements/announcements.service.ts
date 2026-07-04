@@ -14,6 +14,7 @@ import type {
   AnnouncementListQuery,
   AnnouncementListResponse,
   AnnouncementScope,
+  AnnouncementUpdateRequest,
 } from '@repo/contracts';
 import { resolveOrganizationScope } from '../common/organization-scope';
 import { PrismaService } from '../database/prisma.service';
@@ -151,6 +152,109 @@ export class AnnouncementsService {
     };
   }
 
+  private async findVisibleAnnouncement(
+    id: string,
+    user: User,
+  ): Promise<AnnouncementRow> {
+    const announcement = await this.prisma.announcement.findFirst({
+      where: {
+        id,
+        AND: [this.visibleWhere(user)],
+      },
+      select: this.announcementSelect,
+    });
+
+    if (!announcement) {
+      throw new NotFoundException(`Announcement with ID ${id} not found`);
+    }
+
+    return announcement;
+  }
+
+  private async assertCanManage(
+    announcement: AnnouncementRow,
+    user: User,
+  ): Promise<void> {
+    if (announcement.scope === 'SITE') {
+      if (user.role === 'SUPER_ADMIN') {
+        return;
+      }
+
+      throw new ForbiddenException(
+        'Only super admins can manage site-wide announcements',
+      );
+    }
+
+    if (user.role === 'SUPER_ADMIN') {
+      throw new ForbiddenException(
+        'Super admins can only manage site-wide announcements',
+      );
+    }
+
+    const organizationId = resolveOrganizationScope(user);
+
+    if (announcement.organizationId !== organizationId) {
+      throw new ForbiddenException(
+        'Cannot manage announcements in another org',
+      );
+    }
+
+    if (announcement.scope === 'ORG') {
+      if (user.role === 'ORG_ADMIN') {
+        return;
+      }
+
+      throw new ForbiddenException(
+        'Only organization admins can manage org-wide announcements',
+      );
+    }
+
+    if (!announcement.eventId) {
+      throw new BadRequestException('Event announcement is missing an event');
+    }
+
+    if (user.role === 'ORG_ADMIN') {
+      return;
+    }
+
+    if (user.role !== 'MEMBER') {
+      throw new ForbiddenException(
+        'Only organization admins and event presenters can manage event announcements',
+      );
+    }
+
+    const event = await this.prisma.event.findFirst({
+      where: {
+        id: announcement.eventId,
+        organizationId,
+      },
+      select: {
+        presenterId: true,
+      },
+    });
+
+    if (!event) {
+      throw new NotFoundException(
+        `Event with ID ${announcement.eventId} not found`,
+      );
+    }
+
+    const membership = await this.prisma.member.findFirst({
+      where: {
+        userId: user.id,
+        organizationId,
+        role: 'PRESENTER',
+      },
+      select: { id: true },
+    });
+
+    if (!membership || event.presenterId !== membership.id) {
+      throw new ForbiddenException(
+        'Presenters can only manage announcements for events they host',
+      );
+    }
+  }
+
   async findAll(
     query: AnnouncementListQuery,
     user: User,
@@ -176,6 +280,11 @@ export class AnnouncementsService {
       announcements: rows.map((row) => this.toAnnouncement(row)),
       total,
     };
+  }
+
+  async findOne(id: string, user: User): Promise<Announcement> {
+    const announcement = await this.findVisibleAnnouncement(id, user);
+    return this.toAnnouncement(announcement);
   }
 
   async create(
@@ -291,6 +400,40 @@ export class AnnouncementsService {
     });
 
     this.logger.log(`Created event announcement ${announcement.id}`);
+    return this.toAnnouncement(announcement);
+  }
+
+  async update(
+    id: string,
+    body: AnnouncementUpdateRequest,
+    user: User,
+  ): Promise<Announcement> {
+    const existing = await this.findVisibleAnnouncement(id, user);
+    await this.assertCanManage(existing, user);
+
+    const announcement = await this.prisma.announcement.update({
+      where: { id: existing.id },
+      data: {
+        title: body.title,
+        bodyHtml: this.sanitizeBody(body.bodyHtml),
+      },
+      select: this.announcementSelect,
+    });
+
+    this.logger.log(`Updated announcement ${announcement.id}`);
+    return this.toAnnouncement(announcement);
+  }
+
+  async remove(id: string, user: User): Promise<Announcement> {
+    const existing = await this.findVisibleAnnouncement(id, user);
+    await this.assertCanManage(existing, user);
+
+    const announcement = await this.prisma.announcement.delete({
+      where: { id: existing.id },
+      select: this.announcementSelect,
+    });
+
+    this.logger.log(`Deleted announcement ${announcement.id}`);
     return this.toAnnouncement(announcement);
   }
 }
