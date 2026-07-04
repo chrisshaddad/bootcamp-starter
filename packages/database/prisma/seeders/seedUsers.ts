@@ -1,6 +1,15 @@
+/// <reference types="node" />
+import { randomBytes, scryptSync } from 'node:crypto';
 import { PrismaClient } from '../../src/generated/prisma/client';
 
+function hashPassword(password: string): string {
+  const salt = randomBytes(16).toString('hex');
+  const derivedKey = scryptSync(password, salt, 64).toString('hex');
+  return `${salt}:${derivedKey}`;
+}
+
 export async function seedUsers(prisma: PrismaClient) {
+  const defaultPassword = 'Password123!';
   console.log('Seeding users and profiles...');
 
   // 1. Super Admin
@@ -9,7 +18,7 @@ export async function seedUsers(prisma: PrismaClient) {
     update: {},
     create: {
       email: 'admin@bootcamp-starter.local',
-      passwordHash: 'dummy_hash',
+      passwordHash: hashPassword(defaultPassword),
       accountType: 'SUPER_ADMIN',
       isConfirmed: true,
     },
@@ -41,7 +50,7 @@ export async function seedUsers(prisma: PrismaClient) {
       update: {},
       create: {
         email: dev.email,
-        passwordHash: 'dummy_hash',
+        passwordHash: hashPassword(defaultPassword),
         accountType: 'DEVELOPER',
         isConfirmed: true,
         developerProfile: {
@@ -81,7 +90,7 @@ export async function seedUsers(prisma: PrismaClient) {
       update: {},
       create: {
         email: hm.email,
-        passwordHash: 'dummy_hash',
+        passwordHash: hashPassword(defaultPassword),
         accountType: 'HIRING',
         isConfirmed: true,
         hiringProfile: {
