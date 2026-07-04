@@ -39,3 +39,6 @@ yarn-error.log*
 
 # Local-only docs, not meant to be pushed
 docs/
+
+# Mise
+.tool-versions
