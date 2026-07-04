@@ -197,8 +197,8 @@ export function AnnouncementList({
                 key={announcement.id}
                 className="rounded-lg border border-gray-200 p-3 sm:p-4"
               >
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
                     <h3 className="break-words text-sm font-semibold text-gray-900 sm:text-base">
                       {announcement.title}
                     </h3>
@@ -238,7 +238,7 @@ export function AnnouncementList({
                           size="icon-sm"
                           aria-label="Announcement actions"
                           disabled={deletingId === announcement.id}
-                          className="self-start"
+                          className="shrink-0"
                         >
                           <MoreVertical className="h-4 w-4" />
                         </Button>
