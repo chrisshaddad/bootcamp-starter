@@ -1,91 +1,167 @@
-import { faker } from '@faker-js/faker';
+import * as XLSX from 'xlsx';
 import { PrismaClient } from '../../src/generated/prisma/client';
 
-const MEDICINE_COUNT = 40;
+// Prisma runs this seed from packages/database, so this path resolves from that cwd.
+const WORKBOOK_PATH = '../moph_drugs.xlsx';
+const BATCH_SIZE = 500;
 
-const MEDICINE_TYPES = [
-  'Tablet',
-  'Capsule',
-  'Syrup',
-  'Cream',
-  'Drops',
-  'Injection',
-];
-const MEDICINE_FORMS = [
-  'Tablet',
-  'Capsule',
-  'Oral Solution',
-  'Topical Cream',
-  'Eye Drops',
-  'Ampoule',
-];
+type MedicineSheetRow = Record<string, string | number | null>;
 
-function buildBrandName() {
-  return `${faker.word.adjective()} ${faker.word.noun()} ${faker.word.noun()}`;
-}
+type SeedMedicine = {
+  mophId: string;
+  atcCode: string | null;
+  brandName: string;
+  type: string | null;
+  ingredients: string | null;
+  dosage: string | null;
+  form: string | null;
+  priceLbp: string | null;
+};
 
-function buildBarcode(index: number) {
-  return faker.string.numeric(12 - String(index).length) + String(index);
-}
-
-function buildIngredientList() {
-  const count = faker.number.int({ min: 1, max: 4 });
-  return faker.helpers.uniqueArray(
-    () => `${faker.word.adjective()} ${faker.word.noun()}`,
-    count,
-  );
-}
-
-function pickRandomIngredients(ingredientNames: string[]) {
-  const count = faker.number.int({
-    min: 1,
-    max: Math.min(4, ingredientNames.length),
-  });
-  const selected = new Set<string>();
-
-  while (selected.size < count) {
-    selected.add(faker.helpers.arrayElement(ingredientNames));
+function normalizeCell(value: string | number | null): string | null {
+  if (value === null) {
+    return null;
   }
 
-  return Array.from(selected);
+  const normalized = String(value).trim();
+  return normalized.length > 0 ? normalized : null;
+}
+
+function truncate(value: string | null, maxLength: number): string | null {
+  if (value === null) {
+    return null;
+  }
+
+  return value.slice(0, maxLength);
+}
+
+function normalizePrice(value: string | number | null): string | null {
+  const normalized = normalizeCell(value);
+  if (normalized === null) {
+    return null;
+  }
+
+  // Strip commas, currency labels, whitespace, etc. Keep only digits and a decimal point.
+  const cleaned = normalized
+    .replace(/,/g, '')
+    .replace(/[^\d.]/g, '')
+    .trim();
+
+  if (cleaned.length === 0 || !/^\d+(\.\d+)?$/.test(cleaned)) {
+    // Unparseable (e.g. "N/A", "1000-1500", "L.L. 500") — store null instead of
+    // sending an invalid value to the Decimal column and crashing the whole batch.
+    return null;
+  }
+
+  return cleaned;
+}
+
+function buildMedicineSeed(row: MedicineSheetRow): SeedMedicine | null {
+  const mophId = truncate(normalizeCell(row['ID']), 100);
+  const brandName = truncate(normalizeCell(row['Brand Name']), 200);
+
+  if (mophId === null || brandName === null) {
+    return null;
+  }
+
+  return {
+    mophId,
+    atcCode: truncate(normalizeCell(row['ATC Code']), 20),
+    brandName,
+    type: truncate(normalizeCell(row['B/G']), 20),
+    ingredients: normalizeCell(row['Ingredients']),
+    dosage: truncate(normalizeCell(row['Dosage']), 100),
+    form: truncate(normalizeCell(row['Form']), 50),
+    priceLbp: normalizePrice(row['Price (L.L)']),
+  };
+}
+
+function chunk<T>(items: T[], size: number) {
+  const chunks: T[][] = [];
+
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+
+  return chunks;
 }
 
 export async function seedMedicines(prisma: PrismaClient) {
-  console.log('Seeding medicines...');
+  console.log('Seeding medicines from workbook...');
 
-  const ingredientOptions = await prisma.ingredient.findMany({
-    select: { name: true },
+  const workbook = XLSX.readFile(WORKBOOK_PATH);
+  const sheetName = workbook.SheetNames[0];
+
+  if (sheetName === undefined) {
+    throw new Error(`No worksheet found in workbook: ${WORKBOOK_PATH}`);
+  }
+
+  const sheet = workbook.Sheets[sheetName];
+  const rows = XLSX.utils.sheet_to_json<MedicineSheetRow>(sheet, {
+    defval: null,
+    raw: false,
   });
 
-  const medicines = Array.from({ length: MEDICINE_COUNT }, (_, index) => {
-    const ingredientList =
-      ingredientOptions.length > 0
-        ? pickRandomIngredients(
-            ingredientOptions.map((ingredient) => ingredient.name),
-          )
-        : buildIngredientList();
+  const workbookMedicines: SeedMedicine[] = [];
+  const seenMophIds = new Set<string>();
+  let skippedPriceCount = 0;
 
-    return {
-      mophId: `MOPH-${faker.string.alphanumeric({ length: 8, casing: 'upper' })}`,
-      atcCode: `A${faker.string.alphanumeric({ length: 4, casing: 'upper' })}`,
-      brandName: `${buildBrandName()} ${index + 1}`,
-      type: faker.helpers.arrayElement(MEDICINE_TYPES),
-      dosage: `${faker.number.int({ min: 1, max: 1000 })} mg`,
-      form: faker.helpers.arrayElement(MEDICINE_FORMS),
-      ingredients: ingredientList.join(', '),
-      barcode: buildBarcode(index + 1),
-      priceLbp: faker.number.float({
-        min: 5000,
-        max: 250000,
-        fractionDigits: 2,
-      }),
-    };
+  for (const row of rows) {
+    const medicine = buildMedicineSeed(row);
+
+    if (medicine === null || seenMophIds.has(medicine.mophId)) {
+      continue;
+    }
+
+    if (medicine.priceLbp === null && row['Price (L.L)'] !== null) {
+      skippedPriceCount += 1;
+      console.log(
+        `Unparseable price for mophId ${medicine.mophId}: ${JSON.stringify(row['Price (L.L)'])}`,
+      );
+    }
+
+    seenMophIds.add(medicine.mophId);
+    workbookMedicines.push(medicine);
+  }
+
+  if (workbookMedicines.length === 0) {
+    console.log('Medicines skipped: no valid workbook rows found.');
+    return;
+  }
+
+  const existingMedicines = await prisma.medicine.findMany({
+    select: { mophId: true },
+    where: { mophId: { not: null } },
   });
 
-  await prisma.medicine.createMany({
-    data: medicines,
-    skipDuplicates: true,
-  });
+  const existingMophIds = new Set(
+    existingMedicines.map((medicine) => medicine.mophId as string),
+  );
 
-  console.log(`Medicines seeded: ${medicines.length} total`);
+  const medicinesToInsert = workbookMedicines.filter(
+    (medicine) => !existingMophIds.has(medicine.mophId),
+  );
+
+  if (medicinesToInsert.length === 0) {
+    console.log(
+      `Medicines skipped: ${workbookMedicines.length} workbook rows already seeded.`,
+    );
+    return;
+  }
+
+  for (const batch of chunk(medicinesToInsert, BATCH_SIZE)) {
+    await prisma.medicine.createMany({
+      data: batch,
+    });
+  }
+
+  console.log(
+    `Medicines seeded: ${medicinesToInsert.length} inserted, ${workbookMedicines.length - medicinesToInsert.length} skipped.`,
+  );
+
+  if (skippedPriceCount > 0) {
+    console.log(
+      `Note: ${skippedPriceCount} rows had an unparseable price and were seeded with priceLbp = null.`,
+    );
+  }
 }

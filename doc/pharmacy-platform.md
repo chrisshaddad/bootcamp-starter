@@ -2,14 +2,14 @@ Pharmacy Platform — Pages, Features & Flow
 
 # ROLES (access model)
 
-| Role | Scope | Home page |
-| SUPER_ADMIN | Whole platform | /admin |
-| PHARMACY_ADMIN | One pharmacy (all its branches) | /pharmacy |
-| PHARMACY_MANAGER | One branch | /branch |
-| PHARMACY_EMPLOYEE | One branch (limited) | /branch |
-| STOCK_MANAGER | One branch (inventory) | /stock |
-| INQUIRY_OFFICER | One branch (inquiries) | /inquiries |
-| CLIENT | Public, self only | / |
+| Role                  | Scope                                 | Home page     |
+| SUPER_ADMIN           | Whole platform                        | /admin        |
+| PHARMACY_ADMIN        | One pharmacy (all its branches)       | /pharmacy     |
+| PHARMACY_MANAGER      | One branch                            | /branch       |
+| PHARMACY_EMPLOYEE     | One branch (limited)                  | /branch       |
+| STOCK_MANAGER         | One branch (inventory)                | /stock        |
+| INQUIRY_OFFICER       | One branch (inquiries)                | /inquiries    |
+| CLIENT |               Public, self only                      | /             |
 
 Every page is gated by three things: role (which menu items appear), status (ACTIVE can use it, PENDING = invited-not-active, SUSPENDED/INACTIVE = blocked), and pharmacyId/branchId (which rows the page is allowed to show).
 
