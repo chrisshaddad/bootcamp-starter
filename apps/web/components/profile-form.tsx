@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { mutate } from 'swr';
 import { useForm, useWatch, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -43,6 +43,8 @@ const ORGANIZATION_TYPES = [
 export function ProfileForm({ user }: ProfileFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploadingPicture, setIsUploadingPicture] = useState(false);
+  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { updateProfile } = useAuth();
   const isDeveloper = user.accountType === 'DEVELOPER';
 
@@ -84,6 +86,13 @@ export function ProfileForm({ user }: ProfileFormProps) {
 
   const profilePictureUrl = useWatch({ control, name: 'profilePictureUrl' });
 
+  // A freshly picked file's real name takes priority; otherwise fall back to
+  // a generic label, so the control never has to lie and say "No file
+  // chosen" when a picture already exists. We don't persist the original
+  // filename, so this can't show the literal name after a reload/relogin.
+  const currentFileLabel =
+    selectedFileName ?? (profilePictureUrl ? 'Current photo' : null);
+
   const handlePictureChange = async (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
@@ -103,6 +112,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
       return;
     }
 
+    setSelectedFileName(file.name);
     setIsUploadingPicture(true);
     try {
       const formData = new FormData();
@@ -253,15 +263,31 @@ export function ProfileForm({ user }: ProfileFormProps) {
                 </AvatarFallback>
               </Avatar>
               <div className="w-full min-w-0 flex-1 space-y-1">
-                <Input
-                  id="profilePicture"
-                  type="file"
-                  accept={PROFILE_PICTURE_ALLOWED_MIME_TYPES.join(',')}
-                  disabled={isUploadingPicture}
-                  onChange={handlePictureChange}
-                />
+                <div className="flex items-center gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={isUploadingPicture}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    Choose file
+                  </Button>
+                  <span className="text-muted-foreground truncate text-sm">
+                    {currentFileLabel ?? 'No file chosen'}
+                  </span>
+                  <input
+                    ref={fileInputRef}
+                    id="profilePicture"
+                    type="file"
+                    accept={PROFILE_PICTURE_ALLOWED_MIME_TYPES.join(',')}
+                    disabled={isUploadingPicture}
+                    onChange={handlePictureChange}
+                    className="hidden"
+                  />
+                </div>
                 {isUploadingPicture && (
-                  <p className="flex items-center gap-1.5 text-sm text-gray-500">
+                  <p className="flex items-center gap-1.5 text-muted-foreground text-sm">
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     Uploading...
                   </p>
@@ -311,7 +337,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
           {user.developerProfile?.githubUsername && (
             <div className="space-y-2">
               <Label>GitHub</Label>
-              <p className="text-sm text-gray-500">
+              <p className="text-muted-foreground text-sm">
                 @{user.developerProfile.githubUsername}
               </p>
             </div>

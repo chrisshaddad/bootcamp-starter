@@ -14,7 +14,7 @@ export default function DashboardLayout({
       <AppSidebar />
       <SidebarInset>
         <TopNavbar />
-        <main className="flex-1 bg-gray-50 p-6">{children}</main>
+        <main className="bg-background flex-1 p-6">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   );

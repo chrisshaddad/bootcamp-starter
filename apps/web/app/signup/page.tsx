@@ -21,7 +21,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { cn } from '@/lib/utils';
 
 const ACCOUNT_TYPE_OPTIONS = [
   { value: 'DEVELOPER', label: 'Developer' },
@@ -86,7 +85,7 @@ export default function SignupPage() {
       footer={
         <>
           Already have an account?{' '}
-          <Link href="/login" className="text-blue hover:underline">
+          <Link href="/login" className="text-primary hover:underline">
             Log in
           </Link>
         </>
@@ -101,10 +100,7 @@ export default function SignupPage() {
                 key={option.value}
                 type="button"
                 variant={accountType === option.value ? 'default' : 'outline'}
-                className={cn(
-                  'h-10',
-                  accountType === option.value && 'bg-blue hover:bg-blue/90',
-                )}
+                className="h-10"
                 onClick={() => setValue('accountType', option.value)}
               >
                 {option.label}
@@ -223,11 +219,7 @@ export default function SignupPage() {
           </>
         )}
 
-        <Button
-          type="submit"
-          className="h-12 w-full bg-blue text-white hover:bg-blue/90"
-          disabled={isSubmitting}
-        >
+        <Button type="submit" className="h-12 w-full" disabled={isSubmitting}>
           {isSubmitting ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />

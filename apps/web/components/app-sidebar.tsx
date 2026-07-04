@@ -7,15 +7,14 @@ import {
   LayoutDashboard,
   Users,
   Settings,
-  LogOut,
   Building2,
+  UserCog,
 } from 'lucide-react';
-import { useAuth, useUser } from '@/hooks/use-auth';
+import { useUser } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -39,6 +38,11 @@ const orgNavItems: NavItem[] = [
     title: 'Dashboard',
     url: '/dashboard',
     icon: LayoutDashboard,
+  },
+  {
+    title: 'Profile',
+    url: '/profile',
+    icon: UserCog,
   },
 ];
 
@@ -75,7 +79,6 @@ const superAdminSecondaryNavItems: NavItem[] = [
 
 export function AppSidebar() {
   const pathname = usePathname();
-  const { logout } = useAuth();
   const { user } = useUser({ redirectOnUnauthenticated: false });
 
   const isSuperAdmin = user?.accountType === 'SUPER_ADMIN';
@@ -92,15 +95,15 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar className="border-r border-gray-200 bg-white">
+    <Sidebar className="border-sidebar-border border-r">
       <SidebarHeader className="px-5 py-6">
         {/* Logo */}
         <Link href="/dashboard" className="flex items-center gap-2.5">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-base">
             <span className="text-lg font-bold text-white">✦</span>
           </div>
-          <span className="text-xl font-semibold text-gray-900">
-            Bootcamp Starter
+          <span className="text-sidebar-foreground text-xl font-semibold">
+            Deployfolio
           </span>
         </Link>
       </SidebarHeader>
@@ -108,7 +111,7 @@ export function AppSidebar() {
       <SidebarContent className="overflow-x-hidden px-3">
         {/* Main Navigation */}
         <SidebarGroup>
-          <SidebarGroupLabel className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-gray-500">
+          <SidebarGroupLabel className="text-sidebar-foreground/60 mb-2 px-2 text-xs font-medium uppercase tracking-wider">
             {isSuperAdmin ? 'Administration' : 'Main'}
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -123,21 +126,21 @@ export function AppSidebar() {
                       'h-11 gap-3 rounded-lg px-3 text-sm font-medium transition-colors',
                       item.disabled && 'cursor-not-allowed opacity-50',
                       isActive(item.url)
-                        ? 'bg-primary-100 text-gray-900 hover:bg-primary-200'
-                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+                        ? 'bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent/80'
+                        : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
                     )}
                   >
                     {item.disabled ? (
                       <div className="flex items-center gap-3">
-                        <item.icon className="h-5 w-5 text-gray-400" />
+                        <item.icon className="text-sidebar-foreground/40 h-5 w-5" />
                         <span>{item.title}</span>
-                        <span className="ml-auto text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
+                        <span className="bg-sidebar-accent text-sidebar-foreground/60 ml-auto rounded px-1.5 py-0.5 text-xs">
                           Soon
                         </span>
                       </div>
                     ) : (
                       <Link href={item.url}>
-                        <item.icon className="h-5 w-5 text-gray-500" />
+                        <item.icon className="text-sidebar-foreground/60 h-5 w-5" />
                         <span>{item.title}</span>
                       </Link>
                     )}
@@ -152,7 +155,7 @@ export function AppSidebar() {
 
         {/* Secondary Navigation */}
         <SidebarGroup>
-          <SidebarGroupLabel className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-gray-500">
+          <SidebarGroupLabel className="text-sidebar-foreground/60 mb-2 px-2 text-xs font-medium uppercase tracking-wider">
             Support
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -165,12 +168,12 @@ export function AppSidebar() {
                     className={cn(
                       'h-11 gap-3 rounded-lg px-3 text-sm font-medium transition-colors',
                       isActive(item.url)
-                        ? 'bg-primary-100 text-gray-900 hover:bg-primary-200'
-                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+                        ? 'bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent/80'
+                        : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
                     )}
                   >
                     <Link href={item.url}>
-                      <item.icon className="h-5 w-5 text-gray-500" />
+                      <item.icon className="text-sidebar-foreground/60 h-5 w-5" />
                       <span>{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
@@ -180,20 +183,6 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-
-      <SidebarFooter className="p-3">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              onClick={() => logout()}
-              className="h-11 gap-3 rounded-lg px-3 text-sm font-medium text-gray-600 transition-colors hover:bg-red-50 hover:text-red-600"
-            >
-              <LogOut className="h-5 w-5 text-gray-500" />
-              <span>Logout</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
     </Sidebar>
   );
 }

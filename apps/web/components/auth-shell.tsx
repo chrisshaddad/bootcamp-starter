@@ -23,7 +23,7 @@ export function AuthShell({
   footer,
 }: AuthShellProps) {
   return (
-    <div className="dark flex min-h-screen flex-col bg-background">
+    <div className="flex min-h-screen flex-col bg-background">
       <SiteHeader />
 
       <main className="relative flex flex-1 items-center justify-center overflow-hidden px-6 py-6 sm:py-12">

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Search, Settings, LogOut, ChevronDown } from 'lucide-react';
+import { Search, Settings, LogOut, ChevronDown, UserCog } from 'lucide-react';
 import { useAuth, useUser } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,19 +44,19 @@ export function TopNavbar() {
   };
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-gray-200 bg-white px-6">
+    <header className="border-border bg-card flex h-16 items-center justify-between border-b px-6">
       {/* Left Section - Sidebar Toggle & Search */}
       <div className="flex items-center gap-4">
-        <SidebarTrigger className="-ml-1 h-9 w-9 text-gray-500 hover:bg-gray-100 hover:text-gray-900" />
+        <SidebarTrigger className="text-muted-foreground hover:bg-accent hover:text-accent-foreground -ml-1 h-9 w-9" />
 
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
           <Input
             type="search"
             placeholder={isSuperAdmin ? 'Search organizations...' : 'Search...'}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-10 w-64 rounded-lg border-gray-200 bg-gray-50 pl-10 text-sm placeholder:text-gray-400 focus-visible:border-primary-base focus-visible:ring-primary-base/20"
+            className="border-border bg-input/30 placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-primary/20 h-10 w-64 rounded-lg pl-10 text-sm"
           />
         </div>
       </div>
@@ -68,7 +68,7 @@ export function TopNavbar() {
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className="flex h-10 items-center gap-2 rounded-lg px-2 hover:bg-gray-100"
+              className="hover:bg-accent flex h-10 items-center gap-2 rounded-lg px-2"
             >
               <Avatar className="h-8 w-8">
                 <AvatarImage
@@ -79,14 +79,22 @@ export function TopNavbar() {
                 </AvatarFallback>
               </Avatar>
               <div className="hidden text-left md:block">
-                <p className="text-sm font-medium text-gray-900">
+                <p className="text-foreground text-sm font-medium">
                   {getDisplayName()}
                 </p>
               </div>
-              <ChevronDown className="h-4 w-4 text-gray-500" />
+              <ChevronDown className="text-muted-foreground h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
+            {!isSuperAdmin && (
+              <DropdownMenuItem asChild>
+                <Link href="/profile" className="flex items-center gap-2">
+                  <UserCog className="h-4 w-4" />
+                  <span>Profile</span>
+                </Link>
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem asChild>
               <Link href="/settings" className="flex items-center gap-2">
                 <Settings className="h-4 w-4" />
@@ -96,7 +104,7 @@ export function TopNavbar() {
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => logout()}
-              className="flex items-center gap-2 text-red-600 focus:bg-red-50 focus:text-red-600"
+              className="text-destructive focus:bg-destructive/10 focus:text-destructive flex items-center gap-2"
             >
               <LogOut className="h-4 w-4" />
               <span>Logout</span>

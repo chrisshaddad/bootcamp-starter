@@ -62,7 +62,6 @@ function LoginForm() {
           <p className="text-sm text-destructive">{errors.email.message}</p>
         )}
       </div>
-      code Code
       <div className="space-y-2">
         <Label htmlFor="password">Password</Label>
         <PasswordInput
@@ -75,11 +74,7 @@ function LoginForm() {
           <p className="text-sm text-destructive">{errors.password.message}</p>
         )}
       </div>
-      <Button
-        type="submit"
-        className="h-12 w-full bg-blue text-white hover:bg-blue/90"
-        disabled={isSubmitting}
-      >
+      <Button type="submit" className="h-12 w-full" disabled={isSubmitting}>
         {isSubmitting ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -100,7 +95,7 @@ export default function LoginPage() {
       footer={
         <>
           Don&apos;t have an account?{' '}
-          <Link href="/signup" className="text-blue hover:underline">
+          <Link href="/signup" className="text-primary hover:underline">
             Sign up
           </Link>
         </>
