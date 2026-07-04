@@ -106,6 +106,8 @@ export default function AnnouncementsPage() {
   const eventComboboxRef = useRef<HTMLDivElement>(null);
   const [editingAnnouncement, setEditingAnnouncement] =
     useState<Announcement | null>(null);
+  const [deletingAnnouncement, setDeletingAnnouncement] =
+    useState<Announcement | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const {
     register,
@@ -319,15 +321,20 @@ export default function AnnouncementsPage() {
     }
   };
 
-  const onDelete = async (announcement: Announcement) => {
-    if (!window.confirm(`Delete "${announcement.title}"?`)) {
+  const onDelete = (announcement: Announcement) => {
+    setDeletingAnnouncement(announcement);
+  };
+
+  const confirmDelete = async () => {
+    if (!deletingAnnouncement) {
       return;
     }
 
-    setDeletingId(announcement.id);
+    setDeletingId(deletingAnnouncement.id);
     try {
-      await remove(announcement.id);
+      await remove(deletingAnnouncement.id);
       toast.success('Announcement deleted');
+      setDeletingAnnouncement(null);
     } catch (err) {
       if (err instanceof ApiError) {
         toast.error(err.message);
@@ -658,6 +665,44 @@ export default function AnnouncementsPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!deletingAnnouncement}
+        onOpenChange={(open) => {
+          if (!open && !deletingId) {
+            setDeletingAnnouncement(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete announcement</DialogTitle>
+            <DialogDescription>
+              This will permanently delete &quot;
+              {deletingAnnouncement?.title}
+              &quot;.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeletingAnnouncement(null)}
+              disabled={!!deletingId}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={!!deletingId}
+            >
+              {deletingId ? 'Deleting...' : 'Delete announcement'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
