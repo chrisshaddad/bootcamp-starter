@@ -8,8 +8,11 @@ import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import {
   updateProfileRequestSchema,
+  PROFILE_PICTURE_MAX_SIZE_BYTES,
+  PROFILE_PICTURE_ALLOWED_MIME_TYPES,
   type UpdateProfileRequest,
   type UserResponse,
+  type ProfilePictureUploadResponse,
 } from '@repo/contracts';
 import { useAuth } from '@/hooks/use-auth';
 import { ApiError, apiUpload } from '@/lib/api';
@@ -25,14 +28,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-
-const ALLOWED_PICTURE_TYPES = [
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'image/gif',
-];
-const MAX_PICTURE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB, matches the API limit
 
 interface ProfileFormProps {
   user: UserResponse;
@@ -95,11 +90,15 @@ export function ProfileForm({ user }: ProfileFormProps) {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (!ALLOWED_PICTURE_TYPES.includes(file.type)) {
+    if (
+      !(PROFILE_PICTURE_ALLOWED_MIME_TYPES as readonly string[]).includes(
+        file.type,
+      )
+    ) {
       toast.error('Only JPEG, PNG, WEBP, or GIF images are allowed');
       return;
     }
-    if (file.size > MAX_PICTURE_SIZE_BYTES) {
+    if (file.size > PROFILE_PICTURE_MAX_SIZE_BYTES) {
       toast.error('Image must be smaller than 5MB');
       return;
     }
@@ -108,7 +107,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const result = await apiUpload<{ profilePictureUrl: string }>(
+      const result = await apiUpload<ProfilePictureUploadResponse>(
         '/auth/profile/picture',
         formData,
       );
@@ -152,7 +151,9 @@ export function ProfileForm({ user }: ProfileFormProps) {
         toast.error('That public slug is already taken');
       } else {
         toast.error(
-          error instanceof ApiError ? error.message : 'Unable to update profile',
+          error instanceof ApiError
+            ? error.message
+            : 'Unable to update profile',
         );
       }
     } finally {
@@ -255,7 +256,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
                 <Input
                   id="profilePicture"
                   type="file"
-                  accept={ALLOWED_PICTURE_TYPES.join(',')}
+                  accept={PROFILE_PICTURE_ALLOWED_MIME_TYPES.join(',')}
                   disabled={isUploadingPicture}
                   onChange={handlePictureChange}
                 />
@@ -378,9 +379,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="organizationWebsiteUrl">
-              Organization website
-            </Label>
+            <Label htmlFor="organizationWebsiteUrl">Organization website</Label>
             <Input
               id="organizationWebsiteUrl"
               type="url"
@@ -397,7 +396,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
         </>
       )}
 
-      <Button type="submit" disabled={isSubmitting}>
+      <Button type="submit" disabled={isSubmitting || isUploadingPicture}>
         {isSubmitting ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" />

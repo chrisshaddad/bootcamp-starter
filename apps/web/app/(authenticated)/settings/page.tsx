@@ -7,7 +7,7 @@ import { UserCog } from 'lucide-react';
 import { useUser } from '@/hooks/use-auth';
 
 export default function SettingsPage() {
-  const { user, isLoading } = useUser();
+  const { user, isLoading, error } = useUser();
 
   return (
     <div className="space-y-6">
@@ -26,7 +26,11 @@ export default function SettingsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {isLoading || !user ? (
+          {error ? (
+            <p className="text-sm text-destructive">
+              Unable to load your profile. Please refresh the page.
+            </p>
+          ) : isLoading || !user ? (
             <div className="space-y-5">
               <Skeleton className="h-14 w-full" />
               <Skeleton className="h-14 w-full" />

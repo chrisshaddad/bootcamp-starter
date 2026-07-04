@@ -1,5 +1,6 @@
-import { extname, join } from 'path';
+import { join } from 'path';
 import { randomUUID } from 'crypto';
+import { readFileSync, unlinkSync, renameSync } from 'fs';
 import {
   Controller,
   Post,
@@ -17,19 +18,22 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
-import type { Response, Request } from 'express';
+import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import { CurrentUser, Public } from './decorators';
 import {
   SESSION_COOKIE_NAME,
   type AuthenticatedRequest,
 } from './guards/auth.guard';
+import { detectImageExtension } from './utils/detect-image-signature';
 import {
   magicLinkRequestSchema,
   magicLinkVerifyRequestSchema,
   loginRequestSchema,
   signupRequestSchema,
   updateProfileRequestSchema,
+  PROFILE_PICTURE_MAX_SIZE_BYTES,
+  PROFILE_PICTURE_ALLOWED_MIME_TYPES,
   type MagicLinkRequest,
   type MagicLinkVerifyRequest,
   type LoginRequest,
@@ -37,17 +41,12 @@ import {
   type AuthResponse,
   type UserResponse,
   type UpdateProfileRequest,
+  type ProfilePictureUploadResponse,
 } from '@repo/contracts';
 import { ZodValidationPipe } from '../common/pipes';
 
 const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
-const MAX_PROFILE_PICTURE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
-const ALLOWED_PROFILE_PICTURE_MIME_TYPES = [
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'image/gif',
-];
+const PROFILE_PICTURES_DIR = join(process.cwd(), 'uploads', 'profile-pictures');
 
 @Controller('auth')
 export class AuthController {
@@ -176,14 +175,20 @@ export class AuthController {
   @UseInterceptors(
     FileInterceptor('file', {
       storage: diskStorage({
-        destination: join(process.cwd(), 'uploads', 'profile-pictures'),
-        filename: (_req, file, callback) => {
-          callback(null, `${randomUUID()}${extname(file.originalname)}`);
-        },
+        destination: PROFILE_PICTURES_DIR,
+        // No extension yet — the real type is only known once we've inspected
+        // the file's actual bytes below, since mimetype/originalname are
+        // client-supplied and can be spoofed.
+        filename: (_req, _file, callback) => callback(null, randomUUID()),
       }),
-      limits: { fileSize: MAX_PROFILE_PICTURE_SIZE_BYTES },
+      limits: { fileSize: PROFILE_PICTURE_MAX_SIZE_BYTES },
       fileFilter: (_req, file, callback) => {
-        if (!ALLOWED_PROFILE_PICTURE_MIME_TYPES.includes(file.mimetype)) {
+        // Cheap early rejection only — not trusted for the actual save below.
+        if (
+          !(PROFILE_PICTURE_ALLOWED_MIME_TYPES as readonly string[]).includes(
+            file.mimetype,
+          )
+        ) {
           callback(
             new BadRequestException(
               'Only JPEG, PNG, WEBP, or GIF images are allowed',
@@ -198,14 +203,24 @@ export class AuthController {
   )
   uploadProfilePicture(
     @UploadedFile() file: Express.Multer.File,
-    @Req() request: Request,
-  ): { profilePictureUrl: string } {
+  ): ProfilePictureUploadResponse {
     if (!file) {
       throw new BadRequestException('No file uploaded');
     }
 
-    const profilePictureUrl = `${request.protocol}://${request.get('host')}/uploads/profile-pictures/${file.filename}`;
-    return { profilePictureUrl };
+    const extension = detectImageExtension(readFileSync(file.path));
+    if (!extension) {
+      unlinkSync(file.path);
+      throw new BadRequestException('The uploaded file is not a valid image');
+    }
+
+    const finalFilename = `${file.filename}${extension}`;
+    renameSync(file.path, join(PROFILE_PICTURES_DIR, finalFilename));
+
+    const apiUrl = process.env.API_URL ?? 'http://localhost:3001';
+    return {
+      profilePictureUrl: `${apiUrl}/uploads/profile-pictures/${finalFilename}`,
+    };
   }
 
   @Patch('profile')
