@@ -66,9 +66,11 @@ export async function seedIngredients(prisma: PrismaClient) {
 
   for (let index = 0; index < ingredientsToInsert.length; index += BATCH_SIZE) {
     await prisma.ingredient.createMany({
-      data: ingredientsToInsert.slice(index, index + BATCH_SIZE).map((name) => ({
-        name: truncate(name, 200),
-      })),
+      data: ingredientsToInsert
+        .slice(index, index + BATCH_SIZE)
+        .map((name) => ({
+          name: truncate(name, 200),
+        })),
     });
   }
 
