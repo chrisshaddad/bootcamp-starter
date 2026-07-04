@@ -71,7 +71,7 @@ export function TopNavbar() {
               className="flex h-10 items-center gap-2 rounded-lg px-2 hover:bg-gray-100"
             >
               <Avatar className="h-8 w-8">
-                <AvatarImage src={undefined} />
+                <AvatarImage src={user?.developerProfile?.profilePictureUrl ?? undefined} />
                 <AvatarFallback className="bg-primary-base text-sm font-medium text-white">
                   {getInitials(getDisplayName(), user?.email)}
                 </AvatarFallback>

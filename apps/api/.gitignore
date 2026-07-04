@@ -54,3 +54,9 @@ pids
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Uploaded files (locally-stored profile pictures, etc.)
+/uploads/*
+!/uploads/profile-pictures
+/uploads/profile-pictures/*
+!/uploads/profile-pictures/.gitkeep

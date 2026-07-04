@@ -68,4 +68,24 @@ export async function apiPatch<T>(
   return res.json();
 }
 
+export async function apiUpload<T>(
+  endpoint: string,
+  formData: FormData,
+): Promise<T> {
+  const res = await fetch(`${API_URL}${endpoint}`, {
+    method: 'POST',
+    credentials: 'include',
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const error = await res
+      .json()
+      .catch(() => ({ message: 'An error occurred' }));
+    throw new ApiError(res.status, error.message || 'An error occurred');
+  }
+
+  return res.json();
+}
+
 export { API_URL };

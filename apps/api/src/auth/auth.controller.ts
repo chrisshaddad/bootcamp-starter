@@ -1,3 +1,5 @@
+import { extname, join } from 'path';
+import { randomUUID } from 'crypto';
 import {
   Controller,
   Post,
@@ -9,8 +11,13 @@ import {
   HttpCode,
   HttpStatus,
   UsePipes,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
 } from '@nestjs/common';
-import type { Response } from 'express';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import type { Response, Request } from 'express';
 import { AuthService } from './auth.service';
 import { CurrentUser, Public } from './decorators';
 import {
@@ -34,6 +41,13 @@ import {
 import { ZodValidationPipe } from '../common/pipes';
 
 const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+const MAX_PROFILE_PICTURE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
+const ALLOWED_PROFILE_PICTURE_MIME_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+];
 
 @Controller('auth')
 export class AuthController {
@@ -155,6 +169,43 @@ export class AuthController {
           }
         : null,
     };
+  }
+
+  @Post('profile/picture')
+  @HttpCode(HttpStatus.OK)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: join(process.cwd(), 'uploads', 'profile-pictures'),
+        filename: (_req, file, callback) => {
+          callback(null, `${randomUUID()}${extname(file.originalname)}`);
+        },
+      }),
+      limits: { fileSize: MAX_PROFILE_PICTURE_SIZE_BYTES },
+      fileFilter: (_req, file, callback) => {
+        if (!ALLOWED_PROFILE_PICTURE_MIME_TYPES.includes(file.mimetype)) {
+          callback(
+            new BadRequestException(
+              'Only JPEG, PNG, WEBP, or GIF images are allowed',
+            ),
+            false,
+          );
+          return;
+        }
+        callback(null, true);
+      },
+    }),
+  )
+  uploadProfilePicture(
+    @UploadedFile() file: Express.Multer.File,
+    @Req() request: Request,
+  ): { profilePictureUrl: string } {
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+
+    const profilePictureUrl = `${request.protocol}://${request.get('host')}/uploads/profile-pictures/${file.filename}`;
+    return { profilePictureUrl };
   }
 
   @Patch('profile')
