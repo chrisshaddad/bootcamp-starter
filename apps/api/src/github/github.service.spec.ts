@@ -70,15 +70,10 @@ describe('GithubService', () => {
       ],
     });
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      1,
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
       'https://api.github.com/repos/vercel/next.js',
-      expect.objectContaining({
-        headers: expect.not.objectContaining({
-          Authorization: expect.any(String),
-        }),
-      }),
     );
+    expect(getFetchHeaders(fetchMock)).not.toHaveProperty('Authorization');
   });
 
   it('uses GITHUB_TOKEN as an optional authorization header when present', async () => {
@@ -103,19 +98,16 @@ describe('GithubService', () => {
 
     await service.previewRepository('https://github.com/openai/openai-node');
 
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      1,
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
       'https://api.github.com/repos/openai/openai-node',
-      expect.objectContaining({
-        headers: expect.objectContaining({
-          Authorization: 'Bearer test-token',
-        }),
-      }),
     );
+    expect(getFetchHeaders(fetchMock).Authorization).toBe('Bearer test-token');
   });
 
   it('maps GitHub 404 responses to the safe inaccessible repository message', async () => {
-    fetchMock.mockResolvedValueOnce(jsonResponse({ message: 'Not Found' }, 404));
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ message: 'Not Found' }, 404),
+    );
 
     const preview = service.previewRepository('https://github.com/owner/repo');
 
@@ -178,4 +170,32 @@ function jsonResponse(
     status,
     headers,
   });
+}
+
+function getFetchHeaders(
+  fetchMock: jest.MockedFunction<typeof fetch>,
+): Record<string, string> {
+  const requestInit = fetchMock.mock.calls[0]?.[1];
+
+  if (!isRecord(requestInit)) {
+    throw new Error('Expected fetch options to be provided');
+  }
+
+  const headers = requestInit.headers;
+  if (!isStringRecord(headers)) {
+    throw new Error('Expected fetch headers to be a string record');
+  }
+
+  return headers;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isStringRecord(value: unknown): value is Record<string, string> {
+  return (
+    isRecord(value) &&
+    Object.values(value).every((item) => typeof item === 'string')
+  );
 }

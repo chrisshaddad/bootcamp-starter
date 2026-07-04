@@ -31,9 +31,15 @@ describe('GithubController', () => {
   });
 
   it('requires developer accounts for repository previews', () => {
-    expect(Reflect.getMetadata(ROLES_KEY, controller.previewRepository)).toEqual([
-      'DEVELOPER',
-    ]);
+    const previewRepositoryHandler: unknown = Object.getOwnPropertyDescriptor(
+      GithubController.prototype,
+      'previewRepository',
+    )?.value;
+
+    expect(typeof previewRepositoryHandler).toBe('function');
+    expect(
+      Reflect.getMetadata(ROLES_KEY, previewRepositoryHandler as object),
+    ).toEqual(['DEVELOPER']);
   });
 
   it('delegates repository previews to GithubService', async () => {

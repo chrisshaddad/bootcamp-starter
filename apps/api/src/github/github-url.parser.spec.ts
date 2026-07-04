@@ -3,19 +3,21 @@ import { parseGithubRepositoryUrl } from './github-url.parser';
 
 describe('parseGithubRepositoryUrl', () => {
   it('parses a canonical GitHub repository URL', () => {
-    expect(parseGithubRepositoryUrl('https://github.com/vercel/next.js')).toEqual({
+    expect(
+      parseGithubRepositoryUrl('https://github.com/vercel/next.js'),
+    ).toEqual({
       owner: 'vercel',
       repo: 'next.js',
     });
   });
 
   it('normalizes a trailing slash', () => {
-    expect(
-      parseGithubRepositoryUrl('https://github.com/nestjs/nest/'),
-    ).toEqual({
-      owner: 'nestjs',
-      repo: 'nest',
-    });
+    expect(parseGithubRepositoryUrl('https://github.com/nestjs/nest/')).toEqual(
+      {
+        owner: 'nestjs',
+        repo: 'nest',
+      },
+    );
   });
 
   it('normalizes a .git suffix', () => {

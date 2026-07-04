@@ -22,7 +22,8 @@ const GITHUB_API_UNAVAILABLE_MESSAGE =
   'GitHub API is currently unavailable. Please try again later.';
 const GITHUB_RATE_LIMIT_MESSAGE =
   'GitHub API rate limit exceeded. Please try again later.';
-const PRIVATE_REPOSITORY_MESSAGE = 'Only public GitHub repositories are supported.';
+const PRIVATE_REPOSITORY_MESSAGE =
+  'Only public GitHub repositories are supported.';
 
 @Injectable()
 export class GithubService {
@@ -66,7 +67,9 @@ export class GithubService {
     }
 
     return Object.entries(apiLanguages)
-      .filter((entry): entry is [string, number] => typeof entry[1] === 'number')
+      .filter(
+        (entry): entry is [string, number] => typeof entry[1] === 'number',
+      )
       .map(([name, bytes]) => ({ name, bytes }));
   }
 
@@ -91,7 +94,9 @@ export class GithubService {
     try {
       return (await response.json()) as T;
     } catch (error) {
-      this.logger.warn(`GitHub API returned invalid JSON: ${getErrorMessage(error)}`);
+      this.logger.warn(
+        `GitHub API returned invalid JSON: ${getErrorMessage(error)}`,
+      );
       throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
     }
   }
@@ -105,7 +110,9 @@ export class GithubService {
       throw new ServiceUnavailableException(GITHUB_RATE_LIMIT_MESSAGE);
     }
 
-    this.logger.warn(`GitHub API request failed with status ${response.status}`);
+    this.logger.warn(
+      `GitHub API request failed with status ${response.status}`,
+    );
     throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
   }
 
