@@ -1,4 +1,5 @@
 import { PrismaClient } from '../../src/generated/prisma/client';
+import { extractIngredientNames } from './workbookIngredients';
 
 export async function seedMedicineIngredients(prisma: PrismaClient) {
   console.log('Seeding medicine ingredients...');
@@ -22,9 +23,8 @@ export async function seedMedicineIngredients(prisma: PrismaClient) {
   );
 
   const links = medicines.flatMap((medicine) =>
-    (medicine.ingredients ?? '')
-      .split(',')
-      .map((name) => ingredientIdByName.get(name.trim()))
+    extractIngredientNames(medicine.ingredients)
+      .map((name) => ingredientIdByName.get(name))
       .filter((ingredientId): ingredientId is string => Boolean(ingredientId))
       .map((ingredientId) => ({
         medicineId: medicine.id,
