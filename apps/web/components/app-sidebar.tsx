@@ -9,6 +9,9 @@ import {
   Settings,
   LogOut,
   Building2,
+  Pill,
+  ScrollText,
+  UserCircle2,
 } from 'lucide-react';
 import { useAuth, useUser } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
@@ -46,15 +49,34 @@ const orgNavItems: NavItem[] = [
 // Navigation items for SUPER_ADMIN role
 const superAdminNavItems: NavItem[] = [
   {
-    title: 'Organizations',
-    url: '/organizations',
+    title: 'Dashboard',
+    url: '/admin',
+    icon: LayoutDashboard,
+  },
+  {
+    title: 'Pharmacies',
+    url: '/admin/pharmacies',
     icon: Building2,
   },
   {
     title: 'Users',
-    url: '/users',
+    url: '/admin/users',
     icon: Users,
-    disabled: true, // Placeholder for future implementation
+  },
+  {
+    title: 'Medicines',
+    url: '/admin/medicines',
+    icon: Pill,
+  },
+  {
+    title: 'Audit Logs',
+    url: '/admin/audit',
+    icon: ScrollText,
+  },
+  {
+    title: 'Profile',
+    url: '/admin/profile',
+    icon: UserCircle2,
   },
 ];
 
