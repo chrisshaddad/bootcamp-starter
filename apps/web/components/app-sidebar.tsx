@@ -107,12 +107,22 @@ export function AppSidebar() {
     ? superAdminSecondaryNavItems
     : orgSecondaryNavItems;
 
-  const isActive = (url: string) => {
-    if (url === '/dashboard') {
-      return pathname === '/dashboard';
-    }
-    return pathname.startsWith(url);
-  };
+  // Determine the single most specific matching nav item for the current
+  // pathname. Using plain `startsWith` per item breaks when one item's url
+  // (e.g. /admin) is a prefix of another's (e.g. /admin/users) — both would
+  // match and highlight simultaneously. Instead, collect every item whose
+  // url matches (exactly, or as a parent path segment) and pick the longest
+  // one, so only the most specific section is ever active.
+  const allUrls = [...mainNavItems, ...secondaryNavItems].map(
+    (item) => item.url,
+  );
+  const activeUrl = allUrls
+    .filter((url) => pathname === url || pathname.startsWith(`${url}/`))
+    .reduce<
+      string | null
+    >((longest, current) => (longest === null || current.length > longest.length ? current : longest), null);
+
+  const isActive = (url: string) => url === activeUrl;
 
   return (
     <Sidebar className="border-r border-gray-200 bg-white">
