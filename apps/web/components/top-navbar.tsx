@@ -35,7 +35,7 @@ export function TopNavbar() {
   };
 
   const getDisplayName = () => {
-    if (user?.name) return user.name;
+    if (user?.fullName) return user.fullName;
     if (user?.email) return user.email.split('@')[0];
     return 'User';
   };
@@ -50,7 +50,7 @@ export function TopNavbar() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <Input
             type="search"
-            placeholder={isSuperAdmin ? 'Search organizations...' : 'Search...'}
+            placeholder={isSuperAdmin ? 'Search institutions...' : 'Search...'}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="h-10 w-64 rounded-lg border-gray-200 bg-gray-50 pl-10 text-sm placeholder:text-gray-400 focus-visible:border-primary-base focus-visible:ring-primary-base/20"
@@ -70,7 +70,7 @@ export function TopNavbar() {
               <Avatar className="h-8 w-8">
                 <AvatarImage src={undefined} />
                 <AvatarFallback className="bg-primary-base text-sm font-medium text-white">
-                  {getInitials(user?.name, user?.email)}
+                  {getInitials(user?.fullName, user?.email)}
                 </AvatarFallback>
               </Avatar>
               <div className="hidden text-left md:block">

@@ -13,7 +13,7 @@ interface SendMagicLinkJobData {
 interface SendInvitationJobData {
   email: string;
   inviterName: string;
-  organizationName: string;
+  institutionName: string;
   invitationLink: string;
 }
 
@@ -66,14 +66,14 @@ export class MailProcessor extends WorkerHost {
   private async handleSendInvitation(
     data: SendInvitationJobData,
   ): Promise<void> {
-    const { email, inviterName, organizationName, invitationLink } = data;
+    const { email, inviterName, institutionName, invitationLink } = data;
 
-    const text = `Hello,\n\n${inviterName} has invited you to join ${organizationName} on Bootcamp Starter.\n\nClick the link below to accept the invitation and create your account:\n\n${invitationLink}\n\nThis invitation will expire in 7 days.\n\nIf you weren't expecting this invitation, you can safely ignore this email.`;
+    const text = `Hello,\n\n${inviterName} has invited you to join ${institutionName} on Bootcamp Starter.\n\nClick the link below to accept the invitation and create your account:\n\n${invitationLink}\n\nThis invitation will expire in 7 days.\n\nIf you weren't expecting this invitation, you can safely ignore this email.`;
 
     const success = await this.mailService.sendEmail({
       to: email,
       from: 'no-reply@bootcamp-starter.local',
-      subject: `You've been invited to join ${organizationName}`,
+      subject: `You've been invited to join ${institutionName}`,
       text,
     });
 

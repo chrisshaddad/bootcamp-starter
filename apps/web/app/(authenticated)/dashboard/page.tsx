@@ -20,12 +20,7 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">
-          Welcome,{' '}
-          {user?.profile?.firstName ||
-            user?.name ||
-            user?.email?.split('@')[0] ||
-            'User'}
-          !
+          Welcome, {user?.fullName || user?.email?.split('@')[0] || 'User'}!
         </h1>
         <p className="mt-1 text-sm text-gray-500">
           You&apos;re signed in. Start building your project.

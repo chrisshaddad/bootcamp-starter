@@ -1,5 +1,8 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// =============================================================================
+// MediLink — Prisma Schema
+// Version: 2.0
+// Stack: PostgreSQL · Prisma ORM · NestJS · Next.js
+// =============================================================================
 
 generator client {
   provider = "prisma-client"
@@ -12,67 +15,490 @@ datasource db {
 }
 
 enum UserRole {
-  SUPER_ADMIN // Manages all organizations (can also accept org registrations)
-  ORG_ADMIN // Manages a single organization (can also invite members to their org)
-  MEMBER
+  SUPER_ADMIN
+  INSTITUTION_ADMIN
+  STAFF
+  PROFESSIONAL
+  PATIENT
 
   @@schema("public")
 }
 
-enum OrganizationStatus {
-  PENDING // Awaiting super admin approval
-  ACTIVE // Approved and operational
-  REJECTED // Denied by super admin
+enum InstitutionStatus {
+  PENDING
+  ACTIVE
+  REJECTED
   SUSPENDED
   INACTIVE
 
   @@schema("public")
 }
 
-model User {
-  id             String   @id @default(uuid())
-  email          String   @unique
-  isConfirmed    Boolean  @default(false)
-  name           String
-  role           UserRole @default(MEMBER)
-  organizationId String? // null for SUPER_ADMIN users
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+enum InstitutionType {
+  CLINIC
+  HOSPITAL
+  LAB
 
-  sessions              Session[]
-  magicLinks            MagicLink[]
-  profile               UserProfile?
-  organization          Organization?  @relation("OrganizationMembers", fields: [organizationId], references: [id], onDelete: SetNull)
-  createdOrganization   Organization?  @relation("OrganizationCreator")
-  approvedOrganizations Organization[] @relation("OrganizationApprover")
-
-  @@index([organizationId])
   @@schema("public")
 }
 
-model UserProfile {
-  id          String    @id @default(uuid())
-  userId      String    @unique
-  dateOfBirth DateTime?
-  bio         String?   @db.Text
-  phoneNumber String?
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
 
-  // Address fields
-  street1    String?
-  street2    String?
-  city       String?
-  state      String?
-  postalCode String?
-  country    String?
+  @@schema("public")
+}
 
-  profilePictureUrl String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+enum BloodType {
+  A_POS
+  A_NEG
+  B_POS
+  B_NEG
+  AB_POS
+  AB_NEG
+  O_POS
+  O_NEG
 
+  @@schema("public")
+}
+
+enum AssignmentStatus {
+  ACTIVE
+  INACTIVE
+
+  @@schema("public")
+}
+
+enum RecordType {
+  LAB_RESULT
+  CONSULTATION
+  PRESCRIPTION
+  SCAN
+  VACCINATION
+
+  @@schema("public")
+}
+
+enum ModalityType {
+  XRAY
+  MRI
+  CT
+  ULTRASOUND
+  OTHER
+
+  @@schema("public")
+}
+
+enum PrescriptionRoute {
+  ORAL
+  IV
+  TOPICAL
+  INHALATION
+  OTHER
+
+  @@schema("public")
+}
+
+enum SenderType {
+  SYSTEM
+  USER
+
+  @@schema("public")
+}
+
+enum LinkedEntityType {
+  MEDICAL_RECORD
+  PRESCRIPTION
+  ASSIGNMENT
+
+  @@schema("public")
+}
+
+// =============================================================================
+// INSTITUTION
+// Reserved row: id "00000000-0000-0000-0000-000000000000" is the platform
+// institution. SUPER_ADMIN users are attached to it instead of a real
+// institution, so `User.institutionId` can stay required (see seedUsers.ts).
+// =============================================================================
+
+model Institution {
+  id                 String            @id @default(uuid())
+  name               String
+  type               InstitutionType
+  status             InstitutionStatus @default(PENDING)
+  address            String?
+  phone              String?           @db.VarChar(20)
+  logoUrl            String?           @db.VarChar(500)
+  emailNotifications Boolean           @default(false)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  // Relations
+  users          User[]
+  patients       Patient[]
+  assignments    Assignment[]
+  medicalRecords MedicalRecord[]
+
+  @@index([name])
+  @@index([status])
+  @@map("institutions")
+  @@schema("public")
+}
+
+// =============================================================================
+// USER
+// =============================================================================
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique @db.VarChar(255)
+  fullName      String   @db.VarChar(255)
+  phone         String   @db.VarChar(20)
+  role          UserRole
+  isActive      Boolean  @default(true)
+  isConfirmed   Boolean  @default(false)
+  institutionId String
+  createdById   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  institution         Institution          @relation(fields: [institutionId], references: [id], onDelete: Restrict)
+  createdBy           User?                @relation("UserCreatedBy", fields: [createdById], references: [id])
+  createdUsers        User[]               @relation("UserCreatedBy")
+  sessions            Session[]
+  magicLinks          MagicLink[]
+  professionalProfile ProfessionalProfile?
+  patient             Patient?
+  uploadedRecords     MedicalRecord[]      @relation("RecordUploadedBy")
+  assignmentsAsProf   Assignment[]         @relation("AssignmentProfessional")
+  assignmentsGiven    Assignment[]         @relation("AssignmentAssignedBy")
+  notifications       Notification[]       @relation("NotificationRecipient")
+  sentNotifications   Notification[]       @relation("NotificationSender")
+
+  @@index([institutionId])
+  @@index([role])
+  @@index([createdById])
+  @@map("users")
+  @@schema("public")
+}
+
+// =============================================================================
+// PROFESSIONAL PROFILE
+// =============================================================================
+
+model ProfessionalProfile {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  specialty       String   @db.VarChar(255)
+  bio             String?  @db.Text
+  profilePhotoUrl String?  @db.VarChar(500)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@map("professional_profiles")
   @@schema("public")
 }
+
+// =============================================================================
+// PATIENT
+// =============================================================================
+
+model Patient {
+  id            String @id @default(uuid())
+  userId        String @unique
+  institutionId String // denormalized from user.institutionId to scope queries without a join
+
+  // Administrative Layer
+  dateOfBirth                  DateTime? @db.Date
+  gender                       Gender?
+  nationalId                   String?   @db.VarChar(100)
+  address                      String?   @db.Text
+  emergencyContactName         String?   @db.VarChar(255)
+  emergencyContactPhone        String?   @db.VarChar(20)
+  emergencyContactRelationship String?   @db.VarChar(100)
+
+  // Clinical Summary Layer
+  bloodType         BloodType?
+  allergies         String[]
+  chronicConditions String[]
+  clinicalNotes     String?    @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  institution    Institution     @relation(fields: [institutionId], references: [id], onDelete: Restrict)
+  medicalRecords MedicalRecord[]
+  assignments    Assignment[]
+
+  @@index([nationalId])
+  @@index([institutionId])
+  @@map("patients")
+  @@schema("public")
+}
+
+// =============================================================================
+// ASSIGNMENT (Care Team)
+// =============================================================================
+
+model Assignment {
+  id             String           @id @default(uuid())
+  patientId      String
+  professionalId String
+  assignedById   String
+  institutionId  String // denormalized from patient/professional's institution to scope queries without a join
+  status         AssignmentStatus @default(ACTIVE)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  // Relations
+  patient        Patient         @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  professional   User            @relation("AssignmentProfessional", fields: [professionalId], references: [id], onDelete: Restrict)
+  assignedBy     User            @relation("AssignmentAssignedBy", fields: [assignedById], references: [id], onDelete: Restrict)
+  institution    Institution     @relation(fields: [institutionId], references: [id], onDelete: Restrict)
+  medicalRecords MedicalRecord[]
+  // ⚠️  Manual migration required — partial unique index not expressible in Prisma DSL.
+  //     After running `prisma migrate dev`, add this to the generated migration SQL:
+  //
+  //     CREATE UNIQUE INDEX "assignment_active_unique"
+  //     ON "public"."assignments"("patientId", "professionalId")
+  //     WHERE "status" = 'ACTIVE';
+
+  @@index([patientId, professionalId])
+  @@index([professionalId])
+  @@index([patientId])
+  @@index([assignedById])
+  @@index([institutionId])
+  @@map("assignments")
+  @@schema("public")
+}
+
+// =============================================================================
+// MEDICAL RECORD
+// =============================================================================
+
+model MedicalRecord {
+  id                  String     @id @default(uuid())
+  patientId           String
+  uploadedById        String
+  assignmentId        String?
+  institutionId       String // denormalized from patient's institution to scope queries without a join
+  recordType          RecordType
+  recordDate          DateTime   @db.Date
+  institutionOfOrigin String?    @db.VarChar(255)
+  requestedBy         String?    @db.VarChar(255)
+  notes               String?    @db.Text
+  isVoid              Boolean    @default(false)
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+
+  // Relations
+  patient            Patient             @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  uploadedBy         User                @relation("RecordUploadedBy", fields: [uploadedById], references: [id], onDelete: Restrict)
+  assignment         Assignment?         @relation(fields: [assignmentId], references: [id], onDelete: Restrict)
+  institution        Institution         @relation(fields: [institutionId], references: [id], onDelete: Restrict)
+  files              RecordFile[]
+  labResultDetail    LabResultDetail?
+  consultationDetail ConsultationDetail?
+  scanDetail         ScanDetail?
+  vaccinationDetail  VaccinationDetail?
+  prescription       Prescription?
+
+  @@index([patientId])
+  @@index([patientId, recordType])
+  @@index([patientId, recordDate])
+  @@index([uploadedById])
+  @@index([assignmentId])
+  @@index([institutionId])
+  @@map("medical_records")
+  @@schema("public")
+}
+
+// =============================================================================
+// RECORD FILE
+// =============================================================================
+
+model RecordFile {
+  id         String   @id @default(uuid())
+  recordId   String
+  fileName   String   @db.VarChar(255)
+  fileUrl    String   @db.VarChar(500)
+  mimeType   String   @db.VarChar(100)
+  uploadedAt DateTime @default(now())
+
+  // Relations
+  record MedicalRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+
+  @@index([recordId])
+  @@map("record_files")
+  @@schema("public")
+}
+
+// =============================================================================
+// LAB RESULT DETAIL
+// =============================================================================
+
+model LabResultDetail {
+  id        String   @id @default(uuid())
+  recordId  String   @unique
+  testName  String   @db.VarChar(255)
+  testDate  DateTime @db.Date
+  labName   String?  @db.VarChar(255)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  record MedicalRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+
+  @@map("lab_result_details")
+  @@schema("public")
+}
+
+// =============================================================================
+// CONSULTATION DETAIL
+// =============================================================================
+
+model ConsultationDetail {
+  id             String    @id @default(uuid())
+  recordId       String    @unique
+  chiefComplaint String    @db.Text
+  findings       String?   @db.Text
+  diagnosis      String?   @db.Text
+  plan           String?   @db.Text
+  followUpDate   DateTime? @db.Date
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Relations
+  record MedicalRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+
+  @@map("consultation_details")
+  @@schema("public")
+}
+
+// =============================================================================
+// SCAN DETAIL
+// =============================================================================
+
+model ScanDetail {
+  id              String       @id @default(uuid())
+  recordId        String       @unique
+  modalityType    ModalityType
+  bodyPart        String       @db.VarChar(100)
+  radiologistName String?      @db.VarChar(255)
+  findings        String?      @db.Text
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  // Relations
+  record MedicalRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+
+  @@map("scan_details")
+  @@schema("public")
+}
+
+// =============================================================================
+// VACCINATION DETAIL
+// =============================================================================
+
+model VaccinationDetail {
+  id               String    @id @default(uuid())
+  recordId         String    @unique
+  vaccineName      String    @db.VarChar(255)
+  doseNumber       Int?
+  administeredDate DateTime  @db.Date
+  nextDoseDate     DateTime? @db.Date
+  batchNumber      String?   @db.VarChar(100)
+  administeredBy   String?   @db.VarChar(255)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  // Relations
+  record MedicalRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+
+  @@map("vaccination_details")
+  @@schema("public")
+}
+
+// =============================================================================
+// PRESCRIPTION
+// =============================================================================
+
+model Prescription {
+  id               String   @id @default(uuid())
+  recordId         String   @unique
+  prescriptionDate DateTime @db.Date
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relations
+  record MedicalRecord      @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  items  PrescriptionItem[]
+
+  @@map("prescriptions")
+  @@schema("public")
+}
+
+// =============================================================================
+// PRESCRIPTION ITEM
+// =============================================================================
+
+model PrescriptionItem {
+  id             String            @id @default(uuid())
+  prescriptionId String
+  medicationName String            @db.VarChar(255)
+  dosage         String            @db.VarChar(100)
+  frequency      String            @db.VarChar(100)
+  duration       String?           @db.VarChar(100)
+  route          PrescriptionRoute
+  notes          String?           @db.Text
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  // Relations
+  prescription Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+
+  @@index([prescriptionId])
+  @@map("prescription_items")
+  @@schema("public")
+}
+
+// =============================================================================
+// NOTIFICATION
+// =============================================================================
+
+model Notification {
+  id               String            @id @default(uuid())
+  recipientId      String
+  senderId         String?
+  senderType       SenderType        @default(SYSTEM)
+  title            String            @db.VarChar(255)
+  body             String            @db.Text
+  isRead           Boolean           @default(false)
+  linkedEntityType LinkedEntityType?
+  linkedEntityId   String?
+  createdAt        DateTime          @default(now())
+
+  // Relations
+  recipient User  @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  sender    User? @relation("NotificationSender", fields: [senderId], references: [id], onDelete: Restrict)
+
+  @@index([recipientId, isRead])
+  @@index([recipientId, createdAt])
+  @@index([senderId])
+  @@map("notifications")
+  @@schema("public")
+}
+
+// =============================================================================
+// SESSION — private schema (from instructor starter)
+// =============================================================================
 
 model Session {
   id        String   @id
@@ -83,13 +509,18 @@ model Session {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@map("sessions")
   @@schema("private")
 }
+
+// =============================================================================
+// MAGIC LINK — private schema (from instructor starter)
+// =============================================================================
 
 model MagicLink {
   id        String    @id @default(uuid())
   userId    String
-  token     String    @unique // securely generated random token, not a UUID
+  token     String    @unique
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime  @default(now())
@@ -98,26 +529,6 @@ model MagicLink {
 
   @@index([token])
   @@index([userId])
+  @@map("magic_links")
   @@schema("private")
-}
-
-model Organization {
-  id           String             @id @default(uuid())
-  name         String
-  status       OrganizationStatus @default(PENDING)
-  description  String?            @db.Text
-  website      String?
-  createdById  String             @unique // User can only create one organization
-  approvedById String?
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
-  approvedAt   DateTime? // When super admin approved
-
-  createdBy  User   @relation("OrganizationCreator", fields: [createdById], references: [id])
-  approvedBy User?  @relation("OrganizationApprover", fields: [approvedById], references: [id])
-  users      User[] @relation("OrganizationMembers")
-
-  @@index([approvedById])
-  @@index([status])
-  @@schema("public")
 }

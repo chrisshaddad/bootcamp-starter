@@ -1,0 +1,177 @@
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { PrismaService } from '../database/prisma.service';
+import { PLATFORM_INSTITUTION_ID, Prisma } from '@repo/db';
+import type {
+  InstitutionListQuery,
+  InstitutionListResponse,
+  InstitutionDetailResponse,
+  InstitutionCreateRequest,
+} from '@repo/contracts';
+
+@Injectable()
+export class InstitutionsService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  private readonly detailSelect = {
+    id: true,
+    name: true,
+    type: true,
+    status: true,
+    address: true,
+    phone: true,
+    logoUrl: true,
+    emailNotifications: true,
+    createdAt: true,
+    updatedAt: true,
+    _count: { select: { users: true } },
+  } as const;
+
+  /**
+   * Get all institutions with optional status filter
+   */
+  async findAll(query: InstitutionListQuery): Promise<InstitutionListResponse> {
+    const { status, page, limit } = query;
+    const skip = (page - 1) * limit;
+
+    // The platform institution is internal bookkeeping (see PLATFORM_INSTITUTION_ID),
+    // never a real tenant — exclude it from management views entirely.
+    const where = {
+      id: { not: PLATFORM_INSTITUTION_ID },
+      ...(status ? { status } : {}),
+    };
+
+    const [institutions, total] = await Promise.all([
+      this.prisma.institution.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          name: true,
+          type: true,
+          status: true,
+          address: true,
+          createdAt: true,
+          _count: { select: { users: true } },
+        },
+      }),
+      this.prisma.institution.count({ where }),
+    ]);
+
+    return { institutions, total };
+  }
+
+  /**
+   * Get a single institution by ID with full details
+   */
+  async findOne(id: string): Promise<InstitutionDetailResponse> {
+    if (id === PLATFORM_INSTITUTION_ID) {
+      throw new NotFoundException(`Institution with ID ${id} not found`);
+    }
+
+    const institution = await this.prisma.institution.findUnique({
+      where: { id },
+      select: this.detailSelect,
+    });
+
+    if (!institution) {
+      throw new NotFoundException(`Institution with ID ${id} not found`);
+    }
+
+    return institution;
+  }
+
+  /**
+   * Create an institution together with its first admin user.
+   * An institution with no admin has no one who can log in to manage it.
+   */
+  async create(
+    data: InstitutionCreateRequest,
+    createdById: string,
+  ): Promise<InstitutionDetailResponse> {
+    let institution: { id: string };
+
+    try {
+      institution = await this.prisma.$transaction(async (tx) => {
+        const created = await tx.institution.create({
+          data: {
+            name: data.name,
+            type: data.type,
+            address: data.address ?? null,
+          },
+        });
+
+        await tx.user.create({
+          data: {
+            ...data.admin,
+            role: 'INSTITUTION_ADMIN',
+            institutionId: created.id,
+            createdById,
+          },
+        });
+
+        return created;
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002' &&
+        (error.meta?.target as string[] | undefined)?.includes('email')
+      ) {
+        throw new ConflictException(
+          `A user with email ${data.admin.email} already exists`,
+        );
+      }
+      throw error;
+    }
+
+    return this.findOne(institution.id);
+  }
+
+  /**
+   * Approve an institution (set status to ACTIVE)
+   */
+  async approve(id: string): Promise<InstitutionDetailResponse> {
+    await this.ensureExists(id);
+
+    await this.prisma.institution.update({
+      where: { id },
+      data: { status: 'ACTIVE' },
+    });
+
+    return this.findOne(id);
+  }
+
+  /**
+   * Reject an institution (set status to REJECTED)
+   */
+  async reject(id: string): Promise<InstitutionDetailResponse> {
+    await this.ensureExists(id);
+
+    await this.prisma.institution.update({
+      where: { id },
+      data: { status: 'REJECTED' },
+    });
+
+    return this.findOne(id);
+  }
+
+  private async ensureExists(id: string): Promise<void> {
+    if (id === PLATFORM_INSTITUTION_ID) {
+      throw new NotFoundException(`Institution with ID ${id} not found`);
+    }
+
+    const existing = await this.prisma.institution.findUnique({
+      where: { id },
+    });
+
+    if (!existing) {
+      throw new NotFoundException(`Institution with ID ${id} not found`);
+    }
+  }
+}

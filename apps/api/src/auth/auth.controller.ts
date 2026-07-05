@@ -92,9 +92,11 @@ export class AuthController {
     return {
       id: user.id,
       email: user.email,
-      name: user.name,
+      fullName: user.fullName,
       role: user.role,
-      organizationId: user.organizationId,
+      phone: user.phone,
+      institutionId: user.institutionId,
+      isActive: user.isActive,
       isConfirmed: user.isConfirmed,
     };
   }

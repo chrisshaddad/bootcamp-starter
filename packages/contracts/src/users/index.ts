@@ -1,2 +1,2 @@
-export * from './user-role.schema';
+export * from './role.schema';
 export * from './user.response';

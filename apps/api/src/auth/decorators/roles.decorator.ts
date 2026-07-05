@@ -13,7 +13,7 @@ export const ROLES_KEY = 'roles';
  * getAdminData() { ... }
  *
  * @example
- * @Roles('SUPER_ADMIN', 'ORG_ADMIN')
+ * @Roles('SUPER_ADMIN', 'INSTITUTION_ADMIN')
  * @Get('admin-data')
  * getData() { ... }
  */

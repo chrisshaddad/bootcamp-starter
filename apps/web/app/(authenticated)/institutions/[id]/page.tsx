@@ -1,7 +1,7 @@
 'use client';
 
 import { useUser } from '@/hooks/use-auth';
-import { useOrganization } from '@/hooks/use-organizations';
+import { useInstitution } from '@/hooks/use-institutions';
 import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -20,8 +20,8 @@ import {
   ArrowLeft,
   Building2,
   Users,
-  Globe,
-  Mail,
+  MapPin,
+  Phone,
   Calendar,
   CheckCircle,
   XCircle,
@@ -62,7 +62,7 @@ function ForbiddenPage() {
       <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
       <p className="text-gray-500 text-center max-w-md">
         You don&apos;t have permission to access this page. Only Super Admins
-        can manage organizations.
+        can manage institutions.
       </p>
     </div>
   );
@@ -101,7 +101,7 @@ function InfoRow({
   );
 }
 
-export default function OrganizationDetailPage() {
+export default function InstitutionDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { user, isLoading: userLoading } = useUser();
@@ -110,25 +110,25 @@ export default function OrganizationDetailPage() {
   const [showApproveDialog, setShowApproveDialog] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
 
-  const orgId = params.id as string;
+  const institutionId = params.id as string;
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
 
   const {
-    organization: org,
-    isLoading: orgLoading,
+    institution,
+    isLoading: institutionLoading,
     error,
     approve,
     reject,
-  } = useOrganization(orgId, { enabled: isSuperAdmin });
+  } = useInstitution(institutionId, { enabled: isSuperAdmin });
 
   const handleApprove = async () => {
     setIsApproving(true);
     try {
       await approve();
-      toast.success('Organization approved successfully');
+      toast.success('Institution approved successfully');
       setShowApproveDialog(false);
     } catch (err) {
-      toast.error('Failed to approve organization');
+      toast.error('Failed to approve institution');
       console.error(err);
     } finally {
       setIsApproving(false);
@@ -139,17 +139,17 @@ export default function OrganizationDetailPage() {
     setIsRejecting(true);
     try {
       await reject();
-      toast.success('Organization rejected');
+      toast.success('Institution rejected');
       setShowRejectDialog(false);
     } catch (err) {
-      toast.error('Failed to reject organization');
+      toast.error('Failed to reject institution');
       console.error(err);
     } finally {
       setIsRejecting(false);
     }
   };
 
-  if (userLoading || orgLoading) {
+  if (userLoading || institutionLoading) {
     return <LoadingSkeleton />;
   }
 
@@ -161,7 +161,7 @@ export default function OrganizationDetailPage() {
   if (error) {
     return (
       <div className="py-10 text-center">
-        <div className="text-red-500 mb-4">Failed to load organization</div>
+        <div className="text-red-500 mb-4">Failed to load institution</div>
         <Button variant="outline" onClick={() => router.back()}>
           Go Back
         </Button>
@@ -169,10 +169,10 @@ export default function OrganizationDetailPage() {
     );
   }
 
-  if (!org) {
+  if (!institution) {
     return (
       <div className="py-10 text-center">
-        <div className="text-gray-500 mb-4">Organization not found</div>
+        <div className="text-gray-500 mb-4">Institution not found</div>
         <Button variant="outline" onClick={() => router.back()}>
           Go Back
         </Button>
@@ -180,7 +180,7 @@ export default function OrganizationDetailPage() {
     );
   }
 
-  const isPending = org.status === 'PENDING';
+  const isPending = institution.status === 'PENDING';
 
   return (
     <div className="space-y-6">
@@ -189,22 +189,24 @@ export default function OrganizationDetailPage() {
         variant="ghost"
         size="sm"
         className="gap-2"
-        onClick={() => router.push('/organizations')}
+        onClick={() => router.push('/institutions')}
       >
         <ArrowLeft className="h-4 w-4" />
-        Back to Organizations
+        Back to Institutions
       </Button>
 
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{org.name}</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {institution.name}
+          </h1>
           <div className="mt-2">
-            <StatusBadge status={org.status} />
+            <StatusBadge status={institution.status} />
           </div>
         </div>
 
-        {/* Action Buttons (only for PENDING organizations) */}
+        {/* Action Buttons (only for PENDING institutions) */}
         {isPending && (
           <div className="flex gap-3">
             <Button
@@ -228,117 +230,81 @@ export default function OrganizationDetailPage() {
 
       {/* Details Grid */}
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Organization Info */}
+        {/* Institution Info */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <Building2 className="h-5 w-5" />
-              Organization Details
+              Institution Details
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            {org.description && (
-              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                <div className="text-sm text-gray-500 mb-1">Description</div>
-                <p className="text-sm text-gray-700">{org.description}</p>
-              </div>
-            )}
+            <InfoRow icon={Building2} label="Type" value={institution.type} />
             <InfoRow
-              icon={Globe}
-              label="Website"
+              icon={MapPin}
+              label="Address"
               value={
-                org.website ? (
-                  <a
-                    href={org.website}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline"
-                  >
-                    {org.website}
-                  </a>
-                ) : (
+                institution.address || (
                   <span className="text-gray-400">Not provided</span>
                 )
               }
             />
             <InfoRow
-              icon={Users}
-              label="Members"
-              value={`${org._count.users} user${org._count.users !== 1 ? 's' : ''}`}
+              icon={Phone}
+              label="Phone"
+              value={
+                institution.phone || (
+                  <span className="text-gray-400">Not provided</span>
+                )
+              }
             />
             <InfoRow
               icon={Calendar}
               label="Registered"
-              value={new Date(org.createdAt).toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              })}
-            />
-            {org.approvedAt && (
-              <InfoRow
-                icon={CheckCircle}
-                label="Approved"
-                value={new Date(org.approvedAt).toLocaleDateString('en-US', {
+              value={new Date(institution.createdAt).toLocaleDateString(
+                'en-US',
+                {
                   year: 'numeric',
                   month: 'long',
                   day: 'numeric',
-                })}
-              />
-            )}
+                },
+              )}
+            />
           </CardContent>
         </Card>
 
-        {/* Creator & Approver Info */}
+        {/* Members / Status Info */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <Users className="h-5 w-5" />
-              People
+              Members
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
             <div className="space-y-4">
-              {/* Created By */}
               <div className="p-4 bg-gray-50 rounded-lg">
                 <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">
-                  Created By
+                  Total Members
                 </div>
                 <div className="font-medium text-gray-900">
-                  {org.createdBy.name}
-                </div>
-                <div className="flex items-center gap-2 mt-1 text-sm text-gray-500">
-                  <Mail className="h-4 w-4" />
-                  {org.createdBy.email}
+                  {institution._count.users} user
+                  {institution._count.users !== 1 ? 's' : ''}
                 </div>
               </div>
 
-              {/* Approved By (if applicable) */}
-              {org.approvedBy ? (
-                <div className="p-4 bg-green-50 rounded-lg">
-                  <div className="text-xs text-green-600 uppercase tracking-wide mb-2">
-                    Approved By
-                  </div>
-                  <div className="font-medium text-gray-900">
-                    {org.approvedBy.name}
-                  </div>
-                  <div className="flex items-center gap-2 mt-1 text-sm text-gray-500">
-                    <Mail className="h-4 w-4" />
-                    {org.approvedBy.email}
-                  </div>
-                </div>
-              ) : isPending ? (
+              {isPending && (
                 <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
                   <div className="flex items-center gap-2 text-yellow-700">
                     <Clock className="h-5 w-5" />
                     <span className="font-medium">Awaiting Approval</span>
                   </div>
                   <p className="mt-1 text-sm text-yellow-600">
-                    This organization is waiting for a super admin to review and
+                    This institution is waiting for a super admin to review and
                     approve the registration.
                   </p>
                 </div>
-              ) : null}
+              )}
             </div>
           </CardContent>
         </Card>
@@ -348,11 +314,12 @@ export default function OrganizationDetailPage() {
       <Dialog open={showApproveDialog} onOpenChange={setShowApproveDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Approve Organization</DialogTitle>
+            <DialogTitle>Approve Institution</DialogTitle>
             <DialogDescription>
-              Are you sure you want to approve <strong>{org.name}</strong>? This
-              will allow the organization admin to start inviting members and
-              using the platform.
+              Are you sure you want to approve{' '}
+              <strong>{institution.name}</strong>? This will allow the
+              institution admin to start inviting members and using the
+              platform.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -378,10 +345,11 @@ export default function OrganizationDetailPage() {
       <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reject Organization</DialogTitle>
+            <DialogTitle>Reject Institution</DialogTitle>
             <DialogDescription>
-              Are you sure you want to reject <strong>{org.name}</strong>? The
-              organization admin will not be able to use the platform.
+              Are you sure you want to reject{' '}
+              <strong>{institution.name}</strong>? The institution admin will
+              not be able to use the platform.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

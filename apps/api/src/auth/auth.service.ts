@@ -2,11 +2,31 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import * as crypto from 'crypto';
+import type { User } from '@repo/db';
+import type { UserResponse } from '@repo/contracts';
 import { PrismaService } from '../database/prisma.service';
 import { SessionService } from './session.service';
 import { MAIL_QUEUE, MAIL_JOBS } from '../mail/mail.constants';
 
 const MAGIC_LINK_EXPIRY_MINUTES = 15;
+
+/**
+ * Single source of truth for shaping a Prisma User into the UserResponse
+ * wire contract — every endpoint returning user data to the client should
+ * go through this instead of listing fields inline, so they can't drift.
+ */
+export function toUserResponse(user: User): UserResponse {
+  return {
+    id: user.id,
+    email: user.email,
+    fullName: user.fullName,
+    phone: user.phone,
+    role: user.role,
+    institutionId: user.institutionId,
+    isActive: user.isActive,
+    isConfirmed: user.isConfirmed,
+  };
+}
 
 @Injectable()
 export class AuthService {
@@ -67,7 +87,7 @@ export class AuthService {
     await this.mailQueue.add(MAIL_JOBS.SEND_MAGIC_LINK, {
       email: user.email,
       magicLink: magicLinkUrl,
-      userName: user.name,
+      userName: user.fullName,
     });
 
     this.logger.log(`Magic link queued for user ${user.id}`);
@@ -80,7 +100,7 @@ export class AuthService {
    */
   async verifyMagicLink(token: string): Promise<{
     sessionId: string;
-    user: { id: string; email: string; name: string; role: string };
+    user: UserResponse;
   }> {
     // Find the magic link
     const magicLink = await this.prisma.magicLink.findUnique({
@@ -123,12 +143,7 @@ export class AuthService {
 
     return {
       sessionId,
-      user: {
-        id: magicLink.user.id,
-        email: magicLink.user.email,
-        name: magicLink.user.name,
-        role: magicLink.user.role,
-      },
+      user: toUserResponse(magicLink.user),
     };
   }
 
@@ -142,19 +157,12 @@ export class AuthService {
   /**
    * Get the current user from session
    */
-  async getCurrentUser(sessionId: string) {
+  async getCurrentUser(sessionId: string): Promise<UserResponse | null> {
     const user = await this.sessionService.validateSession(sessionId);
     if (!user) {
       return null;
     }
 
-    return {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      organizationId: user.organizationId,
-      isConfirmed: user.isConfirmed,
-    };
+    return toUserResponse(user);
   }
 }
