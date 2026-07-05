@@ -5,6 +5,7 @@ export const createUserSchema = z
     name: z.string().trim().min(1, 'Name is required'),
     email: z.string().trim().email('Invalid email address'),
     role: z.enum(['ORG_ADMIN', 'MEMBER']),
+    organizationId: z.string().trim().min(1, 'Organization is required'),
     dateOfBirth: z.string().optional(),
     className: z.string().trim().optional(),
     sectionName: z.string().trim().optional(),

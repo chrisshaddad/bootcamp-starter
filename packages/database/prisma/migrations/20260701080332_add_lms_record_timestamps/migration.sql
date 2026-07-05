@@ -26,9 +26,3 @@ ALTER TABLE "Submission" ADD COLUMN     "createdAt" TIMESTAMP(3) NOT NULL DEFAUL
 ADD COLUMN     "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
 
 -- AddCheckConstraint
-ALTER TABLE "Grade"
-ADD CONSTRAINT "Grade_exactly_one_target_chk"
-CHECK (
-  (CASE WHEN "submissionId" IS NULL THEN 0 ELSE 1 END) +
-  (CASE WHEN "quizAttemptId" IS NULL THEN 0 ELSE 1 END) = 1
-);

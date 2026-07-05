@@ -10,7 +10,8 @@
     "db:deploy": "prisma migrate deploy",
     "db:reset": "prisma migrate reset",
     "db:seed": "prisma db seed",
-    "db:build": "tsc"
+    "db:build": "tsc",
+    "build": "tsc"
   },
   "devDependencies": {
     "@faker-js/faker": "^10.1.0",

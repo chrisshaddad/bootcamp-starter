@@ -20,6 +20,7 @@ const defaultFormValues: CreateUserBody = {
   name: '',
   email: '',
   role: 'MEMBER',
+  organizationId: '',
   dateOfBirth: '',
   className: '',
   sectionName: '',
@@ -107,12 +108,13 @@ function normalizeCreateUserPayload(values: CreateUserBody): CreateUserBody {
     name: values.name.trim(),
     email: values.email.trim().toLowerCase(),
     role: values.role,
+    organizationId: values.organizationId.trim(),
   };
 
   if (values.role === 'MEMBER') {
     payload.dateOfBirth = values.dateOfBirth?.trim() || undefined;
-    payload.className = values.className?.trim();
-    payload.sectionName = values.sectionName?.trim();
+    payload.className = values.className?.trim() || undefined;
+    payload.sectionName = values.sectionName?.trim() || undefined;
   }
 
   return payload;
@@ -180,8 +182,22 @@ export default function CreateUserPage() {
 
   function handleDownloadTemplate() {
     downloadCsv('students-import-template.csv', [
-      ['Full Name', 'Email', 'Date of Birth', 'Class / Grade', 'Section'],
-      ['Example Student', 'student@example.com', '2010-01-01', 'Grade 9', 'A'],
+      [
+        'Full Name',
+        'Email',
+        'Organization ID',
+        'Date of Birth',
+        'Class / Grade',
+        'Section',
+      ],
+      [
+        'Example Student',
+        'student@example.com',
+        'organization-id-here',
+        '2010-01-01',
+        'Grade 9',
+        'A',
+      ],
     ]);
   }
 
@@ -234,9 +250,10 @@ export default function CreateUserPage() {
           name: columns[0] || '',
           email: columns[1] || '',
           role: 'MEMBER',
-          dateOfBirth: columns[2] || undefined,
-          className: columns[3] || '',
-          sectionName: columns[4] || '',
+          organizationId: columns[2] || '',
+          dateOfBirth: columns[3] || undefined,
+          className: columns[4] || '',
+          sectionName: columns[5] || '',
         });
 
         if (!parsed.success) {
@@ -397,6 +414,23 @@ export default function CreateUserPage() {
           />
           {errors.email?.message && (
             <p className="mt-1 text-xs text-red-600">{errors.email.message}</p>
+          )}
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-gray-700">
+            Organization ID
+          </label>
+          <input
+            type="text"
+            {...register('organizationId')}
+            placeholder="Enter organization ID"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-200"
+          />
+          {errors.organizationId?.message && (
+            <p className="mt-1 text-xs text-red-600">
+              {errors.organizationId.message}
+            </p>
           )}
         </div>
 

@@ -2,53 +2,33 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
+  NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '@repo/database';
+import type { CreateUserBody } from '@repo/contracts';
 import { PrismaService } from '../database/prisma.service';
 
-type CreateUserRole = 'ORG_ADMIN' | 'MEMBER';
+type PrismaKnownError = {
+  code: string;
+  meta?: {
+    target?: unknown;
+  };
+};
 
-interface CreateUserInput {
-  name: string;
-  email: string;
-  role: CreateUserRole;
-  dateOfBirth?: string;
-  className?: string;
-  sectionName?: string;
-}
-
-const MAX_STUDENT_CODE_RETRIES = 5;
-
-function isUniqueConstraintError(error: unknown, field: string): boolean {
-  if (
-    error instanceof Prisma.PrismaClientKnownRequestError &&
-    error.code === 'P2002'
-  ) {
-    const target = error.meta?.target;
-
-    return Array.isArray(target)
-      ? target.includes(field)
-      : typeof target === 'string' && target.includes(field);
-  }
-
-  return false;
-}
-
-function isEmailUniqueConstraintError(error: unknown): boolean {
-  return isUniqueConstraintError(error, 'email');
-}
-
-function isStudentCodeUniqueConstraintError(error: unknown): boolean {
-  return isUniqueConstraintError(error, 'studentCode');
+function isPrismaKnownError(error: unknown): error is PrismaKnownError {
+  return typeof error === 'object' && error !== null && 'code' in error;
 }
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(input: CreateUserInput) {
-    const name = input.name?.trim();
-    const email = input.email?.trim().toLowerCase();
+  async create(input: CreateUserBody) {
+    const name = input.name.trim();
+    const email = input.email.trim().toLowerCase();
+    const organizationId = input.organizationId.trim();
 
     if (!name) {
       throw new BadRequestException('Name is required');
@@ -58,69 +38,103 @@ export class UsersService {
       throw new BadRequestException('Email is required');
     }
 
-    if (!['ORG_ADMIN', 'MEMBER'].includes(input.role)) {
-      throw new BadRequestException('Invalid role');
+    if (!organizationId) {
+      throw new BadRequestException('Organization is required');
+    }
+
+    const organization = await this.prisma.organization.findUnique({
+      where: {
+        id: organizationId,
+      },
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+
+    if (!organization) {
+      throw new NotFoundException('Organization not found');
     }
 
     const existingUser = await this.prisma.user.findUnique({
-      where: { email },
+      where: {
+        email,
+      },
     });
 
     if (existingUser) {
       throw new ConflictException('A user with this email already exists');
     }
 
-    if (input.role === 'MEMBER') {
-      return this.createStudent({
-        name,
-        email,
-        dateOfBirth: input.dateOfBirth,
-        className: input.className,
-        sectionName: input.sectionName,
-      });
-    }
-
-    return this.createTeacher({
-      name,
-      email,
-    });
-  }
-
-  private async createTeacher(input: { name: string; email: string }) {
     try {
-      const user = await this.prisma.user.create({
-        data: {
-          name: input.name,
-          email: input.email,
-          role: 'ORG_ADMIN',
-          isConfirmed: true,
-        },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          role: true,
-          createdAt: true,
-        },
-      });
-
-      return {
-        message:
-          'Teacher/Admin created successfully. They can now log in using magic link.',
-        user,
-      };
-    } catch (error) {
-      if (isEmailUniqueConstraintError(error)) {
-        throw new ConflictException('A user with this email already exists');
+      if (input.role === 'MEMBER') {
+        return await this.createStudent({
+          name,
+          email,
+          organizationId,
+          dateOfBirth: input.dateOfBirth,
+          className: input.className,
+          sectionName: input.sectionName,
+        });
       }
 
+      return await this.createTeacher({
+        name,
+        email,
+        organizationId,
+      });
+    } catch (error: unknown) {
+      if (isPrismaKnownError(error) && error.code === 'P2002') {
+        const target = Array.isArray(error.meta?.target)
+          ? error.meta.target.join(', ')
+          : 'unique field';
+
+        throw new ConflictException(
+          `A record with this ${target} already exists`,
+        );
+      }
+
+      this.logger.error(`Failed to create user ${email}`, error);
       throw error;
     }
+  }
+
+  private async createTeacher(input: {
+    name: string;
+    email: string;
+    organizationId: string;
+  }) {
+    const user = await this.prisma.user.create({
+      data: {
+        name: input.name,
+        email: input.email,
+        role: 'ORG_ADMIN',
+        organizationId: input.organizationId,
+        isConfirmed: true,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        organizationId: true,
+        createdAt: true,
+      },
+    });
+
+    this.logger.log(`Created Teacher/Admin user ${user.email}`);
+
+    return {
+      message:
+        'Teacher/Admin created successfully. They can now log in using magic link.',
+      user,
+    };
   }
 
   private async createStudent(input: {
     name: string;
     email: string;
+    organizationId: string;
     dateOfBirth?: string;
     className?: string;
     sectionName?: string;
@@ -144,126 +158,119 @@ export class UsersService {
       throw new BadRequestException('Invalid date of birth');
     }
 
-    for (let attempt = 0; attempt < MAX_STUDENT_CODE_RETRIES; attempt += 1) {
-      try {
-        const result = await this.prisma.$transaction(async (tx) => {
-          const gradeLevel = await tx.gradeLevel.upsert({
-            where: {
-              name: className,
-            },
-            update: {},
-            create: {
-              name: className,
-            },
-          });
+    const result = await this.prisma.$transaction(async (tx) => {
+      const gradeLevel = await tx.gradeLevel.upsert({
+        where: {
+          name: className,
+        },
+        update: {},
+        create: {
+          name: className,
+        },
+        select: {
+          id: true,
+          name: true,
+        },
+      });
 
-          const section = await tx.section.upsert({
-            where: {
-              gradeLevelId_name: {
-                gradeLevelId: gradeLevel.id,
-                name: sectionName,
-              },
-            },
-            update: {},
-            create: {
-              gradeLevelId: gradeLevel.id,
-              name: sectionName,
-            },
-          });
-
-          const user = await tx.user.create({
-            data: {
-              name: input.name,
-              email: input.email,
-              role: 'MEMBER',
-              isConfirmed: true,
-            },
+      const section = await tx.section.upsert({
+        where: {
+          gradeLevelId_name: {
+            gradeLevelId: gradeLevel.id,
+            name: sectionName,
+          },
+        },
+        update: {},
+        create: {
+          gradeLevelId: gradeLevel.id,
+          name: sectionName,
+        },
+        select: {
+          id: true,
+          name: true,
+          gradeLevel: {
             select: {
               id: true,
               name: true,
-              email: true,
-              role: true,
-              createdAt: true,
             },
-          });
+          },
+        },
+      });
 
-          let nextNumber = await tx.studentProfile.count();
-          let studentCode = '';
+      const user = await tx.user.create({
+        data: {
+          name: input.name,
+          email: input.email,
+          role: 'MEMBER',
+          organizationId: input.organizationId,
+          isConfirmed: true,
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          organizationId: true,
+          createdAt: true,
+        },
+      });
 
-          while (true) {
-            nextNumber += 1;
-            studentCode = `STU-${nextNumber.toString().padStart(4, '0')}`;
+      let nextNumber = await tx.studentProfile.count();
+      let studentCode = '';
 
-            const existingProfile = await tx.studentProfile.findUnique({
-              where: { studentCode },
-            });
+      while (true) {
+        nextNumber += 1;
+        studentCode = `STU-${nextNumber.toString().padStart(4, '0')}`;
 
-            if (!existingProfile) {
-              break;
-            }
-          }
+        const existingProfile = await tx.studentProfile.findUnique({
+          where: {
+            studentCode,
+          },
+        });
 
-          const studentProfile = await tx.studentProfile.create({
-            data: {
-              userId: user.id,
-              studentCode,
-              dateOfBirth,
-              sectionId: section.id,
-            },
+        if (!existingProfile) {
+          break;
+        }
+      }
+
+      const studentProfile = await tx.studentProfile.create({
+        data: {
+          userId: user.id,
+          studentCode,
+          dateOfBirth,
+          sectionId: section.id,
+        },
+        select: {
+          id: true,
+          studentCode: true,
+          dateOfBirth: true,
+          section: {
             select: {
               id: true,
-              studentCode: true,
-              dateOfBirth: true,
-              section: {
+              name: true,
+              gradeLevel: {
                 select: {
                   id: true,
                   name: true,
-                  gradeLevel: {
-                    select: {
-                      id: true,
-                      name: true,
-                    },
-                  },
                 },
               },
             },
-          });
+          },
+        },
+      });
 
-          return {
-            user,
-            studentProfile,
-          };
-        });
+      return {
+        user,
+        studentProfile,
+      };
+    });
 
-        return {
-          message:
-            'Student created successfully. They can now log in using magic link.',
-          ...result,
-        };
-      } catch (error) {
-        if (isEmailUniqueConstraintError(error)) {
-          throw new ConflictException('A user with this email already exists');
-        }
+    this.logger.log(`Created Student/User ${result.user.email}`);
 
-        if (
-          isStudentCodeUniqueConstraintError(error) &&
-          attempt < MAX_STUDENT_CODE_RETRIES - 1
-        ) {
-          continue;
-        }
-
-        if (isStudentCodeUniqueConstraintError(error)) {
-          throw new ConflictException(
-            'Could not allocate a unique student code. Please try again.',
-          );
-        }
-
-        throw error;
-      }
-    }
-
-    throw new ConflictException(
-      'Could not allocate a unique student code. Please try again.',
-    );
+    return {
+      message:
+        'Student created successfully. They can now log in using magic link.',
+      ...result,
+    };
   }
 }
