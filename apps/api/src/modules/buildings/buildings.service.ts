@@ -10,6 +10,7 @@ import { TimelineService } from '@/modules/timeline/timeline.service';
 import { BuildingAccessService } from '@/common/building-access/building-access.service';
 import { FloorsService } from '@/modules/floors/floors.service';
 import { Role } from '@/common/enums';
+import { BuildingResponse } from '@repo/contracts';
 import { getPlan } from '@/modules/billing/plan-catalog';
 import { CreateBuildingDto } from './dto/create-building.dto';
 import { UpdateBuildingDto } from './dto/update-building.dto';
@@ -37,7 +38,7 @@ export class BuildingsService {
     notes: string | null;
     createdAt: Date;
     updatedAt: Date;
-  }) {
+  }): Promise<BuildingResponse> {
     const assignments = await this.prisma.buildingAssignment.findMany({
       where: { buildingId: building.id },
       select: { userId: true },
@@ -49,7 +50,8 @@ export class BuildingsService {
       address: building.address,
       code: building.code,
       notes: building.notes,
-      createdAt: building.createdAt,
+      createdAt: building.createdAt.toISOString(),
+      updatedAt: building.updatedAt.toISOString(),
       assignedUserIds: assignments.map((a) => a.userId),
     };
   }
@@ -65,7 +67,7 @@ export class BuildingsService {
       createdAt: Date;
       updatedAt: Date;
     }>,
-  ) {
+  ): Promise<BuildingResponse[]> {
     if (!buildings.length) return [];
 
     const ids = buildings.map((b) => b.id);
@@ -87,7 +89,8 @@ export class BuildingsService {
       address: b.address,
       code: b.code,
       notes: b.notes,
-      createdAt: b.createdAt,
+      createdAt: b.createdAt.toISOString(),
+      updatedAt: b.updatedAt.toISOString(),
       assignedUserIds: map.get(b.id) ?? [],
     }));
   }

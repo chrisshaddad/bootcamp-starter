@@ -84,6 +84,54 @@ export class ApartmentsService {
     }
   }
 
+  /**
+   * assertUnitNumberAvailable is a check-then-act race under concurrent
+   * requests; the unique constraint on (buildingId, unitNumber) is the real
+   * guard. Translate its violation into the same 409 rather than letting
+   * P2002 surface as 500.
+   */
+  private async createApartmentOrThrowConflict(
+    data: Prisma.ApartmentUncheckedCreateInput,
+  ) {
+    try {
+      return await this.prisma.apartment.create({ data });
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        throw new ConflictException(
+          `Unit "${data.unitNumber}" already exists in this building.`,
+        );
+      }
+      throw err;
+    }
+  }
+
+  private async updateApartmentOrThrowConflict(
+    apartmentId: string,
+    data: Prisma.ApartmentUncheckedUpdateInput,
+  ) {
+    try {
+      return await this.prisma.apartment.update({
+        where: { id: apartmentId },
+        data,
+      });
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        throw new ConflictException(
+          typeof data.unitNumber === 'string'
+            ? `Unit "${data.unitNumber}" already exists in this building.`
+            : 'A unit with these values already exists in this building.',
+        );
+      }
+      throw err;
+    }
+  }
+
   // ── CRUD ──────────────────────────────────────────────────────────────────
 
   async findAll(
@@ -142,18 +190,16 @@ export class ApartmentsService {
     await this.assertFloorInBuilding(orgId, buildingId, floorId);
     await this.assertUnitNumberAvailable(buildingId, dto.unitNumber);
 
-    const apartment = await this.prisma.apartment.create({
-      data: {
-        orgId,
-        buildingId,
-        floorId,
-        unitNumber: dto.unitNumber,
-        bedrooms: dto.bedrooms,
-        bathrooms: dto.bathrooms,
-        sqft: dto.sqft,
-        notes: dto.notes,
-        ...(dto.status !== undefined && { status: dto.status }),
-      },
+    const apartment = await this.createApartmentOrThrowConflict({
+      orgId,
+      buildingId,
+      floorId,
+      unitNumber: dto.unitNumber,
+      bedrooms: dto.bedrooms,
+      bathrooms: dto.bathrooms,
+      sqft: dto.sqft,
+      notes: dto.notes,
+      ...(dto.status !== undefined && { status: dto.status }),
     });
 
     await this.timeline.emit({
@@ -192,16 +238,13 @@ export class ApartmentsService {
       );
     }
 
-    const apartment = await this.prisma.apartment.update({
-      where: { id: apartmentId },
-      data: {
-        ...(dto.unitNumber !== undefined && { unitNumber: dto.unitNumber }),
-        ...(dto.bedrooms !== undefined && { bedrooms: dto.bedrooms }),
-        ...(dto.bathrooms !== undefined && { bathrooms: dto.bathrooms }),
-        ...(dto.sqft !== undefined && { sqft: dto.sqft }),
-        ...(dto.status !== undefined && { status: dto.status }),
-        ...(dto.notes !== undefined && { notes: dto.notes }),
-      },
+    const apartment = await this.updateApartmentOrThrowConflict(apartmentId, {
+      ...(dto.unitNumber !== undefined && { unitNumber: dto.unitNumber }),
+      ...(dto.bedrooms !== undefined && { bedrooms: dto.bedrooms }),
+      ...(dto.bathrooms !== undefined && { bathrooms: dto.bathrooms }),
+      ...(dto.sqft !== undefined && { sqft: dto.sqft }),
+      ...(dto.status !== undefined && { status: dto.status }),
+      ...(dto.notes !== undefined && { notes: dto.notes }),
     });
 
     await this.timeline.emit({

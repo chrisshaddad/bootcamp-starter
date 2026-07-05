@@ -22,6 +22,8 @@ import { WebhooksModule } from '@/modules/webhooks/webhooks.module';
 import { PaymentsModule } from '@/modules/payments/payments.module';
 import { UsersModule } from '@/modules/users/users.module';
 import { BuildingsModule } from '@/modules/buildings/buildings.module';
+import { FloorsModule } from '@/modules/floors/floors.module';
+import { ApartmentsModule } from '@/modules/apartments/apartments.module';
 
 @Module({
   imports: [
@@ -58,6 +60,8 @@ import { BuildingsModule } from '@/modules/buildings/buildings.module';
     PaymentsModule,
     UsersModule,
     BuildingsModule,
+    FloorsModule,
+    ApartmentsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

@@ -75,6 +75,54 @@ export class FloorsService {
     }
   }
 
+  /**
+   * assertNameAvailable is a check-then-act race under concurrent requests;
+   * the unique constraint on (buildingId, name) is the real guard. Translate
+   * its violation into the same 409 rather than letting P2002 surface as 500.
+   */
+  private async createFloorOrThrowConflict(data: {
+    orgId: string;
+    buildingId: string;
+    name: string;
+    notes?: string;
+    order: number;
+  }) {
+    try {
+      return await this.prisma.floor.create({ data });
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        throw new ConflictException(
+          `A floor named "${data.name}" already exists in this building.`,
+        );
+      }
+      throw err;
+    }
+  }
+
+  private async updateFloorOrThrowConflict(
+    floorId: string,
+    data: { name?: string; order?: number; notes?: string },
+  ) {
+    try {
+      return await this.prisma.floor.update({ where: { id: floorId }, data });
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        throw new ConflictException(
+          data.name
+            ? `A floor named "${data.name}" already exists in this building.`
+            : 'A floor with these values already exists in this building.',
+        );
+      }
+      throw err;
+    }
+  }
+
   // ── CRUD ──────────────────────────────────────────────────────────────────
 
   async findAll(
@@ -135,14 +183,12 @@ export class FloorsService {
       _max: { order: true },
     });
 
-    const floor = await this.prisma.floor.create({
-      data: {
-        orgId,
-        buildingId,
-        name: dto.name,
-        notes: dto.notes,
-        order: (maxOrder._max.order ?? -1) + 1,
-      },
+    const floor = await this.createFloorOrThrowConflict({
+      orgId,
+      buildingId,
+      name: dto.name,
+      notes: dto.notes,
+      order: (maxOrder._max.order ?? -1) + 1,
     });
 
     await this.timeline.emit({
@@ -173,13 +219,10 @@ export class FloorsService {
       await this.assertNameAvailable(buildingId, dto.name, floorId);
     }
 
-    const floor = await this.prisma.floor.update({
-      where: { id: floorId },
-      data: {
-        ...(dto.name !== undefined && { name: dto.name }),
-        ...(dto.order !== undefined && { order: dto.order }),
-        ...(dto.notes !== undefined && { notes: dto.notes }),
-      },
+    const floor = await this.updateFloorOrThrowConflict(floorId, {
+      ...(dto.name !== undefined && { name: dto.name }),
+      ...(dto.order !== undefined && { order: dto.order }),
+      ...(dto.notes !== undefined && { notes: dto.notes }),
     });
 
     await this.timeline.emit({

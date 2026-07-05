@@ -232,6 +232,7 @@ export type BuildingResponse = {
   code?: string | null;
   notes?: string | null;
   createdAt: string;
+  updatedAt: string;
   /** Keycloak user IDs (`sub`) currently assigned. */
   assignedUserIds: string[];
 };
