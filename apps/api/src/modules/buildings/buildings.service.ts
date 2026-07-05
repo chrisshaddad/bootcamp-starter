@@ -8,6 +8,7 @@ import { PrismaService } from '@/infrastructure/prisma/prisma.service';
 import { KeycloakAdminService } from '@/infrastructure/keycloak/keycloak-admin.service';
 import { TimelineService } from '@/modules/timeline/timeline.service';
 import { BuildingAccessService } from '@/common/building-access/building-access.service';
+import { FloorsService } from '@/modules/floors/floors.service';
 import { Role } from '@/common/enums';
 import { getPlan } from '@/modules/billing/plan-catalog';
 import { CreateBuildingDto } from './dto/create-building.dto';
@@ -22,6 +23,7 @@ export class BuildingsService {
     private readonly keycloakAdmin: KeycloakAdminService,
     private readonly timeline: TimelineService,
     private readonly buildingAccess: BuildingAccessService,
+    private readonly floorsService: FloorsService,
   ) {}
 
   // ── Format helpers ────────────────────────────────────────────────────────
@@ -148,14 +150,18 @@ export class BuildingsService {
       }
     }
 
-    const building = await this.prisma.building.create({
-      data: {
-        orgId,
-        name: dto.name,
-        address: dto.address,
-        code: dto.code,
-        notes: dto.notes,
-      },
+    const building = await this.prisma.$transaction(async (tx) => {
+      const building = await tx.building.create({
+        data: {
+          orgId,
+          name: dto.name,
+          address: dto.address,
+          code: dto.code,
+          notes: dto.notes,
+        },
+      });
+      await this.floorsService.createDefaultFloor(tx, orgId, building.id);
+      return building;
     });
 
     await this.timeline.emit({
