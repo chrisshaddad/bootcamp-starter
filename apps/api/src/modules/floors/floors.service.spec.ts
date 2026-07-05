@@ -32,6 +32,9 @@ describe('FloorsService', () => {
         findFirst: jest.fn().mockResolvedValue({ id: buildingId, orgId }),
         ...overrides.building,
       },
+      apartment: {
+        count: jest.fn().mockResolvedValue(0),
+      },
     };
     const timeline = { emit: jest.fn().mockResolvedValue(undefined) };
     const buildingAccess = {
@@ -130,16 +133,31 @@ describe('FloorsService', () => {
   });
 
   describe('remove', () => {
-    it('deletes unconditionally (no apartment guard yet)', async () => {
+    it('deletes a floor with no apartments on it', async () => {
       const { service, prisma } = makeService({
         floor: { findFirst: jest.fn().mockResolvedValue(floorRow()) },
       });
 
       await service.remove(orgId, actorId, buildingId, 'floor-1');
 
+      expect(prisma.apartment.count).toHaveBeenCalledWith({
+        where: { floorId: 'floor-1' },
+      });
       expect(prisma.floor.delete).toHaveBeenCalledWith({
         where: { id: 'floor-1' },
       });
+    });
+
+    it('rejects deleting a floor that still has apartments on it', async () => {
+      const { service, prisma } = makeService({
+        floor: { findFirst: jest.fn().mockResolvedValue(floorRow()) },
+      });
+      prisma.apartment.count.mockResolvedValue(2);
+
+      await expect(
+        service.remove(orgId, actorId, buildingId, 'floor-1'),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(prisma.floor.delete).not.toHaveBeenCalled();
     });
 
     it('throws NotFoundException for a floor outside the building/org', async () => {

@@ -205,6 +205,15 @@ export class FloorsService {
     });
     if (!existing) throw new NotFoundException('Floor not found.');
 
+    const apartmentCount = await this.prisma.apartment.count({
+      where: { floorId },
+    });
+    if (apartmentCount > 0) {
+      throw new ConflictException(
+        'Cannot delete a floor that still has apartments on it.',
+      );
+    }
+
     await this.prisma.floor.delete({ where: { id: floorId } });
 
     await this.timeline.emit({

@@ -57,6 +57,14 @@ export const paymentStatusSchema = z.enum([
 ]);
 export type PaymentStatus = z.infer<typeof paymentStatusSchema>;
 
+export const apartmentStatusSchema = z.enum([
+  'vacant',
+  'occupied',
+  'maintenance',
+  'unavailable',
+]);
+export type ApartmentStatus = z.infer<typeof apartmentStatusSchema>;
+
 /**
  * Wire role — lowercase, matches Keycloak realm roles and the Role enum in
  * the web's auth/roles.ts.
@@ -254,6 +262,23 @@ export type FloorResponse = {
   buildingId: string;
   name: string;
   order: number;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+// ── Apartments ───────────────────────────────────────────────────────────────
+
+export type ApartmentResponse = {
+  id: string;
+  orgId: string;
+  buildingId: string;
+  floorId: string;
+  unitNumber: string;
+  bedrooms: number;
+  bathrooms: string; // Decimal(3,1) serialized as string
+  sqft?: number | null;
+  status: ApartmentStatus;
   notes?: string | null;
   createdAt: string;
   updatedAt: string;
