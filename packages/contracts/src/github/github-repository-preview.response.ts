@@ -9,11 +9,9 @@ export const githubRepositoryPreviewResponseSchema = z.strictObject({
     repoName: z.string(),
     htmlUrl: z.url(),
     defaultBranch: z.string().nullable(),
-    isPrivate: z.boolean(),
     visibility: z.enum(['PUBLIC', 'PRIVATE']),
     description: z.string().nullable(),
     lastPushedAt: dateSchema.nullable(),
-    primaryLanguage: z.string().nullable(),
   }),
   languages: z.array(
     z.strictObject({

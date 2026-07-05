@@ -51,11 +51,9 @@ describe('GithubController', () => {
         repoName: 'repo',
         htmlUrl: 'https://github.com/owner/repo',
         defaultBranch: 'main',
-        isPrivate: false,
         visibility: 'PUBLIC' as const,
         description: null,
         lastPushedAt: null,
-        primaryLanguage: null,
       },
       languages: [],
     };

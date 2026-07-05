@@ -1,8 +1,4 @@
-import {
-  ForbiddenException,
-  NotFoundException,
-  ServiceUnavailableException,
-} from '@nestjs/common';
+import { NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { GithubService } from './github.service';
 
 const originalFetch = global.fetch;
@@ -36,7 +32,6 @@ describe('GithubService', () => {
           visibility: 'public',
           description: null,
           pushed_at: null,
-          language: null,
         }),
       )
       .mockResolvedValueOnce(
@@ -58,11 +53,9 @@ describe('GithubService', () => {
         repoName: 'next.js',
         htmlUrl: 'https://github.com/vercel/next.js',
         defaultBranch: 'canary',
-        isPrivate: false,
         visibility: 'PUBLIC',
         description: null,
         lastPushedAt: null,
-        primaryLanguage: null,
       },
       languages: [
         { name: 'TypeScript', bytes: 123456 },
@@ -91,7 +84,6 @@ describe('GithubService', () => {
           visibility: 'public',
           description: 'Node SDK',
           pushed_at: '2026-07-04T00:00:00Z',
-          language: 'TypeScript',
         }),
       )
       .mockResolvedValueOnce(jsonResponse({ TypeScript: 10 }));
@@ -102,6 +94,30 @@ describe('GithubService', () => {
       'https://api.github.com/repos/openai/openai-node',
     );
     expect(getFetchHeaders(fetchMock).Authorization).toBe('Bearer test-token');
+  });
+
+  it('does not send Authorization when GITHUB_TOKEN is blank', async () => {
+    process.env.GITHUB_TOKEN = '   ';
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse({
+          id: '987654321',
+          full_name: 'openai/openai-node',
+          owner: { login: 'openai' },
+          name: 'openai-node',
+          html_url: 'https://github.com/openai/openai-node',
+          default_branch: 'master',
+          private: false,
+          visibility: 'public',
+          description: null,
+          pushed_at: null,
+        }),
+      )
+      .mockResolvedValueOnce(jsonResponse({}));
+
+    await service.previewRepository('https://github.com/openai/openai-node');
+
+    expect(getFetchHeaders(fetchMock)).not.toHaveProperty('Authorization');
   });
 
   it('maps GitHub 404 responses to the safe inaccessible repository message', async () => {
@@ -117,7 +133,7 @@ describe('GithubService', () => {
     );
   });
 
-  it('rejects explicitly private repository metadata', async () => {
+  it('uses safe 404 wording for explicitly private repository metadata', async () => {
     fetchMock.mockResolvedValueOnce(
       jsonResponse({
         id: 123,
@@ -134,9 +150,14 @@ describe('GithubService', () => {
       }),
     );
 
-    await expect(
-      service.previewRepository('https://github.com/owner/private-repo'),
-    ).rejects.toThrow(ForbiddenException);
+    const preview = service.previewRepository(
+      'https://github.com/owner/private-repo',
+    );
+
+    await expect(preview).rejects.toThrow(NotFoundException);
+    await expect(preview).rejects.toThrow(
+      'Repository not found, private, or inaccessible.',
+    );
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
@@ -152,12 +173,76 @@ describe('GithubService', () => {
     ).rejects.toThrow(ServiceUnavailableException);
   });
 
+  it('maps GitHub 403 responses without rate-limit headers to service unavailable', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ message: 'Forbidden' }, 403),
+    );
+
+    await expect(
+      service.previewRepository('https://github.com/owner/repo'),
+    ).rejects.toThrow(ServiceUnavailableException);
+  });
+
   it('maps network failures to service unavailable', async () => {
     fetchMock.mockRejectedValueOnce(new Error('network failed'));
 
     await expect(
       service.previewRepository('https://github.com/owner/repo'),
     ).rejects.toThrow(ServiceUnavailableException);
+  });
+
+  it('maps invalid repository metadata responses to service unavailable', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ id: 123 }));
+
+    await expect(
+      service.previewRepository('https://github.com/owner/repo'),
+    ).rejects.toThrow(ServiceUnavailableException);
+  });
+
+  it('maps invalid languages responses to service unavailable', async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse({
+          id: 123,
+          full_name: 'owner/repo',
+          owner: { login: 'owner' },
+          name: 'repo',
+          html_url: 'https://github.com/owner/repo',
+          default_branch: 'main',
+          private: false,
+          visibility: 'public',
+          description: null,
+          pushed_at: null,
+        }),
+      )
+      .mockResolvedValueOnce(jsonResponse(['TypeScript']));
+
+    await expect(
+      service.previewRepository('https://github.com/owner/repo'),
+    ).rejects.toThrow(ServiceUnavailableException);
+  });
+
+  it('returns an empty language list when GitHub returns no languages', async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse({
+          id: 123,
+          full_name: 'owner/repo',
+          owner: { login: 'owner' },
+          name: 'repo',
+          html_url: 'https://github.com/owner/repo',
+          default_branch: 'main',
+          private: false,
+          visibility: 'public',
+          description: null,
+          pushed_at: null,
+        }),
+      )
+      .mockResolvedValueOnce(jsonResponse({}));
+
+    await expect(
+      service.previewRepository('https://github.com/owner/repo'),
+    ).resolves.toMatchObject({ languages: [] });
   });
 });
 

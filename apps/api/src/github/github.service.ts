@@ -1,5 +1,4 @@
 import {
-  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -22,13 +21,17 @@ const GITHUB_API_UNAVAILABLE_MESSAGE =
   'GitHub API is currently unavailable. Please try again later.';
 const GITHUB_RATE_LIMIT_MESSAGE =
   'GitHub API rate limit exceeded. Please try again later.';
-const PRIVATE_REPOSITORY_MESSAGE =
-  'Only public GitHub repositories are supported.';
 
 @Injectable()
 export class GithubService {
   private readonly logger = new Logger(GithubService.name);
 
+  /**
+   * Validates a browser GitHub repository URL and returns a read-only preview.
+   *
+   * A successful preview proves only that GitHub metadata can be scanned; it
+   * does not prove ownership, contribution, or permission to publish a project.
+   */
   async previewRepository(
     repositoryUrl: string,
   ): Promise<GithubRepositoryPreviewResponse> {
@@ -36,6 +39,12 @@ export class GithubService {
     return this.fetchRepositoryPreview(repository);
   }
 
+  /**
+   * Fetches normalized repository metadata and language byte counts.
+   *
+   * This method stays reusable for a future ProjectsService import flow while
+   * keeping persistence and ownership verification outside the GitHub client.
+   */
   async fetchRepositoryPreview(
     repository: ParsedGithubRepository,
   ): Promise<GithubRepositoryPreviewResponse> {
@@ -53,6 +62,15 @@ export class GithubService {
     };
   }
 
+  /**
+   * Fetches GitHub's language byte-count summary for a public repository.
+   *
+   * This uses GitHub's REST API endpoint, not a browser URL:
+   * GET /repos/{owner}/{repo}/languages
+   *
+   * The returned byte counts are kept raw so later scanner/search logic can
+   * calculate language percentages without re-fetching the repository.
+   */
   async fetchRepositoryLanguages(
     repository: ParsedGithubRepository,
   ): Promise<NormalizedGithubLanguage[]> {
@@ -135,6 +153,13 @@ export class GithubService {
     return response.headers.get('x-ratelimit-remaining') === '0';
   }
 
+  /**
+   * Converts GitHub's raw repository payload into the API preview shape.
+   *
+   * Private or non-public repositories are reported with the same safe 404
+   * wording used for inaccessible repositories so the API does not imply
+   * whether a private repository exists.
+   */
   private normalizeRepository(
     apiRepository: unknown,
   ): NormalizedGithubRepository {
@@ -152,7 +177,7 @@ export class GithubService {
       apiRepository.private === true || visibility?.toLowerCase() === 'private';
 
     if (isPrivate || (visibility && visibility.toLowerCase() !== 'public')) {
-      throw new ForbiddenException(PRIVATE_REPOSITORY_MESSAGE);
+      throw new NotFoundException(REPOSITORY_NOT_FOUND_MESSAGE);
     }
 
     return {
@@ -162,11 +187,9 @@ export class GithubService {
       repoName: getRequiredString(apiRepository.name),
       htmlUrl: getRequiredString(apiRepository.html_url),
       defaultBranch: getNullableString(apiRepository.default_branch),
-      isPrivate: false,
       visibility: 'PUBLIC',
       description: getNullableString(apiRepository.description),
       lastPushedAt: getNullableString(apiRepository.pushed_at),
-      primaryLanguage: getNullableString(apiRepository.language),
     };
   }
 }
