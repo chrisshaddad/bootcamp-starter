@@ -65,6 +65,7 @@ export class BuildingsService {
     });
     return {
       id: building.id,
+      orgId: building.orgId,
       name: building.name,
       address: building.address,
       code: building.code,
@@ -102,6 +103,7 @@ export class BuildingsService {
 
     return buildings.map((b) => ({
       id: b.id,
+      orgId: b.orgId,
       name: b.name,
       address: b.address,
       code: b.code,
