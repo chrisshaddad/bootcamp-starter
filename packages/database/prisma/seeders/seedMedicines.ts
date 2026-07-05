@@ -87,8 +87,6 @@ function chunk<T>(items: T[], size: number) {
 }
 
 export async function seedMedicines(prisma: PrismaClient) {
-  console.log('Seeding medicines from workbook...');
-
   const workbook = XLSX.readFile(WORKBOOK_PATH);
   const sheetName = workbook.SheetNames[0];
 
@@ -104,7 +102,6 @@ export async function seedMedicines(prisma: PrismaClient) {
 
   const workbookMedicines: SeedMedicine[] = [];
   const seenMophIds = new Set<string>();
-  let skippedPriceCount = 0;
 
   for (const row of rows) {
     const medicine = buildMedicineSeed(row);
@@ -113,19 +110,12 @@ export async function seedMedicines(prisma: PrismaClient) {
       continue;
     }
 
-    if (medicine.priceLbp === null && row['Price (L.L)'] !== null) {
-      skippedPriceCount += 1;
-      console.log(
-        `Unparseable price for mophId ${medicine.mophId}: ${JSON.stringify(row['Price (L.L)'])}`,
-      );
-    }
-
     seenMophIds.add(medicine.mophId);
     workbookMedicines.push(medicine);
   }
 
   if (workbookMedicines.length === 0) {
-    console.log('Medicines skipped: no valid workbook rows found.');
+    console.log('Medicines seeded: 0 inserted, 0 skipped.');
     return;
   }
 
@@ -144,7 +134,7 @@ export async function seedMedicines(prisma: PrismaClient) {
 
   if (medicinesToInsert.length === 0) {
     console.log(
-      `Medicines skipped: ${workbookMedicines.length} workbook rows already seeded.`,
+      `Medicines seeded: 0 inserted, ${workbookMedicines.length} skipped.`,
     );
     return;
   }
@@ -158,10 +148,4 @@ export async function seedMedicines(prisma: PrismaClient) {
   console.log(
     `Medicines seeded: ${medicinesToInsert.length} inserted, ${workbookMedicines.length - medicinesToInsert.length} skipped.`,
   );
-
-  if (skippedPriceCount > 0) {
-    console.log(
-      `Note: ${skippedPriceCount} rows had an unparseable price and were seeded with priceLbp = null.`,
-    );
-  }
 }

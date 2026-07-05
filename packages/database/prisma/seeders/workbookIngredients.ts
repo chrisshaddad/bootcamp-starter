@@ -8,34 +8,18 @@ export function extractIngredientNames(value: string | null | undefined) {
     return [];
   }
 
-  const names: string[] = [];
-  let start = 0;
   const text = value.trim();
 
-  while (start < text.length) {
-    const dashIndex = text.indexOf(INGREDIENT_NAME_DELIMITER, start);
-
-    if (dashIndex === -1) {
-      break;
-    }
-
-    const name = text.slice(start, dashIndex).trim();
-
-    if (name.length > 0) {
-      names.push(name);
-    }
-
-    const nextSeparatorIndex = text.indexOf(
-      INGREDIENT_CELL_DELIMITER,
-      dashIndex + INGREDIENT_NAME_DELIMITER.length,
-    );
-
-    if (nextSeparatorIndex === -1) {
-      break;
-    }
-
-    start = nextSeparatorIndex + INGREDIENT_CELL_DELIMITER.length;
+  if (text.length === 0) {
+    return [];
   }
 
-  return names;
+  return text
+    .split(INGREDIENT_CELL_DELIMITER)
+    .map((entry) => {
+      const dashIndex = entry.indexOf(INGREDIENT_NAME_DELIMITER);
+      const name = dashIndex === -1 ? entry : entry.slice(0, dashIndex);
+      return name.trim();
+    })
+    .filter((name) => name.length > 0);
 }

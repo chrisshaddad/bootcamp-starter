@@ -3,9 +3,14 @@ import { extractIngredientNames, WORKBOOK_PATH } from './workbookIngredients';
 import * as XLSX from 'xlsx';
 
 const BATCH_SIZE = 500;
+const INGREDIENT_NAME_MAX_LENGTH = 200;
 
 function truncate(value: string, maxLength: number) {
   return value.slice(0, maxLength);
+}
+
+function normalizeIngredientName(name: string) {
+  return truncate(name, INGREDIENT_NAME_MAX_LENGTH);
 }
 
 export async function seedIngredients(prisma: PrismaClient) {
@@ -31,12 +36,14 @@ export async function seedIngredients(prisma: PrismaClient) {
     const ingredientNames = extractIngredientNames(row['Ingredients']);
 
     for (const name of ingredientNames) {
-      if (seenNames.has(name)) {
+      const normalizedName = normalizeIngredientName(name);
+
+      if (seenNames.has(normalizedName)) {
         continue;
       }
 
-      seenNames.add(name);
-      workbookIngredientNames.push(name);
+      seenNames.add(normalizedName);
+      workbookIngredientNames.push(normalizedName);
     }
   }
 
@@ -50,7 +57,9 @@ export async function seedIngredients(prisma: PrismaClient) {
   });
 
   const existingIngredientNames = new Set(
-    existingIngredients.map((ingredient) => ingredient.name),
+    existingIngredients.map((ingredient) =>
+      normalizeIngredientName(ingredient.name),
+    ),
   );
 
   const ingredientsToInsert = workbookIngredientNames.filter(
@@ -69,7 +78,7 @@ export async function seedIngredients(prisma: PrismaClient) {
       data: ingredientsToInsert
         .slice(index, index + BATCH_SIZE)
         .map((name) => ({
-          name: truncate(name, 200),
+          name,
         })),
     });
   }
