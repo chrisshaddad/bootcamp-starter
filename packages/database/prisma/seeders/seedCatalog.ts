@@ -289,8 +289,9 @@ const CATALOGS: CatalogSeed[] = [
         categoryKeys: ['medicine'],
         copies: [
           {
+            // On loan to HF-0001 via the OVERDUE rental seeded in seedCirculation.
             barcode: 'HF-EOM-001',
-            status: 'AVAILABLE',
+            status: 'ON_LOAN',
             condition: 'GOOD',
           },
           {
@@ -319,101 +320,105 @@ export async function seedCatalog(prisma: PrismaClient) {
       continue;
     }
 
-    const authorsByKey = new Map<string, string>();
-    const categoriesByKey = new Map<string, string>();
-    const publishersByKey = new Map<string, string>();
+    // Seed the whole catalog for one organization atomically so a failure
+    // partway through does not leave partial authors/books/copies committed.
+    await prisma.$transaction(async (tx) => {
+      const authorsByKey = new Map<string, string>();
+      const categoriesByKey = new Map<string, string>();
+      const publishersByKey = new Map<string, string>();
 
-    for (const author of catalog.authors) {
-      const created = await prisma.author.create({
-        data: {
-          organizationId: organization.id,
-          name: author.name,
-          bio: author.bio,
-          nationality: author.nationality,
-          birthYear: author.birthYear,
-          photoUrl: author.photoUrl,
-        },
-      });
+      for (const author of catalog.authors) {
+        const created = await tx.author.create({
+          data: {
+            organizationId: organization.id,
+            name: author.name,
+            bio: author.bio,
+            nationality: author.nationality,
+            birthYear: author.birthYear,
+            photoUrl: author.photoUrl,
+          },
+        });
 
-      authorsByKey.set(author.key, created.id);
-    }
+        authorsByKey.set(author.key, created.id);
+      }
 
-    for (const category of catalog.categories) {
-      const created = await prisma.category.create({
-        data: {
-          organizationId: organization.id,
-          name: category.name,
-          description: category.description,
-        },
-      });
+      for (const category of catalog.categories) {
+        const created = await tx.category.create({
+          data: {
+            organizationId: organization.id,
+            name: category.name,
+            description: category.description,
+          },
+        });
 
-      categoriesByKey.set(category.key, created.id);
-    }
+        categoriesByKey.set(category.key, created.id);
+      }
 
-    for (const publisher of catalog.publishers) {
-      const created = await prisma.publisher.create({
-        data: {
-          organizationId: organization.id,
-          name: publisher.name,
-          email: publisher.email,
-          website: publisher.website,
-          address: publisher.address,
-        },
-      });
+      for (const publisher of catalog.publishers) {
+        const created = await tx.publisher.create({
+          data: {
+            organizationId: organization.id,
+            name: publisher.name,
+            email: publisher.email,
+            website: publisher.website,
+            address: publisher.address,
+          },
+        });
 
-      publishersByKey.set(publisher.key, created.id);
-    }
+        publishersByKey.set(publisher.key, created.id);
+      }
 
-    for (const book of catalog.books) {
-      const createdBook = await prisma.book.create({
-        data: {
-          organizationId: organization.id,
-          publisherId: book.publisherKey
-            ? publishersByKey.get(book.publisherKey)
-            : undefined,
-          isbn: book.isbn,
-          title: book.title,
-          description: book.description,
-          publishedDate: book.publishedDate,
-          language: book.language,
-          pageCount: book.pageCount,
-          coverUrl: book.coverUrl,
-          salePrice: book.salePrice,
-          edition: book.edition,
-        },
-      });
+      for (const book of catalog.books) {
+        const createdBook = await tx.book.create({
+          data: {
+            organizationId: organization.id,
+            publisherId: book.publisherKey
+              ? publishersByKey.get(book.publisherKey)
+              : undefined,
+            isbn: book.isbn,
+            title: book.title,
+            description: book.description,
+            publishedDate: book.publishedDate,
+            language: book.language,
+            pageCount: book.pageCount,
+            coverUrl: book.coverUrl,
+            salePrice: book.salePrice,
+            edition: book.edition,
+          },
+        });
 
-      await prisma.bookAuthor.createMany({
-        data: book.authorKeys.map((authorKey) => ({
-          organizationId: organization.id,
-          bookId: createdBook.id,
-          authorId: authorsByKey.get(authorKey)!,
-        })),
-      });
+        await tx.bookAuthor.createMany({
+          data: book.authorKeys.map((authorKey) => ({
+            organizationId: organization.id,
+            bookId: createdBook.id,
+            authorId: authorsByKey.get(authorKey)!,
+          })),
+        });
 
-      await prisma.bookCategory.createMany({
-        data: book.categoryKeys.map((categoryKey) => ({
-          organizationId: organization.id,
-          bookId: createdBook.id,
-          categoryId: categoriesByKey.get(categoryKey)!,
-        })),
-      });
+        await tx.bookCategory.createMany({
+          data: book.categoryKeys.map((categoryKey) => ({
+            organizationId: organization.id,
+            bookId: createdBook.id,
+            categoryId: categoriesByKey.get(categoryKey)!,
+          })),
+        });
 
-      await prisma.bookCopy.createMany({
-        data: book.copies.map((copy) => ({
-          organizationId: organization.id,
-          bookId: createdBook.id,
-          barcode: copy.barcode,
-          status: copy.status ?? 'AVAILABLE',
-          condition: copy.condition ?? 'GOOD',
-          acquiredAt: copy.acquiredAt,
-        })),
-      });
+        await tx.bookCopy.createMany({
+          data: book.copies.map((copy) => ({
+            organizationId: organization.id,
+            bookId: createdBook.id,
+            barcode: copy.barcode,
+            status: copy.status ?? 'AVAILABLE',
+            condition: copy.condition ?? 'GOOD',
+            acquiredAt: copy.acquiredAt,
+          })),
+        });
 
-      console.log(
-        `  Created book: ${book.title} (${book.copies.length} copies) - Organization: ${organization.name}`,
-      );
-    }
+        console.log(
+          `  Created book: ${book.title} (${book.copies.length} copies) - Organization: ${organization.name}`,
+        );
+      }
+    });
   }
 
   const totalBooks = CATALOGS.reduce(

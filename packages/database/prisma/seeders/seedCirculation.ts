@@ -26,47 +26,62 @@ interface ReservationSeed {
   cancelledAt?: Date;
 }
 
+// Seed dates are computed relative to "now" so the seeded statuses stay
+// internally consistent (e.g. an ACTIVE rental is not yet due, an OVERDUE
+// rental is past due, a READY_FOR_PICKUP reservation has not expired) no
+// matter when the seed runs.
+const now = new Date();
+const daysFromNow = (days: number): Date => {
+  const date = new Date(now);
+  date.setDate(date.getDate() + days);
+  return date;
+};
+
 const RENTALS: RentalSeed[] = [
+  // ACTIVE: checked out recently, not yet due. Copy TC-KIN-002 is ON_LOAN.
   {
     organizationSlug: 'techcorp-solutions',
     bookCopyBarcode: 'TC-KIN-002',
     memberCardNumber: 'TC-0001',
     staffEmail: 'librarian@techcorp.example.com',
-    rentedAt: new Date('2026-02-01'),
-    dueDate: new Date('2026-02-15'),
+    rentedAt: daysFromNow(-4),
+    dueDate: daysFromNow(10),
     status: 'ACTIVE',
   },
+  // RETURNED: returned before the due date. Copy TC-MAR-001 is AVAILABLE.
   {
     organizationSlug: 'techcorp-solutions',
     bookCopyBarcode: 'TC-MAR-001',
     memberCardNumber: 'TC-0002',
     staffEmail: 'librarian@techcorp.example.com',
-    rentedAt: new Date('2026-01-10'),
-    dueDate: new Date('2026-01-24'),
-    returnedAt: new Date('2026-01-20'),
+    rentedAt: daysFromNow(-40),
+    dueDate: daysFromNow(-26),
+    returnedAt: daysFromNow(-30),
     status: 'RETURNED',
     fineAmount: '0.00',
     finePaid: true,
   },
+  // LOST: never returned, marked lost with an outstanding fine. Copy GE-PP-002 is LOST.
   {
     organizationSlug: 'green-energy-partners',
     bookCopyBarcode: 'GE-PP-002',
     memberCardNumber: 'GE-0001',
     staffEmail: 'librarian@greenenergy.example.com',
-    rentedAt: new Date('2025-12-15'),
-    dueDate: new Date('2025-12-29'),
+    rentedAt: daysFromNow(-90),
+    dueDate: daysFromNow(-76),
     status: 'LOST',
     fineAmount: '35.00',
     finePaid: false,
     notes: 'Member reported the copy missing after travel.',
   },
+  // OVERDUE: past due and still out. Copy HF-EOM-001 is ON_LOAN.
   {
     organizationSlug: 'healthfirst-medical-group',
     bookCopyBarcode: 'HF-EOM-001',
     memberCardNumber: 'HF-0001',
     staffEmail: 'librarian@healthfirst.example.com',
-    rentedAt: new Date('2026-01-20'),
-    dueDate: new Date('2026-02-03'),
+    rentedAt: daysFromNow(-24),
+    dueDate: daysFromNow(-10),
     status: 'OVERDUE',
     fineAmount: '4.50',
     finePaid: false,
@@ -74,40 +89,44 @@ const RENTALS: RentalSeed[] = [
 ];
 
 const RESERVATIONS: ReservationSeed[] = [
+  // READY_FOR_PICKUP: notified, not yet expired. Copy TC-MAR-002 is RESERVED.
   {
     organizationSlug: 'techcorp-solutions',
     bookTitle: 'The Martian',
     memberCardNumber: 'TC-0001',
-    reservedAt: new Date('2026-02-03'),
-    expiresAt: new Date('2026-02-10'),
+    reservedAt: daysFromNow(-3),
+    expiresAt: daysFromNow(4),
     status: 'READY_FOR_PICKUP',
-    notifiedAt: new Date('2026-02-04'),
+    notifiedAt: daysFromNow(-2),
   },
+  // CANCELLED: cancelled before expiry.
   {
     organizationSlug: 'techcorp-solutions',
     bookTitle: 'The Left Hand of Darkness',
     memberCardNumber: 'TC-0002',
-    reservedAt: new Date('2026-01-15'),
-    expiresAt: new Date('2026-01-22'),
+    reservedAt: daysFromNow(-20),
+    expiresAt: daysFromNow(-13),
     status: 'CANCELLED',
-    cancelledAt: new Date('2026-01-18'),
+    cancelledAt: daysFromNow(-17),
   },
+  // FULFILLED: picked up shortly after being notified.
   {
     organizationSlug: 'green-energy-partners',
     bookTitle: 'Between the World and Me',
     memberCardNumber: 'GE-0001',
-    reservedAt: new Date('2026-01-04'),
-    expiresAt: new Date('2026-01-11'),
+    reservedAt: daysFromNow(-30),
+    expiresAt: daysFromNow(-23),
     status: 'FULFILLED',
-    notifiedAt: new Date('2026-01-05'),
-    fulfilledAt: new Date('2026-01-06'),
+    notifiedAt: daysFromNow(-29),
+    fulfilledAt: daysFromNow(-28),
   },
+  // ACTIVE: open hold, not yet expired. Copy HF-EOM-002 is RESERVED.
   {
     organizationSlug: 'healthfirst-medical-group',
     bookTitle: 'The Emperor of All Maladies',
     memberCardNumber: 'HF-0001',
-    reservedAt: new Date('2026-02-01'),
-    expiresAt: new Date('2026-02-08'),
+    reservedAt: daysFromNow(-2),
+    expiresAt: daysFromNow(5),
     status: 'ACTIVE',
   },
 ];

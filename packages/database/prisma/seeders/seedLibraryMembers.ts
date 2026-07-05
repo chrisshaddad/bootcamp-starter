@@ -4,7 +4,12 @@ interface LibraryMemberSeed {
   organizationSlug: string;
   libraryCardNumber: string;
   membershipType: 'STUDENT' | 'ADULT' | 'PREMIUM';
-  membershipStatus: 'ACTIVE' | 'EXPIRED' | 'SUSPENDED' | 'PENDING' | 'CANCELLED';
+  membershipStatus:
+    | 'ACTIVE'
+    | 'EXPIRED'
+    | 'SUSPENDED'
+    | 'PENDING'
+    | 'CANCELLED';
   membershipStartDate: Date;
   membershipEndDate?: Date;
   user?: {
@@ -79,28 +84,32 @@ export async function seedLibraryMembers(prisma: PrismaClient) {
       continue;
     }
 
-    const user = member.user
-      ? await prisma.user.create({
-          data: {
-            email: member.user.email,
-            name: member.user.name,
-            isConfirmed: true,
-            role: 'MEMBER',
-            organizationId: organization.id,
-          },
-        })
-      : null;
+    // Create the login user (if any) and the library member together so a
+    // failed member insert also rolls back the MEMBER user it belongs to.
+    await prisma.$transaction(async (tx) => {
+      const user = member.user
+        ? await tx.user.create({
+            data: {
+              email: member.user.email,
+              name: member.user.name,
+              isConfirmed: true,
+              role: 'MEMBER',
+              organizationId: organization.id,
+            },
+          })
+        : null;
 
-    await prisma.libraryMember.create({
-      data: {
-        organizationId: organization.id,
-        userId: user?.id,
-        libraryCardNumber: member.libraryCardNumber,
-        membershipType: member.membershipType,
-        membershipStatus: member.membershipStatus,
-        membershipStartDate: member.membershipStartDate,
-        membershipEndDate: member.membershipEndDate,
-      },
+      await tx.libraryMember.create({
+        data: {
+          organizationId: organization.id,
+          userId: user?.id,
+          libraryCardNumber: member.libraryCardNumber,
+          membershipType: member.membershipType,
+          membershipStatus: member.membershipStatus,
+          membershipStartDate: member.membershipStartDate,
+          membershipEndDate: member.membershipEndDate,
+        },
+      });
     });
 
     console.log(

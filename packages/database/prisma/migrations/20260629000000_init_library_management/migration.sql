@@ -112,6 +112,8 @@ CREATE TABLE "LibraryMember" (
     "membershipStatus" "LibraryMemberStatus" NOT NULL,
     "membershipStartDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "membershipEndDate" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "LibraryMember_pkey" PRIMARY KEY ("id")
 );
@@ -137,6 +139,8 @@ CREATE TABLE "Category" (
     "organizationId" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "description" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Category_pkey" PRIMARY KEY ("id")
 );
@@ -204,6 +208,8 @@ CREATE TABLE "BookCopy" (
     "status" "BookCopyStatus" NOT NULL DEFAULT 'AVAILABLE',
     "condition" "BookCopyCondition" NOT NULL DEFAULT 'GOOD',
     "acquiredAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "BookCopy_pkey" PRIMARY KEY ("id")
 );
@@ -467,3 +473,4 @@ ALTER TABLE "Reservation" ADD CONSTRAINT "Reservation_bookId_fkey" FOREIGN KEY (
 
 -- AddForeignKey
 ALTER TABLE "Reservation" ADD CONSTRAINT "Reservation_memberId_fkey" FOREIGN KEY ("memberId") REFERENCES "LibraryMember"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
