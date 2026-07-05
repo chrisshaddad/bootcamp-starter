@@ -5,6 +5,17 @@ import request from 'supertest';
 import cookieParser from 'cookie-parser';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from './../src/database/prisma.service';
+import { Server } from 'http';
+
+interface AuthResponse {
+  user: {
+    email: string;
+  };
+}
+
+interface MeResponse {
+  email: string;
+}
 
 describe('AuthController (e2e)', () => {
   let app: INestApplication;
@@ -28,7 +39,7 @@ describe('AuthController (e2e)', () => {
     // Clean up test user if it exists from previous aborted test runs
     try {
       await prisma.user.delete({ where: { email: 'e2e@test.com' } });
-    } catch (e) {
+    } catch (_e) {
       // Ignore if user does not exist
     }
   });
@@ -36,14 +47,14 @@ describe('AuthController (e2e)', () => {
   afterAll(async () => {
     try {
       await prisma.user.delete({ where: { email: 'e2e@test.com' } });
-    } catch (e) {
+    } catch (_e) {
       // Ignore if user does not exist
     }
     await app.close();
   });
 
   it('/auth/signup (POST) - Success', async () => {
-    const response = await request(app.getHttpServer())
+    const response = await request(app.getHttpServer() as Server)
       .post('/auth/signup')
       .send({
         email: 'e2e@test.com',
@@ -54,7 +65,9 @@ describe('AuthController (e2e)', () => {
       });
 
     expect(response.status).toBe(201);
-    expect(response.body.user.email).toBe('e2e@test.com');
+
+    const body = response.body as AuthResponse;
+    expect(body.user.email).toBe('e2e@test.com');
     expect(response.headers['set-cookie']).toBeDefined();
 
     // Safely extract the cookie with fallback
@@ -63,7 +76,7 @@ describe('AuthController (e2e)', () => {
   });
 
   it('/auth/login (POST) - Success', async () => {
-    const response = await request(app.getHttpServer())
+    const response = await request(app.getHttpServer() as Server)
       .post('/auth/login')
       .send({
         email: 'e2e@test.com',
@@ -71,20 +84,24 @@ describe('AuthController (e2e)', () => {
       });
 
     expect(response.status).toBe(200);
-    expect(response.body.user.email).toBe('e2e@test.com');
+
+    const body = response.body as AuthResponse;
+    expect(body.user.email).toBe('e2e@test.com');
   });
 
   it('/auth/me (GET) - Success with Cookie', async () => {
-    const response = await request(app.getHttpServer())
+    const response = await request(app.getHttpServer() as Server)
       .get('/auth/me')
       .set('Cookie', cookie);
 
     expect(response.status).toBe(200);
-    expect(response.body.email).toBe('e2e@test.com');
+
+    const body = response.body as MeResponse;
+    expect(body.email).toBe('e2e@test.com');
   });
 
   it('/auth/logout (POST) - Clears cookie', async () => {
-    const response = await request(app.getHttpServer())
+    const response = await request(app.getHttpServer() as Server)
       .post('/auth/logout')
       .set('Cookie', cookie);
 

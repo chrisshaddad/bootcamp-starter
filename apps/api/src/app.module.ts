@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { MailModule } from './mail/mail.module';
 import { OrganizationsModule } from './organizations/organizations.module';
 import { DatabaseModule } from './database/database.module';
+import { ProjectsModule } from './projects/projects.module'; // 1. ADD THIS IMPORT
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { DatabaseModule } from './database/database.module';
     AuthModule,
     MailModule,
     OrganizationsModule,
+    ProjectsModule, // 2. ADD THIS TO THE IMPORTS ARRAY
   ],
   controllers: [AppController],
   providers: [AppService],
