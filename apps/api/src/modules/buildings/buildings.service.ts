@@ -1,6 +1,5 @@
 import {
   ConflictException,
-  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -8,13 +7,11 @@ import {
 import { PrismaService } from '@/infrastructure/prisma/prisma.service';
 import { KeycloakAdminService } from '@/infrastructure/keycloak/keycloak-admin.service';
 import { TimelineService } from '@/modules/timeline/timeline.service';
+import { BuildingAccessService } from '@/common/building-access/building-access.service';
 import { Role } from '@/common/enums';
 import { getPlan } from '@/modules/billing/plan-catalog';
 import { CreateBuildingDto } from './dto/create-building.dto';
 import { UpdateBuildingDto } from './dto/update-building.dto';
-
-/** Roles that see ALL buildings (org-wide). */
-const ORG_WIDE_ROLES = new Set<Role>([Role.ORG_ADMIN, Role.FINANCE]);
 
 @Injectable()
 export class BuildingsService {
@@ -24,28 +21,8 @@ export class BuildingsService {
     private readonly prisma: PrismaService,
     private readonly keycloakAdmin: KeycloakAdminService,
     private readonly timeline: TimelineService,
+    private readonly buildingAccess: BuildingAccessService,
   ) {}
-
-  // ── Building scope helper ────────────────────────────────────────────────
-
-  /**
-   * Returns the set of building IDs the caller may access, or null meaning ALL.
-   * - org_admin / finance → null (all).
-   * - supervisor / maintenance → assigned building IDs.
-   */
-  private async resolveAllowedBuildingIds(
-    callerId: string,
-    orgId: string,
-    callerRole: Role,
-  ): Promise<string[] | null> {
-    if (ORG_WIDE_ROLES.has(callerRole)) return null;
-
-    const assignments = await this.prisma.buildingAssignment.findMany({
-      where: { userId: callerId, orgId },
-      select: { buildingId: true },
-    });
-    return assignments.map((a) => a.buildingId);
-  }
 
   // ── Format helpers ────────────────────────────────────────────────────────
 
@@ -116,9 +93,9 @@ export class BuildingsService {
   // ── CRUD ──────────────────────────────────────────────────────────────────
 
   async findAll(orgId: string, callerId: string, callerRole: Role) {
-    const allowedIds = await this.resolveAllowedBuildingIds(
-      callerId,
+    const allowedIds = await this.buildingAccess.getAllowedBuildingIds(
       orgId,
+      callerId,
       callerRole,
     );
 
@@ -144,15 +121,12 @@ export class BuildingsService {
     });
     if (!building) throw new NotFoundException('Building not found.');
 
-    // Scope check for restricted roles
-    if (!ORG_WIDE_ROLES.has(callerRole)) {
-      const assignment = await this.prisma.buildingAssignment.findFirst({
-        where: { buildingId, userId: callerId, orgId },
-      });
-      if (!assignment) {
-        throw new ForbiddenException('You are not assigned to this building.');
-      }
-    }
+    await this.buildingAccess.assertBuildingAccess(
+      orgId,
+      callerId,
+      callerRole,
+      buildingId,
+    );
 
     return { data: await this.formatBuilding(building) };
   }
