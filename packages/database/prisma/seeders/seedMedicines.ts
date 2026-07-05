@@ -142,6 +142,7 @@ export async function seedMedicines(prisma: PrismaClient) {
   for (const batch of chunk(medicinesToInsert, BATCH_SIZE)) {
     await prisma.medicine.createMany({
       data: batch,
+      skipDuplicates: true,
     });
   }
 
