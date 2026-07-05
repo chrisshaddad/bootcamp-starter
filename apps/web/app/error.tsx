@@ -18,20 +18,22 @@ export default function GlobalError({
   }, [error]);
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-white px-6 text-center">
-      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-50">
-        <AlertTriangle className="h-6 w-6 text-red-500" />
+    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background px-6 text-center">
+      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-error-light">
+        <AlertTriangle className="h-6 w-6 text-error" />
       </div>
       <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-bold text-gray-900">
+        <h1 className="text-2xl font-bold text-foreground">
           Something went wrong
         </h1>
-        <p className="max-w-md text-sm text-gray-500">
+        <p className="max-w-md text-sm text-muted-foreground">
           An unexpected error occurred. Try again, or head back home if the
           problem persists.
         </p>
         {error.digest && (
-          <p className="font-mono text-xs text-gray-400">id: {error.digest}</p>
+          <p className="font-mono text-xs text-muted-foreground">
+            id: {error.digest}
+          </p>
         )}
       </div>
       <div className="flex gap-3">

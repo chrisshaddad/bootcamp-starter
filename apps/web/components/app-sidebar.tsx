@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { LucideIcon } from 'lucide-react';
@@ -92,15 +93,20 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar className="border-r border-gray-200 bg-white">
+    <Sidebar className="border-r border-sidebar-border bg-sidebar">
       <SidebarHeader className="px-5 py-6">
         {/* Logo */}
         <Link href="/dashboard" className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-base">
-            <span className="text-lg font-bold text-white">✦</span>
-          </div>
-          <span className="text-xl font-semibold text-gray-900">
-            Bootcamp Starter
+          <Image
+            src="/nextshelf-icon.svg"
+            alt="NextShelf"
+            width={32}
+            height={32}
+            priority
+            className="h-8 w-8"
+          />
+          <span className="text-xl font-semibold text-library-ink">
+            NextShelf
           </span>
         </Link>
       </SidebarHeader>
@@ -108,7 +114,7 @@ export function AppSidebar() {
       <SidebarContent className="overflow-x-hidden px-3">
         {/* Main Navigation */}
         <SidebarGroup>
-          <SidebarGroupLabel className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-gray-500">
+          <SidebarGroupLabel className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
             {isSuperAdmin ? 'Administration' : 'Main'}
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -123,21 +129,21 @@ export function AppSidebar() {
                       'h-11 gap-3 rounded-lg px-3 text-sm font-medium transition-colors',
                       item.disabled && 'cursor-not-allowed opacity-50',
                       isActive(item.url)
-                        ? 'bg-primary-100 text-gray-900 hover:bg-primary-200'
-                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+                        ? 'bg-library-primary-100 text-library-primary-900 hover:bg-library-primary-200'
+                        : 'text-sidebar-foreground/70 hover:bg-library-primary-50 hover:text-sidebar-foreground',
                     )}
                   >
                     {item.disabled ? (
                       <div className="flex items-center gap-3">
-                        <item.icon className="h-5 w-5 text-gray-400" />
+                        <item.icon className="h-5 w-5 text-muted-foreground/60" />
                         <span>{item.title}</span>
-                        <span className="ml-auto text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
+                        <span className="ml-auto text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded">
                           Soon
                         </span>
                       </div>
                     ) : (
                       <Link href={item.url}>
-                        <item.icon className="h-5 w-5 text-gray-500" />
+                        <item.icon className="h-5 w-5" />
                         <span>{item.title}</span>
                       </Link>
                     )}
@@ -152,7 +158,7 @@ export function AppSidebar() {
 
         {/* Secondary Navigation */}
         <SidebarGroup>
-          <SidebarGroupLabel className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-gray-500">
+          <SidebarGroupLabel className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Support
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -165,12 +171,12 @@ export function AppSidebar() {
                     className={cn(
                       'h-11 gap-3 rounded-lg px-3 text-sm font-medium transition-colors',
                       isActive(item.url)
-                        ? 'bg-primary-100 text-gray-900 hover:bg-primary-200'
-                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+                        ? 'bg-library-primary-100 text-library-primary-900 hover:bg-library-primary-200'
+                        : 'text-sidebar-foreground/70 hover:bg-library-primary-50 hover:text-sidebar-foreground',
                     )}
                   >
                     <Link href={item.url}>
-                      <item.icon className="h-5 w-5 text-gray-500" />
+                      <item.icon className="h-5 w-5" />
                       <span>{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
@@ -186,9 +192,9 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={() => logout()}
-              className="h-11 gap-3 rounded-lg px-3 text-sm font-medium text-gray-600 transition-colors hover:bg-red-50 hover:text-red-600"
+              className="h-11 gap-3 rounded-lg px-3 text-sm font-medium text-sidebar-foreground/70 transition-colors hover:bg-error-light hover:text-error"
             >
-              <LogOut className="h-5 w-5 text-gray-500" />
+              <LogOut className="h-5 w-5" />
               <span>Logout</span>
             </SidebarMenuButton>
           </SidebarMenuItem>

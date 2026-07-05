@@ -54,7 +54,7 @@ function VerifyContent() {
       <div className="text-center">
         {status === 'loading' && (
           <>
-            <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary-base" />
+            <Loader2 className="mx-auto h-12 w-12 animate-spin text-library-primary" />
             <h1 className="mt-4 text-xl font-semibold text-foreground">
               Verifying your magic link...
             </h1>
@@ -66,7 +66,7 @@ function VerifyContent() {
 
         {status === 'success' && (
           <>
-            <CheckCircle2 className="mx-auto h-12 w-12 text-primary-base" />
+            <CheckCircle2 className="mx-auto h-12 w-12 text-success" />
             <h1 className="mt-4 text-xl font-semibold text-foreground">
               Successfully verified!
             </h1>
@@ -85,7 +85,7 @@ function VerifyContent() {
             <p className="mt-2 text-muted-foreground">{errorMessage}</p>
             <a
               href="/login"
-              className="mt-4 inline-block text-primary-base hover:underline"
+              className="mt-4 inline-block text-library-primary hover:underline"
             >
               Back to login
             </a>
@@ -101,7 +101,7 @@ export default function VerifyPage() {
     <Suspense
       fallback={
         <div className="flex min-h-screen items-center justify-center bg-background">
-          <Loader2 className="h-12 w-12 animate-spin text-primary-base" />
+          <Loader2 className="h-12 w-12 animate-spin text-library-primary" />
         </div>
       }
     >

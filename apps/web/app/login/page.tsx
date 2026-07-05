@@ -80,7 +80,8 @@ export default function LoginPage() {
 
           {/* Subtext */}
           <p className="text-lg leading-normal text-white">
-            Sign in to manage your catalog, members, and loans in one place — or register your library to bring your whole collection online.
+            Sign in to manage your catalog, members, and loans in one place — or
+            register your library to bring your whole collection online.
           </p>
         </div>
       </div>
@@ -122,7 +123,7 @@ export default function LoginPage() {
 
               <Button
                 type="submit"
-                className="h-14 w-full rounded-[10px] bg-library-primary text-base font-bold leading-normal tracking-[0.3px] text-white hover:bg-library-ink disabled:bg-gray-200 disabled:text-gray-500"
+                className="h-14 w-full rounded-[10px] bg-library-primary text-base font-bold leading-normal tracking-[0.3px] text-white hover:bg-library-ink disabled:bg-gray-200 disabled:text-muted-foreground"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (
@@ -137,7 +138,7 @@ export default function LoginPage() {
             </form>
 
             {/* Info Text */}
-            <p className="text-center text-sm font-medium leading-[1.6] text-gray-500">
+            <p className="text-center text-sm font-medium leading-[1.6] text-muted-foreground">
               We&apos;ll send you a magic link to sign in instantly.
               <br />
               No password required.
@@ -145,10 +146,13 @@ export default function LoginPage() {
 
             {/* Register Link */}
             <p className="text-center text-sm font-medium leading-[1.6]">
-              <span className="text-gray-500">
+              <span className="text-muted-foreground">
                 Don&apos;t have a organization?{' '}
               </span>
-              <a href="/register" className="text-library-primary hover:underline">
+              <a
+                href="/register"
+                className="text-library-primary hover:underline"
+              >
                 Create an Org
               </a>
             </p>
@@ -158,9 +162,8 @@ export default function LoginPage() {
         {/* Footer */}
         <footer className="px-6 py-6">
           <div className="flex flex-wrap items-center justify-center gap-2.5 text-sm font-medium leading-[1.6]">
-            <span className="text-gray-500">
-              © {new Date().getFullYear()} NextShelf. All rights
-              reserved.
+            <span className="text-muted-foreground">
+              © {new Date().getFullYear()} NextShelf. All rights reserved.
             </span>
             <a
               href="/terms"
