@@ -9,11 +9,12 @@ import {
   type ToolSet,
   type UIMessage,
 } from 'ai';
-import { z } from 'zod';
 import {
   dashboardQuerySchema,
-  expenseQuerySchema,
-  saleQuerySchema,
+  listGoalsToolInputSchema,
+  listProductsToolInputSchema,
+  listSalesToolInputSchema,
+  topNExpensesToolInputSchema,
 } from '@repo/contracts';
 import { DashboardService } from '../dashboard/dashboard.service';
 import { ExpensesService } from '../expenses/expenses.service';
@@ -38,37 +39,6 @@ All figures are already computed for you — never do the arithmetic yourself, r
 from the tool results. Call a tool whenever a question needs figures.
 Never invent numbers — if the needed data is unavailable, say so plainly and explain
 what you would need to answer it.`;
-
-// The model may pass looser types (e.g. strings for numbers/booleans), so every
-// numeric/boolean input is coerced. Limits are clamped so a tool call can never pull
-// an unbounded result set into the model's context.
-const topNExpensesInputSchema = expenseQuerySchema
-  .pick({ categoryId: true, dateFrom: true, dateTo: true, search: true })
-  .extend({
-    limit: z.coerce.number().int().min(1).max(10).default(10),
-  });
-
-const listSalesInputSchema = saleQuerySchema
-  .pick({ productId: true, dateFrom: true, dateTo: true, search: true })
-  .extend({
-    limit: z.coerce.number().int().min(1).max(20).default(20),
-  });
-
-const listProductsInputSchema = z.object({
-  activeOnly: z.coerce
-    .boolean()
-    .default(false)
-    .describe('Only include products currently marked active.'),
-  limit: z.coerce.number().int().min(1).max(50).default(20),
-});
-
-const listGoalsInputSchema = z.object({
-  activeOnly: z.coerce
-    .boolean()
-    .default(true)
-    .describe('Only include goals that are currently active.'),
-  limit: z.coerce.number().int().min(1).max(50).default(20),
-});
 
 @Injectable()
 export class ChatService {
@@ -102,7 +72,7 @@ export class ChatService {
       topNExpenses: tool({
         description:
           'Get the top expenses for the organization, sorted by amount descending.',
-        inputSchema: topNExpensesInputSchema,
+        inputSchema: topNExpensesToolInputSchema,
         execute: (query) =>
           this.expensesService.getTopNExpenses(organizationId, {
             ...query,
@@ -114,7 +84,7 @@ export class ChatService {
       listProducts: tool({
         description:
           "List the organization's products with their unit price and cost.",
-        inputSchema: listProductsInputSchema,
+        inputSchema: listProductsToolInputSchema,
         execute: ({ activeOnly, limit }) =>
           this.productsService.findAll(organizationId, {
             page: 1,
@@ -127,7 +97,7 @@ export class ChatService {
         description:
           'List recent sales, each with computed revenue and gross profit. ' +
           'Filter by product, date range, or a text search.',
-        inputSchema: listSalesInputSchema,
+        inputSchema: listSalesToolInputSchema,
         execute: ({ limit, ...filters }) =>
           this.salesService.findAll(organizationId, {
             ...filters,
@@ -139,7 +109,7 @@ export class ChatService {
       listGoals: tool({
         description:
           "List the organization's goals (revenue, profit, or expense targets).",
-        inputSchema: listGoalsInputSchema,
+        inputSchema: listGoalsToolInputSchema,
         execute: ({ activeOnly, limit }) =>
           this.goalsService.findAll(organizationId, {
             page: 1,

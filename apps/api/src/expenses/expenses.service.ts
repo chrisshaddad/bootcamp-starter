@@ -151,17 +151,30 @@ export class ExpensesService {
     organizationId: string,
     query: ExpenseQuery,
   ): Promise<ExpenseListResponse> {
-    const { page, limit = 10, sortBy = 'amount', sortOrder = 'desc' } = query;
+    const { page = 1, limit = 10, categoryId, dateFrom, dateTo, search } = query;
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = { organizationId };
+
+    if (categoryId) where.categoryId = categoryId;
+
+    if (dateFrom || dateTo) {
+      where.date = {
+        ...(dateFrom ? { gte: new Date(dateFrom) } : {}),
+        ...(dateTo ? { lte: new Date(dateTo) } : {}),
+      };
+    }
+
+    if (search) {
+      where.description = { contains: search, mode: 'insensitive' };
+    }
 
     const [expenses, total] = await Promise.all([
       this.prisma.expense.findMany({
         where,
         skip,
         take: limit,
-        orderBy: { [sortBy]: sortOrder },
+        orderBy: { amount: 'desc' },
         include: {
           category: true,
           createdBy: { select: { id: true, name: true, email: true } },
