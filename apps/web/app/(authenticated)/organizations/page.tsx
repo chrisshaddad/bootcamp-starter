@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { StatusBadge } from '@/components/status-badge';
 import { Building2, ShieldX } from 'lucide-react';
 import { useState } from 'react';
 import type { OrganizationStatus } from '@repo/contracts';
@@ -47,16 +48,6 @@ const STATUS_COLORS: Record<string, string> = {
   SUSPENDED: 'bg-library-accent-100 text-library-accent-800',
   INACTIVE: 'bg-muted text-muted-foreground',
 };
-
-function StatusBadge({ status }: { status: string }) {
-  return (
-    <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[status] || 'bg-muted text-muted-foreground'}`}
-    >
-      {STATUS_LABELS[status] || status}
-    </span>
-  );
-}
 
 function ForbiddenPage() {
   return (
@@ -201,7 +192,11 @@ export default function OrganizationsPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <StatusBadge status={org.status} />
+                      <StatusBadge
+                        status={org.status}
+                        labels={STATUS_LABELS}
+                        colors={STATUS_COLORS}
+                      />
                     </TableCell>
                     <TableCell>
                       <div>

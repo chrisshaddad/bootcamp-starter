@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { StatusBadge } from '@/components/status-badge';
 import {
   Dialog,
   DialogContent,
@@ -45,16 +46,6 @@ const STATUS_COLORS: Record<string, string> = {
     'bg-library-accent-100 text-library-accent-800 border-library-accent-300',
   INACTIVE: 'bg-muted text-muted-foreground border-border',
 };
-
-function StatusBadge({ status }: { status: string }) {
-  return (
-    <span
-      className={`inline-flex items-center rounded-full border px-3 py-1 text-sm font-medium ${STATUS_COLORS[status] || 'bg-muted text-muted-foreground'}`}
-    >
-      {STATUS_LABELS[status] || status}
-    </span>
-  );
-}
 
 function ForbiddenPage() {
   return (
@@ -203,7 +194,12 @@ export default function OrganizationDetailPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">{org.name}</h1>
           <div className="mt-2">
-            <StatusBadge status={org.status} />
+            <StatusBadge
+              status={org.status}
+              labels={STATUS_LABELS}
+              colors={STATUS_COLORS}
+              className="border px-3 py-1 text-sm"
+            />
           </div>
         </div>
 
