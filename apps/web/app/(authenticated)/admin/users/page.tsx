@@ -291,7 +291,19 @@ function UserRow({
   const stop = (event: React.MouseEvent) => event.stopPropagation();
 
   return (
-    <TableRow onClick={onView} className="cursor-pointer">
+    <TableRow
+      onClick={onView}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onView();
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      aria-label={`View profile for ${name}`}
+      className="cursor-pointer"
+    >
       <TableCell>
         <div className="flex items-center gap-3">
           <UserAvatar user={user} />
@@ -302,18 +314,29 @@ function UserRow({
         </div>
       </TableCell>
       <TableCell onClick={stop}>
-        <RowEditMenu
-          ariaLabel={`Change role for ${name}`}
-          trigger={<RolePill role={user.role} />}
-          value={user.role}
-          options={SELECTABLE_ROLES.map((role) => ({
-            value: role,
-            label: humanize(role),
-          }))}
-          onChange={(value) =>
-            void patch({ role: value as UserRole }, `Role updated for ${name}.`)
-          }
-        />
+        {/* Inline role editing is only for reshuffling pharmacy staff among
+            pharmacy-scoped roles. Crossing the pharmacy boundary — to/from
+            CLIENT or SUPER_ADMIN — is a deliberate, higher-stakes change (and
+            gaining a pharmacy role needs a pharmacy assigned first), so it is
+            not offered here. Non-pharmacy users show a static pill. */}
+        {pharmacyRole ? (
+          <RowEditMenu
+            ariaLabel={`Change role for ${name}`}
+            trigger={<RolePill role={user.role} />}
+            value={user.role}
+            options={SELECTABLE_ROLES.filter(isPharmacyScopedRole).map(
+              (role) => ({
+                value: role,
+                label: humanize(role),
+              }),
+            )}
+            onChange={(value) =>
+              void patch({ role: value as UserRole }, `Role updated for ${name}.`)
+            }
+          />
+        ) : (
+          <RolePill role={user.role} />
+        )}
       </TableCell>
       <TableCell onClick={stop}>
         <RowEditMenu
@@ -450,12 +473,14 @@ function PharmacySelect({
   onChange,
   pharmacies,
   loading,
+  fetchFailed,
   error,
 }: {
   value: string | null;
   onChange: (value: string) => void;
   pharmacies: PharmacyOption[] | undefined;
   loading: boolean;
+  fetchFailed?: boolean;
   error?: string;
 }) {
   return (
@@ -468,7 +493,13 @@ function PharmacySelect({
           />
         </SelectTrigger>
         <SelectContent>
-          {pharmacies && pharmacies.length > 0 ? (
+          {loading ? (
+            <div className="px-2 py-1.5 text-sm text-gray-500">Loading…</div>
+          ) : fetchFailed ? (
+            <div className="px-2 py-1.5 text-sm text-error">
+              Couldn’t load pharmacies. Please try again.
+            </div>
+          ) : pharmacies && pharmacies.length > 0 ? (
             pharmacies.map((pharmacy) => (
               <SelectItem key={pharmacy.id} value={pharmacy.id}>
                 {pharmacy.name}
@@ -476,7 +507,7 @@ function PharmacySelect({
             ))
           ) : (
             <div className="px-2 py-1.5 text-sm text-gray-500">
-              {loading ? 'Loading…' : 'No pharmacies found'}
+              No pharmacies found
             </div>
           )}
         </SelectContent>
@@ -488,7 +519,11 @@ function PharmacySelect({
 
 function CreateUserDialog({ onClose }: { onClose: () => void }) {
   const { createUser } = useUserActions();
-  const { pharmacies, isLoading: pharmaciesLoading } = usePharmacies();
+  const {
+    pharmacies,
+    isLoading: pharmaciesLoading,
+    error: pharmaciesError,
+  } = usePharmacies();
   const {
     register,
     handleSubmit,
@@ -640,6 +675,7 @@ function CreateUserDialog({ onClose }: { onClose: () => void }) {
                     onChange={field.onChange}
                     pharmacies={pharmacies}
                     loading={pharmaciesLoading}
+                    fetchFailed={Boolean(pharmaciesError)}
                     error={errors.pharmacyId?.message}
                   />
                 )}

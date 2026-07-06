@@ -19,9 +19,13 @@ import {
   type UserUpdateRequest,
 } from '@repo/contracts';
 import type { User } from '@repo/db';
+import { z } from 'zod';
 import { CurrentUser, Roles } from '../auth/decorators';
 import { ZodValidationPipe } from '../common/pipes';
 import { UsersService } from './users.service';
+
+// User ids are UUIDs; reject malformed path params before they reach Prisma.
+const userIdSchema = z.uuid();
 
 // Super-admin user management. The global AuthGuard already requires a valid
 // session; @Roles narrows access to platform admins.
@@ -49,7 +53,7 @@ export class UsersController {
 
   @Patch(':id')
   update(
-    @Param('id') id: string,
+    @Param('id', new ZodValidationPipe(userIdSchema)) id: string,
     @Body(new ZodValidationPipe(userUpdateRequestSchema))
     body: UserUpdateRequest,
     @CurrentUser() actor: User,
@@ -59,7 +63,7 @@ export class UsersController {
 
   @Delete(':id')
   remove(
-    @Param('id') id: string,
+    @Param('id', new ZodValidationPipe(userIdSchema)) id: string,
     @CurrentUser() actor: User,
   ): Promise<UserResponse> {
     return this.usersService.remove(id, actor);

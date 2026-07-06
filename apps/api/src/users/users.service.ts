@@ -2,9 +2,11 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
-import type { Prisma, User, UserRole } from '@repo/db';
+import { Prisma } from '@repo/db';
+import type { User, UserRole } from '@repo/db';
 import type {
   UserCreateRequest,
   UserListQuery,
@@ -33,6 +35,8 @@ const USER_SELECT = {
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   /**
@@ -119,10 +123,23 @@ export class UsersService {
       dto.pharmacyId ?? null,
     );
 
-    return this.prisma.user.create({
-      data: { ...dto, pharmacyId, branchId: null, password: null },
-      select: USER_SELECT,
-    });
+    try {
+      return await this.prisma.user.create({
+        data: { ...dto, pharmacyId, branchId: null, password: null },
+        select: USER_SELECT,
+      });
+    } catch (error) {
+      // A concurrent create for the same email can win the race between the
+      // findUnique above and this insert, raising a unique-constraint
+      // violation. Map it to the same ConflictException as the pre-check.
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException('A user with this email already exists.');
+      }
+      throw error;
+    }
   }
 
   /**
