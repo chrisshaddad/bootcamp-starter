@@ -90,7 +90,6 @@ CREATE TABLE "institutions" (
     "phone" VARCHAR(20),
     "logoUrl" VARCHAR(500),
     "emailNotifications" BOOLEAN NOT NULL DEFAULT false,
-    "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -361,11 +360,6 @@ CREATE INDEX "assignments_professionalId_idx" ON "assignments"("professionalId")
 CREATE INDEX "assignments_patientId_idx" ON "assignments"("patientId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "assignment_active_unique" ON "public"."assignments"("patientId", "professionalId")
-WHERE "status" = 'ACTIVE';
-
-
--- CreateIndex
 CREATE INDEX "assignments_assignedById_idx" ON "assignments"("assignedById");
 
 -- CreateIndex
@@ -430,6 +424,12 @@ CREATE INDEX "magic_links_token_idx" ON "private"."magic_links"("token");
 
 -- CreateIndex
 CREATE INDEX "magic_links_userId_idx" ON "private"."magic_links"("userId");
+
+--manually added index
+CREATE UNIQUE INDEX "assignment_active_unique" ON
+ "public"."assignments"("patientId", "professionalId")
+WHERE "status" = 'ACTIVE';
+
 
 -- AddForeignKey
 ALTER TABLE "users" ADD CONSTRAINT "users_institutionId_fkey" FOREIGN KEY ("institutionId") REFERENCES "institutions"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

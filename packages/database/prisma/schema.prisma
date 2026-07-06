@@ -131,7 +131,6 @@ model Institution {
   phone              String?           @db.VarChar(20)
   logoUrl            String?           @db.VarChar(500)
   emailNotifications Boolean           @default(false)
-  isActive           Boolean           @default(true)
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
 

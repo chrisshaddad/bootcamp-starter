@@ -1,14 +1,14 @@
 import { prisma } from '../../src/client';
-import { seedSuperAdmins, seedOrgAdmins } from './seedUsers';
-import { seedOrganizations } from './seedOrganizations';
+import { seedPlatformInstitution, seedSuperAdmins } from './seedUsers';
+import { seedInstitutions } from './seedInstitutions';
 
 async function main() {
-  // Seed users first (org admins need to exist before organizations)
+  // The platform institution must exist before super admins can reference it
+  await seedPlatformInstitution(prisma);
   await seedSuperAdmins(prisma);
-  await seedOrgAdmins(prisma);
 
-  // Seed organizations (links org admins to their orgs)
-  await seedOrganizations(prisma);
+  // Each institution is created together with its admin user
+  await seedInstitutions(prisma);
 }
 main()
   .then(async () => {
