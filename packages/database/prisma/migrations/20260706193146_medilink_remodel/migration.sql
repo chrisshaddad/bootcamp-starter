@@ -100,7 +100,7 @@ CREATE TABLE "institutions" (
 CREATE TABLE "users" (
     "id" TEXT NOT NULL,
     "username" VARCHAR(50) NOT NULL,
-    "email" VARCHAR(255),
+    "email" VARCHAR(255) NOT NULL,
     "fullName" VARCHAR(255) NOT NULL,
     "phone" VARCHAR(20) NOT NULL,
     "role" "Role" NOT NULL,
@@ -425,11 +425,9 @@ CREATE INDEX "magic_links_token_idx" ON "private"."magic_links"("token");
 -- CreateIndex
 CREATE INDEX "magic_links_userId_idx" ON "private"."magic_links"("userId");
 
---manually added index
-CREATE UNIQUE INDEX "assignment_active_unique" ON
- "public"."assignments"("patientId", "professionalId")
+-- CreateIndex manually added
+CREATE UNIQUE INDEX "assignment_active_unique" ON "public"."assignments"("patientId", "professionalId")
 WHERE "status" = 'ACTIVE';
-
 
 -- AddForeignKey
 ALTER TABLE "users" ADD CONSTRAINT "users_institutionId_fkey" FOREIGN KEY ("institutionId") REFERENCES "institutions"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
