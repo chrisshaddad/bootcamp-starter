@@ -4,7 +4,10 @@ import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
+import { AuthShell } from '@/components/auth/auth-shell';
+import { Button } from '@/components/ui/button';
 import { ApiError } from '@/lib/api';
 
 type VerifyStatus = 'loading' | 'success' | 'error';
@@ -50,62 +53,59 @@ function VerifyContent() {
   }, [searchParams, verifyMagicLink, router]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        {status === 'loading' && (
-          <>
-            <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary-base" />
-            <h1 className="mt-4 text-xl font-semibold text-foreground">
-              Verifying your magic link...
-            </h1>
-            <p className="mt-2 text-muted-foreground">
-              Please wait while we log you in.
-            </p>
-          </>
-        )}
+    <div className="rounded-2xl border border-border bg-card p-7 text-center ring-1 ring-foreground/5">
+      {status === 'loading' && (
+        <>
+          <Loader2 className="mx-auto size-12 animate-spin text-primary-300" />
+          <h1 className="mt-4 text-xl font-bold tracking-tight text-foreground">
+            Verifying your magic link…
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Please wait while we log you in.
+          </p>
+        </>
+      )}
 
-        {status === 'success' && (
-          <>
-            <CheckCircle2 className="mx-auto h-12 w-12 text-primary-base" />
-            <h1 className="mt-4 text-xl font-semibold text-foreground">
-              Successfully verified!
-            </h1>
-            <p className="mt-2 text-muted-foreground">
-              Redirecting to dashboard...
-            </p>
-          </>
-        )}
+      {status === 'success' && (
+        <>
+          <CheckCircle2 className="mx-auto size-12 text-success" />
+          <h1 className="mt-4 text-xl font-bold tracking-tight text-foreground">
+            Successfully verified!
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Redirecting to your dashboard…
+          </p>
+        </>
+      )}
 
-        {status === 'error' && (
-          <>
-            <XCircle className="mx-auto h-12 w-12 text-destructive" />
-            <h1 className="mt-4 text-xl font-semibold text-foreground">
-              Verification failed
-            </h1>
-            <p className="mt-2 text-muted-foreground">{errorMessage}</p>
-            <a
-              href="/login"
-              className="mt-4 inline-block text-primary-base hover:underline"
-            >
-              Back to login
-            </a>
-          </>
-        )}
-      </div>
+      {status === 'error' && (
+        <>
+          <XCircle className="mx-auto size-12 text-destructive" />
+          <h1 className="mt-4 text-xl font-bold tracking-tight text-foreground">
+            Verification failed
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">{errorMessage}</p>
+          <Button variant="outline" size="lg" className="mt-6 w-full" asChild>
+            <Link href="/login">Back to login</Link>
+          </Button>
+        </>
+      )}
     </div>
   );
 }
 
 export default function VerifyPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-screen items-center justify-center bg-background">
-          <Loader2 className="h-12 w-12 animate-spin text-primary-base" />
-        </div>
-      }
-    >
-      <VerifyContent />
-    </Suspense>
+    <AuthShell>
+      <Suspense
+        fallback={
+          <div className="rounded-2xl border border-border bg-card p-7 text-center ring-1 ring-foreground/5">
+            <Loader2 className="mx-auto size-12 animate-spin text-primary-300" />
+          </div>
+        }
+      >
+        <VerifyContent />
+      </Suspense>
+    </AuthShell>
   );
 }
