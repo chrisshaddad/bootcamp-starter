@@ -331,7 +331,10 @@ function UserRow({
               }),
             )}
             onChange={(value) =>
-              void patch({ role: value as UserRole }, `Role updated for ${name}.`)
+              void patch(
+                { role: value as UserRole },
+                `Role updated for ${name}.`,
+              )
             }
           />
         ) : (
