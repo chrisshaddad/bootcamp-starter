@@ -6,7 +6,6 @@ export const expenseQuerySchema = paginationQuerySchema.extend({
   dateFrom: z.string().optional(),
   dateTo: z.string().optional(),
   search: z.string().optional(),
-  limit: z.number().int().min(1).max(100).optional(),
 });
 
 export type ExpenseQuery = z.infer<typeof expenseQuerySchema>;
