@@ -19,3 +19,6 @@ CREATE INDEX "Service_organizationId_idx" ON "Service"("organizationId");
 
 -- AddForeignKey
 ALTER TABLE "Service" ADD CONSTRAINT "Service_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AlterEnum
+ALTER TYPE "ImportType" ADD VALUE 'SERVICES';
