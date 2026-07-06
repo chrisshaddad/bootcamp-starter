@@ -15,6 +15,7 @@ import {
   ProjectRoleKey,
   VerificationStatus,
   AccountType,
+  User,
 } from '@repo/db';
 
 @Injectable()
@@ -113,7 +114,7 @@ export class ProjectsService {
   }
 
   async updateProject(
-    userId: string,
+    user: User,
     projectId: string,
     data: UpdateProjectRequest,
   ) {
@@ -125,7 +126,10 @@ export class ProjectsService {
       throw new NotFoundException('Project not found');
     }
 
-    if (project.createdByUserId !== userId) {
+    const isAdmin = user.accountType === AccountType.SUPER_ADMIN;
+    const isCreator = project.createdByUserId === user.id;
+
+    if (!isAdmin && !isCreator) {
       throw new ForbiddenException(
         'You are not authorized to edit this project',
       );

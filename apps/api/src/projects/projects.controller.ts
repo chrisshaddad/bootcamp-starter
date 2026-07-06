@@ -5,15 +5,12 @@ import {
   Patch,
   Body,
   Param,
-  UseGuards,
 } from '@nestjs/common';
 import { ProjectsService } from './projects.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { AuthGuard } from '../auth/guards/auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard'; // <-- Add RolesGuard
-import { Roles } from '../auth/decorators/roles.decorator'; // <-- Add Roles Decorator
+import { Roles } from '../auth/decorators/roles.decorator';
 import { Public } from '../auth/decorators';
-import { AccountType } from '@repo/db'; // <-- Import AccountType enum
+import { AccountType, type User } from '@repo/db';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import {
   createProjectRequestSchema,
@@ -28,8 +25,7 @@ export class ProjectsController {
   constructor(private readonly projectsService: ProjectsService) {}
 
   @Post()
-  @UseGuards(AuthGuard, RolesGuard) // <-- Restrict by Guard
-  @Roles(AccountType.DEVELOPER, AccountType.SUPER_ADMIN) // <-- Restrict by Role
+  @Roles(AccountType.DEVELOPER, AccountType.SUPER_ADMIN)
   async createProject(
     @CurrentUser('id') userId: string,
     @Body(new ZodValidationPipe(createProjectRequestSchema))
@@ -46,16 +42,15 @@ export class ProjectsController {
   }
 
   @Patch(':id')
-  @UseGuards(AuthGuard, RolesGuard) // <-- Restrict by Guard
-  @Roles(AccountType.DEVELOPER, AccountType.SUPER_ADMIN) // <-- Restrict by Role
+  @Roles(AccountType.DEVELOPER, AccountType.SUPER_ADMIN)
   async updateProject(
-    @CurrentUser('id') userId: string,
+    @CurrentUser() user: User,
     @Param('id') projectId: string,
     @Body(new ZodValidationPipe(updateProjectRequestSchema))
     body: UpdateProjectRequest,
   ): Promise<ProjectResponse> {
     const project = await this.projectsService.updateProject(
-      userId,
+      user,
       projectId,
       body,
     );
@@ -69,7 +64,7 @@ export class ProjectsController {
   }
 
   @Get(':slug')
-  @Public() // Still strictly public for GET operations
+  @Public()
   async getProjectBySlug(
     @Param('slug') slug: string,
   ): Promise<ProjectResponse> {
