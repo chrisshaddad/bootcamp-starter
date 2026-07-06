@@ -54,8 +54,13 @@ const SALE_FIELDS = [
   'recurrence',
   'notes',
 ];
-const PRODUCT_FIELDS = ['name', 'description', 'unitPrice', 'unitCost', 'sku'];
-const SERVICE_FIELDS = ['name', 'description', 'unitPrice', 'unitCost', 'sku'];
+const CATALOG_ITEM_FIELDS = [
+  'name',
+  'description',
+  'unitPrice',
+  'unitCost',
+  'sku',
+];
 
 function statusBadge(status: string) {
   const map: Record<
@@ -113,11 +118,9 @@ export default function ImportsPage() {
     const fields =
       importType === 'EXPENSES'
         ? EXPENSE_FIELDS
-        : importType === 'PRODUCTS'
-          ? PRODUCT_FIELDS
-          : importType === 'SERVICES'
-            ? SERVICE_FIELDS
-            : SALE_FIELDS;
+        : importType === 'PRODUCTS' || importType === 'SERVICES'
+          ? CATALOG_ITEM_FIELDS
+          : SALE_FIELDS;
     const autoMap: Record<string, string> = {};
     headers.forEach((h) => {
       const match = fields.find((f) => f.toLowerCase() === h.toLowerCase());
@@ -222,11 +225,9 @@ export default function ImportsPage() {
   const appFields =
     importType === 'EXPENSES'
       ? EXPENSE_FIELDS
-      : importType === 'PRODUCTS'
-        ? PRODUCT_FIELDS
-        : importType === 'SERVICES'
-          ? SERVICE_FIELDS
-          : SALE_FIELDS;
+      : importType === 'PRODUCTS' || importType === 'SERVICES'
+        ? CATALOG_ITEM_FIELDS
+        : SALE_FIELDS;
 
   return (
     <div className="space-y-6">
