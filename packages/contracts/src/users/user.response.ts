@@ -8,6 +8,13 @@ const userProfileSchema = z.object({
   phone: z.string().nullable(),
   avatarUrl: z.string().nullable(),
   dateOfBirth: z.string().nullable(),
+  bio: z.string().nullable(),
+  street1: z.string().nullable(),
+  street2: z.string().nullable(),
+  city: z.string().nullable(),
+  state: z.string().nullable(),
+  postalCode: z.string().nullable(),
+  country: z.string().nullable(),
 });
 
 // Response from /auth/me endpoint

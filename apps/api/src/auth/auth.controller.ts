@@ -2,16 +2,18 @@ import {
   Controller,
   Post,
   Get,
+  Patch,
   Body,
   Res,
   Req,
   HttpCode,
   HttpStatus,
   UsePipes,
+  UnauthorizedException,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { AuthService } from './auth.service';
-import { CurrentUser, Public } from './decorators';
+import { Public } from './decorators';
 import {
   SESSION_COOKIE_NAME,
   type AuthenticatedRequest,
@@ -20,12 +22,13 @@ import {
   magicLinkRequestSchema,
   magicLinkVerifyRequestSchema,
   registerRequestSchema,
+  userProfileUpdateRequestSchema,
   type MagicLinkRequest,
   type MagicLinkVerifyRequest,
   type RegisterRequest,
   type UserResponse,
+  type UserProfileUpdateRequest,
 } from '@repo/contracts';
-import type { User } from '@repo/db';
 import { ZodValidationPipe } from '../common/pipes';
 
 const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -102,14 +105,27 @@ export class AuthController {
   }
 
   @Get('me')
-  getCurrentUser(@CurrentUser() user: User): UserResponse {
-    return {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      organizationId: user.organizationId,
-      isConfirmed: user.isConfirmed,
-    };
+  async getCurrentUser(
+    @Req() request: AuthenticatedRequest,
+  ): Promise<UserResponse> {
+    const user = await this.authService.getCurrentUser(
+      request.sessionId as string,
+    );
+
+    if (!user) {
+      throw new UnauthorizedException('Invalid or expired session');
+    }
+
+    return user;
+  }
+
+  @Patch('profile')
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ZodValidationPipe(userProfileUpdateRequestSchema))
+  async updateProfile(
+    @Body() body: UserProfileUpdateRequest,
+    @Req() request: AuthenticatedRequest,
+  ): Promise<UserResponse> {
+    return this.authService.updateProfile(request.sessionId as string, body);
   }
 }

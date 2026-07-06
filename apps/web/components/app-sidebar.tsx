@@ -10,13 +10,17 @@ import {
   TrendingUp,
   Receipt,
   Package,
+  Briefcase,
   Upload,
   Target,
   Sparkles,
   Users,
 } from 'lucide-react';
 import { useUser } from '@/hooks/use-auth';
+import useSWR from 'swr';
+import { fetcher } from '@/lib/api';
 import { cn } from '@/lib/utils';
+import type { OrganizationDetailResponse } from '@repo/contracts';
 import {
   Sidebar,
   SidebarContent,
@@ -40,6 +44,7 @@ interface NavItem {
 const orgNavItems: NavItem[] = [
   { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
   { title: 'Products', url: '/products', icon: Package },
+  { title: 'Services', url: '/services', icon: Briefcase },
   { title: 'Sales', url: '/sales', icon: TrendingUp },
   { title: 'Expenses', url: '/expenses', icon: Receipt },
   { title: 'Goals', url: '/goals', icon: Target },
@@ -60,6 +65,11 @@ export function AppSidebar() {
   const pathname = usePathname();
   const { user } = useUser({ redirectOnUnauthenticated: false });
 
+  const { data: currentOrganization } = useSWR<OrganizationDetailResponse>(
+    user?.organizationId ? `/organizations/${user.organizationId}` : null,
+    fetcher,
+  );
+
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   const mainNavItems = isSuperAdmin ? superAdminNavItems : orgNavItems;
 
@@ -71,6 +81,9 @@ export function AppSidebar() {
   const orgInitial = (
     isSuperAdmin ? 'S' : (user?.name?.[0] ?? '?')
   ).toUpperCase();
+  const orgName = isSuperAdmin
+    ? 'Super Admin'
+    : (currentOrganization?.name ?? 'Organization');
 
   return (
     <Sidebar className="border-r border-border bg-sidebar">
@@ -95,7 +108,7 @@ export function AppSidebar() {
           </div>
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-foreground">
-              {isSuperAdmin ? 'Super Admin' : (user?.name ?? 'My Organization')}
+              {orgName}
             </p>
             <p className="truncate text-xs text-muted-foreground">
               {isSuperAdmin ? 'Platform Administrator' : (user?.email ?? '')}

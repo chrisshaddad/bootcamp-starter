@@ -57,6 +57,7 @@ enum ImportType {
   EXPENSES
   SALES
   PRODUCTS
+  SERVICES
 
   @@schema("public")
 }
@@ -196,6 +197,7 @@ model Organization {
 
   // Margin relations
   products          Product[]
+  services          Service[]
   expenseCategories ExpenseCategory[]
   expenses          Expense[]
   sales             Sale[]
@@ -227,6 +229,28 @@ model Product {
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   sales        Sale[]
+
+  @@index([organizationId])
+  @@schema("public")
+}
+
+// ---------------------------------------------------------------------------
+// Margin — Services
+// ---------------------------------------------------------------------------
+
+model Service {
+  id             String   @id @default(uuid())
+  organizationId String
+  name           String
+  description    String?  @db.Text
+  unitPrice      Decimal  @db.Decimal(12, 2)
+  unitCost       Decimal? @db.Decimal(12, 2)
+  sku            String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
   @@schema("public")
