@@ -144,7 +144,6 @@ export async function seedProjects(prisma: PrismaClient) {
     );
   }
 
-
   const availableRepositories = [
     {
       githubRepoId: BigInt(77770001),
