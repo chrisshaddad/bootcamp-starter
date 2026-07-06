@@ -94,4 +94,18 @@ export class ProjectsService {
       },
     });
   }
+
+  async getProjectBySlug(slug: string) {
+    const project = await this.prisma.project.findUnique({
+      where: { slug },
+    });
+
+    // Ensures public requests can only access PUBLISHED projects.
+    // Modify or remove this condition if draft/archived projects should also be viewable.
+    if (!project || project.status !== ProjectStatus.PUBLISHED) {
+      throw new NotFoundException('Project not found');
+    }
+
+    return project;
+  }
 }
