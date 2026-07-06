@@ -10,7 +10,10 @@ import {
 import { ProjectsService } from './projects.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthGuard } from '../auth/guards/auth.guard';
-import { Public } from '../auth/decorators'; // <-- 🟢 Import the existing Public decorator
+import { RolesGuard } from '../auth/guards/roles.guard'; // <-- Add RolesGuard
+import { Roles } from '../auth/decorators/roles.decorator'; // <-- Add Roles Decorator
+import { Public } from '../auth/decorators';
+import { AccountType } from '@repo/db'; // <-- Import AccountType enum
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import {
   createProjectRequestSchema,
@@ -25,7 +28,8 @@ export class ProjectsController {
   constructor(private readonly projectsService: ProjectsService) {}
 
   @Post()
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, RolesGuard) // <-- Restrict by Guard
+  @Roles(AccountType.DEVELOPER, AccountType.SUPER_ADMIN) // <-- Restrict by Role
   async createProject(
     @CurrentUser('id') userId: string,
     @Body(new ZodValidationPipe(createProjectRequestSchema))
@@ -42,7 +46,8 @@ export class ProjectsController {
   }
 
   @Patch(':id')
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, RolesGuard) // <-- Restrict by Guard
+  @Roles(AccountType.DEVELOPER, AccountType.SUPER_ADMIN) // <-- Restrict by Role
   async updateProject(
     @CurrentUser('id') userId: string,
     @Param('id') projectId: string,
@@ -64,7 +69,7 @@ export class ProjectsController {
   }
 
   @Get(':slug')
-  @Public() // <-- 🟢 Apply the decorator to bypass the global AuthGuard session check
+  @Public() // Still strictly public for GET operations
   async getProjectBySlug(
     @Param('slug') slug: string,
   ): Promise<ProjectResponse> {
