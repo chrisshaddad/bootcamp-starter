@@ -3,14 +3,14 @@ import { normalizeRole } from '@/auth/roles';
 import { canAccess, canWrite } from '@/auth/permissions';
 import { redirect } from 'next/navigation';
 import { isLocale } from '@/i18n/config';
-import { BuildingDetailPage } from '@/components/dashboard/building-detail-page';
+import { FloorDetailPage } from '@/components/dashboard/floor-detail-page';
 
-export default async function BuildingDetailPageRoute({
+export default async function FloorDetailPageRoute({
   params,
 }: {
-  params: Promise<{ lang: string; id: string }>;
+  params: Promise<{ lang: string; id: string; floorId: string }>;
 }) {
-  const { lang, id } = await params;
+  const { lang, id, floorId } = await params;
   const locale = isLocale(lang) ? lang : 'en';
   const session = await requireSession({ locale });
   const role = normalizeRole(session.role ?? session.user?.role);
@@ -22,8 +22,9 @@ export default async function BuildingDetailPageRoute({
   const writeAccess = canWrite(role, 'buildings');
 
   return (
-    <BuildingDetailPage
+    <FloorDetailPage
       buildingId={id}
+      floorId={floorId}
       canWrite={writeAccess}
       locale={locale}
     />

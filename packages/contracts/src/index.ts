@@ -264,8 +264,20 @@ export type FloorResponse = {
   name: string;
   order: number;
   notes?: string | null;
+  apartmentCount: number;
   createdAt: string;
   updatedAt: string;
+};
+
+export type CreateFloorBody = {
+  name: string;
+  notes?: string;
+};
+
+export type PatchFloorBody = {
+  name?: string;
+  order?: number;
+  notes?: string;
 };
 
 // ── Apartments ───────────────────────────────────────────────────────────────
@@ -283,4 +295,22 @@ export type ApartmentResponse = {
   notes?: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+export type CreateApartmentBody = {
+  unitNumber: string;
+  bedrooms: number;
+  bathrooms: number;
+  sqft?: number;
+  status?: ApartmentStatus;
+  notes?: string;
+};
+
+export type PatchApartmentBody = {
+  unitNumber?: string;
+  bedrooms?: number;
+  bathrooms?: number;
+  sqft?: number;
+  status?: ApartmentStatus;
+  notes?: string;
 };

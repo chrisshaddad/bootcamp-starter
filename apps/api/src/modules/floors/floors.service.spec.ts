@@ -169,6 +169,65 @@ describe('FloorsService', () => {
     });
   });
 
+  describe('apartmentCount', () => {
+    it('findAll returns the accurate apartment count per floor, including 0 for an empty floor', async () => {
+      const { service, prisma } = makeService({
+        floor: {
+          findMany: jest.fn().mockResolvedValue([
+            { ...floorRow({ id: 'floor-1' }), _count: { apartments: 3 } },
+            { ...floorRow({ id: 'floor-2' }), _count: { apartments: 0 } },
+          ]),
+        },
+      });
+
+      const { data } = await service.findAll(
+        orgId,
+        'caller-1',
+        Role.ORG_ADMIN,
+        buildingId,
+      );
+
+      expect(data.map((f) => f.apartmentCount)).toEqual([3, 0]);
+      expect(prisma.floor.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          include: { _count: { select: { apartments: true } } },
+        }),
+      );
+    });
+
+    it('findOne returns the accurate apartment count for a floor with N apartments', async () => {
+      const { service } = makeService({
+        floor: {
+          findFirst: jest.fn().mockResolvedValue({
+            ...floorRow(),
+            _count: { apartments: 5 },
+          }),
+        },
+      });
+
+      const { data } = await service.findOne(
+        orgId,
+        'caller-1',
+        Role.ORG_ADMIN,
+        buildingId,
+        'floor-1',
+      );
+
+      expect(data.apartmentCount).toBe(5);
+    });
+
+    it('create returns apartmentCount 0 for a newly created floor', async () => {
+      const { service, prisma } = makeService();
+      prisma.floor.create.mockResolvedValue(floorRow({ order: 0 }));
+
+      const { data } = await service.create(orgId, actorId, buildingId, {
+        name: 'Floor 1',
+      });
+
+      expect(data.apartmentCount).toBe(0);
+    });
+  });
+
   describe('access scoping', () => {
     it('delegates read access to BuildingAccessService and propagates rejection on findAll', async () => {
       const { service, buildingAccess } = makeService({

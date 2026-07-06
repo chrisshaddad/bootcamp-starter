@@ -22,16 +22,19 @@ export class FloorsService {
 
   // ── Format helpers ────────────────────────────────────────────────────────
 
-  private formatFloor(floor: {
-    id: string;
-    orgId: string;
-    buildingId: string;
-    name: string;
-    order: number;
-    notes: string | null;
-    createdAt: Date;
-    updatedAt: Date;
-  }): FloorResponse {
+  private formatFloor(
+    floor: {
+      id: string;
+      orgId: string;
+      buildingId: string;
+      name: string;
+      order: number;
+      notes: string | null;
+      createdAt: Date;
+      updatedAt: Date;
+    },
+    apartmentCount: number,
+  ): FloorResponse {
     return {
       id: floor.id,
       orgId: floor.orgId,
@@ -39,6 +42,7 @@ export class FloorsService {
       name: floor.name,
       order: floor.order,
       notes: floor.notes,
+      apartmentCount,
       createdAt: floor.createdAt.toISOString(),
       updatedAt: floor.updatedAt.toISOString(),
     };
@@ -107,7 +111,11 @@ export class FloorsService {
     data: { name?: string; order?: number; notes?: string },
   ) {
     try {
-      return await this.prisma.floor.update({ where: { id: floorId }, data });
+      return await this.prisma.floor.update({
+        where: { id: floorId },
+        data,
+        include: { _count: { select: { apartments: true } } },
+      });
     } catch (err) {
       if (
         err instanceof Prisma.PrismaClientKnownRequestError &&
@@ -142,9 +150,12 @@ export class FloorsService {
     const floors = await this.prisma.floor.findMany({
       where: { orgId, buildingId },
       orderBy: { order: 'asc' },
+      include: { _count: { select: { apartments: true } } },
     });
 
-    return { data: floors.map((f) => this.formatFloor(f)) };
+    return {
+      data: floors.map((f) => this.formatFloor(f, f._count.apartments)),
+    };
   }
 
   async findOne(
@@ -156,6 +167,7 @@ export class FloorsService {
   ): Promise<{ data: FloorResponse }> {
     const floor = await this.prisma.floor.findFirst({
       where: { id: floorId, orgId, buildingId },
+      include: { _count: { select: { apartments: true } } },
     });
     if (!floor) throw new NotFoundException('Floor not found.');
 
@@ -166,7 +178,7 @@ export class FloorsService {
       buildingId,
     );
 
-    return { data: this.formatFloor(floor) };
+    return { data: this.formatFloor(floor, floor._count.apartments) };
   }
 
   async create(
@@ -200,7 +212,7 @@ export class FloorsService {
       metadata: { name: floor.name, buildingId },
     });
 
-    return { data: this.formatFloor(floor) };
+    return { data: this.formatFloor(floor, 0) };
   }
 
   async update(
@@ -234,7 +246,7 @@ export class FloorsService {
       metadata: { changes: dto },
     });
 
-    return { data: this.formatFloor(floor) };
+    return { data: this.formatFloor(floor, floor._count.apartments) };
   }
 
   async remove(
