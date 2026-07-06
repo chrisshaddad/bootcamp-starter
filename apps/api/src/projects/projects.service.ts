@@ -3,6 +3,7 @@ import {
   ConflictException,
   NotFoundException,
   ForbiddenException,
+  Logger, // <-- Added Logger import
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import {
@@ -13,6 +14,8 @@ import { ProjectStatus } from '@repo/db';
 
 @Injectable()
 export class ProjectsService {
+  private readonly logger = new Logger(ProjectsService.name); // <-- Added Logger initialization
+
   constructor(private readonly prisma: PrismaService) {}
 
   // FIX: Safely map the string literal to the Prisma Enum without using "as"

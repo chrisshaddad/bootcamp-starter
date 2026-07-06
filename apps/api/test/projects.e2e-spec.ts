@@ -7,6 +7,7 @@ import { AuthGuard } from './../src/auth/guards/auth.guard';
 import { AccountType, ProjectStatus } from '@repo/db';
 import { CreateProjectRequest, UpdateProjectRequest } from '@repo/contracts';
 import { Server } from 'http';
+import { Reflector } from '@nestjs/core';
 
 // Safe interface to bypass "any" for request objects
 interface AuthenticatedTestRequest {
@@ -19,6 +20,11 @@ interface ProjectResponseBody {
   title: string;
   createdByUserId: string;
   status: ProjectStatus;
+}
+
+// Custom interface to strictly type "this" inside the spied mock and prevent ESLint warnings
+interface GuardWithReflector {
+  reflector: Reflector;
 }
 
 describe('ProjectsController (e2e)', () => {
@@ -34,22 +40,30 @@ describe('ProjectsController (e2e)', () => {
 
   beforeAll(async () => {
     // Mock canActivate strictly using ExecutionContext and custom interface type
-    jest
-      .spyOn(AuthGuard.prototype, 'canActivate')
-      .mockImplementation((context: ExecutionContext) => {
-        // No 'async' keyword here
-        const req = context
-          .switchToHttp()
-          .getRequest<AuthenticatedTestRequest>();
-        const testUserId = req.headers['x-test-user-id'];
+    jest.spyOn(AuthGuard.prototype, 'canActivate').mockImplementation(function (
+      this: GuardWithReflector,
+      context: ExecutionContext,
+    ) {
+      // Handle routes decorated with @Public()
+      const isPublic = this.reflector.getAllAndOverride<boolean>('isPublic', [
+        context.getHandler(),
+        context.getClass(),
+      ]);
 
-        if (!testUserId || typeof testUserId !== 'string') {
-          return Promise.resolve(false); // Return a Promise to satisfy the types
-        }
+      if (isPublic) {
+        return Promise.resolve(true);
+      }
 
-        req.user = { id: testUserId };
-        return Promise.resolve(true); // Return a Promise to satisfy the types
-      });
+      const req = context.switchToHttp().getRequest<AuthenticatedTestRequest>();
+      const testUserId = req.headers['x-test-user-id'];
+
+      if (!testUserId || typeof testUserId !== 'string') {
+        return Promise.resolve(false); // Return a Promise to satisfy the types
+      }
+
+      req.user = { id: testUserId };
+      return Promise.resolve(true); // Return a Promise to satisfy the types
+    });
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -209,6 +223,65 @@ describe('ProjectsController (e2e)', () => {
         .patch(`/projects/${randomUuid}`)
         .set('x-test-user-id', user1Id)
         .send({ title: 'New Title', deploymentUrl: null })
+        .expect(404);
+    });
+  });
+
+  describe('GET /projects/:slug', () => {
+    it('should retrieve a published project by slug without authentication (200)', async () => {
+      const response = await request(app.getHttpServer() as Server)
+        .get('/projects/test-project-1')
+        .expect(200);
+
+      const body = response.body as ProjectResponseBody;
+      expect(body).toHaveProperty('id');
+      expect(body.title).toBe('Updated Title');
+      expect(body.status).toBe(ProjectStatus.PUBLISHED);
+    });
+
+    it('should return 404 when trying to retrieve a draft project by slug', async () => {
+      await prisma.project.create({
+        data: {
+          title: 'Draft Project',
+          slug: 'draft-project',
+          repositoryId: repository2Id,
+          createdByUserId: user1Id,
+          status: ProjectStatus.DRAFT,
+        },
+      });
+
+      await request(app.getHttpServer() as Server)
+        .get('/projects/draft-project')
+        .expect(404);
+
+      await prisma.project.delete({
+        where: { slug: 'draft-project' },
+      });
+    });
+
+    it('should return 404 when trying to retrieve an archived project by slug', async () => {
+      await prisma.project.create({
+        data: {
+          title: 'Archived Project',
+          slug: 'archived-project',
+          repositoryId: repository2Id,
+          createdByUserId: user1Id,
+          status: ProjectStatus.ARCHIVED,
+        },
+      });
+
+      await request(app.getHttpServer() as Server)
+        .get('/projects/archived-project')
+        .expect(404);
+
+      await prisma.project.delete({
+        where: { slug: 'archived-project' },
+      });
+    });
+
+    it('should return 404 for a non-existent slug', async () => {
+      await request(app.getHttpServer() as Server)
+        .get('/projects/non-existent-slug')
         .expect(404);
     });
   });
