@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { dateSchema } from '../common'; // Import the dateSchema
+import { dateSchema } from '../common';
 
 export const projectResponseSchema = z.object({
   id: z.string(),
@@ -11,9 +11,9 @@ export const projectResponseSchema = z.object({
   fullDescription: z.string().nullable(),
   deploymentUrl: z.string().nullable(),
   status: z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']),
-  createdAt: dateSchema, // Updated
-  updatedAt: dateSchema, // Updated
-  publishedAt: dateSchema.nullable(), // Updated
+  createdAt: dateSchema,
+  updatedAt: dateSchema,
+  publishedAt: dateSchema.nullable(),
 });
 
 export type ProjectResponse = z.infer<typeof projectResponseSchema>;
