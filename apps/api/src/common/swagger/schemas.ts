@@ -169,3 +169,75 @@ export const profilePictureUploadSchema: ApiBodySchema = {
     },
   },
 };
+
+export const githubRepositoryPreviewRequestSchema: ApiBodySchema = {
+  type: 'object',
+  required: ['repositoryUrl'],
+  properties: {
+    repositoryUrl: {
+      type: 'string',
+      format: 'uri',
+      example: 'https://github.com/vercel/next.js',
+    },
+  },
+};
+
+export const githubRepositoryPreviewResponseSchema: ApiBodySchema = {
+  type: 'object',
+  required: ['repository', 'languages'],
+  properties: {
+    repository: {
+      type: 'object',
+      required: [
+        'githubRepoId',
+        'fullName',
+        'ownerLogin',
+        'repoName',
+        'htmlUrl',
+        'defaultBranch',
+        'visibility',
+        'description',
+        'lastPushedAt',
+      ],
+      properties: {
+        githubRepoId: { type: 'string', example: '70107786' },
+        fullName: { type: 'string', example: 'vercel/next.js' },
+        ownerLogin: { type: 'string', example: 'vercel' },
+        repoName: { type: 'string', example: 'next.js' },
+        htmlUrl: {
+          type: 'string',
+          format: 'uri',
+          example: 'https://github.com/vercel/next.js',
+        },
+        defaultBranch: { type: 'string', nullable: true, example: 'canary' },
+        visibility: {
+          type: 'string',
+          enum: ['PUBLIC', 'PRIVATE'],
+          example: 'PUBLIC',
+        },
+        description: {
+          type: 'string',
+          nullable: true,
+          example: 'The React Framework',
+        },
+        lastPushedAt: {
+          type: 'string',
+          format: 'date-time',
+          nullable: true,
+          example: '2026-07-06T13:21:57.000Z',
+        },
+      },
+    },
+    languages: {
+      type: 'array',
+      items: {
+        type: 'object',
+        required: ['name', 'bytes'],
+        properties: {
+          name: { type: 'string', example: 'TypeScript' },
+          bytes: { type: 'integer', minimum: 0, example: 123456 },
+        },
+      },
+    },
+  },
+};
