@@ -17,6 +17,14 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  ApiBody,
+  ApiConsumes,
+  ApiCookieAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { diskStorage } from 'multer';
 import type { Response } from 'express';
 import { AuthService } from './auth.service';
@@ -44,16 +52,28 @@ import {
   type ProfilePictureUploadResponse,
 } from '@repo/contracts';
 import { ZodValidationPipe } from '../common/pipes';
+import {
+  emailRequestSchema as emailRequestOpenApiSchema,
+  loginRequestSchema as loginRequestOpenApiSchema,
+  magicLinkVerifyRequestSchema as magicLinkVerifyRequestOpenApiSchema,
+  profilePictureUploadSchema,
+  signupRequestSchema as signupRequestOpenApiSchema,
+  updateProfileRequestSchema as updateProfileRequestOpenApiSchema,
+} from '../common/swagger/schemas';
 
 const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const PROFILE_PICTURES_DIR = join(process.cwd(), 'uploads', 'profile-pictures');
 
+@ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Public()
   @Post('magic-link')
+  @ApiOperation({ summary: 'Request a magic login link' })
+  @ApiBody({ schema: emailRequestOpenApiSchema })
+  @ApiResponse({ status: 200, description: 'Magic link request accepted' })
   @HttpCode(HttpStatus.OK)
   @UsePipes(new ZodValidationPipe(magicLinkRequestSchema))
   async requestMagicLink(@Body() body: MagicLinkRequest) {
@@ -62,6 +82,10 @@ export class AuthController {
 
   @Public()
   @Post('magic-link/verify')
+  @ApiOperation({ summary: 'Verify a magic login link token' })
+  @ApiBody({ schema: magicLinkVerifyRequestOpenApiSchema })
+  @ApiResponse({ status: 200, description: 'Authenticated user' })
+  @ApiResponse({ status: 404, description: 'Invalid or expired magic link' })
   @HttpCode(HttpStatus.OK)
   @UsePipes(new ZodValidationPipe(magicLinkVerifyRequestSchema))
   async verifyMagicLink(
@@ -85,6 +109,10 @@ export class AuthController {
 
   @Public()
   @Post('signup')
+  @ApiOperation({ summary: 'Create a developer or hiring account' })
+  @ApiBody({ schema: signupRequestOpenApiSchema })
+  @ApiResponse({ status: 201, description: 'Created user' })
+  @ApiResponse({ status: 409, description: 'User or slug already exists' })
   @HttpCode(HttpStatus.CREATED)
   @UsePipes(new ZodValidationPipe(signupRequestSchema))
   async signup(@Body() body: SignupRequest): Promise<AuthResponse> {
@@ -94,6 +122,10 @@ export class AuthController {
 
   @Public()
   @Post('login')
+  @ApiOperation({ summary: 'Log in with email and password' })
+  @ApiBody({ schema: loginRequestOpenApiSchema })
+  @ApiResponse({ status: 200, description: 'Authenticated user' })
+  @ApiResponse({ status: 401, description: 'Invalid credentials' })
   @HttpCode(HttpStatus.OK)
   @UsePipes(new ZodValidationPipe(loginRequestSchema))
   async login(
@@ -114,6 +146,10 @@ export class AuthController {
   }
 
   @Post('logout')
+  @ApiCookieAuth('session')
+  @ApiOperation({ summary: 'Log out the current session' })
+  @ApiResponse({ status: 200, description: 'Session cleared' })
+  @ApiResponse({ status: 401, description: 'Missing or invalid session' })
   @HttpCode(HttpStatus.OK)
   async logout(
     @Req() request: AuthenticatedRequest,
@@ -135,6 +171,10 @@ export class AuthController {
   }
 
   @Get('me')
+  @ApiCookieAuth('session')
+  @ApiOperation({ summary: 'Get the current authenticated user' })
+  @ApiResponse({ status: 200, description: 'Current user profile' })
+  @ApiResponse({ status: 401, description: 'Missing or invalid session' })
   getCurrentUser(@CurrentUser() user: UserResponse): UserResponse {
     // Explicitly mapping true database schema fields to contract shape
     return {
@@ -171,6 +211,13 @@ export class AuthController {
   }
 
   @Post('profile/picture')
+  @ApiCookieAuth('session')
+  @ApiOperation({ summary: 'Upload a profile picture' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ schema: profilePictureUploadSchema })
+  @ApiResponse({ status: 200, description: 'Uploaded profile picture URL' })
+  @ApiResponse({ status: 400, description: 'Invalid or missing image file' })
+  @ApiResponse({ status: 401, description: 'Missing or invalid session' })
   @HttpCode(HttpStatus.OK)
   @UseInterceptors(
     FileInterceptor('file', {
@@ -224,6 +271,11 @@ export class AuthController {
   }
 
   @Patch('profile')
+  @ApiCookieAuth('session')
+  @ApiOperation({ summary: 'Update the current user profile' })
+  @ApiBody({ schema: updateProfileRequestOpenApiSchema })
+  @ApiResponse({ status: 200, description: 'Updated user profile' })
+  @ApiResponse({ status: 401, description: 'Missing or invalid session' })
   @HttpCode(HttpStatus.OK)
   async updateProfile(
     @CurrentUser() user: UserResponse,
