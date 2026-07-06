@@ -147,6 +147,40 @@ export class ExpensesService {
     this.logger.log(`Expense deleted: ${id}`);
   }
 
+  async getTopNExpenses(
+    organizationId: string,
+    query: ExpenseQuery,
+  ): Promise<ExpenseListResponse> {
+    const { page, limit = 10, sortBy = 'amount', sortOrder = 'desc' } = query;
+    const skip = (page - 1) * limit;
+
+    const where: Record<string, unknown> = { organizationId };
+
+    const [expenses, total] = await Promise.all([
+      this.prisma.expense.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { [sortBy]: sortOrder },
+        include: {
+          category: true,
+          createdBy: { select: { id: true, name: true, email: true } },
+        },
+      }),
+      this.prisma.expense.count({ where }),
+    ]);
+
+    return {
+      expenses: expenses.map((e) => this.toResponse(e)),
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
   toResponse(e: any): ExpenseResponse {
     return {
       id: e.id,
