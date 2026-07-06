@@ -9,15 +9,28 @@ import {
 import { z, type ZodType } from 'zod';
 
 type ApiBodySchema = Extract<ApiBodyOptions, { schema: unknown }>['schema'];
-type ApiBodySchemaWithExample = ApiBodySchema & { example?: unknown };
+type OpenApiSchemaObject = NonNullable<ApiBodySchema> & { example?: unknown };
 
-function toOpenApiSchema(schema: ZodType): ApiBodySchema {
-  return z.toJSONSchema(schema, { target: 'draft-7' }) as ApiBodySchema;
+function assertSchemaObject(
+  schema: unknown,
+): asserts schema is OpenApiSchemaObject {
+  if (!schema || typeof schema !== 'object' || Array.isArray(schema)) {
+    throw new Error('Zod schema did not generate an OpenAPI schema object');
+  }
 }
 
-function withExample(schema: ApiBodySchema, example: unknown): ApiBodySchema {
+function toOpenApiSchema(schema: ZodType): OpenApiSchemaObject {
+  const openApiSchema = z.toJSONSchema(schema, { target: 'openapi-3.0' });
+  assertSchemaObject(openApiSchema);
+  return openApiSchema;
+}
+
+function withExample(
+  schema: OpenApiSchemaObject,
+  example: unknown,
+): ApiBodySchema {
   return {
-    ...(schema as ApiBodySchemaWithExample),
+    ...schema,
     example,
   };
 }
