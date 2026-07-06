@@ -93,14 +93,14 @@ model User {
   isConfirmed    Boolean  @default(false)
   name           String
   role           UserRole @default(MEMBER)
-  organizationId String? // null for SUPER_ADMIN users
+  organizationId String? // null for SUPER_ADMIN and MEMBER users (members' org lives in LibraryMember)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   sessions              Session[]
   magicLinks            MagicLink[]
   profile               UserProfile?
-  libraryMember         LibraryMember?
+  libraryMembers        LibraryMember[]
   processedRentals      Rental[]       @relation("RentalStaff")
   organization          Organization?  @relation("OrganizationMembers", fields: [organizationId], references: [id], onDelete: SetNull)
   createdOrganization   Organization?  @relation("OrganizationCreator")
@@ -137,8 +137,12 @@ model UserProfile {
 model Session {
   id        String   @id
   userId    String
-  expiresAt DateTime
-  createdAt DateTime @default(now())
+  // The library (Organization) the member is acting within, resolved from the
+  // slug at login. Null for staff (they derive their org from User.organizationId).
+  // Plain column, no FK — session data is ephemeral (7-day TTL).
+  activeOrganizationId String?
+  expiresAt            DateTime
+  createdAt            DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -197,7 +201,7 @@ model Organization {
 model LibraryMember {
   id                  String                @id @default(uuid())
   organizationId      String
-  userId              String?               @unique
+  userId              String? // a login user may be a member of multiple libraries (one row per org)
   libraryCardNumber   String
   membershipType      LibraryMembershipType
   membershipStatus    LibraryMemberStatus
@@ -212,6 +216,7 @@ model LibraryMember {
   reservations Reservation[]
 
   @@unique([organizationId, libraryCardNumber])
+  @@unique([organizationId, userId])
   @@index([organizationId])
   @@index([userId])
   @@schema("public")

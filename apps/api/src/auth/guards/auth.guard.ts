@@ -15,6 +15,7 @@ const SESSION_COOKIE_NAME = 'bootcamp_starter_session';
 export interface AuthenticatedRequest extends Request {
   user?: User;
   sessionId?: string;
+  activeOrganizationId?: string | null;
 }
 
 @Injectable()
@@ -42,15 +43,17 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException('No session found');
     }
 
-    const user = await this.sessionService.validateSession(sessionId);
+    const session = await this.sessionService.validateSession(sessionId);
 
-    if (!user) {
+    if (!session) {
       throw new UnauthorizedException('Invalid or expired session');
     }
 
-    // Attach user and session ID to request for later use
-    (request as AuthenticatedRequest).user = user;
-    (request as AuthenticatedRequest).sessionId = sessionId;
+    // Attach user, session ID, and active org to the request for later use
+    const authRequest = request as AuthenticatedRequest;
+    authRequest.user = session.user;
+    authRequest.sessionId = sessionId;
+    authRequest.activeOrganizationId = session.activeOrganizationId;
 
     return true;
   }

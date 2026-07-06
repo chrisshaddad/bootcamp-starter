@@ -94,7 +94,8 @@ export async function seedLibraryMembers(prisma: PrismaClient) {
               name: member.user.name,
               isConfirmed: true,
               role: 'MEMBER',
-              organizationId: organization.id,
+              // MEMBER users are not tied to an org via User.organizationId;
+              // their library membership lives in the LibraryMember row below.
             },
           })
         : null;

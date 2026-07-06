@@ -66,6 +66,7 @@ CREATE TABLE "UserProfile" (
 CREATE TABLE "private"."Session" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
+    "activeOrganizationId" TEXT,
     "expiresAt" TIMESTAMP(3) NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -286,9 +287,6 @@ CREATE INDEX "Organization_approvedById_idx" ON "Organization"("approvedById");
 CREATE INDEX "Organization_status_idx" ON "Organization"("status");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "LibraryMember_userId_key" ON "LibraryMember"("userId");
-
--- CreateIndex
 CREATE INDEX "LibraryMember_organizationId_idx" ON "LibraryMember"("organizationId");
 
 -- CreateIndex
@@ -296,6 +294,9 @@ CREATE INDEX "LibraryMember_userId_idx" ON "LibraryMember"("userId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "LibraryMember_organizationId_libraryCardNumber_key" ON "LibraryMember"("organizationId", "libraryCardNumber");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "LibraryMember_organizationId_userId_key" ON "LibraryMember"("organizationId", "userId");
 
 -- CreateIndex
 CREATE INDEX "Author_organizationId_idx" ON "Author"("organizationId");

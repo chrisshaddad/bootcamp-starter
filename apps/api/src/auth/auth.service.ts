@@ -143,17 +143,19 @@ export class AuthService {
    * Get the current user from session
    */
   async getCurrentUser(sessionId: string) {
-    const user = await this.sessionService.validateSession(sessionId);
-    if (!user) {
+    const session = await this.sessionService.validateSession(sessionId);
+    if (!session) {
       return null;
     }
 
+    const { user, activeOrganizationId } = session;
     return {
       id: user.id,
       email: user.email,
       name: user.name,
       role: user.role,
       organizationId: user.organizationId,
+      activeOrganizationId,
       isConfirmed: user.isConfirmed,
     };
   }

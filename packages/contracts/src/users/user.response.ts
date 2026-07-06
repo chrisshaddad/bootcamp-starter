@@ -17,6 +17,8 @@ export const userResponseSchema = z.object({
   name: z.string().nullable(),
   role: userRoleSchema,
   organizationId: z.uuid().nullable(),
+  // Active library for the session (members: resolved from the slug at login; staff: null).
+  activeOrganizationId: z.uuid().nullable(),
   isConfirmed: z.boolean(),
   profile: userProfileSchema.nullable().optional(),
 });
