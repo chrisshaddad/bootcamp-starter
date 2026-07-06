@@ -199,26 +199,6 @@ model Department {
 // ─── Skills ──────────────────────────────────────────────
 
 model Skill {
-  id             String   @id @default(uuid())
-  name           String
-  description    String?  @db.Text
-  organizationId String
-  managerId      String?  // department head (a User)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  organization  Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  manager       User?         @relation("DepartmentManager", fields: [managerId], references: [id], onDelete: SetNull)
-  users         User[]        @relation("DepartmentMembers")
-  opportunities Opportunity[]
-
-  @@index([organizationId])
-  @@schema("public")
-}
-
-// ─── Skills ──────────────────────────────────────────────
-
-model Skill {
   id             String @id @default(uuid())
   name           String
   category       String
