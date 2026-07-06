@@ -92,6 +92,7 @@ model Building {
   org         Organization         @relation(fields: [orgId], references: [id], onDelete: Cascade)
   assignments BuildingAssignment[]
   floors      Floor[]
+  apartments  Apartment[]
 
   @@index([orgId])
 }
@@ -139,6 +140,7 @@ model Apartment {
   notes      String?
   createdAt  DateTime        @default(now())
   updatedAt  DateTime        @updatedAt
+  building   Building        @relation(fields: [buildingId], references: [id], onDelete: Cascade)
   floor      Floor           @relation(fields: [floorId], references: [id], onDelete: Cascade)
 
   @@unique([buildingId, unitNumber])

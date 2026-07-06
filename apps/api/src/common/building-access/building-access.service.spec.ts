@@ -40,7 +40,7 @@ describe('BuildingAccessService', () => {
     it.each([Role.SUPERVISOR, Role.MAINTENANCE])(
       'returns only assigned building IDs for scoped role %s',
       async (role) => {
-        const { service } = makeService([
+        const { service, prisma } = makeService([
           { buildingId: 'a' },
           { buildingId: 'b' },
         ]);
@@ -50,6 +50,10 @@ describe('BuildingAccessService', () => {
           role,
         );
         expect(result).toEqual(['a', 'b']);
+        expect(prisma.buildingAssignment.findMany).toHaveBeenCalledWith({
+          where: { userId: callerId, orgId },
+          select: { buildingId: true },
+        });
       },
     );
 
@@ -77,7 +81,7 @@ describe('BuildingAccessService', () => {
     );
 
     it('does not throw for a scoped role assigned to the building', async () => {
-      const { service } = makeService([{ buildingId }]);
+      const { service, prisma } = makeService([{ buildingId }]);
       await expect(
         service.assertBuildingAccess(
           orgId,
@@ -86,6 +90,9 @@ describe('BuildingAccessService', () => {
           buildingId,
         ),
       ).resolves.toBeUndefined();
+      expect(prisma.buildingAssignment.findFirst).toHaveBeenCalledWith({
+        where: { buildingId, userId: callerId, orgId },
+      });
     });
 
     it('throws ForbiddenException for a scoped role not assigned to the building', async () => {

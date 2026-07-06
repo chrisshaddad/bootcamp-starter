@@ -132,6 +132,80 @@ describe('FloorsService', () => {
     });
   });
 
+  describe('update', () => {
+    it('updates the given fields and returns the floor with its apartment count', async () => {
+      const { service, prisma } = makeService({
+        floor: { findFirst: jest.fn().mockResolvedValue(floorRow()) },
+      });
+      prisma.floor.update.mockResolvedValue({
+        ...floorRow({ notes: 'Renovated' }),
+        _count: { apartments: 2 },
+      });
+
+      const { data } = await service.update(
+        orgId,
+        actorId,
+        buildingId,
+        'floor-1',
+        { notes: 'Renovated' },
+      );
+
+      expect(prisma.floor.update).toHaveBeenCalledWith({
+        where: { id: 'floor-1' },
+        data: { notes: 'Renovated' },
+        include: { _count: { select: { apartments: true } } },
+      });
+      expect(data.notes).toBe('Renovated');
+      expect(data.apartmentCount).toBe(2);
+    });
+
+    it('rejects renaming to a name already used by another floor in the building', async () => {
+      const { service, prisma } = makeService({
+        floor: {
+          findFirst: jest
+            .fn()
+            .mockResolvedValueOnce(floorRow({ name: 'Floor 1' }))
+            .mockResolvedValueOnce(floorRow({ id: 'floor-2', name: 'Floor 2' })),
+        },
+      });
+
+      await expect(
+        service.update(orgId, actorId, buildingId, 'floor-1', {
+          name: 'Floor 2',
+        }),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(prisma.floor.update).not.toHaveBeenCalled();
+    });
+
+    it('skips the name-conflict check when the name is unchanged', async () => {
+      const { service, prisma } = makeService({
+        floor: { findFirst: jest.fn().mockResolvedValue(floorRow()) },
+      });
+      prisma.floor.update.mockResolvedValue({
+        ...floorRow(),
+        _count: { apartments: 0 },
+      });
+
+      await service.update(orgId, actorId, buildingId, 'floor-1', {
+        name: floorRow().name,
+      });
+
+      expect(prisma.floor.findFirst).toHaveBeenCalledTimes(1);
+      expect(prisma.floor.update).toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException for a floor outside the building/org', async () => {
+      const { service, prisma } = makeService();
+
+      await expect(
+        service.update(orgId, actorId, buildingId, 'missing-floor', {
+          notes: 'x',
+        }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(prisma.floor.update).not.toHaveBeenCalled();
+    });
+  });
+
   describe('remove', () => {
     it('deletes a floor with no apartments on it', async () => {
       const { service, prisma } = makeService({

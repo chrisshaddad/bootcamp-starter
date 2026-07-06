@@ -295,7 +295,15 @@ export function BuildingDetailPage({
                 <TableRow
                   key={floor.id}
                   className="cursor-pointer hover:bg-muted/40"
+                  role="button"
+                  tabIndex={0}
                   onClick={() => goToFloor(floor.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      goToFloor(floor.id);
+                    }
+                  }}
                 >
                   <TableCell>
                     <span className="font-medium text-sm">{floor.name}</span>
