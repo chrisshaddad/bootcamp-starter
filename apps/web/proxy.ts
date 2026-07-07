@@ -10,6 +10,7 @@ const publicRoutes = ['/login', '/auth/verify', '/register'];
 // Default landing pages per role
 const ADMIN_HOME = '/dashboard';
 const MEMBER_HOME = '/portal';
+const SUPER_ADMIN_HOME = '/gyms';
 
 function isPublicRoute(pathname: string): boolean {
   return publicRoutes.some(
@@ -32,10 +33,11 @@ function isKnownRole(role: string | undefined): role is string {
   return !!role && KNOWN_ROLES.has(role);
 }
 
-/** Redirect destination for an authenticated user based on their role.
- * Falls back to ADMIN_HOME for unknown/absent roles; client-side auth corrects on load. */
+/** Redirect destination for an authenticated user based on their role. */
 function homeForRole(role: string | undefined): string {
-  return role === 'MEMBER' ? MEMBER_HOME : ADMIN_HOME;
+  if (role === 'MEMBER') return MEMBER_HOME;
+  if (role === 'SUPER_ADMIN') return SUPER_ADMIN_HOME;
+  return ADMIN_HOME;
 }
 
 export function proxy(request: NextRequest) {

@@ -38,7 +38,9 @@ function VerifyContent() {
             ? redirectParam
             : result.user.role === 'MEMBER'
               ? '/portal'
-              : '/dashboard';
+              : result.user.role === 'SUPER_ADMIN'
+                ? '/gyms'
+                : '/dashboard';
         // Small delay to show success state before redirecting
         setTimeout(() => {
           router.replace(destination);
