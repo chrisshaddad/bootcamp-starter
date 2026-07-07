@@ -285,15 +285,23 @@ export class MedicinesService {
   ): Promise<void> {
     const clean = cleanIngredientNames(names);
 
+    // Create any missing ingredients with ON CONFLICT DO NOTHING
+    // (skipDuplicates), then read the ids back. This is race-safe: a per-name
+    // upsert does a find-then-insert that isn't atomic across transactions, so
+    // two concurrent creates of the same brand-new name can collide on the
+    // unique constraint and leak a raw P2002. A single skip-duplicates insert
+    // can't — the database resolves the conflict silently.
     const ingredientIds: string[] = [];
-    for (const name of clean) {
-      const ingredient = await tx.ingredient.upsert({
-        where: { name },
-        create: { name },
-        update: {},
+    if (clean.length > 0) {
+      await tx.ingredient.createMany({
+        data: clean.map((name) => ({ name })),
+        skipDuplicates: true,
+      });
+      const ingredients = await tx.ingredient.findMany({
+        where: { name: { in: clean } },
         select: { id: true },
       });
-      ingredientIds.push(ingredient.id);
+      ingredientIds.push(...ingredients.map((ingredient) => ingredient.id));
     }
 
     await tx.medicineIngredient.deleteMany({ where: { medicineId } });
@@ -391,7 +399,7 @@ export class MedicinesService {
 
   // A duplicate barcode trips the unique constraint (P2002); surface it as a
   // clean conflict instead of a raw Prisma error. Only the barcode constraint is
-  // mapped — other P2002s (e.g. a raced ingredient-name insert) are rethrown.
+  // mapped — any other P2002 is rethrown.
   private mapBarcodeConflict(error: unknown): unknown {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&

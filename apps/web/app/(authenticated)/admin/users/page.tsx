@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
@@ -33,6 +33,7 @@ import {
 import { useUsers, useUserActions } from '@/hooks/use-users';
 import { usePharmacies } from '@/hooks/use-pharmacies';
 import { ApiError } from '@/lib/api';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -818,6 +819,124 @@ function FilterMenu<T extends string>({
   );
 }
 
+// A searchable single-select filter. Adds a search box so long option lists
+// (e.g. a growing pharmacy list) stay navigable — Radix's DropdownMenu doesn't
+// filter in-menu well, so plain FilterMenu doesn't scale for these.
+function FilterCombobox({
+  allLabel,
+  value,
+  options,
+  onChange,
+  width,
+  labelFor,
+}: {
+  allLabel: string;
+  value: string | undefined;
+  options: string[];
+  onChange: (value: string | undefined) => void;
+  width: string;
+  labelFor?: (value: string) => string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const ref = useRef<HTMLDivElement>(null);
+  const render = (raw: string) => (labelFor ? labelFor(raw) : raw);
+
+  useEffect(() => {
+    if (!open) return;
+    function handlePointer(event: MouseEvent) {
+      if (ref.current && !ref.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handlePointer);
+    return () => document.removeEventListener('mousedown', handlePointer);
+  }, [open]);
+
+  const needle = query.trim().toLowerCase();
+  const filtered = needle
+    ? options.filter((option) => render(option).toLowerCase().includes(needle))
+    : options;
+  // Cap the rendered list so a large catalog never bogs the popup down; the
+  // search box narrows the rest.
+  const shown = filtered.slice(0, 50);
+  const hidden = filtered.length - shown.length;
+
+  const choose = (next: string | undefined) => {
+    onChange(next);
+    setOpen(false);
+    setQuery('');
+  };
+
+  return (
+    <div ref={ref} className={cn('relative', width)}>
+      <Button
+        type="button"
+        variant="outline"
+        className="h-9 w-full justify-between font-normal"
+        onClick={() => setOpen((current) => !current)}
+      >
+        <span
+          className={cn('truncate', value ? 'text-gray-900' : 'text-gray-500')}
+        >
+          {value ? render(value) : allLabel}
+        </span>
+        <ChevronDown className="h-4 w-4 shrink-0 text-gray-400" />
+      </Button>
+
+      {open ? (
+        <div className="absolute z-50 mt-1 w-full overflow-hidden rounded-[10px] border border-gray-200 bg-white shadow-lg">
+          <div className="border-b border-gray-100 p-2">
+            <Input
+              autoFocus
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') setOpen(false);
+              }}
+              placeholder="Search…"
+              className="h-8"
+            />
+          </div>
+          <div className="max-h-60 overflow-y-auto p-1">
+            <button
+              type="button"
+              className="flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+              onClick={() => choose(undefined)}
+            >
+              {allLabel}
+              {value === undefined ? (
+                <Check className="h-4 w-4 shrink-0 text-gray-400" />
+              ) : null}
+            </button>
+            {shown.map((option) => (
+              <button
+                key={option}
+                type="button"
+                className="flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                onClick={() => choose(option)}
+              >
+                <span className="truncate">{render(option)}</span>
+                {value === option ? (
+                  <Check className="h-4 w-4 shrink-0 text-gray-400" />
+                ) : null}
+              </button>
+            ))}
+            {shown.length === 0 ? (
+              <p className="px-3 py-2 text-sm text-gray-400">No matches</p>
+            ) : null}
+            {hidden > 0 ? (
+              <p className="px-3 py-1.5 text-xs text-gray-400">
+                +{hidden} more — refine your search
+              </p>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export default function UsersPage() {
   const [role, setRole] = useState<UserRole | undefined>(undefined);
   const [status, setStatus] = useState<UserStatus | undefined>(undefined);
@@ -871,7 +990,7 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
           <p className="mt-1 text-sm text-gray-500">
@@ -882,7 +1001,7 @@ export default function UsersPage() {
         <Button
           type="button"
           size="lg"
-          className="h-12 w-40 justify-center px-6 text-base"
+          className="h-12 w-40 shrink-0 justify-center px-6 text-base"
           onClick={() => setCreateOpen(true)}
         >
           <Plus className="h-5 w-5" />
@@ -942,14 +1061,15 @@ export default function UsersPage() {
             onChange={setStatus}
             width="w-44"
           />
-          <FilterMenu
+          <FilterCombobox
             allLabel="All pharmacies"
             value={pharmacyId}
             options={(pharmacies ?? []).map((pharmacy) => pharmacy.id)}
             onChange={setPharmacyId}
             width="w-44"
             labelFor={(id) =>
-              pharmacies?.find((pharmacy) => pharmacy.id === id)?.name ?? id
+              pharmacies?.find((pharmacy) => pharmacy.id === id)?.name ??
+              'Unknown pharmacy'
             }
           />
         </div>
