@@ -33,7 +33,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { UserPlus, Users, ShieldX } from 'lucide-react';
+import { ApiError } from '@/lib/api';
 import type { AssignableUserRole, UserListItem } from '@repo/contracts';
+
+function errorMessage(err: unknown, fallback: string): string {
+  return err instanceof ApiError ? err.message : fallback;
+}
 
 const ROLE_LABELS: Record<string, string> = {
   ORG_ADMIN: 'Org Admin',
@@ -60,7 +65,7 @@ function RoleBadge({ role }: { role: string }) {
 function ForbiddenPage() {
   return (
     <div className="flex flex-col items-center justify-center py-20">
-      <ShieldX className="h-16 w-16 text-red-400 mb-4" />
+      <ShieldX className="h-16 w-16 text-error mb-4" />
       <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
       <p className="text-gray-500 text-center max-w-md">
         You don&apos;t have permission to access this page.
@@ -112,7 +117,7 @@ function OrgAdminUsersView() {
       setShowCreateDialog(false);
       setCreateForm(EMPTY_FORM);
     } catch (err) {
-      toast.error('Failed to create user');
+      toast.error(errorMessage(err, 'Failed to create user'));
       console.error(err);
     } finally {
       setIsCreating(false);
@@ -121,7 +126,11 @@ function OrgAdminUsersView() {
 
   const openEdit = (user: UserListItem) => {
     setEditingUser(user);
-    setEditForm({ name: user.name, email: user.email, role: user.role as AssignableUserRole });
+    setEditForm({
+      name: user.name,
+      email: user.email,
+      role: user.role as AssignableUserRole,
+    });
   };
 
   const handleUpdate = async () => {
@@ -135,7 +144,7 @@ function OrgAdminUsersView() {
       toast.success('User updated successfully');
       setEditingUser(null);
     } catch (err) {
-      toast.error('Failed to update user');
+      toast.error(errorMessage(err, 'Failed to update user'));
       console.error(err);
     } finally {
       setIsEditing(false);
@@ -177,7 +186,7 @@ function OrgAdminUsersView() {
               ))}
             </div>
           ) : error ? (
-            <div className="py-10 text-center text-red-500">
+            <div className="py-10 text-center text-error">
               Failed to load users
             </div>
           ) : !users?.length ? (
@@ -201,7 +210,9 @@ function OrgAdminUsersView() {
                     <TableCell className="font-medium text-gray-900">
                       {user.name}
                     </TableCell>
-                    <TableCell className="text-gray-600">{user.email}</TableCell>
+                    <TableCell className="text-gray-600">
+                      {user.email}
+                    </TableCell>
                     <TableCell>
                       <RoleBadge role={user.role} />
                     </TableCell>
@@ -231,8 +242,8 @@ function OrgAdminUsersView() {
           <DialogHeader>
             <DialogTitle>Create User</DialogTitle>
             <DialogDescription>
-              The new user will be added to your organization and can log in
-              via email once created.
+              The new user will be added to your organization and can log in via
+              email once created.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -350,7 +361,10 @@ function OrgAdminUsersView() {
             >
               Cancel
             </Button>
-            <Button onClick={handleUpdate} disabled={isEditing || !editForm.name}>
+            <Button
+              onClick={handleUpdate}
+              disabled={isEditing || !editForm.name}
+            >
               {isEditing ? 'Saving...' : 'Save Changes'}
             </Button>
           </DialogFooter>
@@ -372,7 +386,7 @@ function ReceptionistCreateUserView() {
       toast.success('User created successfully');
       setForm({ name: '', email: '' });
     } catch (err) {
-      toast.error('Failed to create user');
+      toast.error(errorMessage(err, 'Failed to create user'));
       console.error(err);
     } finally {
       setIsCreating(false);
@@ -410,7 +424,9 @@ function ReceptionistCreateUserView() {
               id="rec-email"
               type="email"
               value={form.email}
-              onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, email: e.target.value }))
+              }
             />
           </div>
           <Button

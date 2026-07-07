@@ -2,6 +2,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
@@ -25,6 +26,8 @@ const USER_SELECT = {
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   /**
@@ -80,6 +83,10 @@ export class UsersService {
         select: USER_SELECT,
       });
 
+      this.logger.log(
+        `Created user ${user.id} (${role}) in organization ${creator.organizationId}`,
+      );
+
       return { user };
     } catch (error) {
       if (
@@ -102,22 +109,28 @@ export class UsersService {
     targetUserId: string,
     dto: UpdateUserRequest,
   ): Promise<UserActionResponse> {
-    const existing = await this.prisma.user.findUnique({
-      where: { id: targetUserId },
+    // Tenant-scoped lookup: never read a row belonging to another org.
+    const existing = await this.prisma.user.findFirst({
+      where: { id: targetUserId, organizationId },
+      select: { id: true },
     });
 
-    if (!existing || existing.organizationId !== organizationId) {
+    if (!existing) {
       throw new NotFoundException(`User with ID ${targetUserId} not found`);
     }
 
     const user = await this.prisma.user.update({
-      where: { id: targetUserId },
+      where: { id: existing.id },
       data: {
         ...(dto.name !== undefined && { name: dto.name }),
         ...(dto.role !== undefined && { role: dto.role }),
       },
       select: USER_SELECT,
     });
+
+    this.logger.log(
+      `Updated user ${user.id} in organization ${organizationId}`,
+    );
 
     return { user };
   }

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { assignableUserRoleSchema } from './create-user.request';
+import { assignableUserRoleSchema } from './assignable-user-role.schema';
 
 // Request for PATCH /users/:id
 // Email is intentionally not editable here.

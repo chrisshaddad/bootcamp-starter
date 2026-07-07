@@ -45,9 +45,13 @@ export function useUsers(options: UseUsersOptions = {}): UseUsersReturn {
 }
 
 function invalidateUsers() {
-  mutate((key) => typeof key === 'string' && key.startsWith('/users'), undefined, {
-    revalidate: true,
-  });
+  mutate(
+    (key) => typeof key === 'string' && key.startsWith('/users'),
+    undefined,
+    {
+      revalidate: true,
+    },
+  );
 }
 
 /**
