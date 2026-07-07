@@ -78,7 +78,9 @@ export class CheckInsService {
   async checkIn(gymId: string, memberId: string): Promise<CheckInResponse> {
     const lockKey = `checkin-lock:${memberId}`;
     const acquired = await this.redis.set(lockKey, '1', 'PX', 5000, 'NX');
-    this.logger.log(`Lock acquisition for key "${lockKey}": acquired = ${acquired} (${typeof acquired})`);
+    this.logger.log(
+      `Lock acquisition for key "${lockKey}": acquired = ${acquired} (${typeof acquired})`,
+    );
     if (!acquired) {
       throw new BadRequestException('Check-in is already in progress');
     }

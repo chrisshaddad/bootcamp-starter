@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, RefreshCw, QrCode, ShieldCheck, Users } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function QrCheckInPage() {
   const { qrToken, isLoading, error, mutate } = useQrToken();
@@ -136,9 +137,12 @@ export default function QrCheckInPage() {
                     </Button>
                   </div>
                 ) : (
-                  <img
+                  <Image
                     src={qrCodeDataUrl}
                     alt="Check-in QR Code"
+                    width={288}
+                    height={288}
+                    priority
                     className="w-full h-full object-contain rounded-lg select-none pointer-events-none transition-opacity duration-300"
                   />
                 )}
