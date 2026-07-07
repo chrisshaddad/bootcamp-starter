@@ -3,9 +3,16 @@ import {
   Injectable,
   NotFoundException,
   Logger,
+  Inject,
 } from '@nestjs/common';
+import { randomBytes } from 'crypto';
+import Redis from 'ioredis';
 import { DatabaseService } from '../database/database.service';
-import type { CheckInResponse, CheckInListResponse } from '@repo/contracts';
+import type {
+  CheckInResponse,
+  CheckInListResponse,
+  CheckinQrTokenResponse,
+} from '@repo/contracts';
 
 const CHECKIN_SELECT = {
   id: true,
@@ -35,41 +42,85 @@ const CHECKIN_SELECT = {
 export class CheckInsService {
   private readonly logger = new Logger(CheckInsService.name);
 
-  constructor(private readonly prisma: DatabaseService) {}
+  constructor(
+    private readonly prisma: DatabaseService,
+    @Inject('REDIS_CLIENT') private readonly redis: Redis,
+  ) {}
+
+  async getQrToken(gymId: string): Promise<CheckinQrTokenResponse> {
+    const cacheKey = `gym-qr-token:${gymId}`;
+    let token = await this.redis.get(cacheKey);
+    let ttl = 60;
+
+    if (token) {
+      const remainingTtl = await this.redis.ttl(cacheKey);
+      if (remainingTtl > 5) {
+        ttl = remainingTtl;
+      } else {
+        token = null;
+      }
+    }
+
+    if (!token) {
+      token = randomBytes(16).toString('hex');
+      await this.redis.setex(cacheKey, ttl, token);
+      await this.redis.setex(`qr-token:${token}`, ttl, gymId);
+    }
+
+    const expiresAt = new Date(Date.now() + ttl * 1000);
+
+    return {
+      token,
+      expiresAt,
+    };
+  }
 
   async checkIn(gymId: string, memberId: string): Promise<CheckInResponse> {
-    const member = await this.prisma.member.findFirst({
-      where: { id: memberId, gymId },
-      select: { id: true, status: true },
-    });
-
-    if (!member) {
-      throw new NotFoundException(`Member with ID ${memberId} not found`);
+    const lockKey = `checkin-lock:${memberId}`;
+    const acquired = await this.redis.set(lockKey, '1', 'PX', 5000, 'NX');
+    this.logger.log(
+      `Lock acquisition for key "${lockKey}": acquired = ${acquired} (${typeof acquired})`,
+    );
+    if (!acquired) {
+      throw new BadRequestException('Check-in is already in progress');
     }
 
-    if (member.status !== 'ACTIVE') {
-      throw new BadRequestException('Cannot check in an inactive member');
+    try {
+      const member = await this.prisma.member.findFirst({
+        where: { id: memberId, gymId },
+        select: { id: true, status: true },
+      });
+
+      if (!member) {
+        throw new NotFoundException(`Member with ID ${memberId} not found`);
+      }
+
+      if (member.status !== 'ACTIVE') {
+        throw new BadRequestException('Cannot check in an inactive member');
+      }
+
+      const activeCheckIn = await this.prisma.checkIn.findFirst({
+        where: { memberId, gymId, checkedOutAt: null },
+        select: { id: true },
+      });
+
+      if (activeCheckIn) {
+        throw new BadRequestException('Member is already checked in');
+      }
+
+      const checkIn = await this.prisma.checkIn.create({
+        data: {
+          gymId,
+          memberId,
+          checkedInAt: new Date(),
+        },
+        select: CHECKIN_SELECT,
+      });
+
+      return checkIn as unknown as CheckInResponse;
+    } finally {
+      await this.redis.del(lockKey);
     }
-
-    const activeCheckIn = await this.prisma.checkIn.findFirst({
-      where: { memberId, gymId, checkedOutAt: null },
-      select: { id: true },
-    });
-
-    if (activeCheckIn) {
-      throw new BadRequestException('Member is already checked in');
-    }
-
-    const checkIn = await this.prisma.checkIn.create({
-      data: {
-        gymId,
-        memberId,
-        checkedInAt: new Date(),
-      },
-      select: CHECKIN_SELECT,
-    });
-
-    return checkIn as unknown as CheckInResponse;
   }
 
   async checkOut(id: string, gymId: string): Promise<CheckInResponse> {

@@ -27,7 +27,7 @@ Current overall state: **Phase 0 complete** — schema, migration, and all seede
 | Phase 0 — DB + `Gym` rename                                                   | Claude      | 1 / 1 | ✅     | [`progress/PROGRESS-phase0.md`](progress/PROGRESS-phase0.md)                               |
 | Feature A — Gym registration / Members / Plans / Subscriptions + portal shell | Claude      | 5 / 5 | ✅     | [`progress/PROGRESS-A.md`](progress/PROGRESS-A.md) — A0–A4 ✅ all merged — B3/C3 unblocked |
 | Feature B — Instructors / Sessions / Bookings + My-bookings                   | Antigravity | 4 / 4 | ✅     | [`progress/PROGRESS-B.md`](progress/PROGRESS-B.md) — B0-B3 ✅ all done                     |
-| Feature C — Check-ins / Dashboard + QR check-in                               | Antigravity | 2 / 3 | 🟡     | [`progress/PROGRESS-C.md`](progress/PROGRESS-C.md) — C2 ✅ done                            |
+| Feature C — Check-ins / Dashboard + QR check-in                               | Antigravity | 3 / 3 | ✅     | [`progress/PROGRESS-C.md`](progress/PROGRESS-C.md) — C1–C3 ✅ all done                     |
 
 ## How to use these files
 

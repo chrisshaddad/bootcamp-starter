@@ -134,11 +134,13 @@ export function AppSidebar() {
     return pathname.startsWith(url);
   };
 
+  const homeUrl = isSuperAdmin ? '/gyms' : '/dashboard';
+
   return (
     <Sidebar className="border-r border-gray-200 bg-white">
       <SidebarHeader className="px-5 py-6">
         {/* Logo */}
-        <Link href="/dashboard" className="flex items-center gap-2.5">
+        <Link href={homeUrl} className="flex items-center gap-2.5">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-base">
             <span className="text-lg font-bold text-white">✦</span>
           </div>

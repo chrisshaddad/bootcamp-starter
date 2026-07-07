@@ -23,10 +23,15 @@ import type {
   CheckInResponse,
   CheckInListResponse,
   CheckInCreateRequest,
+  CheckinQrTokenResponse,
 } from '@repo/contracts';
 import { checkInCreateRequestSchema } from '@repo/contracts';
 import { ZodValidationPipe } from '../common/pipes';
-import { checkInSchema, checkInListSchema } from './checkins.swagger';
+import {
+  checkInSchema,
+  checkInListSchema,
+  checkInQrTokenSchema,
+} from './checkins.swagger';
 
 @ApiTags('checkins')
 @ApiCookieAuth('session-cookie')
@@ -97,6 +102,24 @@ export class CheckInsController {
     @CurrentUser() user: User,
   ): Promise<CheckInResponse> {
     return this.checkInsService.checkOut(id, user.gymId!);
+  }
+
+  @Get('qr-token')
+  @Roles('ORG_ADMIN')
+  @ApiOperation({
+    summary: 'Get rotating QR check-in token',
+    description:
+      'Generates or retrieves a rotating, short-lived QR token for the gym. ORG_ADMIN only.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Rotating check-in QR token details',
+    schema: checkInQrTokenSchema,
+  })
+  @ApiResponse({ status: 401, description: 'Not authenticated' })
+  @ApiResponse({ status: 403, description: 'Insufficient role' })
+  async getQrToken(@CurrentUser() user: User): Promise<CheckinQrTokenResponse> {
+    return this.checkInsService.getQrToken(user.gymId!);
   }
 
   @Get('all')

@@ -84,7 +84,9 @@ function ActiveMembersCard({
       </CardHeader>
       <CardContent>
         <p className="text-3xl font-extrabold text-gray-900">{count}</p>
-        <p className="mt-1 text-xs text-gray-400">With an active subscription</p>
+        <p className="mt-1 text-xs text-gray-400">
+          With an active subscription
+        </p>
         {count > 0 && (
           <button
             type="button"
@@ -92,9 +94,13 @@ function ActiveMembersCard({
             className="mt-3 flex items-center gap-1 text-xs font-medium text-primary-base hover:underline"
           >
             {expanded ? (
-              <><ChevronUp className="h-3 w-3" /> Hide list</>
+              <>
+                <ChevronUp className="h-3 w-3" /> Hide list
+              </>
             ) : (
-              <><ChevronDown className="h-3 w-3" /> Show list</>
+              <>
+                <ChevronDown className="h-3 w-3" /> Show list
+              </>
             )}
           </button>
         )}

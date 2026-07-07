@@ -7,6 +7,9 @@ import {
   DefaultValuePipe,
   ParseIntPipe,
   ParseEnumPipe,
+  Post,
+  Body,
+  HttpCode,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -15,6 +18,7 @@ import {
   ApiResponse,
   ApiQuery,
   ApiParam,
+  ApiBody,
 } from '@nestjs/swagger';
 import { MePortalService } from './me-portal.service';
 import { Roles, CurrentUser } from '../auth/decorators';
@@ -26,7 +30,12 @@ import type {
   MeBookingListResponse,
   MeBookingResponse,
   BookingStatus,
+  CheckinScanRequest,
+  CheckInResponse,
 } from '@repo/contracts';
+import { checkinScanRequestSchema } from '@repo/contracts';
+import { ZodValidationPipe } from '../common/pipes';
+import { checkInSchema } from '../checkins/checkins.swagger';
 import {
   meProfileSchema,
   meSubscriptionSchema,
@@ -186,5 +195,41 @@ export class MePortalController {
     @Param('id') id: string,
   ): Promise<MeBookingResponse> {
     return this.mePortalService.cancelBooking(user.id, user.gymId!, id);
+  }
+
+  @Post('checkins')
+  @Roles('MEMBER')
+  @HttpCode(201)
+  @ApiOperation({
+    summary: 'Check in via QR scan',
+    description:
+      'Validates a short-lived QR token and performs check-in. MEMBER only.',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['token'],
+      properties: {
+        token: { type: 'string', example: 'd66e74abfe7444c18f1aef42ffeb077d' },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Checked in successfully',
+    schema: checkInSchema,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Token expired/invalid or duplicate check-in',
+  })
+  @ApiResponse({ status: 401, description: 'Not authenticated' })
+  @ApiResponse({ status: 403, description: 'Insufficient role' })
+  async scanCheckIn(
+    @CurrentUser() user: User,
+    @Body(new ZodValidationPipe(checkinScanRequestSchema))
+    dto: CheckinScanRequest,
+  ): Promise<CheckInResponse> {
+    return this.mePortalService.scanCheckIn(user.id, user.gymId!, dto.token);
   }
 }

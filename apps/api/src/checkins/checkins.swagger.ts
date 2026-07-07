@@ -58,3 +58,12 @@ export const checkInListSchema = {
     },
   },
 };
+
+export const checkInQrTokenSchema = {
+  type: 'object',
+  required: ['token', 'expiresAt'],
+  properties: {
+    token: { type: 'string' },
+    expiresAt: { type: 'string', format: 'date-time' },
+  },
+};

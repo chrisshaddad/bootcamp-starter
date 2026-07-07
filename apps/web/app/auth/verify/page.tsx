@@ -30,9 +30,17 @@ function VerifyContent() {
         const result = await verifyMagicLink({ token });
         setStatus('success');
         toast.success('Successfully logged in!');
-        // Redirect members to the portal; everyone else to the admin dashboard
+        // Follow an explicit redirect if the proxy encoded one (e.g. /checkin?token=...)
+        // otherwise fall back to the role-appropriate home page.
+        const redirectParam = searchParams.get('redirect');
         const destination =
-          result.user.role === 'MEMBER' ? '/portal' : '/dashboard';
+          redirectParam && redirectParam.startsWith('/')
+            ? redirectParam
+            : result.user.role === 'MEMBER'
+              ? '/portal'
+              : result.user.role === 'SUPER_ADMIN'
+                ? '/gyms'
+                : '/dashboard';
         // Small delay to show success state before redirecting
         setTimeout(() => {
           router.replace(destination);
