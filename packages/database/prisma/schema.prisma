@@ -153,7 +153,7 @@ model Institution {
 model User {
   id            String   @id @default(uuid())
   username      String   @db.VarChar(50)
-  email         String   @db.VarChar(255)
+  email         String   @unique @db.VarChar(255)
   fullName      String   @db.VarChar(255)
   phone         String   @db.VarChar(20)
   role          Role
@@ -178,7 +178,6 @@ model User {
   notifications       Notification[]       @relation("NotificationRecipient")
   sentNotifications   Notification[]       @relation("NotificationSender")
 
-  @@unique([email, institutionId])
   @@unique([username, institutionId])
   @@index([institutionId])
   @@index([role])

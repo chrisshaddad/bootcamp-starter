@@ -324,6 +324,9 @@ CREATE INDEX "institutions_name_idx" ON "institutions"("name");
 CREATE INDEX "institutions_status_idx" ON "institutions"("status");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
+
+-- CreateIndex
 CREATE INDEX "users_institutionId_idx" ON "users"("institutionId");
 
 -- CreateIndex
@@ -331,9 +334,6 @@ CREATE INDEX "users_role_idx" ON "users"("role");
 
 -- CreateIndex
 CREATE INDEX "users_createdById_idx" ON "users"("createdById");
-
--- CreateIndex
-CREATE UNIQUE INDEX "users_email_institutionId_key" ON "users"("email", "institutionId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "users_username_institutionId_key" ON "users"("username", "institutionId");
@@ -425,7 +425,7 @@ CREATE INDEX "magic_links_token_idx" ON "private"."magic_links"("token");
 -- CreateIndex
 CREATE INDEX "magic_links_userId_idx" ON "private"."magic_links"("userId");
 
--- CreateIndex manually added
+-- CreateIndex manual
 CREATE UNIQUE INDEX "assignment_active_unique" ON "public"."assignments"("patientId", "professionalId")
 WHERE "status" = 'ACTIVE';
 
