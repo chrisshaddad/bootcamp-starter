@@ -9,7 +9,13 @@ const SESSION_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days
 
 export interface SessionData {
   userId: string;
+  activeOrganizationId: string | null;
   expiresAt: Date;
+}
+
+export interface ValidatedSession {
+  user: User;
+  activeOrganizationId: string | null;
 }
 
 @Injectable()
@@ -24,7 +30,10 @@ export class SessionService {
   /**
    * Creates a new session in both DB and Redis
    */
-  async createSession(userId: string): Promise<string> {
+  async createSession(
+    userId: string,
+    activeOrganizationId: string | null = null,
+  ): Promise<string> {
     const sessionId = this.generateSessionId();
     const expiresAt = new Date(Date.now() + SESSION_TTL_SECONDS * 1000);
 
@@ -33,12 +42,17 @@ export class SessionService {
       data: {
         id: sessionId,
         userId,
+        activeOrganizationId,
         expiresAt,
       },
     });
 
     // Cache in Redis with TTL
-    const sessionData: SessionData = { userId, expiresAt };
+    const sessionData: SessionData = {
+      userId,
+      activeOrganizationId,
+      expiresAt,
+    };
     await this.redis.setex(
       `${SESSION_PREFIX}${sessionId}`,
       SESSION_TTL_SECONDS,
@@ -53,7 +67,7 @@ export class SessionService {
    * Validates a session and returns the user if valid
    * Checks Redis first, falls back to DB on cache miss
    */
-  async validateSession(sessionId: string): Promise<User | null> {
+  async validateSession(sessionId: string): Promise<ValidatedSession | null> {
     // Try Redis first (fast path)
     const cachedSession = await this.redis.get(`${SESSION_PREFIX}${sessionId}`);
 
@@ -67,9 +81,15 @@ export class SessionService {
       }
 
       // Get user from database
-      return this.prisma.user.findUnique({
+      const user = await this.prisma.user.findUnique({
         where: { id: sessionData.userId },
       });
+
+      if (!user) {
+        return null;
+      }
+
+      return { user, activeOrganizationId: sessionData.activeOrganizationId };
     }
 
     // Cache miss - check database
@@ -96,6 +116,7 @@ export class SessionService {
     if (remainingTtl > 0) {
       const sessionData: SessionData = {
         userId: dbSession.userId,
+        activeOrganizationId: dbSession.activeOrganizationId,
         expiresAt: dbSession.expiresAt,
       };
       await this.redis.setex(
@@ -105,7 +126,10 @@ export class SessionService {
       );
     }
 
-    return dbSession.user;
+    return {
+      user: dbSession.user,
+      activeOrganizationId: dbSession.activeOrganizationId,
+    };
   }
 
   /**

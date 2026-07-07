@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="ns-amber" x1="61" y1="0" x2="451" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#EBA946"></stop><stop offset="1" stop-color="#C4761A"></stop>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="512" height="512" rx="117.8" fill="url(#ns-amber)"></rect>
+  <path d="M104.45 243.71 a8.19 8.19 0 0 1 8.19 -8.19 h28.67 a8.19 8.19 0 0 1 8.19 8.19 v114.69 h-45.06 Z" fill="#FBF1DE"></path><path d="M168.96 212.99 a8.19 8.19 0 0 1 8.19 -8.19 h28.67 a8.19 8.19 0 0 1 8.19 8.19 v145.41 h-45.06 Z" fill="#4A3218"></path><path d="M233.47 228.35 a8.19 8.19 0 0 1 8.19 -8.19 h28.67 a8.19 8.19 0 0 1 8.19 8.19 v130.05 h-45.06 Z" fill="#FBF1DE"></path><path d="M297.98 182.27 a8.19 8.19 0 0 1 8.19 -8.19 h28.67 a8.19 8.19 0 0 1 8.19 8.19 v176.13 h-45.06 Z" fill="#FFFFFF"></path><path d="M362.50 202.75 a8.19 8.19 0 0 1 8.19 -8.19 h28.67 a8.19 8.19 0 0 1 8.19 8.19 v155.65 h-45.06 Z" fill="#4A3218" transform="rotate(7 407.55 358.40)"></path>
+  <rect x="97.28" y="384.00" width="317.44" height="25.60" rx="15.36" fill="#3C2A14"></rect>
+</svg>

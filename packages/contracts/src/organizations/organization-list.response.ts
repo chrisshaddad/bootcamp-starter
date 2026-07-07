@@ -13,8 +13,10 @@ const organizationCreatorSchema = z.object({
 const organizationListItemSchema = z.object({
   id: z.uuid(),
   name: z.string(),
+  slug: z.string(),
   status: organizationStatusSchema,
   website: z.string().nullable(),
+  logoUrl: z.string().nullable(),
   createdAt: dateSchema,
   createdBy: organizationCreatorSchema,
   _count: z.object({

@@ -68,4 +68,42 @@ export async function apiPatch<T>(
   return res.json();
 }
 
+export async function apiPut<T>(endpoint: string, data?: unknown): Promise<T> {
+  const res = await fetch(`${API_URL}${endpoint}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: data ? JSON.stringify(data) : undefined,
+  });
+
+  if (!res.ok) {
+    const error = await res
+      .json()
+      .catch(() => ({ message: 'An error occurred' }));
+    throw new ApiError(res.status, error.message || 'An error occurred');
+  }
+
+  // Tolerate an empty (e.g. 204) response body.
+  return res.json().catch(() => undefined as T);
+}
+
+export async function apiDelete<T>(endpoint: string): Promise<T> {
+  const res = await fetch(`${API_URL}${endpoint}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    const error = await res
+      .json()
+      .catch(() => ({ message: 'An error occurred' }));
+    throw new ApiError(res.status, error.message || 'An error occurred');
+  }
+
+  // DELETE commonly returns 204 No Content.
+  return res.json().catch(() => undefined as T);
+}
+
 export { API_URL };

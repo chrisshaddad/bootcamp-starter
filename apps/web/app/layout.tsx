@@ -11,8 +11,8 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: 'Bootcamp Starter',
-  description: 'Full-stack bootcamp starter',
+  title: 'NextShelf',
+  description: 'Manage your library catalog, members, and loans in one place.',
 };
 
 export default function RootLayout({

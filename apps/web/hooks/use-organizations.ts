@@ -1,8 +1,9 @@
 'use client';
 
-import useSWR, { mutate } from 'swr';
+import useSWR from 'swr';
 import { useCallback } from 'react';
 import { apiPatch } from '@/lib/api';
+import { invalidateByPrefix } from '@/lib/swr';
 import type {
   OrganizationListResponse,
   OrganizationDetailResponse,
@@ -83,14 +84,9 @@ export function useOrganization(
   );
 
   const invalidateAll = useCallback(() => {
-    // Invalidate this specific organization
+    // Invalidate this specific organization + all organizations list variants.
     swrMutate();
-    // Invalidate the organizations list cache
-    mutate(
-      (key) => typeof key === 'string' && key.startsWith('/organizations'),
-      undefined,
-      { revalidate: true },
-    );
+    invalidateByPrefix('/organizations');
   }, [swrMutate]);
 
   const approve = useCallback(async () => {

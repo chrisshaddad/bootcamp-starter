@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { AuthService } from './auth.service';
-import { CurrentUser, Public } from './decorators';
+import { ActiveOrganizationId, CurrentUser, Public } from './decorators';
 import {
   SESSION_COOKIE_NAME,
   type AuthenticatedRequest,
@@ -88,13 +88,17 @@ export class AuthController {
   }
 
   @Get('me')
-  getCurrentUser(@CurrentUser() user: User): UserResponse {
+  getCurrentUser(
+    @CurrentUser() user: User,
+    @ActiveOrganizationId() activeOrganizationId: string | null,
+  ): UserResponse {
     return {
       id: user.id,
       email: user.email,
       name: user.name,
       role: user.role,
       organizationId: user.organizationId,
+      activeOrganizationId,
       isConfirmed: user.isConfirmed,
     };
   }
