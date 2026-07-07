@@ -33,12 +33,35 @@ interface NavItem {
   disabled?: boolean;
 }
 
-// Navigation items for ORG_ADMIN and MEMBER roles
-const orgNavItems: NavItem[] = [
+// Navigation items for MEMBER role (no management access)
+const memberNavItems: NavItem[] = [
   {
     title: 'Dashboard',
     url: '/dashboard',
     icon: LayoutDashboard,
+  },
+];
+
+// Navigation items for ORG_ADMIN role
+const orgAdminNavItems: NavItem[] = [
+  {
+    title: 'Dashboard',
+    url: '/dashboard',
+    icon: LayoutDashboard,
+  },
+  {
+    title: 'Users',
+    url: '/users',
+    icon: Users,
+  },
+];
+
+// Navigation items for RECEPTIONIST role
+const receptionistNavItems: NavItem[] = [
+  {
+    title: 'Create User',
+    url: '/users',
+    icon: Users,
   },
 ];
 
@@ -49,15 +72,9 @@ const superAdminNavItems: NavItem[] = [
     url: '/organizations',
     icon: Building2,
   },
-  {
-    title: 'Users',
-    url: '/users',
-    icon: Users,
-    disabled: true, // Placeholder for future implementation
-  },
 ];
 
-const orgSecondaryNavItems: NavItem[] = [
+const secondaryNavItems: NavItem[] = [
   {
     title: 'Settings',
     url: '/settings',
@@ -65,13 +82,12 @@ const orgSecondaryNavItems: NavItem[] = [
   },
 ];
 
-const superAdminSecondaryNavItems: NavItem[] = [
-  {
-    title: 'Settings',
-    url: '/settings',
-    icon: Settings,
-  },
-];
+const NAV_ITEMS_BY_ROLE: Record<string, NavItem[]> = {
+  SUPER_ADMIN: superAdminNavItems,
+  ORG_ADMIN: orgAdminNavItems,
+  RECEPTIONIST: receptionistNavItems,
+  MEMBER: memberNavItems,
+};
 
 export function AppSidebar() {
   const pathname = usePathname();
@@ -79,10 +95,9 @@ export function AppSidebar() {
   const { user } = useUser({ redirectOnUnauthenticated: false });
 
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
-  const mainNavItems = isSuperAdmin ? superAdminNavItems : orgNavItems;
-  const secondaryNavItems = isSuperAdmin
-    ? superAdminSecondaryNavItems
-    : orgSecondaryNavItems;
+  const mainNavItems = user?.role
+    ? (NAV_ITEMS_BY_ROLE[user.role] ?? memberNavItems)
+    : memberNavItems;
 
   const isActive = (url: string) => {
     if (url === '/dashboard') {
