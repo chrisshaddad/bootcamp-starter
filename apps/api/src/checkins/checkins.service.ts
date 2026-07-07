@@ -3,9 +3,16 @@ import {
   Injectable,
   NotFoundException,
   Logger,
+  Inject,
 } from '@nestjs/common';
+import { randomBytes } from 'crypto';
+import Redis from 'ioredis';
 import { DatabaseService } from '../database/database.service';
-import type { CheckInResponse, CheckInListResponse } from '@repo/contracts';
+import type {
+  CheckInResponse,
+  CheckInListResponse,
+  CheckinQrTokenResponse,
+} from '@repo/contracts';
 
 const CHECKIN_SELECT = {
   id: true,
@@ -35,7 +42,38 @@ const CHECKIN_SELECT = {
 export class CheckInsService {
   private readonly logger = new Logger(CheckInsService.name);
 
-  constructor(private readonly prisma: DatabaseService) {}
+  constructor(
+    private readonly prisma: DatabaseService,
+    @Inject('REDIS_CLIENT') private readonly redis: Redis,
+  ) {}
+
+  async getQrToken(gymId: string): Promise<CheckinQrTokenResponse> {
+    const cacheKey = `gym-qr-token:${gymId}`;
+    let token = await this.redis.get(cacheKey);
+    let ttl = 60;
+
+    if (token) {
+      const remainingTtl = await this.redis.ttl(cacheKey);
+      if (remainingTtl > 5) {
+        ttl = remainingTtl;
+      } else {
+        token = null;
+      }
+    }
+
+    if (!token) {
+      token = randomBytes(16).toString('hex');
+      await this.redis.setex(cacheKey, ttl, token);
+      await this.redis.setex(`qr-token:${token}`, ttl, gymId);
+    }
+
+    const expiresAt = new Date(Date.now() + ttl * 1000);
+
+    return {
+      token,
+      expiresAt,
+    };
+  }
 
   async checkIn(gymId: string, memberId: string): Promise<CheckInResponse> {
     const member = await this.prisma.member.findFirst({

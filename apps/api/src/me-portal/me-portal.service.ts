@@ -2,8 +2,11 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Inject,
 } from '@nestjs/common';
+import Redis from 'ioredis';
 import { DatabaseService } from '../database/database.service';
+import { CheckInsService } from '../checkins/checkins.service';
 import type {
   MeProfileResponse,
   SubscriptionListResponse,
@@ -11,6 +14,7 @@ import type {
   MeBookingListResponse,
   MeBookingResponse,
   BookingStatus,
+  CheckInResponse,
 } from '@repo/contracts';
 
 const SUBSCRIPTION_SELECT = {
@@ -63,7 +67,11 @@ const ME_BOOKING_SELECT = {
 
 @Injectable()
 export class MePortalService {
-  constructor(private readonly prisma: DatabaseService) {}
+  constructor(
+    private readonly prisma: DatabaseService,
+    private readonly checkInsService: CheckInsService,
+    @Inject('REDIS_CLIENT') private readonly redis: Redis,
+  ) {}
 
   /** Resolve the Member record for the logged-in portal user */
   private async resolveMember(userId: string, gymId: string) {
@@ -201,5 +209,24 @@ export class MePortalService {
     });
 
     return updated as unknown as MeBookingResponse;
+  }
+
+  async scanCheckIn(
+    userId: string,
+    gymId: string,
+    token: string,
+  ): Promise<CheckInResponse> {
+    const member = await this.resolveMember(userId, gymId);
+
+    const tokenGymId = await this.redis.get(`qr-token:${token}`);
+    if (!tokenGymId) {
+      throw new BadRequestException('QR code has expired or is invalid');
+    }
+
+    if (tokenGymId !== gymId) {
+      throw new BadRequestException('This QR code is for a different gym');
+    }
+
+    return this.checkInsService.checkIn(gymId, member.id);
   }
 }

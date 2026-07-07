@@ -12,8 +12,10 @@ import {
   ChevronDown,
   ChevronRight,
   Clock,
+  QrCode,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import Link from 'next/link';
 import {
   useCheckIns,
   useCheckInMember,
@@ -311,13 +313,21 @@ export default function CheckInsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">
-          Check-ins &amp; Occupancy
-        </h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Monitor live gym occupancy and check in members manually.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Check-ins &amp; Occupancy
+          </h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Monitor live gym occupancy and check in members manually.
+          </p>
+        </div>
+        <Link href="/checkins/qr">
+          <Button className="bg-primary-base hover:bg-primary-base/90 text-white flex items-center gap-2">
+            <QrCode className="h-4 w-4" />
+            Open QR Kiosk
+          </Button>
+        </Link>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">

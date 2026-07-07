@@ -18,7 +18,12 @@ function isPublicRoute(pathname: string): boolean {
 }
 
 function isMemberPortalRoute(pathname: string): boolean {
-  return pathname === '/portal' || pathname.startsWith('/portal/');
+  return (
+    pathname === '/portal' ||
+    pathname.startsWith('/portal/') ||
+    pathname === '/checkin' ||
+    pathname.startsWith('/checkin/')
+  );
 }
 
 const KNOWN_ROLES = new Set(['MEMBER', 'ORG_ADMIN', 'SUPER_ADMIN']);
@@ -56,7 +61,10 @@ export function proxy(request: NextRequest) {
   // Redirect unauthenticated users to login
   if (!isPublicRoute(pathname) && !isAuthenticated) {
     const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('redirect', pathname);
+    const fullPath = request.nextUrl.search
+      ? `${pathname}${request.nextUrl.search}`
+      : pathname;
+    loginUrl.searchParams.set('redirect', fullPath);
     return NextResponse.redirect(loginUrl);
   }
 

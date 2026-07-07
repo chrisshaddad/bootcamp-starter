@@ -7,6 +7,7 @@ import type {
   CheckInListResponse,
   CheckInResponse,
   CheckInCreateRequest,
+  CheckinQrTokenResponse,
 } from '@repo/contracts';
 
 interface UseCheckInsReturn {
@@ -61,4 +62,30 @@ export function useCheckOutMember() {
   }, []);
 
   return { checkOutMember };
+}
+
+interface UseQrTokenReturn {
+  qrToken: CheckinQrTokenResponse | undefined;
+  isLoading: boolean;
+  error: Error | undefined;
+  mutate: () => void;
+}
+
+export function useQrToken(): UseQrTokenReturn {
+  const {
+    data,
+    error,
+    isLoading,
+    mutate: swrMutate,
+  } = useSWR<CheckinQrTokenResponse>('/checkins/qr-token', {
+    refreshInterval: 15000,
+    revalidateOnFocus: true,
+  });
+
+  return {
+    qrToken: data,
+    isLoading,
+    error,
+    mutate: swrMutate,
+  };
 }

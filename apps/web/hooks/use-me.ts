@@ -2,7 +2,7 @@
 
 import useSWR, { mutate } from 'swr';
 import { useCallback } from 'react';
-import { apiPatch } from '@/lib/api';
+import { apiPatch, apiPost } from '@/lib/api';
 import type {
   MeProfileResponse,
   SubscriptionListResponse,
@@ -10,6 +10,7 @@ import type {
   MeBookingListResponse,
   MeBookingResponse,
   BookingStatus,
+  CheckInResponse,
 } from '@repo/contracts';
 
 export const MY_BOOKINGS_PAGE_SIZE = 25;
@@ -122,4 +123,12 @@ export function useCancelMyBooking() {
   }, []);
 
   return { cancelBooking };
+}
+
+export function useScanCheckIn() {
+  const scanCheckIn = useCallback(async (token: string) => {
+    return apiPost<CheckInResponse>('/me/checkins', { token });
+  }, []);
+
+  return { scanCheckIn };
 }

@@ -29,6 +29,6 @@ import { MailModule } from '../mail/mail.module';
     },
   ],
   controllers: [AuthController],
-  exports: [AuthService, SessionService],
+  exports: [AuthService, SessionService, 'REDIS_CLIENT'],
 })
 export class AuthModule {}
