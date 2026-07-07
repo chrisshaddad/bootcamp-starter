@@ -13,6 +13,7 @@ import {
   Plus,
   Search,
   Trash2,
+  User,
   UserCheck,
   Users,
   type LucideIcon,
@@ -89,10 +90,6 @@ function humanize(value: string): string {
     .split('_')
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
-}
-
-function initials(user: Pick<UserListItem, 'firstName' | 'lastName'>): string {
-  return `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`.toUpperCase();
 }
 
 // Deterministic soft avatar tint so a given user keeps the same color.
@@ -202,8 +199,8 @@ function UserAvatar({
 }) {
   return (
     <Avatar size={size}>
-      <AvatarFallback className={`font-semibold ${avatarTint(user.id)}`}>
-        {initials(user)}
+      <AvatarFallback className={avatarTint(user.id)}>
+        <User className={size === 'lg' ? 'h-6 w-6' : 'h-5 w-5'} />
       </AvatarFallback>
     </Avatar>
   );
@@ -774,13 +771,18 @@ function FilterMenu<T extends string>({
   options,
   onChange,
   width,
+  labelFor,
 }: {
   allLabel: string;
   value: T | undefined;
   options: readonly T[];
   onChange: (value: T | undefined) => void;
   width: string;
+  // How to render an option's label; defaults to humanizing the enum value.
+  labelFor?: (value: T) => string;
 }) {
+  const label = (option: T) => (labelFor ? labelFor(option) : humanize(option));
+
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
@@ -789,20 +791,25 @@ function FilterMenu<T extends string>({
           variant="outline"
           className={`h-9 justify-between font-normal ${width}`}
         >
-          <span className={value ? 'text-gray-900' : 'text-gray-500'}>
-            {value ? humanize(value) : allLabel}
+          <span
+            className={`truncate ${value ? 'text-gray-900' : 'text-gray-500'}`}
+          >
+            {value ? label(value) : allLabel}
           </span>
-          <ChevronDown className="h-4 w-4 text-gray-400" />
+          <ChevronDown className="h-4 w-4 shrink-0 text-gray-400" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className={width}>
+      <DropdownMenuContent
+        align="end"
+        className={`max-h-72 overflow-y-auto ${width}`}
+      >
         <DropdownMenuItem onSelect={() => onChange(undefined)}>
           {allLabel}
           {value === undefined ? <Check className="ml-auto h-4 w-4" /> : null}
         </DropdownMenuItem>
         {options.map((option) => (
           <DropdownMenuItem key={option} onSelect={() => onChange(option)}>
-            {humanize(option)}
+            <span className="truncate">{label(option)}</span>
             {value === option ? <Check className="ml-auto h-4 w-4" /> : null}
           </DropdownMenuItem>
         ))}
@@ -814,6 +821,7 @@ function FilterMenu<T extends string>({
 export default function UsersPage() {
   const [role, setRole] = useState<UserRole | undefined>(undefined);
   const [status, setStatus] = useState<UserStatus | undefined>(undefined);
+  const [pharmacyId, setPharmacyId] = useState<string | undefined>(undefined);
   const [search, setSearch] = useState('');
   const [dialog, setDialog] = useState<{
     mode: 'view' | 'delete';
@@ -841,14 +849,17 @@ export default function UsersPage() {
   const rows = useMemo(() => {
     if (!users) return users;
     const query = search.trim().toLowerCase();
-    const matched = query
-      ? users.filter(
-          (user) =>
-            `${user.firstName} ${user.lastName}`
-              .toLowerCase()
-              .includes(query) || user.email.toLowerCase().includes(query),
-        )
-      : users;
+    const matched = users.filter((user) => {
+      if (pharmacyId && user.pharmacyId !== pharmacyId) return false;
+      if (
+        query &&
+        !`${user.firstName} ${user.lastName}`.toLowerCase().includes(query) &&
+        !user.email.toLowerCase().includes(query)
+      ) {
+        return false;
+      }
+      return true;
+    });
     return [...matched].sort(
       (a, b) =>
         ROLE_RANK[a.role] - ROLE_RANK[b.role] ||
@@ -856,7 +867,7 @@ export default function UsersPage() {
         a.firstName.localeCompare(b.firstName) ||
         a.id.localeCompare(b.id),
     );
-  }, [users, search]);
+  }, [users, search, pharmacyId]);
 
   return (
     <div className="space-y-6">
@@ -871,7 +882,7 @@ export default function UsersPage() {
         <Button
           type="button"
           size="lg"
-          className="h-12 w-38 justify-center px-6 text-base"
+          className="h-12 w-40 justify-center px-6 text-base"
           onClick={() => setCreateOpen(true)}
         >
           <Plus className="h-5 w-5" />
@@ -912,7 +923,7 @@ export default function UsersPage() {
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search users by name or email…"
-            className="w-full pl-9"
+            className="h-9 w-full pl-9"
           />
         </div>
 
@@ -929,7 +940,17 @@ export default function UsersPage() {
             value={status}
             options={userStatusSchema.options}
             onChange={setStatus}
-            width="w-40"
+            width="w-44"
+          />
+          <FilterMenu
+            allLabel="All pharmacies"
+            value={pharmacyId}
+            options={(pharmacies ?? []).map((pharmacy) => pharmacy.id)}
+            onChange={setPharmacyId}
+            width="w-44"
+            labelFor={(id) =>
+              pharmacies?.find((pharmacy) => pharmacy.id === id)?.name ?? id
+            }
           />
         </div>
       </div>
