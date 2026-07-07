@@ -1,6 +1,6 @@
 'use client';
 
-import useSWR, { type KeyedMutator } from 'swr';
+import useSWR, { useSWRConfig, type KeyedMutator } from 'swr';
 import { useCallback, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { toast } from 'sonner';
@@ -85,6 +85,18 @@ export function useUser(options: UseUserOptions = {}): UseUserReturn {
 export function useAuth() {
   const router = useRouter();
   const { mutate } = useUser();
+  const { mutate: globalMutate } = useSWRConfig();
+
+  // Wipe the entire SWR cache. Its keys are only the request URL (e.g. `/users`),
+  // not namespaced per account, so switching users in the same browser tab (no
+  // hard reload) would otherwise serve the previous user's cached data — e.g. a
+  // super admin seeing the `/users` list that excluded the *other* admin. Clear
+  // everything without revalidating; each mounted hook refetches under the new
+  // session on its own.
+  const clearCache = useCallback(
+    () => globalMutate(() => true, undefined, { revalidate: false }),
+    [globalMutate],
+  );
 
   const requestMagicLink = useCallback(async (data: MagicLinkRequest) => {
     return apiPost<{ success: boolean }>('/auth/magic-link', data);
@@ -96,19 +108,23 @@ export function useAuth() {
         '/auth/magic-link/verify',
         data,
       );
+      // Drop any prior account's cached data before revalidating as the new user.
+      await clearCache();
       mutate();
       return result;
     },
-    [mutate],
+    [clearCache, mutate],
   );
 
   const login = useCallback(
     async (data: PasswordLoginRequest) => {
       const result = await apiPost<{ user: UserResponse }>('/auth/login', data);
+      // Drop any prior account's cached data before revalidating as the new user.
+      await clearCache();
       mutate();
       return result;
     },
-    [mutate],
+    [clearCache, mutate],
   );
 
   const signup = useCallback(async (data: SignupRequest) => {
@@ -145,13 +161,14 @@ export function useAuth() {
       }
       return;
     }
-    // Clear the cached user without revalidating — /auth/me would 401 now and
-    // could race a redirect that pins a stale ?redirect= param. Then send the
-    // user to login explicitly so logout never depends on another component's
-    // 401 effect firing.
-    await mutate(undefined, { revalidate: false });
+    // Clear the whole cache without revalidating — /auth/me would 401 now and
+    // could race a redirect that pins a stale ?redirect= param, and any other
+    // account's cached data (e.g. the `/users` list) must not survive into the
+    // next login in this tab. Then send the user to login explicitly so logout
+    // never depends on another component's 401 effect firing.
+    await clearCache();
     router.replace('/login');
-  }, [mutate, router]);
+  }, [clearCache, router]);
 
   return {
     requestMagicLink,

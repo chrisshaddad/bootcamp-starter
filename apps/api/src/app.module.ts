@@ -5,6 +5,8 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { MailModule } from './mail/mail.module';
+import { UsersModule } from './users/users.module';
+import { PharmaciesModule } from './pharmacies/pharmacies.module';
 import { DatabaseModule } from './database/database.module';
 
 @Module({
@@ -18,6 +20,8 @@ import { DatabaseModule } from './database/database.module';
     DatabaseModule,
     AuthModule,
     MailModule,
+    UsersModule,
+    PharmaciesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
