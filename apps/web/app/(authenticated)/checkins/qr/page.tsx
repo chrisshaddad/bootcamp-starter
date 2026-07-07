@@ -28,7 +28,7 @@ export default function QrCheckInPage() {
         width: 320,
         margin: 2,
         color: {
-          dark: '#0f172a', 
+          dark: '#0f172a',
           light: '#ffffff',
         },
       },

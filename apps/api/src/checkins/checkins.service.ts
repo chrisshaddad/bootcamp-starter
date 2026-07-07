@@ -76,38 +76,49 @@ export class CheckInsService {
   }
 
   async checkIn(gymId: string, memberId: string): Promise<CheckInResponse> {
-    const member = await this.prisma.member.findFirst({
-      where: { id: memberId, gymId },
-      select: { id: true, status: true },
-    });
-
-    if (!member) {
-      throw new NotFoundException(`Member with ID ${memberId} not found`);
+    const lockKey = `checkin-lock:${memberId}`;
+    const acquired = await this.redis.set(lockKey, '1', 'PX', 5000, 'NX');
+    this.logger.log(`Lock acquisition for key "${lockKey}": acquired = ${acquired} (${typeof acquired})`);
+    if (!acquired) {
+      throw new BadRequestException('Check-in is already in progress');
     }
 
-    if (member.status !== 'ACTIVE') {
-      throw new BadRequestException('Cannot check in an inactive member');
+    try {
+      const member = await this.prisma.member.findFirst({
+        where: { id: memberId, gymId },
+        select: { id: true, status: true },
+      });
+
+      if (!member) {
+        throw new NotFoundException(`Member with ID ${memberId} not found`);
+      }
+
+      if (member.status !== 'ACTIVE') {
+        throw new BadRequestException('Cannot check in an inactive member');
+      }
+
+      const activeCheckIn = await this.prisma.checkIn.findFirst({
+        where: { memberId, gymId, checkedOutAt: null },
+        select: { id: true },
+      });
+
+      if (activeCheckIn) {
+        throw new BadRequestException('Member is already checked in');
+      }
+
+      const checkIn = await this.prisma.checkIn.create({
+        data: {
+          gymId,
+          memberId,
+          checkedInAt: new Date(),
+        },
+        select: CHECKIN_SELECT,
+      });
+
+      return checkIn as unknown as CheckInResponse;
+    } finally {
+      await this.redis.del(lockKey);
     }
-
-    const activeCheckIn = await this.prisma.checkIn.findFirst({
-      where: { memberId, gymId, checkedOutAt: null },
-      select: { id: true },
-    });
-
-    if (activeCheckIn) {
-      throw new BadRequestException('Member is already checked in');
-    }
-
-    const checkIn = await this.prisma.checkIn.create({
-      data: {
-        gymId,
-        memberId,
-        checkedInAt: new Date(),
-      },
-      select: CHECKIN_SELECT,
-    });
-
-    return checkIn as unknown as CheckInResponse;
   }
 
   async checkOut(id: string, gymId: string): Promise<CheckInResponse> {
