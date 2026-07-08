@@ -28,7 +28,7 @@ interface UseUsersReturn {
 
 /**
  * Hook for fetching the platform user list with optional role/status filters.
- * Mirrors the read pattern in `use-organizations.ts`.
+ * Mirrors the read pattern in `use-medicines.ts`.
  */
 export function useUsers(options: UseUsersOptions = {}): UseUsersReturn {
   const { role, status, enabled = true } = options;

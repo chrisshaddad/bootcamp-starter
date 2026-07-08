@@ -8,6 +8,7 @@ import { MailModule } from './mail/mail.module';
 import { UsersModule } from './users/users.module';
 import { PharmaciesModule } from './pharmacies/pharmacies.module';
 import { MedicinesModule } from './medicines/medicines.module';
+import { StatsModule } from './stats/stats.module';
 import { DatabaseModule } from './database/database.module';
 
 @Module({
@@ -24,6 +25,7 @@ import { DatabaseModule } from './database/database.module';
     UsersModule,
     PharmaciesModule,
     MedicinesModule,
+    StatsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
