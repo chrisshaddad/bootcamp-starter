@@ -4,8 +4,12 @@ import { cva, type VariantProps } from 'class-variance-authority';
 
 import { cn } from '@/lib/utils';
 
-const badgeVariants = cva(
-  "inline-flex w-fit shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-xl border px-2.5 py-1 text-xs font-semibold transition-colors [&>svg]:pointer-events-none [&>svg]:size-3",
+// App-level status badge. Intentionally lives outside `components/ui/` because
+// it defines project-specific semantic variants (success / warning / critical)
+// beyond what `npx shadcn add badge` generates — keeping the shadcn primitives
+// folder free of hand-edited variants (see doc/AGENTS.md).
+const statusBadgeVariants = cva(
+  'inline-flex w-fit shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-xl border px-2.5 py-1 text-xs font-semibold transition-colors [&>svg]:pointer-events-none [&>svg]:size-3',
   {
     variants: {
       variant: {
@@ -23,24 +27,24 @@ const badgeVariants = cva(
   },
 );
 
-function Badge({
+function StatusBadge({
   className,
   variant = 'default',
   asChild = false,
   ...props
 }: React.ComponentProps<'span'> &
-  VariantProps<typeof badgeVariants> & {
+  VariantProps<typeof statusBadgeVariants> & {
     asChild?: boolean;
   }) {
   const Comp = asChild ? Slot : 'span';
 
   return (
     <Comp
-      data-slot="badge"
-      className={cn(badgeVariants({ variant }), className)}
+      data-slot="status-badge"
+      className={cn(statusBadgeVariants({ variant }), className)}
       {...props}
     />
   );
 }
 
-export { Badge, badgeVariants };
+export { StatusBadge, statusBadgeVariants };

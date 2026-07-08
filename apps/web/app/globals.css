@@ -137,10 +137,12 @@ a {
   --color-mint: #2bb389;
   --color-mint-soft: #e4f7f0;
 
-  /* Status accents — amber for warnings, muted red for critical states. */
-  --color-warn: #b45309;
-  --color-warn-soft: #fef3c7;
-  --color-warn-accent: #f59e0b;
+  /* Status accents — amber for warnings, muted red for critical states.
+     Amber values match the dashboard "needs attention" treatment: soft tag
+     background #FAEEDA, tag/text #854F0B, and the 4px left-border accent. */
+  --color-warn: #854f0b;
+  --color-warn-soft: #faeeda;
+  --color-warn-accent: #ef9f27;
   --color-critical: #b91c1c;
   --color-critical-soft: #fee2e2;
 

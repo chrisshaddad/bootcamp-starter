@@ -7,7 +7,7 @@ import { useUsers } from '@/hooks/use-users';
 import { usePharmacies } from '@/hooks/use-pharmacies';
 import { usePlatformStats } from '@/hooks/use-platform-stats';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/status-badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   ArrowRight,
@@ -50,10 +50,11 @@ const quickActions = [
 // Shared, single-source-of-truth styling so every card/row is identical.
 // ---------------------------------------------------------------------------
 
-// Every card: 12px radius, subtle shadow, 150ms transition, gentle hover lift.
-// Padding (24px) comes from the shadcn Card (py-6) + CardContent/Header (px-6).
+// Every non-stat card: white, 12px radius, plain 0.5px border, subtle shadow,
+// 150ms transition, gentle hover lift. Padding (24px) comes from the shadcn
+// Card (py-6) + CardContent/Header (px-6).
 const CARD_CLASS =
-  'rounded-2xl border-gray-200 bg-white shadow-sm transition-all duration-150 ease-in-out hover:shadow-md';
+  'rounded-2xl border-[0.5px] border-border bg-white shadow-sm transition-all duration-150 ease-in-out hover:shadow-md';
 
 // Every interactive inner row: 8px radius, pointer, green hover wash, lift, and
 // a soft shadow — one behavior applied everywhere, no per-row variation.
@@ -63,20 +64,43 @@ const ROW_INTERACTIVE =
 // Non-interactive inner tile (stats, gauges): 8px radius, no hover.
 const INNER_TILE = 'rounded-xl bg-gray-50 p-4';
 
-// Rotating green tones for the stat-card icon chips (mint → emerald → sage →
-// forest) and the matching category accent bar under each stat number.
-const ICON_TONES = [
-  'bg-mint-soft text-mint',
-  'bg-emerald-soft text-emerald-accent',
-  'bg-sage-soft text-sage',
-  'bg-forest-soft text-forest',
-];
-const ACCENT_BARS = [
-  'bg-mint',
-  'bg-emerald-accent',
-  'bg-sage',
-  'bg-forest',
-];
+// Full colored backgrounds for the "at a glance" stat row — one palette per
+// card (bg, 0.5px border, label / big-number / delta text, and the icon color
+// inside a translucent white circle). Order matches `overviewStats`.
+const STAT_STYLES = [
+  {
+    bg: '#EAF3DE',
+    border: '#C0DD97',
+    label: '#3B6D11',
+    number: '#173404',
+    delta: '#3B6D11',
+    icon: '#27500A',
+  },
+  {
+    bg: '#E1F5EE',
+    border: '#9FE1CB',
+    label: '#085041',
+    number: '#04342C',
+    delta: '#085041',
+    icon: '#085041',
+  },
+  {
+    bg: '#FAEEDA',
+    border: '#FAC775',
+    label: '#854F0B',
+    number: '#412402',
+    delta: '#854F0B',
+    icon: '#633806',
+  },
+  {
+    bg: '#EEEDFE',
+    border: '#CECBF6',
+    label: '#3C3489',
+    number: '#26215C',
+    delta: '#3C3489',
+    icon: '#3C3489',
+  },
+] as const;
 
 // Green-forward gradient fills for the catalog-health bars, amber for warnings.
 const BAR_GRADIENTS: Record<string, string> = {
@@ -96,7 +120,10 @@ const DUO_GRID =
   'grid grid-cols-[repeat(auto-fit,minmax(340px,1fr))] items-stretch gap-3';
 
 function enterStyle(delayMs: number) {
-  return { animationDelay: `${delayMs}ms`, animationFillMode: 'backwards' as const };
+  return {
+    animationDelay: `${delayMs}ms`,
+    animationFillMode: 'backwards' as const,
+  };
 }
 
 function formatCount(value?: number | null) {
@@ -198,6 +225,7 @@ export function DashboardContent() {
       icon: Users,
       trend: `${statusCounts.active} active • ${statusCounts.pending} pending`,
       newThisWeek: platformStats?.users.newThisWeek,
+      colors: STAT_STYLES[0],
     },
     {
       label: 'Total Pharmacies',
@@ -205,6 +233,7 @@ export function DashboardContent() {
       icon: Building2,
       trend: 'Registered pharmacies in the current catalog',
       newThisWeek: platformStats?.pharmacies.newThisWeek,
+      colors: STAT_STYLES[1],
     },
     {
       label: 'Total Medicines',
@@ -212,6 +241,7 @@ export function DashboardContent() {
       icon: Pill,
       trend: `${pricedMedicines} priced • ${barcodedMedicines} barcoded`,
       newThisWeek: platformStats?.medicines.newThisWeek,
+      colors: STAT_STYLES[2],
     },
     {
       // A ratio has no meaningful "created this week" count, so this card omits
@@ -221,6 +251,7 @@ export function DashboardContent() {
       icon: Boxes,
       trend: `${barcodeCoverage}% have a barcode`,
       newThisWeek: undefined,
+      colors: STAT_STYLES[3],
     },
   ];
 
@@ -256,51 +287,64 @@ export function DashboardContent() {
             catalog.
           </p>
         </div>
-        <Badge
+        <StatusBadge
           variant="success"
           className="gap-2 px-3 py-1.5 text-sm text-gray-700"
         >
           <ShieldCheck className="text-primary-base" />
           Live data synced
-        </Badge>
+        </StatusBadge>
       </div>
 
-      {/* Stat cards */}
+      {/* Stat cards — full colored "at a glance" summary row */}
       <div className={STAT_GRID}>
         {overviewStats.map((stat, index) => {
           const Icon = stat.icon;
+          const s = stat.colors;
           return (
             <Card
               key={stat.label}
-              className={`${CARD_CLASS} ${ENTER}`}
-              style={enterStyle(index * 70)}
+              className={`rounded-2xl border py-0 shadow-[0_1px_3px_rgba(0,0,0,0.06)] transition-all duration-150 ease-in-out hover:shadow-md ${ENTER}`}
+              style={{
+                backgroundColor: s.bg,
+                borderColor: s.border,
+                borderWidth: '0.5px',
+                ...enterStyle(index * 70),
+              }}
             >
-              <CardContent className="flex flex-1 flex-col justify-between">
+              <CardContent className="flex flex-1 flex-col justify-between p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-sm font-medium text-gray-500">
+                    <p
+                      className="text-[13px] font-medium"
+                      style={{ color: s.label }}
+                    >
                       {stat.label}
                     </p>
-                    <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900">
+                    <p
+                      className="mt-2 text-[28px] font-medium tracking-tight tabular-nums"
+                      style={{ color: s.number }}
+                    >
                       {stat.value}
                     </p>
-                    <div
-                      className={`mt-2 h-1 w-10 rounded-full ${ACCENT_BARS[index % ACCENT_BARS.length]}`}
-                    />
                   </div>
                   <div
-                    className={`flex h-11 w-11 items-center justify-center rounded-xl ${ICON_TONES[index % ICON_TONES.length]}`}
+                    className="flex h-11 w-11 items-center justify-center rounded-full"
+                    style={{ backgroundColor: 'rgba(255,255,255,0.67)' }}
                   >
-                    <Icon className="h-5 w-5" />
+                    <Icon className="h-5 w-5" style={{ color: s.icon }} />
                   </div>
                 </div>
                 <div className="mt-4">
-                  <p className="text-sm text-gray-500">{stat.trend}</p>
+                  <p className="text-xs" style={{ color: s.label }}>
+                    {stat.trend}
+                  </p>
                   {stat.newThisWeek !== undefined && (
                     <p
-                      className={`mt-2 inline-flex items-center gap-1 text-xs font-semibold ${
-                        stat.newThisWeek > 0 ? 'text-forest' : 'text-gray-400'
-                      }`}
+                      className="mt-2 inline-flex items-center gap-1 text-xs font-semibold"
+                      style={{
+                        color: stat.newThisWeek > 0 ? s.delta : '#9ca3af',
+                      }}
                     >
                       {stat.newThisWeek > 0 ? (
                         <ArrowUpRight className="h-3.5 w-3.5" />
@@ -372,14 +416,14 @@ export function DashboardContent() {
       {/* Alert highlight + Pharmacy breakdown */}
       <div className={DUO_GRID}>
         <Card
-          className={`${CARD_CLASS} ${ENTER} border-l-4 border-l-warn-accent bg-[rgba(245,158,11,0.04)]`}
+          className={`${CARD_CLASS} ${ENTER} border-l-4 border-l-warn-accent`}
           style={enterStyle(420)}
         >
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-lg font-bold text-gray-900">
               Medicines missing catalog data
             </CardTitle>
-            <Badge variant="warning">Watchlist</Badge>
+            <StatusBadge variant="warning">Watchlist</StatusBadge>
           </CardHeader>
           <CardContent className="flex flex-1 flex-col justify-between gap-3">
             {stockAlerts.length > 0 ? (
@@ -394,13 +438,13 @@ export function DashboardContent() {
                     </p>
                     <p className="text-sm text-gray-500">{alert.detail}</p>
                   </div>
-                  <Badge
+                  <StatusBadge
                     variant={
                       alert.severity === 'Needs review' ? 'critical' : 'warning'
                     }
                   >
                     {alert.severity}
-                  </Badge>
+                  </StatusBadge>
                 </div>
               ))
             ) : (
@@ -432,11 +476,11 @@ export function DashboardContent() {
                       {pharmacy.name}
                     </p>
                   </div>
-                  <Badge variant="secondary">
+                  <StatusBadge variant="secondary">
                     <Users className="h-3.5 w-3.5" />
                     {pharmacy.userCount} linked{' '}
                     {pharmacy.userCount === 1 ? 'user' : 'users'}
-                  </Badge>
+                  </StatusBadge>
                 </div>
               ))
             ) : (
