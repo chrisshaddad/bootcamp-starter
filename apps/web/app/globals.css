@@ -125,6 +125,31 @@ a {
   --color-blue: #2f78ee;
   --color-purple: #8c62ff;
 
+  /* Green-forward dashboard accents (semantic, reusable).
+     Each tone pairs a strong foreground with a soft background so icon
+     chips / badges can rotate through green shades consistently. */
+  --color-forest: #0f7a4a;
+  --color-forest-soft: #d9ede2;
+  --color-emerald-accent: #17936a;
+  --color-emerald-soft: #ddf3ea;
+  --color-sage: #4f9e7d;
+  --color-sage-soft: #e7f4ee;
+  --color-mint: #2bb389;
+  --color-mint-soft: #e4f7f0;
+
+  /* Status accents — amber for warnings, muted red for critical states. */
+  --color-warn: #b45309;
+  --color-warn-soft: #fef3c7;
+  --color-warn-accent: #f59e0b;
+  --color-critical: #b91c1c;
+  --color-critical-soft: #fee2e2;
+
+  /* Shared hover wash for interactive rows (light green tint). */
+  --color-hover-tint: #ecf9f2;
+
+  /* Subtle card shadow token. */
+  --shadow-card: 0 1px 2px 0 rgb(16 24 40 / 0.04), 0 1px 3px 0 rgb(16 24 40 / 0.06);
+
   /* Typography - Font Sizes */
   --font-size-xs: 0.625rem; /* 10px */
   --font-size-sm: 0.75rem; /* 12px */
