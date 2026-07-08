@@ -165,7 +165,9 @@ describe('FloorsService', () => {
           findFirst: jest
             .fn()
             .mockResolvedValueOnce(floorRow({ name: 'Floor 1' }))
-            .mockResolvedValueOnce(floorRow({ id: 'floor-2', name: 'Floor 2' })),
+            .mockResolvedValueOnce(
+              floorRow({ id: 'floor-2', name: 'Floor 2' }),
+            ),
         },
       });
 
