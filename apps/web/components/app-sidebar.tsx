@@ -128,7 +128,10 @@ export function AppSidebar() {
     <Sidebar className="border-r border-gray-200 bg-white">
       <SidebarHeader className="px-5 py-6">
         {/* Logo */}
-        <Link href="/dashboard" aria-label="MedFind Lebanon home">
+        <Link
+          href={isSuperAdmin ? '/admin' : '/dashboard'}
+          aria-label="MedFind Lebanon home"
+        >
           <Logo />
         </Link>
       </SidebarHeader>

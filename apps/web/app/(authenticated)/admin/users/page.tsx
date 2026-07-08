@@ -32,6 +32,7 @@ import {
 } from '@repo/contracts';
 import { useUsers, useUserActions } from '@/hooks/use-users';
 import { usePharmacies } from '@/hooks/use-pharmacies';
+import { usePlatformStats } from '@/hooks/use-platform-stats';
 import { ApiError } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -948,20 +949,19 @@ export default function UsersPage() {
   } | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
 
-  // Unfiltered set drives the summary numbers so they always reflect the whole
-  // platform; the filtered set drives the table. SWR dedupes the shared key
-  // when no server filters are active.
-  const { users: allUsers, isLoading: statsLoading } = useUsers();
+  // The summary tiles reflect the whole platform — real, unscoped totals from
+  // `/stats/platform` (which, unlike the user list below, counts the signed-in
+  // admin too). The filtered list drives the table.
   const { users, isLoading, error, mutate } = useUsers({ role, status });
   const { pharmacies, isLoading: pharmaciesLoading } = usePharmacies();
+  const { stats: platformStats, isLoading: statsLoading } = usePlatformStats();
 
-  const stats = useMemo(() => {
-    const base = { TOTAL: allUsers?.length ?? 0 } as Record<string, number>;
-    for (const user of allUsers ?? []) {
-      base[user.status] = (base[user.status] ?? 0) + 1;
-    }
-    return base;
-  }, [allUsers]);
+  const stats: Record<string, number> = {
+    TOTAL: platformStats?.users.total ?? 0,
+    ACTIVE: platformStats?.users.active ?? 0,
+    PENDING: platformStats?.users.pending ?? 0,
+    SUSPENDED: platformStats?.users.suspended ?? 0,
+  };
 
   // Filter by search, then sort by role rank → name. Sorting on stable fields
   // (role, name, id) keeps every row in place when its status is toggled.
