@@ -13,10 +13,7 @@ import {
 } from '@repo/contracts';
 import { Roles } from '../auth/decorators';
 import { ZodValidationPipe } from '../common/pipes';
-import {
-  githubRepositoryPreviewRequestSchema as githubRepositoryPreviewOpenApiRequestSchema,
-  githubRepositoryPreviewResponseSchema as githubRepositoryPreviewOpenApiResponseSchema,
-} from '../common/swagger/schemas';
+import { githubRepositoryPreviewRequestSchema as githubRepositoryPreviewOpenApiRequestSchema } from '../common/swagger/schemas';
 import { GithubService } from './github.service';
 
 @ApiTags('github')
@@ -32,7 +29,6 @@ export class GithubController {
   @ApiResponse({
     status: 200,
     description: 'GitHub repository preview',
-    schema: githubRepositoryPreviewOpenApiResponseSchema,
   })
   @ApiResponse({ status: 400, description: 'Invalid GitHub repository URL' })
   @ApiResponse({ status: 401, description: 'Missing or invalid session' })
