@@ -48,13 +48,21 @@ export class GithubService {
   async fetchRepositoryPreview(
     repository: ParsedGithubRepository,
   ): Promise<GithubRepositoryPreviewResponse> {
-    const apiRepository = await this.fetchGithubJson<unknown>(
-      `/repos/${encodeURIComponent(repository.owner)}/${encodeURIComponent(
-        repository.repo,
-      )}`,
-    );
+    const [apiRepository, apiLanguages] = await Promise.all([
+      this.fetchGithubJson<unknown>(
+        `/repos/${encodeURIComponent(repository.owner)}/${encodeURIComponent(
+          repository.repo,
+        )}`,
+      ),
+      this.fetchGithubJson<unknown>(
+        `/repos/${encodeURIComponent(repository.owner)}/${encodeURIComponent(
+          repository.repo,
+        )}/languages`,
+      ),
+    ]);
+
     const normalizedRepository = this.normalizeRepository(apiRepository);
-    const languages = await this.fetchRepositoryLanguages(repository);
+    const languages = this.normalizeLanguages(apiLanguages);
 
     return {
       repository: normalizedRepository,
@@ -80,15 +88,7 @@ export class GithubService {
       )}/languages`,
     );
 
-    if (!isRecord(apiLanguages)) {
-      throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
-    }
-
-    return Object.entries(apiLanguages)
-      .filter(
-        (entry): entry is [string, number] => typeof entry[1] === 'number',
-      )
-      .map(([name, bytes]) => ({ name, bytes }));
+    return this.normalizeLanguages(apiLanguages);
   }
 
   private async fetchGithubJson<T>(path: string): Promise<T> {
@@ -97,8 +97,12 @@ export class GithubService {
     try {
       response = await fetch(`${GITHUB_API_BASE_URL}${path}`, {
         headers: this.buildHeaders(),
+        signal: AbortSignal.timeout(10_000),
       });
     } catch (error) {
+      if (error instanceof DOMException && error.name === 'TimeoutError') {
+        throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+      }
       this.logger.warn(
         `GitHub API request failed before response: ${getErrorMessage(error)}`,
       );
@@ -151,6 +155,20 @@ export class GithubService {
 
   private isRateLimited(response: Response): boolean {
     return response.headers.get('x-ratelimit-remaining') === '0';
+  }
+
+  private normalizeLanguages(
+    apiLanguages: unknown,
+  ): NormalizedGithubLanguage[] {
+    if (!isRecord(apiLanguages)) {
+      throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+    }
+
+    return Object.entries(apiLanguages)
+      .filter(
+        (entry): entry is [string, number] => typeof entry[1] === 'number',
+      )
+      .map(([name, bytes]) => ({ name, bytes }));
   }
 
   /**

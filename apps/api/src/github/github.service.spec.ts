@@ -121,9 +121,9 @@ describe('GithubService', () => {
   });
 
   it('maps GitHub 404 responses to the safe inaccessible repository message', async () => {
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse({ message: 'Not Found' }, 404),
-    );
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({ message: 'Not Found' }, 404))
+      .mockResolvedValueOnce(jsonResponse({}));
 
     const preview = service.previewRepository('https://github.com/owner/repo');
 
@@ -134,21 +134,23 @@ describe('GithubService', () => {
   });
 
   it('uses safe 404 wording for explicitly private repository metadata', async () => {
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse({
-        id: 123,
-        full_name: 'owner/private-repo',
-        owner: { login: 'owner' },
-        name: 'private-repo',
-        html_url: 'https://github.com/owner/private-repo',
-        default_branch: 'main',
-        private: true,
-        visibility: 'private',
-        description: null,
-        pushed_at: null,
-        language: null,
-      }),
-    );
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse({
+          id: 123,
+          full_name: 'owner/private-repo',
+          owner: { login: 'owner' },
+          name: 'private-repo',
+          html_url: 'https://github.com/owner/private-repo',
+          default_branch: 'main',
+          private: true,
+          visibility: 'private',
+          description: null,
+          pushed_at: null,
+          language: null,
+        }),
+      )
+      .mockResolvedValueOnce(jsonResponse({}));
 
     const preview = service.previewRepository(
       'https://github.com/owner/private-repo',
@@ -158,15 +160,17 @@ describe('GithubService', () => {
     await expect(preview).rejects.toThrow(
       'Repository not found, private, or inaccessible.',
     );
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('maps GitHub rate limits to service unavailable', async () => {
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse({ message: 'API rate limit exceeded' }, 403, {
-        'x-ratelimit-remaining': '0',
-      }),
-    );
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse({ message: 'API rate limit exceeded' }, 403, {
+          'x-ratelimit-remaining': '0',
+        }),
+      )
+      .mockResolvedValueOnce(jsonResponse({}));
 
     await expect(
       service.previewRepository('https://github.com/owner/repo'),
@@ -174,9 +178,9 @@ describe('GithubService', () => {
   });
 
   it('maps GitHub 403 responses without rate-limit headers to service unavailable', async () => {
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse({ message: 'Forbidden' }, 403),
-    );
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({ message: 'Forbidden' }, 403))
+      .mockResolvedValueOnce(jsonResponse({}));
 
     await expect(
       service.previewRepository('https://github.com/owner/repo'),
@@ -184,7 +188,9 @@ describe('GithubService', () => {
   });
 
   it('maps network failures to service unavailable', async () => {
-    fetchMock.mockRejectedValueOnce(new Error('network failed'));
+    fetchMock
+      .mockRejectedValueOnce(new Error('network failed'))
+      .mockResolvedValueOnce(jsonResponse({}));
 
     await expect(
       service.previewRepository('https://github.com/owner/repo'),
@@ -192,7 +198,9 @@ describe('GithubService', () => {
   });
 
   it('maps invalid repository metadata responses to service unavailable', async () => {
-    fetchMock.mockResolvedValueOnce(jsonResponse({ id: 123 }));
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({ id: 123 }))
+      .mockResolvedValueOnce(jsonResponse({}));
 
     await expect(
       service.previewRepository('https://github.com/owner/repo'),
