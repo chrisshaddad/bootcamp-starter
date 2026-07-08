@@ -112,17 +112,15 @@ export function DashboardContent() {
       };
     });
 
-  const pharmacyBreakdown = (pharmacies ?? []).map(
-    (pharmacy) => {
-      const userCount =
-        users?.filter((user) => user.pharmacyId === pharmacy.id).length ?? 0;
+  const pharmacyBreakdown = (pharmacies ?? []).map((pharmacy) => {
+    const userCount =
+      users?.filter((user) => user.pharmacyId === pharmacy.id).length ?? 0;
 
-      return {
-        name: pharmacy.name,
-        userCount,
-      };
-    },
-  );
+    return {
+      name: pharmacy.name,
+      userCount,
+    };
+  });
 
   if (isLoading) {
     return (
