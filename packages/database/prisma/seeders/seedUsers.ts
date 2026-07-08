@@ -30,6 +30,8 @@ export async function seedUsers(prisma: PrismaClient) {
       email: 'dev.sarah@example.com',
       publicSlug: 'sarah-chen',
       displayName: 'Sarah Chen',
+      githubUsername: 'sarahchen',
+      githubUserId: BigInt(100001),
       headline: 'Senior Full Stack Developer',
       bio: 'Specialist in building highly scalable React & Node.js applications with Turborepos.',
       location: 'San Francisco, CA',
@@ -38,6 +40,8 @@ export async function seedUsers(prisma: PrismaClient) {
       email: 'dev.alex@example.com',
       publicSlug: 'alex-koval',
       displayName: 'Alex Koval',
+      githubUsername: 'alexkoval',
+      githubUserId: BigInt(100002),
       headline: 'DevOps & Backend Engineer',
       bio: 'Passionate about Docker orchestration, Postgres performance tuning, and Redis caching systems.',
       location: 'Berlin, Germany',
@@ -45,23 +49,40 @@ export async function seedUsers(prisma: PrismaClient) {
   ];
 
   for (const dev of devs) {
-    await prisma.user.upsert({
+    const user = await prisma.user.upsert({
       where: { email: dev.email },
-      update: {},
+      update: {
+        accountType: 'DEVELOPER',
+        isConfirmed: true,
+      },
       create: {
         email: dev.email,
         passwordHash: hashPassword(defaultPassword),
         accountType: 'DEVELOPER',
         isConfirmed: true,
-        developerProfile: {
-          create: {
-            publicSlug: dev.publicSlug,
-            displayName: dev.displayName,
-            headline: dev.headline,
-            bio: dev.bio,
-            location: dev.location,
-          },
-        },
+      },
+    });
+
+    await prisma.developerProfile.upsert({
+      where: { userId: user.id },
+      update: {
+        publicSlug: dev.publicSlug,
+        displayName: dev.displayName,
+        githubUsername: dev.githubUsername,
+        githubUserId: dev.githubUserId,
+        headline: dev.headline,
+        bio: dev.bio,
+        location: dev.location,
+      },
+      create: {
+        userId: user.id,
+        publicSlug: dev.publicSlug,
+        displayName: dev.displayName,
+        githubUsername: dev.githubUsername,
+        githubUserId: dev.githubUserId,
+        headline: dev.headline,
+        bio: dev.bio,
+        location: dev.location,
       },
     });
   }

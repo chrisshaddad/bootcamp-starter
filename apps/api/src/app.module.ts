@@ -8,6 +8,7 @@ import { MailModule } from './mail/mail.module';
 import { OrganizationsModule } from './organizations/organizations.module';
 import { DatabaseModule } from './database/database.module';
 import { GithubModule } from './github/github.module';
+import { ProjectsModule } from './projects/projects.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { GithubModule } from './github/github.module';
     MailModule,
     OrganizationsModule,
     GithubModule,
+    ProjectsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

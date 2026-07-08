@@ -144,5 +144,39 @@ export async function seedProjects(prisma: PrismaClient) {
     );
   }
 
+  const availableRepositories = [
+    {
+      githubRepoId: BigInt(77770001),
+      fullName: 'sarahchen/manual-project-test-api',
+      ownerLogin: 'sarahchen',
+      repoName: 'manual-project-test-api',
+      htmlUrl: 'https://github.com/sarahchen/manual-project-test-api',
+      defaultBranch: 'main',
+    },
+  ];
+
+  for (const repo of availableRepositories) {
+    await prisma.repository.upsert({
+      where: { githubRepoId: repo.githubRepoId },
+      update: {
+        fullName: repo.fullName,
+        ownerLogin: repo.ownerLogin,
+        repoName: repo.repoName,
+        htmlUrl: repo.htmlUrl,
+        defaultBranch: repo.defaultBranch,
+        visibility: 'PUBLIC',
+      },
+      create: {
+        githubRepoId: repo.githubRepoId,
+        fullName: repo.fullName,
+        ownerLogin: repo.ownerLogin,
+        repoName: repo.repoName,
+        htmlUrl: repo.htmlUrl,
+        defaultBranch: repo.defaultBranch,
+        visibility: 'PUBLIC',
+      },
+    });
+  }
+
   console.log('Technologies, repositories, and projects seeded.');
 }

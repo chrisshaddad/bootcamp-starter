@@ -1,164 +1,86 @@
 import type { ApiBodyOptions } from '@nestjs/swagger';
+import {
+  loginRequestSchema as loginRequestContractSchema,
+  magicLinkRequestSchema,
+  magicLinkVerifyRequestSchema as magicLinkVerifyRequestContractSchema,
+  signupRequestSchema as signupRequestContractSchema,
+  updateProfileRequestSchema as updateProfileRequestContractSchema,
+} from '@repo/contracts';
+import { z, type ZodType } from 'zod';
 
 type ApiBodySchema = Extract<ApiBodyOptions, { schema: unknown }>['schema'];
+type OpenApiSchemaObject = NonNullable<ApiBodySchema> & { example?: unknown };
 
-export const emailRequestSchema: ApiBodySchema = {
-  type: 'object',
-  required: ['email'],
-  properties: {
-    email: {
-      type: 'string',
-      format: 'email',
-      example: 'dev.sarah@example.com',
-    },
+function assertSchemaObject(
+  schema: unknown,
+): asserts schema is OpenApiSchemaObject {
+  if (!schema || typeof schema !== 'object' || Array.isArray(schema)) {
+    throw new Error('Zod schema did not generate an OpenAPI schema object');
+  }
+}
+
+function toOpenApiSchema(schema: ZodType): OpenApiSchemaObject {
+  const openApiSchema = z.toJSONSchema(schema, { target: 'openapi-3.0' });
+  assertSchemaObject(openApiSchema);
+  return openApiSchema;
+}
+
+function withExample(
+  schema: OpenApiSchemaObject,
+  example: unknown,
+): ApiBodySchema {
+  return {
+    ...schema,
+    example,
+  };
+}
+
+export const emailRequestSchema: ApiBodySchema = withExample(
+  toOpenApiSchema(magicLinkRequestSchema),
+  {
+    email: 'developer@example.com',
   },
-};
-
-export const magicLinkVerifyRequestSchema: ApiBodySchema = {
-  type: 'object',
-  required: ['token'],
-  properties: {
-    token: {
-      type: 'string',
-      example: 'magic-link-token',
-    },
+);
+export const magicLinkVerifyRequestSchema: ApiBodySchema = withExample(
+  toOpenApiSchema(magicLinkVerifyRequestContractSchema),
+  {
+    token: 'magic-link-token',
   },
-};
-
-export const loginRequestSchema: ApiBodySchema = {
-  type: 'object',
-  required: ['email', 'password'],
-  properties: {
-    email: {
-      type: 'string',
-      format: 'email',
-      example: 'dev.sarah@example.com',
-    },
-    password: {
-      type: 'string',
-      example: 'Password123!',
-    },
+);
+export const loginRequestSchema: ApiBodySchema = withExample(
+  toOpenApiSchema(loginRequestContractSchema),
+  {
+    email: 'dev.sarah@example.com',
+    password: 'Password123!',
   },
-};
-
-export const signupRequestSchema: ApiBodySchema = {
-  oneOf: [
-    {
-      type: 'object',
-      required: [
-        'email',
-        'password',
-        'accountType',
-        'displayName',
-        'publicSlug',
-      ],
-      properties: {
-        email: {
-          type: 'string',
-          format: 'email',
-          example: 'developer@example.com',
-        },
-        password: {
-          type: 'string',
-          minLength: 8,
-          example: 'Password123!',
-        },
-        accountType: {
-          type: 'string',
-          enum: ['DEVELOPER'],
-          example: 'DEVELOPER',
-        },
-        displayName: {
-          type: 'string',
-          example: 'Sarah Chen',
-        },
-        publicSlug: {
-          type: 'string',
-          example: 'sarah-chen',
-        },
-      },
-    },
-    {
-      type: 'object',
-      required: [
-        'email',
-        'password',
-        'accountType',
-        'organizationName',
-        'organizationType',
-      ],
-      properties: {
-        email: {
-          type: 'string',
-          format: 'email',
-          example: 'hiring@example.com',
-        },
-        password: {
-          type: 'string',
-          minLength: 8,
-          example: 'Password123!',
-        },
-        accountType: {
-          type: 'string',
-          enum: ['HIRING'],
-          example: 'HIRING',
-        },
-        organizationName: {
-          type: 'string',
-          example: 'Acme Inc.',
-        },
-        organizationType: {
-          type: 'string',
-          enum: ['COMPANY', 'AGENCY', 'INDIVIDUAL', 'FREELANCE_CLIENT'],
-          example: 'COMPANY',
-        },
-      },
-    },
-  ],
-};
-
-export const updateProfileRequestSchema: ApiBodySchema = {
-  type: 'object',
-  properties: {
-    displayName: { type: 'string', example: 'Sarah Chen' },
-    publicSlug: { type: 'string', example: 'sarah-chen' },
-    headline: {
-      type: 'string',
-      nullable: true,
-      example: 'Full-stack developer',
-    },
-    bio: { type: 'string', nullable: true, example: 'I build SaaS apps.' },
-    location: { type: 'string', nullable: true, example: 'Beirut, Lebanon' },
-    profilePictureUrl: {
-      type: 'string',
-      nullable: true,
-      example: 'http://localhost:3001/uploads/profile-pictures/example.png',
-    },
-    linkedinUrl: {
-      type: 'string',
-      nullable: true,
-      example: 'https://www.linkedin.com/in/sarahchen',
-    },
-    personalWebsiteUrl: {
-      type: 'string',
-      nullable: true,
-      example: 'https://sarahchen.dev',
-    },
-    organizationName: { type: 'string', example: 'Acme Inc.' },
-    organizationType: {
-      type: 'string',
-      enum: ['COMPANY', 'AGENCY', 'INDIVIDUAL', 'FREELANCE_CLIENT'],
-      example: 'COMPANY',
-    },
-    jobTitle: { type: 'string', nullable: true, example: 'CTO' },
-    organizationWebsiteUrl: {
-      type: 'string',
-      nullable: true,
-      example: 'https://acme.example',
-    },
+);
+export const signupRequestSchema: ApiBodySchema = withExample(
+  toOpenApiSchema(signupRequestContractSchema),
+  {
+    email: 'developer@example.com',
+    password: 'Password123!',
+    accountType: 'DEVELOPER',
+    displayName: 'Sarah Chen',
+    publicSlug: 'sarah-chen',
   },
-};
+);
+export const updateProfileRequestSchema: ApiBodySchema = withExample(
+  toOpenApiSchema(updateProfileRequestContractSchema),
+  {
+    displayName: 'Sarah Chen',
+    publicSlug: 'sarah-chen',
+    headline: 'Full-stack developer',
+    bio: 'I build SaaS apps.',
+    location: 'Beirut, Lebanon',
+    profilePictureUrl:
+      'http://localhost:3001/uploads/profile-pictures/example.png',
+    linkedinUrl: 'https://www.linkedin.com/in/sarahchen',
+    personalWebsiteUrl: 'https://sarahchen.dev',
+  },
+);
 
+// Multipart file uploads are documented manually because they are not JSON
+// request bodies represented by the shared Zod contracts.
 export const profilePictureUploadSchema: ApiBodySchema = {
   type: 'object',
   required: ['file'],

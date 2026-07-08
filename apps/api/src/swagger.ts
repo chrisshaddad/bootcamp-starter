@@ -7,6 +7,10 @@ type SwaggerRequest = {
 };
 
 export function setupSwagger(app: INestApplication): void {
+  if (process.env.NODE_ENV === 'production') {
+    return;
+  }
+
   const config = new DocumentBuilder()
     .setTitle('Bootcamp Starter API')
     .setDescription('Interactive API documentation for local development.')
