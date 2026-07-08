@@ -1,4 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import type { PlatformStatsResponse } from '@repo/contracts';
 import { PrismaService } from '../database/prisma.service';
 
@@ -23,61 +27,68 @@ export class StatsService {
   async platform(): Promise<PlatformStatsResponse> {
     const since = new Date(Date.now() - WEEK_MS);
 
-    const [
-      usersTotal,
-      usersActive,
-      usersPending,
-      usersInactive,
-      usersSuspended,
-      usersNew,
-      pharmaciesTotal,
-      pharmaciesWithBranch,
-      pharmaciesNew,
-      branchesTotal,
-      medicinesTotal,
-      medicinesPriced,
-      medicinesBarcoded,
-      medicinesNew,
-    ] = await this.prisma.$transaction([
-      this.prisma.user.count(),
-      this.prisma.user.count({ where: { status: 'ACTIVE' } }),
-      this.prisma.user.count({ where: { status: 'PENDING' } }),
-      this.prisma.user.count({ where: { status: 'INACTIVE' } }),
-      this.prisma.user.count({ where: { status: 'SUSPENDED' } }),
-      this.prisma.user.count({ where: { createdAt: { gte: since } } }),
-      this.prisma.pharmacy.count(),
-      this.prisma.pharmacy.count({ where: { branches: { some: {} } } }),
-      this.prisma.pharmacy.count({ where: { createdAt: { gte: since } } }),
-      this.prisma.pharmacyBranch.count(),
-      this.prisma.medicine.count(),
-      this.prisma.medicine.count({ where: { priceLbp: { not: null } } }),
-      this.prisma.medicine.count({ where: { barcode: { not: null } } }),
-      this.prisma.medicine.count({ where: { createdAt: { gte: since } } }),
-    ]);
+    try {
+      const [
+        usersTotal,
+        usersActive,
+        usersPending,
+        usersInactive,
+        usersSuspended,
+        usersNew,
+        pharmaciesTotal,
+        pharmaciesWithBranch,
+        pharmaciesNew,
+        branchesTotal,
+        medicinesTotal,
+        medicinesPriced,
+        medicinesBarcoded,
+        medicinesNew,
+      ] = await this.prisma.$transaction([
+        this.prisma.user.count(),
+        this.prisma.user.count({ where: { status: 'ACTIVE' } }),
+        this.prisma.user.count({ where: { status: 'PENDING' } }),
+        this.prisma.user.count({ where: { status: 'INACTIVE' } }),
+        this.prisma.user.count({ where: { status: 'SUSPENDED' } }),
+        this.prisma.user.count({ where: { createdAt: { gte: since } } }),
+        this.prisma.pharmacy.count(),
+        this.prisma.pharmacy.count({ where: { branches: { some: {} } } }),
+        this.prisma.pharmacy.count({ where: { createdAt: { gte: since } } }),
+        this.prisma.pharmacyBranch.count(),
+        this.prisma.medicine.count(),
+        this.prisma.medicine.count({ where: { priceLbp: { not: null } } }),
+        this.prisma.medicine.count({ where: { barcode: { not: null } } }),
+        this.prisma.medicine.count({ where: { createdAt: { gte: since } } }),
+      ]);
 
-    return {
-      users: {
-        total: usersTotal,
-        active: usersActive,
-        pending: usersPending,
-        inactive: usersInactive,
-        suspended: usersSuspended,
-        newThisWeek: usersNew,
-      },
-      pharmacies: {
-        total: pharmaciesTotal,
-        withBranch: pharmaciesWithBranch,
-        newThisWeek: pharmaciesNew,
-      },
-      branches: {
-        total: branchesTotal,
-      },
-      medicines: {
-        total: medicinesTotal,
-        priced: medicinesPriced,
-        withBarcode: medicinesBarcoded,
-        newThisWeek: medicinesNew,
-      },
-    };
+      return {
+        users: {
+          total: usersTotal,
+          active: usersActive,
+          pending: usersPending,
+          inactive: usersInactive,
+          suspended: usersSuspended,
+          newThisWeek: usersNew,
+        },
+        pharmacies: {
+          total: pharmaciesTotal,
+          withBranch: pharmaciesWithBranch,
+          newThisWeek: pharmaciesNew,
+        },
+        branches: {
+          total: branchesTotal,
+        },
+        medicines: {
+          total: medicinesTotal,
+          priced: medicinesPriced,
+          withBarcode: medicinesBarcoded,
+          newThisWeek: medicinesNew,
+        },
+      };
+    } catch (error) {
+      // Surface DB failures as a NestJS exception (a clean 500) instead of
+      // letting a raw Prisma error propagate.
+      this.logger.error('Failed to load platform stats.', error);
+      throw new InternalServerErrorException('Failed to load platform stats.');
+    }
   }
 }

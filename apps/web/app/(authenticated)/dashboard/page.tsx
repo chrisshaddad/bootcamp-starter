@@ -1,10 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import useSWR from 'swr';
 import { useUser } from '@/hooks/use-auth';
 import { useMedicines } from '@/hooks/use-medicines';
 import { useUsers } from '@/hooks/use-users';
+import { usePharmacies } from '@/hooks/use-pharmacies';
 import { usePlatformStats } from '@/hooks/use-platform-stats';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -19,7 +19,6 @@ import {
   TrendingUp,
   Users,
 } from 'lucide-react';
-import type { PharmacyListResponse } from '@repo/contracts';
 
 const quickActions = [
   {
@@ -57,8 +56,7 @@ export function DashboardContent() {
   const { medicines, isLoading: isMedicinesLoading } = useMedicines({
     pageSize: 25,
   });
-  const { data: pharmaciesData, isLoading: isPharmaciesLoading } =
-    useSWR<PharmacyListResponse>('/pharmacies');
+  const { pharmacies, isLoading: isPharmaciesLoading } = usePharmacies();
 
   const isLoading =
     isUserLoading ||
@@ -114,7 +112,7 @@ export function DashboardContent() {
       };
     });
 
-  const pharmacyBreakdown = (pharmaciesData?.pharmacies ?? []).map(
+  const pharmacyBreakdown = (pharmacies ?? []).map(
     (pharmacy) => {
       const userCount =
         users?.filter((user) => user.pharmacyId === pharmacy.id).length ?? 0;
@@ -312,7 +310,7 @@ export function DashboardContent() {
         <Card className="border-gray-200 bg-white shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-lg font-semibold text-gray-900">
-              Medicines low on stock across pharmacies
+              Medicines missing catalog data
             </CardTitle>
             <div className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
               Watchlist
@@ -331,9 +329,9 @@ export function DashboardContent() {
                   </div>
                   <span
                     className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                      alert.severity === 'Out of stock'
+                      alert.severity === 'Needs review'
                         ? 'bg-rose-50 text-rose-700'
-                        : alert.severity === 'Low stock'
+                        : alert.severity === 'Pricing missing'
                           ? 'bg-amber-50 text-amber-700'
                           : 'bg-slate-100 text-slate-700'
                     }`}
@@ -344,7 +342,7 @@ export function DashboardContent() {
               ))
             ) : (
               <div className="rounded-lg border border-dashed border-gray-200 p-4 text-sm text-gray-500">
-                No stock alerts to display right now.
+                Every medicine has price and barcode data.
               </div>
             )}
           </CardContent>
