@@ -30,7 +30,7 @@ describe('GithubController', () => {
     expect(controller).toBeDefined();
   });
 
-  it('requires developer accounts for repository previews', () => {
+  it('requires developer or super admin accounts for repository previews', () => {
     const previewRepositoryHandler: unknown = Object.getOwnPropertyDescriptor(
       GithubController.prototype,
       'previewRepository',
@@ -39,7 +39,7 @@ describe('GithubController', () => {
     expect(typeof previewRepositoryHandler).toBe('function');
     expect(
       Reflect.getMetadata(ROLES_KEY, previewRepositoryHandler as object),
-    ).toEqual(['DEVELOPER']);
+    ).toEqual(['DEVELOPER', 'SUPER_ADMIN']);
   });
 
   it('delegates repository previews to GithubService', async () => {

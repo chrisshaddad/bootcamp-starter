@@ -23,7 +23,7 @@ export class GithubController {
   constructor(private readonly githubService: GithubService) {}
 
   @Post('repositories/preview')
-  @Roles('DEVELOPER')
+  @Roles('DEVELOPER', 'SUPER_ADMIN')
   @ApiOperation({ summary: 'Preview a GitHub repository before import' })
   @ApiBody({ schema: githubRepositoryPreviewOpenApiRequestSchema })
   @ApiResponse({
@@ -32,7 +32,10 @@ export class GithubController {
   })
   @ApiResponse({ status: 400, description: 'Invalid GitHub repository URL' })
   @ApiResponse({ status: 401, description: 'Missing or invalid session' })
-  @ApiResponse({ status: 403, description: 'Developer access required' })
+  @ApiResponse({
+    status: 403,
+    description: 'Insufficient permissions',
+  })
   @ApiResponse({
     status: 404,
     description: 'Repository not found, private, or inaccessible.',
