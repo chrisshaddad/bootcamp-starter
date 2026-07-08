@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { MailModule } from './mail/mail.module';
 import { UsersModule } from './users/users.module';
 import { PharmaciesModule } from './pharmacies/pharmacies.module';
+import { MedicinesModule } from './medicines/medicines.module';
 import { DatabaseModule } from './database/database.module';
 
 @Module({
@@ -22,6 +23,7 @@ import { DatabaseModule } from './database/database.module';
     MailModule,
     UsersModule,
     PharmaciesModule,
+    MedicinesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
