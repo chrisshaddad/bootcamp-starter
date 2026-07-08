@@ -3,7 +3,6 @@ import {
   ConflictException,
   NotFoundException,
   ForbiddenException,
-  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import {
@@ -16,23 +15,55 @@ import {
   VerificationStatus,
   AccountType,
   User,
+  Prisma,
 } from '@repo/db';
 
 @Injectable()
 export class ProjectsService {
-  private readonly logger = new Logger(ProjectsService.name);
-
   constructor(private readonly prisma: PrismaService) {}
 
   private mapStatus(
     status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED',
   ): ProjectStatus | undefined {
     if (!status) return undefined;
-    return ProjectStatus[status];
+    return status as ProjectStatus;
+  }
+
+  async getMyProjects(user: User) {
+    if (user.accountType === AccountType.SUPER_ADMIN) {
+      return this.prisma.project.findMany({
+        orderBy: { updatedAt: 'desc' },
+      });
+    }
+
+    return this.prisma.project.findMany({
+      where: { createdByUserId: user.id },
+      orderBy: { updatedAt: 'desc' },
+    });
+  }
+
+  async getProjectById(user: User, projectId: string) {
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    const isAdmin = user.accountType === AccountType.SUPER_ADMIN;
+    const isCreator = project.createdByUserId === user.id;
+
+    if (!isAdmin && !isCreator) {
+      throw new ForbiddenException(
+        'You are not authorized to view this project',
+      );
+    }
+
+    return project;
   }
 
   async createProject(userId: string, data: CreateProjectRequest) {
-    // 1. Fetch the User and their Developer Profile
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: { developerProfile: true },
@@ -42,7 +73,15 @@ export class ProjectsService {
       throw new NotFoundException('User not found');
     }
 
-    // 2. Check if the provided repositoryId actually exists
+    const githubUsername = user.developerProfile?.githubUsername;
+    const isAdmin = user.accountType === AccountType.SUPER_ADMIN;
+
+    if (!githubUsername && !isAdmin) {
+      throw new ForbiddenException(
+        'A connected GitHub account is required to create a project.',
+      );
+    }
+
     const repository = await this.prisma.repository.findUnique({
       where: { id: data.repositoryId },
     });
@@ -51,11 +90,8 @@ export class ProjectsService {
       throw new NotFoundException('Repository not found');
     }
 
-    // 3. Verify that the user owns the repository (or is a SUPER_ADMIN)
-    const githubUsername = user.developerProfile?.githubUsername;
     const isOwner =
       githubUsername?.toLowerCase() === repository.ownerLogin.toLowerCase();
-    const isAdmin = user.accountType === AccountType.SUPER_ADMIN;
 
     if (!isOwner && !isAdmin) {
       throw new ForbiddenException(
@@ -63,7 +99,6 @@ export class ProjectsService {
       );
     }
 
-    // 4. Ensure a project doesn't already exist for this slug or repository
     const existingProject = await this.prisma.project.findFirst({
       where: {
         OR: [{ slug: data.slug }, { repositoryId: data.repositoryId }],
@@ -79,38 +114,72 @@ export class ProjectsService {
       );
     }
 
-    // 5. Use a transaction to create the Project and the ProjectMember atomically
-    const project = await this.prisma.$transaction(async (tx) => {
-      // Create the project
-      const newProject = await tx.project.create({
-        data: {
-          title: data.title,
-          slug: data.slug,
-          shortDescription: data.shortDescription,
-          fullDescription: data.fullDescription,
-          deploymentUrl: data.deploymentUrl,
-          repositoryId: data.repositoryId,
-          createdByUserId: userId,
-          status: this.mapStatus(data.status) ?? ProjectStatus.DRAFT,
-        },
+    const status = this.mapStatus(data.status) ?? ProjectStatus.DRAFT;
+
+    try {
+      const project = await this.prisma.$transaction(async (tx) => {
+        const newProject = await tx.project.create({
+          data: {
+            title: data.title,
+            slug: data.slug,
+            shortDescription: data.shortDescription,
+            fullDescription: data.fullDescription,
+            deploymentUrl: data.deploymentUrl,
+            repositoryId: data.repositoryId,
+            createdByUserId: userId,
+            status,
+            publishedAt: status === ProjectStatus.PUBLISHED ? new Date() : null,
+          },
+        });
+
+        await tx.projectMember.create({
+          data: {
+            projectId: newProject.id,
+            userId: user.id,
+            githubUsername: githubUsername,
+            role: ProjectRoleKey.OWNER,
+            verificationStatus: VerificationStatus.VERIFIED,
+            addedByUserId: user.id,
+          },
+        });
+
+        return newProject;
       });
 
-      // Create the ProjectMember entry for the project creator
-      await tx.projectMember.create({
-        data: {
-          projectId: newProject.id,
-          userId: user.id,
-          githubUsername: githubUsername,
-          role: ProjectRoleKey.OWNER,
-          verificationStatus: VerificationStatus.VERIFIED, // Verified automatically since they created it
-          addedByUserId: user.id,
-        },
-      });
+      return project;
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        const target = error.meta?.target;
+        let targetStr = '';
+        if (Array.isArray(target)) {
+          targetStr = target.map((t) => String(t)).join(', ');
+        } else if (typeof target === 'string') {
+          targetStr = target;
+        }
 
-      return newProject;
-    });
+        if (targetStr.includes('slug')) {
+          throw new ConflictException(
+            'A project with this slug already exists.',
+          );
+        }
+        if (
+          targetStr.includes('repositoryId') ||
+          targetStr.includes('repository_id')
+        ) {
+          throw new ConflictException(
+            'This repository is already linked to a project.',
+          );
+        }
 
-    return project;
+        throw new ConflictException(
+          'A project with this slug or repository already exists.',
+        );
+      }
+      throw error;
+    }
   }
 
   async updateProject(
@@ -144,17 +213,43 @@ export class ProjectsService {
       }
     }
 
-    return this.prisma.project.update({
-      where: { id: projectId },
-      data: {
-        title: data.title,
-        slug: data.slug,
-        shortDescription: data.shortDescription,
-        fullDescription: data.fullDescription,
-        deploymentUrl: data.deploymentUrl,
-        status: this.mapStatus(data.status),
-      },
-    });
+    const newStatus = data.status ? this.mapStatus(data.status) : undefined;
+
+    let publishedAt: Date | null | undefined = undefined;
+    if (newStatus === ProjectStatus.PUBLISHED) {
+      if (!project.publishedAt) {
+        publishedAt = new Date();
+      }
+    } else if (newStatus) {
+      publishedAt = null;
+    }
+
+    try {
+      return await this.prisma.project.update({
+        where: { id: projectId },
+        data: {
+          title: data.title,
+          slug: data.slug,
+          shortDescription: data.shortDescription,
+          fullDescription: data.fullDescription,
+          deploymentUrl: data.deploymentUrl,
+          status: newStatus,
+          publishedAt,
+        },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2002') {
+          throw new ConflictException(
+            'A project with this slug already exists.',
+          );
+        }
+        if (error.code === 'P2025') {
+          throw new NotFoundException('Project not found');
+        }
+      }
+      throw error;
+    }
   }
 
   async getProjectBySlug(slug: string) {

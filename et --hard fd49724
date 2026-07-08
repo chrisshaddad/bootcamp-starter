@@ -1,0 +1,16 @@
+[33mf52ab70[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmhmdfarhat-mhmdali-amir[m[33m, [m[1;31morigin/mhmdfarhat-mhmdali-amir[m[33m)[m feat(api): add Swagger documentation (#80)
+[33mfd49724[m feat: Implemented Add/Edit Project Endpoint (#70)
+[33m8111b68[m feat: profile settings UI with picture upload (#67)
+[33m6b6d218[m fix(db): Users seed update (#66)
+[33m975314b[m feat: Implemented Update User Profile Endpoint (#64)
+[33m09623ae[m feat(auth): login & signup UI with password auth and responsive layout (#53)
+[33ma951541[m feat(auth): implement email/password signup and login endpoints (#49)
+[33m344438a[m Chore: Resolved CI/CD Issues (#40)
+[33m4b8459f[m refactor: migrate database layer to custom schema  (#26)
+[33m0db42ce[m fix: add coderabbit configs to `mhmdfarhat-mhmdali-amir` (#15)
+[33m95011a2[m docs: remove specs reference
+[33mb9d079a[m Delete packages/contracts/README.MD
+[33m3a973a6[m[33m ([m[1;32mmain[m[33m)[m docs: fix startup commands (#1)
+[33mbacd8ac[m chore: add gitlens as recommended extension
+[33mabeab26[m fix: CI fixes
+[33m1bc19b0[m first commit
