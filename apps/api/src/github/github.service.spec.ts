@@ -120,6 +120,66 @@ describe('GithubService', () => {
     expect(getFetchHeaders(fetchMock)).not.toHaveProperty('Authorization');
   });
 
+  it('fetches repository file text from the GitHub contents API', async () => {
+    const packageJson = JSON.stringify({
+      dependencies: {
+        react: '^19.0.0',
+      },
+    });
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        type: 'file',
+        encoding: 'base64',
+        size: Buffer.byteLength(packageJson),
+        content: Buffer.from(packageJson, 'utf8').toString('base64'),
+      }),
+    );
+
+    await expect(
+      service.fetchRepositoryFileText(
+        { owner: 'owner', repo: 'repo' },
+        'package.json',
+        'main',
+      ),
+    ).resolves.toBe(packageJson);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      'https://api.github.com/repos/owner/repo/contents/package.json?ref=main',
+    );
+  });
+
+  it('returns null for missing repository files', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ message: 'Not Found' }, 404),
+    );
+
+    await expect(
+      service.fetchRepositoryFileText(
+        { owner: 'owner', repo: 'repo' },
+        'package.json',
+        'main',
+      ),
+    ).resolves.toBeNull();
+  });
+
+  it('rejects oversized repository file responses', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        type: 'file',
+        encoding: 'base64',
+        size: 200_001,
+        content: '',
+      }),
+    );
+
+    await expect(
+      service.fetchRepositoryFileText(
+        { owner: 'owner', repo: 'repo' },
+        'package.json',
+        'main',
+      ),
+    ).rejects.toThrow(ServiceUnavailableException);
+  });
+
   it('maps GitHub 404 responses to the safe inaccessible repository message', async () => {
     fetchMock
       .mockResolvedValueOnce(jsonResponse({ message: 'Not Found' }, 404))
