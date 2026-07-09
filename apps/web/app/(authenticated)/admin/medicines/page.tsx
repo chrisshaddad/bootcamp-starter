@@ -62,6 +62,18 @@ const PAGE_SIZE = 20;
 const WHITE_SCROLLBAR =
   '[&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-white [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-200 hover:[&::-webkit-scrollbar-thumb]:bg-gray-300';
 
+// Shared entrance animation, matched to the dashboard: sections fade + rise in,
+// staggered via an inline animationDelay so they arrive one after another
+// instead of all at once.
+const ENTER = 'animate-in fade-in-0 slide-in-from-bottom-4 duration-500';
+
+function enterStyle(delayMs: number) {
+  return {
+    animationDelay: `${delayMs}ms`,
+    animationFillMode: 'backwards' as const,
+  };
+}
+
 function formatPrice(value: number | null): string {
   if (value === null) return '—';
   return `${new Intl.NumberFormat('en-US').format(value)} LBP`;
@@ -1271,7 +1283,10 @@ export default function MedicinesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
+      <div
+        className={`flex items-start justify-between gap-4 ${ENTER}`}
+        style={enterStyle(0)}
+      >
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Medicines</h1>
           <p className="mt-1 text-sm text-gray-500">
@@ -1292,7 +1307,7 @@ export default function MedicinesPage() {
 
       {/* Summary cards — click to filter the table */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {STAT_TILES.map((tile) => {
+        {STAT_TILES.map((tile, index) => {
           const active = quick === tile.key;
           return (
             <Card
@@ -1309,8 +1324,10 @@ export default function MedicinesPage() {
               }}
               className={cn(
                 'cursor-pointer py-0 transition-shadow hover:shadow-md',
+                ENTER,
                 active && cn('ring-2 ring-offset-1', tile.ringClass),
               )}
+              style={enterStyle(70 + index * 70)}
             >
               <CardContent className="flex items-center gap-3 p-4">
                 <div
@@ -1340,7 +1357,10 @@ export default function MedicinesPage() {
       </div>
 
       {/* Toolbar: search grows to fill; filters sit at the right */}
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+      <div
+        className={`flex flex-col gap-3 lg:flex-row lg:items-center ${ENTER}`}
+        style={enterStyle(360)}
+      >
         <div className="relative w-full lg:flex-1">
           <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <Input
@@ -1389,7 +1409,10 @@ export default function MedicinesPage() {
       </div>
 
       {/* Table */}
-      <Card className="gap-0 overflow-hidden py-0">
+      <Card
+        className={`gap-0 overflow-hidden py-0 ${ENTER}`}
+        style={enterStyle(420)}
+      >
         {error ? (
           <div className="flex flex-col items-center justify-center py-16">
             <AlertTriangle className="mb-4 h-12 w-12 text-error" />
