@@ -9,3 +9,5 @@ export const projectSlugSchema = z
     /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
     'Slug must contain only lowercase letters, numbers, and hyphens',
   );
+
+export type ProjectSlug = z.infer<typeof projectSlugSchema>;

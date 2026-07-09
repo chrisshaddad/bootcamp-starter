@@ -227,10 +227,10 @@ describe('ProjectsController (e2e)', () => {
     });
   });
 
-  describe('GET /projects/:slug', () => {
+  describe('GET /projects/slug/:slug', () => {
     it('should retrieve a published project by slug without authentication (200)', async () => {
       const response = await request(app.getHttpServer() as Server)
-        .get('/projects/test-project-1')
+        .get('/projects/slug/test-project-1')
         .expect(200);
 
       const body = response.body as ProjectResponseBody;
@@ -251,7 +251,7 @@ describe('ProjectsController (e2e)', () => {
       });
 
       await request(app.getHttpServer() as Server)
-        .get('/projects/draft-project')
+        .get('/projects/slug/draft-project')
         .expect(404);
 
       await prisma.project.delete({
@@ -271,7 +271,7 @@ describe('ProjectsController (e2e)', () => {
       });
 
       await request(app.getHttpServer() as Server)
-        .get('/projects/archived-project')
+        .get('/projects/slug/archived-project')
         .expect(404);
 
       await prisma.project.delete({
@@ -281,7 +281,7 @@ describe('ProjectsController (e2e)', () => {
 
     it('should return 404 for a non-existent slug', async () => {
       await request(app.getHttpServer() as Server)
-        .get('/projects/non-existent-slug')
+        .get('/projects/slug/non-existent-slug')
         .expect(404);
     });
   });
