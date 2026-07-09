@@ -2,14 +2,33 @@
 
 import { useState } from 'react';
 import { useUser } from '@/hooks/use-auth';
-import { useEvent } from '@/hooks/use-events';
+import { useEvent, useEventAttendees } from '@/hooks/use-events';
+import { useStatsEvent } from '@/hooks/use-stats';
 import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Calendar, ShieldX, User, Users } from 'lucide-react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  ArrowLeft,
+  Calendar,
+  Check,
+  ShieldX,
+  User,
+  UserX,
+  Users,
+} from 'lucide-react';
 import { ApiError } from '@/lib/api';
+import { cn } from '@/lib/utils';
+import type { AttendanceStatus } from '@repo/contracts';
 
 function ForbiddenPage() {
   return (
@@ -45,6 +64,17 @@ function canAccessEvents(role: string | undefined) {
   return role === 'SUPER_ADMIN' || role === 'ORG_ADMIN' || role === 'MEMBER';
 }
 
+function attendanceStatusLabel(status: AttendanceStatus) {
+  switch (status) {
+    case 'ATTENDED':
+      return 'Attended';
+    case 'SKIPPED':
+      return 'Skipped';
+    default:
+      return 'Pending';
+  }
+}
+
 export default function EventDetailPage() {
   const router = useRouter();
   const params = useParams();
@@ -53,6 +83,7 @@ export default function EventDetailPage() {
   const canAccess = canAccessEvents(user?.role);
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   const [isRegistering, setIsRegistering] = useState(false);
+  const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
 
   const {
     event,
@@ -61,6 +92,18 @@ export default function EventDetailPage() {
     register,
   } = useEvent(id, {
     enabled: canAccess && !!id,
+  });
+
+  const {
+    attendees,
+    isLoading: attendeesLoading,
+    updateAttendance,
+  } = useEventAttendees(id, {
+    enabled: canAccess && !!id && !!event,
+  });
+
+  const { stats } = useStatsEvent(id, {
+    enabled: canAccess && !!id && !!event?.canManageAttendance,
   });
 
   const handleRegister = async () => {
@@ -76,6 +119,29 @@ export default function EventDetailPage() {
       }
     } finally {
       setIsRegistering(false);
+    }
+  };
+
+  const handleAttendanceUpdate = async (
+    userId: string,
+    attendanceStatus: 'ATTENDED' | 'SKIPPED',
+  ) => {
+    setUpdatingUserId(userId);
+    try {
+      await updateAttendance(userId, { attendanceStatus });
+      toast.success(
+        attendanceStatus === 'ATTENDED'
+          ? 'Marked as attended'
+          : 'Marked as skipped',
+      );
+    } catch (err) {
+      if (err instanceof ApiError) {
+        toast.error(err.message);
+      } else {
+        toast.error('Failed to update attendance');
+      }
+    } finally {
+      setUpdatingUserId(null);
     }
   };
 
@@ -202,6 +268,180 @@ export default function EventDetailPage() {
               </dd>
             </div>
           </dl>
+        </CardContent>
+      </Card>
+
+      {event.canManageAttendance && stats && (
+        <Card className="border-gray-200 bg-white shadow-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Users className="h-5 w-5" />
+              Attendance Stats
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 sm:grid-cols-4">
+              <div>
+                <dt className="text-sm font-medium text-gray-500">
+                  Registered
+                </dt>
+                <dd className="mt-1 text-2xl font-bold text-gray-900">
+                  {stats.registeredCount}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Attended</dt>
+                <dd className="mt-1 text-2xl font-bold text-gray-900">
+                  {stats.attendedCount}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Skipped</dt>
+                <dd className="mt-1 text-2xl font-bold text-gray-900">
+                  {stats.skippedCount}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Rate</dt>
+                <dd className="mt-1 text-2xl font-bold text-gray-900">
+                  {stats.attendanceRate === null
+                    ? '—'
+                    : `${Math.round(stats.attendanceRate * 100)}%`}
+                </dd>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card className="border-gray-200 bg-white shadow-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Users className="h-5 w-5" />
+            Registered Attendees
+            {attendees !== undefined && (
+              <span className="text-sm font-normal text-gray-500">
+                ({attendees.length})
+              </span>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {attendeesLoading ? (
+            <div className="space-y-2">
+              {[...Array(3)].map((_, i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))}
+            </div>
+          ) : !attendees?.length ? (
+            <p className="py-8 text-center text-sm text-gray-500">
+              No one has registered for this event yet
+            </p>
+          ) : (
+            <>
+              {event.canManageAttendance && event.isUpcoming && (
+                <p className="mb-4 text-sm text-gray-500">
+                  Attendance can be marked after the event starts. Unmarked
+                  attendees are automatically skipped 30 minutes after start.
+                </p>
+              )}
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Status</TableHead>
+                    {event.canUpdateAttendance && (
+                      <TableHead className="text-right">Attendance</TableHead>
+                    )}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {attendees.map((attendee) => {
+                    const isUpdating = updatingUserId === attendee.userId;
+
+                    return (
+                      <TableRow key={attendee.id}>
+                        <TableCell className="font-medium text-gray-900">
+                          {attendee.name ?? '—'}
+                        </TableCell>
+                        <TableCell className="text-sm text-gray-600">
+                          {attendee.email}
+                        </TableCell>
+                        <TableCell>
+                          <span
+                            className={cn(
+                              'inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium',
+                              attendee.attendanceStatus === 'ATTENDED' &&
+                                'bg-primary-100 text-primary-base',
+                              attendee.attendanceStatus === 'SKIPPED' &&
+                                'bg-gray-100 text-gray-600',
+                              attendee.attendanceStatus === 'PENDING' &&
+                                'bg-yellow-50 text-yellow-800',
+                            )}
+                          >
+                            {attendanceStatusLabel(attendee.attendanceStatus)}
+                          </span>
+                        </TableCell>
+                        {event.canUpdateAttendance && (
+                          <TableCell>
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                type="button"
+                                size="icon-sm"
+                                variant={
+                                  attendee.attendanceStatus === 'ATTENDED'
+                                    ? 'default'
+                                    : 'outline'
+                                }
+                                className={cn(
+                                  attendee.attendanceStatus === 'ATTENDED' &&
+                                    'bg-primary-base hover:bg-primary-base/90',
+                                )}
+                                disabled={isUpdating}
+                                aria-label={`Mark ${attendee.email} as attended`}
+                                onClick={() =>
+                                  handleAttendanceUpdate(
+                                    attendee.userId,
+                                    'ATTENDED',
+                                  )
+                                }
+                              >
+                                <Check className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                type="button"
+                                size="icon-sm"
+                                variant={
+                                  attendee.attendanceStatus === 'SKIPPED'
+                                    ? 'default'
+                                    : 'outline'
+                                }
+                                className={cn(
+                                  attendee.attendanceStatus === 'SKIPPED' &&
+                                    'bg-gray-600 hover:bg-gray-600/90',
+                                )}
+                                disabled={isUpdating}
+                                aria-label={`Mark ${attendee.email} as skipped`}
+                                onClick={() =>
+                                  handleAttendanceUpdate(
+                                    attendee.userId,
+                                    'SKIPPED',
+                                  )
+                                }
+                              >
+                                <UserX className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -2,8 +2,11 @@
 
 import useSWR, { mutate } from 'swr';
 import { useCallback } from 'react';
-import { apiPost } from '@/lib/api';
+import { apiPatch, apiPost } from '@/lib/api';
 import type {
+  EventAttendanceUpdateRequest,
+  EventAttendanceUpdateResponse,
+  EventAttendeeListResponse,
   EventDetailResponse,
   EventListResponse,
   EventRegisterResponse,
@@ -12,6 +15,7 @@ import type {
 interface UseEventsOptions {
   enabled?: boolean;
   upcoming?: boolean;
+  hostedByMe?: boolean;
 }
 
 interface UseEventsReturn {
@@ -23,14 +27,15 @@ interface UseEventsReturn {
 }
 
 export function useEvents(options: UseEventsOptions = {}): UseEventsReturn {
-  const { enabled = true, upcoming } = options;
+  const { enabled = true, upcoming, hostedByMe } = options;
 
-  const endpoint =
-    upcoming === undefined
-      ? '/events'
-      : upcoming
-        ? '/events?upcoming=true'
-        : '/events?upcoming=false';
+  const params = new URLSearchParams();
+  if (upcoming === true) params.set('upcoming', 'true');
+  else if (upcoming === false) params.set('upcoming', 'false');
+  if (hostedByMe === true) params.set('hostedByMe', 'true');
+
+  const query = params.toString();
+  const endpoint = query ? `/events?${query}` : '/events';
 
   const {
     data,
@@ -95,6 +100,68 @@ export function useEvent(
     isLoading,
     error,
     register,
+    mutate: swrMutate,
+  };
+}
+
+interface UseEventAttendeesOptions {
+  enabled?: boolean;
+}
+
+interface UseEventAttendeesReturn {
+  attendees: EventAttendeeListResponse['attendees'] | undefined;
+  total: number | undefined;
+  isLoading: boolean;
+  error: Error | undefined;
+  updateAttendance: (
+    userId: string,
+    body: EventAttendanceUpdateRequest,
+  ) => Promise<EventAttendanceUpdateResponse>;
+  mutate: () => void;
+}
+
+export function useEventAttendees(
+  eventId: string,
+  options: UseEventAttendeesOptions = {},
+): UseEventAttendeesReturn {
+  const { enabled = true } = options;
+
+  const {
+    data,
+    error,
+    isLoading,
+    mutate: swrMutate,
+  } = useSWR<EventAttendeeListResponse>(
+    enabled && eventId ? `/events/${eventId}/attendees` : null,
+  );
+
+  const invalidateAll = useCallback(() => {
+    swrMutate();
+    mutate(
+      (key) => typeof key === 'string' && key.startsWith('/events'),
+      undefined,
+      { revalidate: true },
+    );
+  }, [swrMutate]);
+
+  const updateAttendance = useCallback(
+    async (userId: string, body: EventAttendanceUpdateRequest) => {
+      const result = await apiPatch<EventAttendanceUpdateResponse>(
+        `/events/${eventId}/attendees/${userId}/attendance`,
+        body,
+      );
+      invalidateAll();
+      return result;
+    },
+    [eventId, invalidateAll],
+  );
+
+  return {
+    attendees: data?.attendees,
+    total: data?.total,
+    isLoading,
+    error,
+    updateAttendance,
     mutate: swrMutate,
   };
 }
