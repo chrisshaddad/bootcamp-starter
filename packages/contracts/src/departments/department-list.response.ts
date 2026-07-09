@@ -6,4 +6,6 @@ export const departmentListResponseSchema = z.object({
   total: z.number(),
 });
 
-export type DepartmentListResponse = z.infer<typeof departmentListResponseSchema>;
+export type DepartmentListResponse = z.infer<
+  typeof departmentListResponseSchema
+>;

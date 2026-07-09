@@ -243,7 +243,7 @@ const GREEN_ENERGY_EMPLOYEES: EmployeeSeed[] = [
   },
   {
     email: 'david.oconnor@greenenergy.example.com',
-    name: 'David O\'Connor',
+    name: "David O'Connor",
     role: 'EMPLOYEE',
     title: 'Operations Manager',
     level: 5,

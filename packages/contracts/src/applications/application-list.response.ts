@@ -6,4 +6,6 @@ export const applicationListResponseSchema = z.object({
   total: z.number(),
 });
 
-export type ApplicationListResponse = z.infer<typeof applicationListResponseSchema>;
+export type ApplicationListResponse = z.infer<
+  typeof applicationListResponseSchema
+>;

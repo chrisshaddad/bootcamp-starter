@@ -159,7 +159,7 @@ const GREEN_ENERGY_OPPORTUNITIES: OpportunitySeed[] = [
     title: 'Sustainability Reporting Analyst',
     type: 'Role',
     description:
-      'Own the company\'s ESG reporting process, ensuring compliance with federal and state renewable energy regulations.',
+      "Own the company's ESG reporting process, ensuring compliance with federal and state renewable energy regulations.",
     status: 'OPEN',
     deadlineDaysFromNow: 25,
     requiredLevel: 3,
@@ -201,7 +201,9 @@ async function seedOpportunitiesForOrg(
   });
 
   if (!orgAdmin?.organizationId) {
-    console.warn(`  Skipping opportunities: org admin ${orgAdminEmail} not found.`);
+    console.warn(
+      `  Skipping opportunities: org admin ${orgAdminEmail} not found.`,
+    );
     return;
   }
 

@@ -21,4 +21,6 @@ export const opportunityUpdateRequestSchema = z.object({
     .optional(),
 });
 
-export type OpportunityUpdateRequest = z.infer<typeof opportunityUpdateRequestSchema>;
+export type OpportunityUpdateRequest = z.infer<
+  typeof opportunityUpdateRequestSchema
+>;

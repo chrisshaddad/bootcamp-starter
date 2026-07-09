@@ -7,4 +7,6 @@ export const applicationUpdateRequestSchema = z.object({
   managerApproved: z.boolean().optional(),
 });
 
-export type ApplicationUpdateRequest = z.infer<typeof applicationUpdateRequestSchema>;
+export type ApplicationUpdateRequest = z.infer<
+  typeof applicationUpdateRequestSchema
+>;

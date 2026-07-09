@@ -51,7 +51,9 @@ async function seedSkillsForOrg(
   });
 
   if (!orgAdmin?.organizationId) {
-    console.warn(`  Skipping skills: org admin ${orgAdminEmail} not found or has no org.`);
+    console.warn(
+      `  Skipping skills: org admin ${orgAdminEmail} not found or has no org.`,
+    );
     return;
   }
 
@@ -69,6 +71,10 @@ async function seedSkillsForOrg(
 export async function seedSkills(prisma: PrismaClient) {
   console.log('Seeding skills...');
   await seedSkillsForOrg(prisma, 'admin@techcorp.example.com', TECHCORP_SKILLS);
-  await seedSkillsForOrg(prisma, 'admin@greenenergy.example.com', GREEN_ENERGY_SKILLS);
+  await seedSkillsForOrg(
+    prisma,
+    'admin@greenenergy.example.com',
+    GREEN_ENERGY_SKILLS,
+  );
   console.log('Skills seeded.');
 }

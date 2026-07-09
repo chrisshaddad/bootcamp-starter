@@ -297,7 +297,10 @@ export class ApplicationsService {
           'Employees can only withdraw their applications',
         );
       }
-      if (data.reviewerNotes !== undefined || data.managerApproved !== undefined) {
+      if (
+        data.reviewerNotes !== undefined ||
+        data.managerApproved !== undefined
+      ) {
         throw new ForbiddenException(
           'Employees cannot update reviewer notes or manager approval',
         );

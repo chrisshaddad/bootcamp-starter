@@ -10,7 +10,8 @@ const DEPARTMENTS: DepartmentSeed[] = [
   // TechCorp Solutions
   {
     name: 'Engineering',
-    description: 'Software development, infrastructure, and platform engineering.',
+    description:
+      'Software development, infrastructure, and platform engineering.',
     orgAdminEmail: 'admin@techcorp.example.com',
   },
   {
@@ -60,7 +61,9 @@ export async function seedDepartments(prisma: PrismaClient) {
     });
 
     if (!orgAdmin?.organizationId) {
-      console.warn(`  Skipping ${dept.name}: org admin ${dept.orgAdminEmail} not found or has no org.`);
+      console.warn(
+        `  Skipping ${dept.name}: org admin ${dept.orgAdminEmail} not found or has no org.`,
+      );
       continue;
     }
 

@@ -6,4 +6,6 @@ export const departmentUpdateRequestSchema = z.object({
   managerId: z.string().uuid().nullable().optional(),
 });
 
-export type DepartmentUpdateRequest = z.infer<typeof departmentUpdateRequestSchema>;
+export type DepartmentUpdateRequest = z.infer<
+  typeof departmentUpdateRequestSchema
+>;

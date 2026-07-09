@@ -22,4 +22,6 @@ export const opportunityCreateRequestSchema = z.object({
     .default([]),
 });
 
-export type OpportunityCreateRequest = z.infer<typeof opportunityCreateRequestSchema>;
+export type OpportunityCreateRequest = z.infer<
+  typeof opportunityCreateRequestSchema
+>;

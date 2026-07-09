@@ -27,7 +27,8 @@ const APPLICATIONS: ApplicationSeed[] = [
     status: 'ACCEPTED',
     coverNote:
       'My AWS and Python experience make me a strong fit. I have worked on data pipeline migrations before.',
-    reviewerNotes: 'Strong backend skills, good cultural fit for the project team.',
+    reviewerNotes:
+      'Strong backend skills, good cultural fit for the project team.',
   },
   {
     employeeEmail: 'marcus.johnson@techcorp.example.com',
@@ -73,7 +74,8 @@ const APPLICATIONS: ApplicationSeed[] = [
     status: 'ACCEPTED',
     coverNote:
       'This is exactly what I specialize in. My GIS and wind analysis skills are directly applicable.',
-    reviewerNotes: 'Perfect match for this project. Deep expertise in all required areas.',
+    reviewerNotes:
+      'Perfect match for this project. Deep expertise in all required areas.',
   },
   {
     employeeEmail: 'mei.zhou@greenenergy.example.com',
@@ -136,7 +138,9 @@ export async function seedApplications(prisma: PrismaClient) {
     });
 
     if (!opportunity) {
-      console.warn(`  Skipping: opportunity "${app.opportunityTitle}" not found.`);
+      console.warn(
+        `  Skipping: opportunity "${app.opportunityTitle}" not found.`,
+      );
       continue;
     }
 

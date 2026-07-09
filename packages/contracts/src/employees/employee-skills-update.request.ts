@@ -9,4 +9,6 @@ export const employeeSkillsUpdateRequestSchema = z.object({
   ),
 });
 
-export type EmployeeSkillsUpdateRequest = z.infer<typeof employeeSkillsUpdateRequestSchema>;
+export type EmployeeSkillsUpdateRequest = z.infer<
+  typeof employeeSkillsUpdateRequestSchema
+>;

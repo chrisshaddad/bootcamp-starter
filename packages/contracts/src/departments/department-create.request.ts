@@ -6,4 +6,6 @@ export const departmentCreateRequestSchema = z.object({
   managerId: z.string().uuid().optional(),
 });
 
-export type DepartmentCreateRequest = z.infer<typeof departmentCreateRequestSchema>;
+export type DepartmentCreateRequest = z.infer<
+  typeof departmentCreateRequestSchema
+>;
