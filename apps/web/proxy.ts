@@ -3,8 +3,9 @@ import type { NextRequest } from 'next/server';
 
 const SESSION_COOKIE_NAME = 'bootcamp_starter_session';
 
-// Public routes that don't require authentication
-const publicRoutes = ['/login', '/auth/verify'];
+// Routes reachable without a session: the marketing landing, login, register,
+// and the magic-link verify page. Everything else requires authentication.
+const publicRoutes = ['/', '/login', '/register', '/auth/verify'];
 
 // Default landing page for authenticated users
 const DEFAULT_AUTHENTICATED_ROUTE = '/dashboard';
@@ -20,16 +21,8 @@ export function proxy(request: NextRequest) {
   const sessionCookie = request.cookies.get(SESSION_COOKIE_NAME);
   const isAuthenticated = !!sessionCookie?.value;
 
-  // Handle root path
-  if (pathname === '/') {
-    if (!isAuthenticated) {
-      return NextResponse.redirect(new URL('/login', request.url));
-    }
-    // Redirect authenticated users to dashboard
-    return NextResponse.redirect(new URL('/dashboard', request.url));
-  }
-
-  // Redirect authenticated users away from public pages
+  // Send authenticated users straight into the app when they hit a public page
+  // (landing, login, register, verify) — they don't need to see them again.
   if (isPublicRoute(pathname) && isAuthenticated) {
     return NextResponse.redirect(
       new URL(DEFAULT_AUTHENTICATED_ROUTE, request.url),

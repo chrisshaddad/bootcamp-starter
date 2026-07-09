@@ -11,8 +11,9 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: 'Bootcamp Starter',
-  description: 'Full-stack bootcamp starter',
+  title: 'Margin — Know your margins. Grow your profit.',
+  description:
+    'Margin turns your sales and expenses into real profitability metrics, with AI insights grounded in your actual numbers.',
 };
 
 export default function RootLayout({

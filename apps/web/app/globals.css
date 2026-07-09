@@ -77,12 +77,20 @@ a {
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  /* Primary Colors (Green) */
-  --color-primary-base: #27a376;
-  --color-primary-400: #55c790;
-  --color-primary-300: #86d7b0;
-  --color-primary-200: #ceefdf;
-  --color-primary-100: #e7f7ef;
+  /* Primary — Margin brand violet. Because this @theme block is `inline`, these
+     literals are what the bg-/text-/border-primary-* utilities compile to, so
+     they must hold the rendered value (the app runs dark-only). */
+  --color-primary-base: #7c4dff;
+  --color-primary-600: #6a3df0;
+  --color-primary-400: #936bff;
+  --color-primary-300: #b49bff;
+  --color-primary-200: #d5c7ff;
+  --color-primary-100: #ebe5ff;
+  /* Faint violet surface for selected/active fills on the dark canvas */
+  --color-primary-soft: #17132b;
+
+  /* Accent — cyan brand highlight for links, badges, charts */
+  --color-accent-base: #22d3ee;
 
   /* Secondary Colors (Yellow) */
   --color-secondary-base: #ffd023;
@@ -214,18 +222,14 @@ a {
   --sidebar-accent-foreground: #ECEAF5;
   --sidebar-border: #29263B;
   --sidebar-ring: #7C4DFF;
-  /* Extended palette */
-  --color-primary-base: #7C4DFF;
-  --color-primary-600: #6A3DF0;
-  --color-primary-400: #936BFF;
-  --color-primary-300: #B49BFF;
-  --color-primary-200: #D5C7FF;
-  --color-primary-100: #EBE5FF;
-  --color-primary-soft: #17132B;
-  --color-accent-base: #22D3EE;
-  --color-success: #34D39A;
-  --color-warning: #FBBF24;
-  --color-error: #F4506A;
+  /*
+   * NOTE: the primary/accent/alert SCALE tokens (--color-primary-*, etc.) are
+   * declared in the `@theme inline` block above, which inlines their literal
+   * value into utilities at build time. Redeclaring them here would be dead CSS
+   * (it can't re-colour an already-compiled utility), so the scale lives only in
+   * @theme. Only the semantic tokens above (--primary, --accent, …) are var()
+   * references and therefore theme-overridable here.
+   */
 }
 
 @layer base {
