@@ -1,25 +1,13 @@
-export type TechnologyCategory =
-  | 'LANGUAGE'
-  | 'FRAMEWORK'
-  | 'LIBRARY'
-  | 'DATABASE'
-  | 'CLOUD'
-  | 'DEVOPS'
-  | 'TOOL'
-  | 'OTHER';
+import type {
+  GithubDetectedTechnology,
+  GithubRepositoryPreviewResponse,
+} from '@repo/contracts';
 
-export type DetectionSignal =
-  | 'github-language'
-  | 'package-json'
-  | 'dockerfile'
-  | 'docker-compose'
-  | 'prisma-schema'
-  | 'github-actions';
+export type TechnologyCategory = GithubDetectedTechnology['category'];
+export type DetectionSignal = GithubDetectedTechnology['signals'][number];
 
-export interface RepositoryLanguageStat {
-  name: string;
-  bytes: number;
-}
+export type RepositoryLanguageStat =
+  GithubRepositoryPreviewResponse['languages'][number];
 
 export interface RepositorySnapshotFile {
   path: string;
@@ -41,8 +29,4 @@ export interface TechnologyDefinition {
   category: TechnologyCategory;
 }
 
-export interface DetectedTechnology extends TechnologyDefinition {
-  evidence: string[];
-  sourceFiles: string[];
-  signals: DetectionSignal[];
-}
+export type DetectedTechnology = GithubDetectedTechnology;
