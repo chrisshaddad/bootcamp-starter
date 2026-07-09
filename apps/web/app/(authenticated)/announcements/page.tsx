@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
@@ -30,6 +30,8 @@ import { useUser } from '@/hooks/use-auth';
 import { ApiError } from '@/lib/api';
 import {
   Calendar,
+  Check,
+  ChevronDown,
   Eye,
   Globe,
   LockKeyhole,
@@ -89,6 +91,8 @@ export default function AnnouncementsPage() {
     user?.role === 'MEMBER' && user?.memberRole === 'PRESENTER';
   const canCreate = isSuperAdmin || isOrgAdmin || isPresenter;
   const [eventSearch, setEventSearch] = useState('');
+  const [eventDropdownOpen, setEventDropdownOpen] = useState(false);
+  const eventComboboxRef = useRef<HTMLDivElement>(null);
   const {
     register,
     handleSubmit,
@@ -137,6 +141,10 @@ export default function AnnouncementsPage() {
       event.eventName.toLowerCase().includes(query),
     );
   }, [eventSearch, events]);
+  const selectedEvent = useMemo(
+    () => events?.find((event) => event.id === eventId),
+    [eventId, events],
+  );
 
   const scopeOptions = useMemo(() => {
     const options: { value: AnnouncementScope; label: string }[] = [];
@@ -167,8 +175,36 @@ export default function AnnouncementsPage() {
         { shouldValidate: true },
       );
       setEventSearch('');
+      setEventDropdownOpen(false);
     }
   }, [scope, scopeOptions, setValue]);
+
+  useEffect(() => {
+    if (!eventDropdownOpen) {
+      return;
+    }
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (eventComboboxRef.current?.contains(event.target as Node)) {
+        return;
+      }
+      setEventDropdownOpen(false);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setEventDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [eventDropdownOpen]);
 
   const onSubmit = async (data: AnnouncementCreateRequest) => {
     try {
@@ -189,6 +225,7 @@ export default function AnnouncementsPage() {
         eventId: data.scope === 'EVENT' ? data.eventId : undefined,
       });
       setEventSearch('');
+      setEventDropdownOpen(false);
     } catch (err) {
       if (err instanceof ApiError) {
         toast.error(err.message);
@@ -256,6 +293,7 @@ export default function AnnouncementsPage() {
                         { shouldValidate: true },
                       );
                       setEventSearch('');
+                      setEventDropdownOpen(false);
                     }}
                   >
                     <SelectTrigger className="w-full">
@@ -285,46 +323,94 @@ export default function AnnouncementsPage() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label>Event</Label>
-                    <Select
-                      value={eventId}
-                      onValueChange={(value) =>
-                        setValue('eventId', value, { shouldValidate: true })
-                      }
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue
-                          placeholder={
-                            eventsLoading ? 'Loading events...' : 'Select event'
+                    <div ref={eventComboboxRef} className="relative">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={eventDropdownOpen}
+                        aria-controls="announcement-event-options"
+                        className="h-9 w-full justify-between border-gray-300 bg-transparent px-3 text-left font-normal shadow-xs hover:bg-transparent"
+                        onClick={() =>
+                          setEventDropdownOpen((isOpen) => !isOpen)
+                        }
+                      >
+                        <span
+                          className={
+                            selectedEvent
+                              ? 'truncate text-gray-900'
+                              : 'truncate text-gray-500'
                           }
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <div className="border-b border-gray-200 p-2">
-                          <div className="relative">
-                            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                            <Input
-                              value={eventSearch}
-                              onChange={(event) =>
-                                setEventSearch(event.target.value)
-                              }
-                              onKeyDown={(event) => event.stopPropagation()}
-                              placeholder="Search events"
-                              className="h-9 rounded-md py-2 pl-9 pr-3"
-                            />
+                        >
+                          {eventsLoading
+                            ? 'Loading events...'
+                            : selectedEvent?.eventName || 'Select event'}
+                        </span>
+                        <ChevronDown className="h-4 w-4 opacity-50" />
+                      </Button>
+
+                      {eventDropdownOpen && (
+                        <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-md border border-gray-200 bg-white shadow-md">
+                          <div className="border-b border-gray-200 p-2">
+                            <div className="relative">
+                              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                              <Input
+                                value={eventSearch}
+                                onChange={(event) =>
+                                  setEventSearch(event.target.value)
+                                }
+                                placeholder="Search events"
+                                className="h-9 rounded-md py-2 pl-9 pr-3"
+                              />
+                            </div>
+                          </div>
+                          <div
+                            id="announcement-event-options"
+                            role="listbox"
+                            className="max-h-64 overflow-y-auto p-1"
+                          >
+                            {eventsLoading && (
+                              <div className="px-2 py-1.5 text-sm text-gray-500">
+                                Loading events...
+                              </div>
+                            )}
+                            {filteredEvents?.map((event) => (
+                              <button
+                                key={event.id}
+                                type="button"
+                                role="option"
+                                aria-selected={event.id === eventId}
+                                className={
+                                  event.id === eventId
+                                    ? 'flex w-full items-center justify-between gap-2 rounded-sm bg-primary-100 px-2 py-1.5 text-left text-sm text-gray-900 outline-none'
+                                    : 'flex w-full items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-left text-sm text-gray-900 outline-none hover:bg-gray-100 focus:bg-gray-100'
+                                }
+                                onClick={() => {
+                                  setValue('eventId', event.id, {
+                                    shouldValidate: true,
+                                  });
+                                  setEventDropdownOpen(false);
+                                  setEventSearch('');
+                                }}
+                              >
+                                <span className="truncate">
+                                  {event.eventName}
+                                </span>
+                                {event.id === eventId && (
+                                  <Check className="h-4 w-4 text-primary-base" />
+                                )}
+                              </button>
+                            ))}
+                            {!eventsLoading &&
+                              filteredEvents?.length === 0 && (
+                                <div className="px-2 py-1.5 text-sm text-gray-500">
+                                  No events found
+                                </div>
+                              )}
                           </div>
                         </div>
-                        {filteredEvents?.map((event) => (
-                          <SelectItem key={event.id} value={event.id}>
-                            {event.eventName}
-                          </SelectItem>
-                        ))}
-                        {!eventsLoading && filteredEvents?.length === 0 && (
-                          <SelectItem value="no-events-found" disabled>
-                            No events found
-                          </SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
+                      )}
+                    </div>
                     {errors.eventId && (
                       <p className="text-sm text-error">
                         {errors.eventId.message}
