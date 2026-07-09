@@ -22,7 +22,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { StatusBadge } from '@/components/status-badge';
 import { ShieldX } from 'lucide-react';
 import { useState } from 'react';
-import { cn } from '@/lib/utils';
+import { cn, formatDate } from '@/lib/utils';
 import type { OrganizationStatus } from '@repo/contracts';
 
 type StatusFilter =
@@ -228,7 +228,7 @@ export default function OrganizationsPage() {
                     {org._count.users}
                   </TableCell>
                   <TableCell className="px-3.5 py-2.5 font-mono text-[12px] text-text-2">
-                    {new Date(org.createdAt).toLocaleDateString()}
+                    {formatDate(org.createdAt)}
                   </TableCell>
                 </TableRow>
               ))}

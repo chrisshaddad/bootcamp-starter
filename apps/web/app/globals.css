@@ -82,7 +82,7 @@ a {
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  /* Design 4 — warm graphite + marigold surfaces & ink */
+  /* Warm graphite + marigold surfaces & ink */
   --color-canvas: var(--bg-canvas);
   --color-surface: var(--bg-surface);
   --color-sunken: var(--bg-sunken);
@@ -91,15 +91,27 @@ a {
   --color-text-2: var(--text-2);
   --color-text-3: var(--text-3);
 
-  /* Design 4 — marigold accent ramp */
+  /* Marigold accent ramp */
   --color-amber: var(--amber);
   --color-amber-strong: var(--amber-strong);
   --color-amber-soft: var(--amber-soft);
   --color-amber-contrast: var(--amber-contrast);
 
-  /* Design 4 — teal spine + status */
+  /* Teal spine + status */
   --color-spine: var(--spine);
   --color-danger: var(--danger);
+
+  /* Avatar tint pairs (bg + fg) */
+  --color-avatar-1-bg: var(--avatar-1-bg);
+  --color-avatar-1-fg: var(--avatar-1-fg);
+  --color-avatar-2-bg: var(--avatar-2-bg);
+  --color-avatar-2-fg: var(--avatar-2-fg);
+  --color-avatar-3-bg: var(--avatar-3-bg);
+  --color-avatar-3-fg: var(--avatar-3-fg);
+  --color-avatar-4-bg: var(--avatar-4-bg);
+  --color-avatar-4-fg: var(--avatar-4-fg);
+  --color-avatar-5-bg: var(--avatar-5-bg);
+  --color-avatar-5-fg: var(--avatar-5-fg);
 
   /* Primary Colors (marigold) */
   --color-primary-base: #d9911e;
@@ -171,7 +183,7 @@ a {
 :root {
   --radius: 0.625rem;
 
-  /* Light Theme — Design 4 "Horizontal Deck" (warm graphite + marigold) */
+  /* Light theme — warm graphite + marigold */
   --background: #f7f5f1; /* bg-canvas */
   --foreground: #1a1712; /* text-1 */
   --card: #fffdf9; /* bg-surface */
@@ -204,7 +216,7 @@ a {
   --sidebar-border: #e4dfd4;
   --sidebar-ring: #d9911e;
 
-  /* Design-4 raw tokens */
+  /* Extended palette tokens */
   --bg-canvas: #f7f5f1;
   --bg-surface: #fffdf9;
   --bg-sunken: #f2efe8;
@@ -219,6 +231,18 @@ a {
   --spine: #14524c;
   --danger: #b23b3b;
   --grid-line: rgba(26, 23, 18, 0.045);
+
+  /* Avatar tint pairs — soft marigold/teal/neutral/red/green */
+  --avatar-1-bg: #f6e4c4;
+  --avatar-1-fg: #b8760f;
+  --avatar-2-bg: #d8e9e3;
+  --avatar-2-fg: #14524c;
+  --avatar-3-bg: #e7e2d6;
+  --avatar-3-fg: #6b6357;
+  --avatar-4-bg: #f3ddd9;
+  --avatar-4-fg: #b23b3b;
+  --avatar-5-bg: #e0ece6;
+  --avatar-5-fg: #1f7a52;
 }
 
 .dark {
@@ -254,7 +278,7 @@ a {
   --sidebar-border: #2c2823;
   --sidebar-ring: #e8a63a;
 
-  /* Design-4 raw tokens */
+  /* Extended palette tokens */
   --bg-canvas: #141210;
   --bg-surface: #1d1a16;
   --bg-sunken: #100e0c;
@@ -269,6 +293,18 @@ a {
   --spine: #4fb3a6;
   --danger: #e0716f;
   --grid-line: rgba(255, 250, 240, 0.035);
+
+  /* Avatar tint pairs — dark surfaces with lighter ink */
+  --avatar-1-bg: #3a2f18;
+  --avatar-1-fg: #f0bc5c;
+  --avatar-2-bg: #17332e;
+  --avatar-2-fg: #4fb3a6;
+  --avatar-3-bg: #2c2823;
+  --avatar-3-fg: #a89e8f;
+  --avatar-4-bg: #3a201e;
+  --avatar-4-fg: #e0716f;
+  --avatar-5-bg: #16302a;
+  --avatar-5-fg: #45b586;
 }
 
 @layer base {
@@ -277,7 +313,7 @@ a {
   }
   body {
     @apply bg-background text-foreground;
-    /* faint 26px graphite grid — Design 4 canvas */
+    /* faint 26px graphite grid canvas */
     background-image:
       linear-gradient(var(--grid-line) 1px, transparent 1px),
       linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);

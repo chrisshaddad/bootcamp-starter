@@ -15,7 +15,7 @@ const manrope = Manrope({
   weight: ['400', '500', '600', '700'],
 });
 
-// Design 4 "Horizontal Deck" typefaces
+// Brand typefaces: UI sans, display serif, and monospace
 const hanken = Hanken_Grotesk({
   subsets: ['latin'],
   variable: '--font-hanken',

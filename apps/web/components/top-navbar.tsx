@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-/** Design 4 — logo mark: amber tile + document glyph */
+/** Logo mark: amber tile + document glyph */
 function BrandMark() {
   return (
     <span className="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-amber">

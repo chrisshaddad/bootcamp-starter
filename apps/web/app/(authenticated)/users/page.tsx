@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { useUser } from '@/hooks/use-auth';
 import { useUsers, useCreateUser, useUpdateUser } from '@/hooks/use-users';
-import { cn } from '@/lib/utils';
+import { cn, formatDate } from '@/lib/utils';
 import {
   Table,
   TableBody,
@@ -56,7 +56,7 @@ const ROLE_LABELS: Record<string, string> = {
   MEMBER: 'Member',
 };
 
-// Design 4 role badges — tinted pill + tick square, keyed off palette tokens.
+// Role badges — tinted pill + tick square, keyed off palette tokens.
 const ROLE_BADGE: Record<string, { cls: string; tick: string }> = {
   SUPER_ADMIN: { cls: 'bg-spine/15 text-spine border-spine/30', tick: 'bg-spine' },
   ORG_ADMIN: {
@@ -103,13 +103,13 @@ function StatusPill({ confirmed }: { confirmed: boolean }) {
   );
 }
 
-// Soft per-person avatar tints from the mockup, chosen stably by id.
+// Soft per-person avatar tints (design tokens in globals.css), chosen stably by id.
 const AVATAR_TINTS = [
-  'bg-[#f6e4c4] text-[#b8760f]',
-  'bg-[#d8e9e3] text-[#14524c]',
-  'bg-[#e7e2d6] text-[#6b6357]',
-  'bg-[#f3ddd9] text-[#b23b3b]',
-  'bg-[#e0ece6] text-[#1f7a52]',
+  'bg-avatar-1-bg text-avatar-1-fg',
+  'bg-avatar-2-bg text-avatar-2-fg',
+  'bg-avatar-3-bg text-avatar-3-fg',
+  'bg-avatar-4-bg text-avatar-4-fg',
+  'bg-avatar-5-bg text-avatar-5-fg',
 ];
 
 function tintFor(id: string): string {
@@ -125,11 +125,6 @@ function initials(name: string, email: string): string {
   }
   if (name.trim()) return name.trim().charAt(0).toUpperCase();
   return email.charAt(0).toUpperCase();
-}
-
-function fmtDate(value: string | Date): string {
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? '—' : d.toISOString().slice(0, 10);
 }
 
 function ForbiddenPage() {
@@ -365,7 +360,7 @@ function OrgAdminUsersView() {
                     <StatusPill confirmed={user.isConfirmed} />
                   </TableCell>
                   <TableCell className="px-3.5 py-2.5 font-mono text-[12px] text-text-2">
-                    {fmtDate(user.createdAt)}
+                    {formatDate(user.createdAt)}
                   </TableCell>
                   <TableCell className="px-3.5 py-2.5 text-right">
                     <Button

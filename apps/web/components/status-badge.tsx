@@ -8,7 +8,7 @@ const STATUS_LABELS: Record<string, string> = {
   INACTIVE: 'Inactive',
 };
 
-// All keyed off Design-4 palette tokens — no raw Tailwind colors.
+// All keyed off palette tokens in globals.css — no raw Tailwind colors.
 const STATUS_STYLE: Record<string, string> = {
   ACTIVE: 'bg-success/12 text-success border-success/30',
   PENDING: 'bg-amber-soft text-amber-strong border-amber/40',
