@@ -8,19 +8,24 @@ import {
 } from '@nestjs/swagger';
 import {
   githubRepositoryPreviewRequestSchema,
+  type GithubRepositoryAnalysisPreviewResponse,
   type GithubRepositoryPreviewRequest,
   type GithubRepositoryPreviewResponse,
 } from '@repo/contracts';
 import { Roles } from '../auth/decorators';
 import { ZodValidationPipe } from '../common/pipes';
 import { githubRepositoryPreviewRequestSchema as githubRepositoryPreviewOpenApiRequestSchema } from '../common/swagger/schemas';
+import { GithubRepositorySnapshotService } from '../repository-scanner/github-repository-snapshot.service';
 import { GithubService } from './github.service';
 
 @ApiTags('github')
 @ApiCookieAuth('session')
 @Controller('github')
 export class GithubController {
-  constructor(private readonly githubService: GithubService) {}
+  constructor(
+    private readonly githubService: GithubService,
+    private readonly githubRepositorySnapshotService: GithubRepositorySnapshotService,
+  ) {}
 
   @Post('repositories/preview')
   @Roles('DEVELOPER', 'SUPER_ADMIN')
@@ -46,5 +51,37 @@ export class GithubController {
     body: GithubRepositoryPreviewRequest,
   ): Promise<GithubRepositoryPreviewResponse> {
     return this.githubService.previewRepository(body.repositoryUrl);
+  }
+
+  @Post('repositories/analysis-preview')
+  @Roles('DEVELOPER', 'SUPER_ADMIN')
+  @ApiOperation({ summary: 'Preview GitHub repository analysis before import' })
+  @ApiBody({ schema: githubRepositoryPreviewOpenApiRequestSchema })
+  @ApiResponse({
+    status: 200,
+    description: 'GitHub repository analysis preview',
+  })
+  @ApiResponse({ status: 400, description: 'Invalid GitHub repository URL' })
+  @ApiResponse({ status: 401, description: 'Missing or invalid session' })
+  @ApiResponse({
+    status: 403,
+    description: 'Insufficient permissions',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Repository not found, private, or inaccessible.',
+  })
+  @ApiResponse({
+    status: 503,
+    description: 'GitHub API unavailable or rate limited',
+  })
+  @HttpCode(HttpStatus.OK)
+  async previewRepositoryAnalysis(
+    @Body(new ZodValidationPipe(githubRepositoryPreviewRequestSchema))
+    body: GithubRepositoryPreviewRequest,
+  ): Promise<GithubRepositoryAnalysisPreviewResponse> {
+    return this.githubRepositorySnapshotService.previewRepositoryAnalysis(
+      body.repositoryUrl,
+    );
   }
 }
