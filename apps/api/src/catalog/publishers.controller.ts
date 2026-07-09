@@ -43,10 +43,7 @@ export class PublishersController {
     @CurrentUser() user: User,
     @Param('id') id: string,
   ): Promise<PublisherResponse> {
-    return this.publishersService.findOne(
-      this.requireOrganizationId(user),
-      id,
-    );
+    return this.publishersService.findOne(this.requireOrganizationId(user), id);
   }
 
   @Post()

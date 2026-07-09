@@ -42,10 +42,7 @@ export class CategoriesService {
   /**
    * Get a single category, scoped to the organization
    */
-  async findOne(
-    organizationId: string,
-    id: string,
-  ): Promise<CategoryResponse> {
+  async findOne(organizationId: string, id: string): Promise<CategoryResponse> {
     const category = await this.prisma.category.findFirst({
       where: { id, organizationId },
     });
@@ -111,9 +108,7 @@ export class CategoriesService {
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === 'P2002'
     ) {
-      return new ConflictException(
-        `A category named "${name}" already exists`,
-      );
+      return new ConflictException(`A category named "${name}" already exists`);
     }
 
     return error as Error;

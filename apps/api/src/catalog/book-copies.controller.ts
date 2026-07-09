@@ -50,10 +50,7 @@ export class BookCopiesController {
     @CurrentUser() user: User,
     @Param('id') id: string,
   ): Promise<BookCopyResponse> {
-    return this.bookCopiesService.findOne(
-      this.requireOrganizationId(user),
-      id,
-    );
+    return this.bookCopiesService.findOne(this.requireOrganizationId(user), id);
   }
 
   @Post()

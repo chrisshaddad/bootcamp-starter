@@ -43,10 +43,7 @@ export class CategoriesController {
     @CurrentUser() user: User,
     @Param('id') id: string,
   ): Promise<CategoryResponse> {
-    return this.categoriesService.findOne(
-      this.requireOrganizationId(user),
-      id,
-    );
+    return this.categoriesService.findOne(this.requireOrganizationId(user), id);
   }
 
   @Post()

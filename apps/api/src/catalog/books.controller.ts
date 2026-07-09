@@ -62,11 +62,7 @@ export class BooksController {
     @Body(new ZodValidationPipe(bookUpdateRequestSchema))
     body: BookUpdateRequest,
   ): Promise<BookResponse> {
-    return this.booksService.update(
-      this.requireOrganizationId(user),
-      id,
-      body,
-    );
+    return this.booksService.update(this.requireOrganizationId(user), id, body);
   }
 
   private requireOrganizationId(user: User): string {

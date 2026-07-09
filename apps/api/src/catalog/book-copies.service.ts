@@ -114,14 +114,20 @@ export class BookCopiesService {
 
       return bookCopy;
     } catch (error) {
-      throw this.mapDuplicateBarcodeError(error, data.barcode ?? existing.barcode);
+      throw this.mapDuplicateBarcodeError(
+        error,
+        data.barcode ?? existing.barcode,
+      );
     }
   }
 
   // bookId is a globally-unique UUID, so the FK insert would succeed even if
   // it pointed at another organization's book. Verify tenancy explicitly,
   // same reasoning as BooksService.validateRelatedEntities.
-  private async validateBook(organizationId: string, bookId: string): Promise<void> {
+  private async validateBook(
+    organizationId: string,
+    bookId: string,
+  ): Promise<void> {
     const book = await this.prisma.book.findFirst({
       where: { id: bookId, organizationId },
     });
