@@ -14,6 +14,7 @@ export const eventSchema = z.object({
   startsAt: dateSchema,
   isRegistered: z.boolean().optional(),
   isUpcoming: z.boolean().optional(),
+  hostedByMe: z.boolean().optional(),
   presenter: eventPresenterSchema.nullable().optional(),
   attendeeCount: z.number(),
 });

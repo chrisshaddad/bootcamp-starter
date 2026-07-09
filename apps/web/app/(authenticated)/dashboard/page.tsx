@@ -177,6 +177,7 @@ export default function DashboardPage() {
   const { events, isLoading: eventsLoading } = useEvents({
     enabled:
       !isLoading && (user?.role === 'ORG_ADMIN' || user?.role === 'MEMBER'),
+    ...(isPresenter ? { upcoming: true, hostedByMe: true } : {}),
   });
 
   useEffect(() => {

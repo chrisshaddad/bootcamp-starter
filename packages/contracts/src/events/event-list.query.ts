@@ -7,6 +7,10 @@ export const eventListQuerySchema = z.object({
   upcoming: z
     .enum(['true', 'false'])
     .optional()
-    .transform((value) => value === 'true'),
+    .transform((value) => (value === undefined ? undefined : value === 'true')),
+  hostedByMe: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((value) => (value === undefined ? undefined : value === 'true')),
 });
 export type EventListQuery = z.infer<typeof eventListQuerySchema>;

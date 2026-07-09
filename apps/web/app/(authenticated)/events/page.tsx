@@ -23,6 +23,7 @@ import { EventCalendar } from '@/components/event-calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Calendar, ShieldX } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 function ForbiddenPage() {
   return (
@@ -69,10 +70,13 @@ export default function EventsPage() {
   const canAccess = canAccessEvents(user?.role);
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   const isAttendeeUser = user?.role === 'MEMBER';
+  const isPresenter =
+    user?.role === 'MEMBER' && user?.memberRole === 'PRESENTER';
   const [eventFilter, setEventFilter] = useState<EventFilter | undefined>(
     undefined,
   );
-  const activeFilter = eventFilter ?? (isAttendeeUser ? 'upcoming' : 'all');
+  const activeFilter =
+    eventFilter ?? (isPresenter ? 'all' : isAttendeeUser ? 'upcoming' : 'all');
 
   const upcomingFilter =
     activeFilter === 'upcoming'
@@ -109,11 +113,13 @@ export default function EventsPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Events</h1>
           <p className="mt-1 text-sm text-gray-500">
-            {isAttendeeUser
-              ? 'Browse upcoming events and sign up when eligible'
-              : isSuperAdmin
-                ? 'Workshops, meetings, and camps across organizations'
-                : 'Workshops, meetings, and camps in your organization'}
+            {isPresenter
+              ? 'All organization events — yours are underlined in blue'
+              : isAttendeeUser
+                ? 'Browse upcoming events and sign up when eligible'
+                : isSuperAdmin
+                  ? 'Workshops, meetings, and camps across organizations'
+                  : 'Workshops, meetings, and camps in your organization'}
           </p>
         </div>
         <Select
@@ -197,7 +203,13 @@ export default function EventsPage() {
                       }
                     }}
                   >
-                    <TableCell className="font-medium text-gray-900">
+                    <TableCell
+                      className={cn(
+                        'font-medium text-gray-900',
+                        event.hostedByMe &&
+                          'underline decoration-blue-600 decoration-2 underline-offset-2',
+                      )}
+                    >
                       {event.eventName}
                     </TableCell>
                     <TableCell className="text-sm text-gray-600">
