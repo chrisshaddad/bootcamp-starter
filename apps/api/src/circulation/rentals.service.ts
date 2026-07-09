@@ -15,10 +15,10 @@ import type {
   RentalStatus,
 } from '@repo/contracts';
 
-const DEFAULT_LOAN_DAYS = 14;
+export const DEFAULT_LOAN_DAYS = 14;
+export const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const LATE_FEE_PER_DAY = 0.5;
 const FLAT_LOST_FEE = 25;
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 const rentalInclude = {
   bookCopy: {
