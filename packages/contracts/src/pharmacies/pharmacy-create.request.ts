@@ -13,7 +13,7 @@ export const pharmacyCreateRequestSchema = z.object({
   name: z.string().trim().min(1, 'Pharmacy name is required').max(150),
   adminFirstName: z.string().trim().min(1, 'First name is required').max(100),
   adminLastName: z.string().trim().min(1, 'Last name is required').max(100),
-  adminEmail: z.email('Enter a valid email'),
+  adminEmail: z.string().trim().pipe(z.email('Enter a valid email')),
   branch: branchCreateRequestSchema.optional().nullable(),
 });
 export type PharmacyCreateRequest = z.infer<typeof pharmacyCreateRequestSchema>;

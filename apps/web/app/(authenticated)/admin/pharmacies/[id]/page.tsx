@@ -24,6 +24,7 @@ import {
   Users,
   type LucideIcon,
 } from 'lucide-react';
+import { branchCreateRequestSchema } from '@repo/contracts';
 import type {
   BranchCreateRequest,
   BranchResponse,
@@ -161,29 +162,39 @@ const STAT_STYLES = [
 // ---------------------------------------------------------------------------
 // Branch add / edit dialog
 
-const branchFormSchema = z.object({
-  name: z.string().trim().min(1, 'Branch name is required').max(150),
-  phone: z.string().trim().max(20),
-  address: z.string().trim().min(1, 'Address is required'),
-  latitude: z
-    .string()
-    .trim()
-    .refine((value) => {
-      const parsed = Number(value);
-      return (
-        value !== '' && !Number.isNaN(parsed) && parsed >= -90 && parsed <= 90
-      );
-    }, 'Latitude must be between -90 and 90'),
-  longitude: z
-    .string()
-    .trim()
-    .refine((value) => {
-      const parsed = Number(value);
-      return (
-        value !== '' && !Number.isNaN(parsed) && parsed >= -180 && parsed <= 180
-      );
-    }, 'Longitude must be between -180 and 180'),
-});
+// The branch identity rules (name, address) come straight from the API contract
+// via `.pick()` so they can't drift from the server. The form only adds the
+// concerns the contract doesn't model for a text form: a plain phone field
+// (mapped to phoneNumber on submit) and coordinate *string* inputs that must
+// reject an empty value — the contract coerces numbers, where '' would become a
+// valid 0 and slip through. The submit handler maps these back to
+// BranchCreateRequest (phone → phoneNumber, strings → numbers).
+const branchFormSchema = branchCreateRequestSchema
+  .pick({ name: true, address: true })
+  .extend({
+    phone: z.string().trim().max(20),
+    latitude: z
+      .string()
+      .trim()
+      .refine((value) => {
+        const parsed = Number(value);
+        return (
+          value !== '' && !Number.isNaN(parsed) && parsed >= -90 && parsed <= 90
+        );
+      }, 'Latitude must be between -90 and 90'),
+    longitude: z
+      .string()
+      .trim()
+      .refine((value) => {
+        const parsed = Number(value);
+        return (
+          value !== '' &&
+          !Number.isNaN(parsed) &&
+          parsed >= -180 &&
+          parsed <= 180
+        );
+      }, 'Longitude must be between -180 and 180'),
+  });
 
 type BranchFormValues = z.infer<typeof branchFormSchema>;
 

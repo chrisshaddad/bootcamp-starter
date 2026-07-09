@@ -208,14 +208,19 @@ export class PharmaciesService {
   ): Promise<PharmacyDetailResponse> {
     await this.ensureBranch(pharmacyId, branchId);
 
-    const data: Prisma.PharmacyBranchUncheckedUpdateInput = {};
+    const data: Prisma.PharmacyBranchUncheckedUpdateManyInput = {};
     if (dto.name !== undefined) data.name = dto.name;
     if (dto.phoneNumber !== undefined) data.phoneNumber = dto.phoneNumber;
     if (dto.address !== undefined) data.address = dto.address;
     if (dto.latitude !== undefined) data.latitude = dto.latitude;
     if (dto.longitude !== undefined) data.longitude = dto.longitude;
 
-    await this.prisma.pharmacyBranch.update({ where: { id: branchId }, data });
+    // Scope the write by pharmacyId too, so the tenant boundary is enforced on
+    // the mutation itself — not just the ensureBranch pre-check above.
+    await this.prisma.pharmacyBranch.updateMany({
+      where: { id: branchId, pharmacyId },
+      data,
+    });
     return this.buildDetail(pharmacyId);
   }
 
@@ -240,7 +245,11 @@ export class PharmaciesService {
       );
     }
 
-    await this.prisma.pharmacyBranch.delete({ where: { id: branchId } });
+    // Scope the delete by pharmacyId too, keeping the tenant boundary on the
+    // write itself (not just the findFirst check above).
+    await this.prisma.pharmacyBranch.deleteMany({
+      where: { id: branchId, pharmacyId },
+    });
     return this.buildDetail(pharmacyId);
   }
 
@@ -275,8 +284,10 @@ export class PharmaciesService {
       }
     }
 
-    await this.prisma.user.update({
-      where: { id: userId },
+    // Scope the write by pharmacyId too, so the tenant boundary is enforced on
+    // the mutation itself (not just the findFirst check above).
+    await this.prisma.user.updateMany({
+      where: { id: userId, pharmacyId },
       data: { branchId },
     });
     return this.buildDetail(pharmacyId);

@@ -19,7 +19,7 @@ export type PharmacyAdminListItem = z.infer<typeof pharmacyAdminListItemSchema>;
 // Response from GET /pharmacies/admin — the full list for the console.
 export const pharmacyAdminListResponseSchema = z.object({
   pharmacies: z.array(pharmacyAdminListItemSchema),
-  total: z.number(),
+  total: z.number().int().nonnegative(),
 });
 export type PharmacyAdminListResponse = z.infer<
   typeof pharmacyAdminListResponseSchema

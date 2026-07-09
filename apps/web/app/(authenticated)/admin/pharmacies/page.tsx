@@ -246,8 +246,11 @@ const createPharmacyFormSchema = z
     adminLastName: z.string().trim().min(1, 'Last name is required').max(100),
     adminEmail: z.email('Enter a valid email'),
     hasBranch: z.boolean(),
-    branchName: z.string().trim().max(150),
-    branchPhone: z.string().trim().max(20),
+    // No constraints at the object level: every branch rule is enforced inside
+    // the `hasBranch` block below, so a value typed into the branch section and
+    // then hidden (by unticking) can never block a branch-less submit.
+    branchName: z.string().trim(),
+    branchPhone: z.string().trim(),
     branchAddress: z.string().trim(),
     branchLatitude: z.string().trim(),
     branchLongitude: z.string().trim(),
@@ -259,6 +262,19 @@ const createPharmacyFormSchema = z
         path: ['branchName'],
         code: 'custom',
         message: 'Branch name is required',
+      });
+    } else if (data.branchName.length > 150) {
+      ctx.addIssue({
+        path: ['branchName'],
+        code: 'custom',
+        message: 'Branch name must be at most 150 characters',
+      });
+    }
+    if (data.branchPhone.length > 20) {
+      ctx.addIssue({
+        path: ['branchPhone'],
+        code: 'custom',
+        message: 'Phone must be at most 20 characters',
       });
     }
     if (!data.branchAddress) {
