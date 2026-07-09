@@ -7,6 +7,8 @@ import { PublishersService } from './publishers.service';
 import { PublishersController } from './publishers.controller';
 import { BooksService } from './books.service';
 import { BooksController } from './books.controller';
+import { BookCopiesService } from './book-copies.service';
+import { BookCopiesController } from './book-copies.controller';
 
 @Module({
   providers: [
@@ -14,12 +16,14 @@ import { BooksController } from './books.controller';
     CategoriesService,
     PublishersService,
     BooksService,
+    BookCopiesService,
   ],
   controllers: [
     AuthorsController,
     CategoriesController,
     PublishersController,
     BooksController,
+    BookCopiesController,
   ],
 })
 export class CatalogModule {}
