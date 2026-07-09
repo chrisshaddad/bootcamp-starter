@@ -11,6 +11,7 @@ import { useStatsOverview } from '@/hooks/use-stats';
 import { EventCalendar } from '@/components/event-calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { formatRate } from '@/lib/format';
 import { CalendarDays, Clock, Users } from 'lucide-react';
 
 interface PresenterDashboardProps {
@@ -167,11 +168,6 @@ function PresenterDashboard({
   );
 }
 
-function formatRate(rate: number | null | undefined) {
-  if (rate === null || rate === undefined) return '—';
-  return `${Math.round(rate * 100)}%`;
-}
-
 function OrgAdminStatCard({
   title,
   value,
@@ -197,26 +193,27 @@ function OrgAdminStatCard({
 }
 
 function OrgAdminStats() {
-  const { overview, isLoading } = useStatsOverview();
+  const { overview, isLoading, error } = useStatsOverview();
+  const value = (n: number | undefined) =>
+    isLoading || error ? '—' : (n ?? 0);
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      <OrgAdminStatCard
-        title="Members"
-        value={isLoading ? '—' : (overview?.memberCount ?? 0)}
-      />
+      <OrgAdminStatCard title="Members" value={value(overview?.memberCount)} />
       <OrgAdminStatCard
         title="Upcoming Events"
-        value={isLoading ? '—' : (overview?.upcomingEvents ?? 0)}
-        subtitle={overview ? `${overview.totalEvents} total` : undefined}
+        value={value(overview?.upcomingEvents)}
+        subtitle={
+          overview && !error ? `${overview.totalEvents} total` : undefined
+        }
       />
       <OrgAdminStatCard
         title="Registrations"
-        value={isLoading ? '—' : (overview?.totalRegistrations ?? 0)}
+        value={value(overview?.totalRegistrations)}
       />
       <OrgAdminStatCard
         title="Attendance Rate"
-        value={isLoading ? '—' : formatRate(overview?.attendanceRate)}
+        value={isLoading || error ? '—' : formatRate(overview?.attendanceRate)}
         subtitle="Across past events"
       />
     </div>

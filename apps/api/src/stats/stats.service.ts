@@ -22,6 +22,11 @@ interface AttendanceTally {
   attendanceRate: number | null;
 }
 
+/** Defensive cap for overview past-attendee tallies (assumes orgs stay under this). */
+const OVERVIEW_PAST_ATTENDEE_CAP = 10_000;
+/** Defensive cap for presented events loaded per member in member stats. */
+const MEMBER_PRESENTED_EVENTS_CAP = 500;
+
 @Injectable()
 export class StatsService {
   private readonly logger = new Logger(StatsService.name);
@@ -85,6 +90,7 @@ export class StatsService {
       this.prisma.eventAttendee.count({ where: attendeeWhere }),
       this.prisma.eventAttendee.findMany({
         where: { ...attendeeWhere, event: { startsAt: { lte: now } } },
+        take: OVERVIEW_PAST_ATTENDEE_CAP,
         select: {
           attendanceStatus: true,
           event: { select: { startsAt: true } },
@@ -167,7 +173,7 @@ export class StatsService {
         return {
           userId: row.userId,
           name: attendee?.name ?? null,
-          email: attendee?.email ?? '',
+          email: attendee?.email ?? null,
           attendedCount: row._count.userId,
         };
       }),
@@ -416,6 +422,7 @@ export class StatsService {
           username: true,
           role: true,
           presentedEvents: {
+            take: MEMBER_PRESENTED_EVENTS_CAP,
             select: {
               startsAt: true,
               attendees: { select: { attendanceStatus: true } },

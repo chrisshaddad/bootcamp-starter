@@ -5,8 +5,10 @@ import { AnnouncementList } from '@/components/announcement-list';
 import { useAnnouncements } from '@/hooks/use-announcements';
 import { useUser } from '@/hooks/use-auth';
 import { useStatsOverview } from '@/hooks/use-stats';
+import { StatCard } from '@/components/stat-card';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { formatRate } from '@/lib/format';
 import {
   Users,
   Calendar,
@@ -104,30 +106,6 @@ function LoadingSkeleton() {
   );
 }
 
-function StatCard({
-  title,
-  value,
-  subtitle,
-}: {
-  title: string;
-  value: string | number;
-  subtitle?: string;
-}) {
-  return (
-    <Card className="border-gray-200 bg-white shadow-sm">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium text-gray-500">
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="text-3xl font-bold text-gray-900">{value}</div>
-        {subtitle && <p className="mt-1 text-xs text-gray-500">{subtitle}</p>}
-      </CardContent>
-    </Card>
-  );
-}
-
 function FeatureCardItem({ card }: { card: FeatureCard }) {
   const Icon = card.icon;
   const isActive = card.status === 'active' && card.href;
@@ -222,14 +200,7 @@ export default function AdminPage() {
         />
         <StatCard
           title="Attendance Rate"
-          value={
-            overviewLoading
-              ? '—'
-              : overview?.attendanceRate === null ||
-                  overview?.attendanceRate === undefined
-                ? '—'
-                : `${Math.round(overview.attendanceRate * 100)}%`
-          }
+          value={overviewLoading ? '—' : formatRate(overview?.attendanceRate)}
           subtitle="Across past events"
         />
       </div>

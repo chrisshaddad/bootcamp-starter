@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { Prisma, type User } from '@repo/db';
 import { PrismaService } from '../database/prisma.service';
+import { ATTENDANCE_GRACE_PERIOD_MS } from '../common/attendance';
 import { resolveOrganizationScope } from '../common/organization-scope';
 import type {
   EventAttendanceUpdateRequest,
@@ -21,7 +22,6 @@ import type {
 @Injectable()
 export class EventsService {
   private readonly logger = new Logger(EventsService.name);
-  private readonly attendanceGracePeriodMs = 30 * 60 * 1000;
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -51,7 +51,7 @@ export class EventsService {
   }
 
   private getAttendanceAutoSkipDeadline(startsAt: Date): Date {
-    return new Date(startsAt.getTime() + this.attendanceGracePeriodMs);
+    return new Date(startsAt.getTime() + ATTENDANCE_GRACE_PERIOD_MS);
   }
 
   private assertEventHasStarted(startsAt: Date): void {

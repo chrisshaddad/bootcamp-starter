@@ -10,6 +10,8 @@ import {
   useStatsOverview,
   useStatsUsers,
 } from '@/hooks/use-stats';
+import { StatCard } from '@/components/stat-card';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -27,7 +29,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { BarChart3, Calendar, ShieldX, UserRound, Users } from 'lucide-react';
+import {
+  AlertTriangle,
+  BarChart3,
+  Calendar,
+  ShieldX,
+  UserRound,
+  Users,
+} from 'lucide-react';
+import { formatRate } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
 type ReportTab = 'overview' | 'events' | 'attendees' | 'presenters';
@@ -62,37 +72,26 @@ function formatDate(value: string | Date) {
   });
 }
 
-function formatRate(rate: number | null | undefined) {
-  if (rate === null || rate === undefined) return '—';
-  return `${Math.round(rate * 100)}%`;
-}
-
 function formatNumber(value: number | null | undefined, digits = 1) {
   if (value === null || value === undefined) return '—';
   return Number.isInteger(value) ? String(value) : value.toFixed(digits);
 }
 
-function StatCard({
-  title,
-  value,
-  subtitle,
+function ReportErrorState({
+  message,
+  onRetry,
 }: {
-  title: string;
-  value: string | number;
-  subtitle?: string;
+  message: string;
+  onRetry: () => void;
 }) {
   return (
-    <Card className="border-gray-200 bg-white shadow-sm">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium text-gray-500">
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="text-3xl font-bold text-gray-900">{value}</div>
-        {subtitle && <p className="mt-1 text-xs text-gray-500">{subtitle}</p>}
-      </CardContent>
-    </Card>
+    <div className="flex flex-col items-center justify-center gap-3 py-8">
+      <AlertTriangle className="h-8 w-8 text-error" />
+      <p className="text-center text-sm text-gray-500">{message}</p>
+      <Button variant="outline" size="sm" onClick={onRetry}>
+        Try again
+      </Button>
+    </div>
   );
 }
 
@@ -120,19 +119,39 @@ export default function ReportsPage() {
 
   const { organizations } = useOrganizations({ enabled: isSuperAdmin });
 
-  const { overview, isLoading: overviewLoading } = useStatsOverview({
+  const {
+    overview,
+    isLoading: overviewLoading,
+    error: overviewError,
+    mutate: mutateOverview,
+  } = useStatsOverview({
     enabled: canAccess,
     organizationId,
   });
-  const { events, isLoading: eventsLoading } = useStatsEvents({
+  const {
+    events,
+    isLoading: eventsLoading,
+    error: eventsError,
+    mutate: mutateEvents,
+  } = useStatsEvents({
     enabled: canAccess && tab === 'events',
     organizationId,
   });
-  const { users, isLoading: usersLoading } = useStatsUsers({
+  const {
+    users,
+    isLoading: usersLoading,
+    error: usersError,
+    mutate: mutateUsers,
+  } = useStatsUsers({
     enabled: canAccess && tab === 'attendees',
     organizationId,
   });
-  const { members, isLoading: membersLoading } = useStatsMembers({
+  const {
+    members,
+    isLoading: membersLoading,
+    error: membersError,
+    mutate: mutateMembers,
+  } = useStatsMembers({
     enabled: canAccess && tab === 'presenters',
     organizationId,
   });
@@ -205,154 +224,163 @@ export default function ReportsPage() {
 
       {tab === 'overview' && (
         <div className="space-y-6">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard
-              title="Coordly Members"
-              value={overviewLoading ? '—' : (overview?.memberCount ?? 0)}
+          {overviewError ? (
+            <ReportErrorState
+              message="Failed to load overview statistics. Please try again."
+              onRetry={() => void mutateOverview()}
             />
-            <StatCard
-              title="Total Events"
-              value={overviewLoading ? '—' : (overview?.totalEvents ?? 0)}
-              subtitle={
-                overview
-                  ? `${overview.upcomingEvents} upcoming · ${overview.pastEvents} past`
-                  : undefined
-              }
-            />
-            <StatCard
-              title="Registrations"
-              value={
-                overviewLoading ? '—' : (overview?.totalRegistrations ?? 0)
-              }
-              subtitle={
-                overview
-                  ? `${formatNumber(overview.avgRegistrationsPerPastEvent)} avg / past event`
-                  : undefined
-              }
-            />
-            <StatCard
-              title="Attendance Rate"
-              value={
-                overviewLoading ? '—' : formatRate(overview?.attendanceRate)
-              }
-              subtitle={
-                overview
-                  ? `${formatRate(overview.noShowRate)} no-show rate`
-                  : undefined
-              }
-            />
-          </div>
+          ) : (
+            <>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <StatCard
+                  title="Coordly Members"
+                  value={overviewLoading ? '—' : (overview?.memberCount ?? 0)}
+                />
+                <StatCard
+                  title="Total Events"
+                  value={overviewLoading ? '—' : (overview?.totalEvents ?? 0)}
+                  subtitle={
+                    overview
+                      ? `${overview.upcomingEvents} upcoming · ${overview.pastEvents} past`
+                      : undefined
+                  }
+                />
+                <StatCard
+                  title="Registrations"
+                  value={
+                    overviewLoading ? '—' : (overview?.totalRegistrations ?? 0)
+                  }
+                  subtitle={
+                    overview
+                      ? `${formatNumber(overview.avgRegistrationsPerPastEvent)} avg / past event`
+                      : undefined
+                  }
+                />
+                <StatCard
+                  title="Attendance Rate"
+                  value={
+                    overviewLoading ? '—' : formatRate(overview?.attendanceRate)
+                  }
+                  subtitle={
+                    overview
+                      ? `${formatRate(overview.noShowRate)} no-show rate`
+                      : undefined
+                  }
+                />
+              </div>
 
-          <div className="grid gap-6 lg:grid-cols-3">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Calendar className="h-4 w-4" />
-                  Top Events
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {overviewLoading ? (
-                  <TableSkeleton />
-                ) : !overview?.topEventsByRegistrations.length ? (
-                  <p className="py-4 text-center text-sm text-gray-500">
-                    No events yet
-                  </p>
-                ) : (
-                  <ul className="space-y-3">
-                    {overview.topEventsByRegistrations.map((event) => (
-                      <li
-                        key={event.eventId}
-                        className="flex items-center justify-between gap-2"
-                      >
-                        <button
-                          type="button"
-                          onClick={() =>
-                            router.push(`/events/${event.eventId}`)
-                          }
-                          className="truncate text-left text-sm font-medium text-gray-900 hover:underline"
-                        >
-                          {event.eventName}
-                        </button>
-                        <span className="shrink-0 text-sm text-gray-500">
-                          {event.registeredCount}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </CardContent>
-            </Card>
+              <div className="grid gap-6 lg:grid-cols-3">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Calendar className="h-4 w-4" />
+                      Top Events
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {overviewLoading ? (
+                      <TableSkeleton />
+                    ) : !overview?.topEventsByRegistrations.length ? (
+                      <p className="py-4 text-center text-sm text-gray-500">
+                        No events yet
+                      </p>
+                    ) : (
+                      <ul className="space-y-3">
+                        {overview.topEventsByRegistrations.map((event) => (
+                          <li
+                            key={event.eventId}
+                            className="flex items-center justify-between gap-2"
+                          >
+                            <button
+                              type="button"
+                              onClick={() =>
+                                router.push(`/events/${event.eventId}`)
+                              }
+                              className="truncate text-left text-sm font-medium text-gray-900 hover:underline"
+                            >
+                              {event.eventName}
+                            </button>
+                            <span className="shrink-0 text-sm text-gray-500">
+                              {event.registeredCount}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <UserRound className="h-4 w-4" />
-                  Top Presenters
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {overviewLoading ? (
-                  <TableSkeleton />
-                ) : !overview?.topPresentersByEvents.length ? (
-                  <p className="py-4 text-center text-sm text-gray-500">
-                    No presenters yet
-                  </p>
-                ) : (
-                  <ul className="space-y-3">
-                    {overview.topPresentersByEvents.map((presenter) => (
-                      <li
-                        key={presenter.memberId}
-                        className="flex items-center justify-between gap-2"
-                      >
-                        <span className="truncate text-sm font-medium text-gray-900">
-                          {presenter.username}
-                        </span>
-                        <span className="shrink-0 text-sm text-gray-500">
-                          {presenter.eventsHosted} event
-                          {presenter.eventsHosted !== 1 ? 's' : ''}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </CardContent>
-            </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <UserRound className="h-4 w-4" />
+                      Top Presenters
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {overviewLoading ? (
+                      <TableSkeleton />
+                    ) : !overview?.topPresentersByEvents.length ? (
+                      <p className="py-4 text-center text-sm text-gray-500">
+                        No presenters yet
+                      </p>
+                    ) : (
+                      <ul className="space-y-3">
+                        {overview.topPresentersByEvents.map((presenter) => (
+                          <li
+                            key={presenter.memberId}
+                            className="flex items-center justify-between gap-2"
+                          >
+                            <span className="truncate text-sm font-medium text-gray-900">
+                              {presenter.username}
+                            </span>
+                            <span className="shrink-0 text-sm text-gray-500">
+                              {presenter.eventsHosted} event
+                              {presenter.eventsHosted !== 1 ? 's' : ''}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Users className="h-4 w-4" />
-                  Most Active Attendees
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {overviewLoading ? (
-                  <TableSkeleton />
-                ) : !overview?.topAttendees.length ? (
-                  <p className="py-4 text-center text-sm text-gray-500">
-                    No attendance yet
-                  </p>
-                ) : (
-                  <ul className="space-y-3">
-                    {overview.topAttendees.map((attendee) => (
-                      <li
-                        key={attendee.userId}
-                        className="flex items-center justify-between gap-2"
-                      >
-                        <span className="truncate text-sm font-medium text-gray-900">
-                          {attendee.name ?? attendee.email}
-                        </span>
-                        <span className="shrink-0 text-sm text-gray-500">
-                          {attendee.attendedCount} attended
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Users className="h-4 w-4" />
+                      Most Active Attendees
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {overviewLoading ? (
+                      <TableSkeleton />
+                    ) : !overview?.topAttendees.length ? (
+                      <p className="py-4 text-center text-sm text-gray-500">
+                        No attendance yet
+                      </p>
+                    ) : (
+                      <ul className="space-y-3">
+                        {overview.topAttendees.map((attendee) => (
+                          <li
+                            key={attendee.userId}
+                            className="flex items-center justify-between gap-2"
+                          >
+                            <span className="truncate text-sm font-medium text-gray-900">
+                              {attendee.name ?? attendee.email ?? '—'}
+                            </span>
+                            <span className="shrink-0 text-sm text-gray-500">
+                              {attendee.attendedCount} attended
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -364,6 +392,11 @@ export default function ReportsPage() {
           <CardContent>
             {eventsLoading ? (
               <TableSkeleton />
+            ) : eventsError ? (
+              <ReportErrorState
+                message="Failed to load event statistics. Please try again."
+                onRetry={() => void mutateEvents()}
+              />
             ) : !events?.length ? (
               <p className="py-8 text-center text-sm text-gray-500">
                 No events found
@@ -440,6 +473,11 @@ export default function ReportsPage() {
           <CardContent>
             {usersLoading ? (
               <TableSkeleton />
+            ) : usersError ? (
+              <ReportErrorState
+                message="Failed to load attendee statistics. Please try again."
+                onRetry={() => void mutateUsers()}
+              />
             ) : !users?.length ? (
               <p className="py-8 text-center text-sm text-gray-500">
                 No attendees found
@@ -494,6 +532,11 @@ export default function ReportsPage() {
           <CardContent>
             {membersLoading ? (
               <TableSkeleton />
+            ) : membersError ? (
+              <ReportErrorState
+                message="Failed to load presenter statistics. Please try again."
+                onRetry={() => void mutateMembers()}
+              />
             ) : !members?.length ? (
               <p className="py-8 text-center text-sm text-gray-500">
                 No members found

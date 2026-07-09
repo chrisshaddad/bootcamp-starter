@@ -17,7 +17,7 @@ const topPresenterSchema = z.object({
 const topAttendeeSchema = z.object({
   userId: z.uuid(),
   name: z.string().nullable(),
-  email: z.email(),
+  email: z.email().nullable(),
   attendedCount: z.number(),
 });
 

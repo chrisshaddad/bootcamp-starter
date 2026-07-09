@@ -27,6 +27,7 @@ import {
   Users,
 } from 'lucide-react';
 import { ApiError } from '@/lib/api';
+import { formatRate } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { AttendanceStatus } from '@repo/contracts';
 
@@ -304,9 +305,7 @@ export default function EventDetailPage() {
               <div>
                 <dt className="text-sm font-medium text-gray-500">Rate</dt>
                 <dd className="mt-1 text-2xl font-bold text-gray-900">
-                  {stats.attendanceRate === null
-                    ? '—'
-                    : `${Math.round(stats.attendanceRate * 100)}%`}
+                  {formatRate(stats.attendanceRate)}
                 </dd>
               </div>
             </div>
