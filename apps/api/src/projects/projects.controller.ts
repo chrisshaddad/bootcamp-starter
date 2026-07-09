@@ -118,7 +118,7 @@ export class ProjectsController {
     };
   }
 
-  @Get(':slug')
+  @Get('slug/:slug')
   @Public()
   @ApiOperation({ summary: 'Retrieve a public published project by its slug' })
   @ApiResponse({ status: 200, description: 'Project successfully retrieved.' })
