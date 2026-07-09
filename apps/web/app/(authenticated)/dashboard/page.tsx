@@ -21,10 +21,7 @@ export default function DashboardPage() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">
           Welcome,{' '}
-          {user?.profile?.firstName ||
-            user?.name ||
-            user?.email?.split('@')[0] ||
-            'User'}
+          {user?.fullName || user?.email?.split('@')[0] || 'User'}
           !
         </h1>
         <p className="mt-1 text-sm text-gray-500">

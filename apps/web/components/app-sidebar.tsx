@@ -45,8 +45,8 @@ const orgNavItems: NavItem[] = [
 // Navigation items for SUPER_ADMIN role
 const superAdminNavItems: NavItem[] = [
   {
-    title: 'Organizations',
-    url: '/organizations',
+    title: 'Institutions',
+    url: '/institutions',
     icon: Building2,
   },
   {
