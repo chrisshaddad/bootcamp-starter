@@ -6,13 +6,14 @@ import Link from 'next/link';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import { ArrowLeft, ImageIcon, Loader2 } from 'lucide-react';
+import { ArrowLeft, Github, ImageIcon, Loader2, Search } from 'lucide-react';
 import {
   createProjectRequestSchema,
   type CreateProjectRequest,
+  type GithubRepositoryPreviewResponse,
 } from '@repo/contracts';
 import { useCreateProject } from '@/hooks/use-projects';
-import { ApiError } from '@/lib/api';
+import { apiPost, ApiError } from '@/lib/api';
 import {
   KNOWN_SEEDED_REPOSITORIES,
   type MockTechnology,
@@ -46,6 +47,12 @@ export default function NewProjectPage() {
   // mock: no Technology/ProjectTechnology endpoint yet — selections here are
   // local-only, not sent on submit.
   const [technologies, setTechnologies] = useState<MockTechnology[]>([]);
+
+  const [repositoryUrl, setRepositoryUrl] = useState('');
+  const [isFetchingPreview, setIsFetchingPreview] = useState(false);
+  const [preview, setPreview] = useState<GithubRepositoryPreviewResponse | null>(
+    null,
+  );
 
   const {
     register,
@@ -86,6 +93,61 @@ export default function NewProjectPage() {
     }
   };
 
+  // real: calls the GitHub preview foundation endpoint (POST
+  // /github/repositories/preview). It only reads live data from GitHub for
+  // display/autofill — it doesn't create a Repository row or prove
+  // ownership, so the Repository ID field below still has to be filled in
+  // manually until a real import endpoint exists.
+  const handleFetchPreview = async () => {
+    setIsFetchingPreview(true);
+    try {
+      const data = await apiPost<GithubRepositoryPreviewResponse>(
+        '/github/repositories/preview',
+        { repositoryUrl },
+      );
+      setPreview(data);
+
+      if (data.repository.description) {
+        setValue('shortDescription', data.repository.description, {
+          shouldValidate: true,
+        });
+      }
+
+      // real: GitHub's actual reported languages for this repo — used
+      // directly as tags rather than matched against the fixed mock
+      // technology list, which only covers 7 stack items and would miss
+      // almost everything a real repo reports (e.g. EJS, CSS, Ruby).
+      const fetchedTechnologies: MockTechnology[] = data.languages
+        .slice()
+        .sort((a, b) => b.bytes - a.bytes)
+        .map((lang) => ({
+          id: `github-lang-${slugify(lang.name)}`,
+          name: lang.name,
+          slug: slugify(lang.name),
+          category: 'LANGUAGE',
+        }));
+
+      if (fetchedTechnologies.length > 0) {
+        setTechnologies(fetchedTechnologies);
+      }
+    } catch (error) {
+      setPreview(null);
+      if (error instanceof ApiError && error.status === 400) {
+        toast.error('Invalid GitHub repository URL');
+      } else if (error instanceof ApiError && error.status === 404) {
+        toast.error('Repository not found, private, or inaccessible');
+      } else {
+        toast.error(
+          error instanceof ApiError
+            ? error.message
+            : 'Unable to fetch repository preview',
+        );
+      }
+    } finally {
+      setIsFetchingPreview(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Link
@@ -108,6 +170,70 @@ export default function NewProjectPage() {
         className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_280px]"
       >
         <div className="space-y-5">
+          <div className="space-y-2">
+            <Label htmlFor="repositoryUrl">GitHub repository URL</Label>
+            <div className="flex gap-2">
+              <Input
+                id="repositoryUrl"
+                placeholder="https://github.com/owner/repo"
+                value={repositoryUrl}
+                onChange={(e) => setRepositoryUrl(e.target.value)}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleFetchPreview}
+                disabled={!repositoryUrl || isFetchingPreview}
+              >
+                {isFetchingPreview ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Search className="h-4 w-4" />
+                )}
+                Fetch
+              </Button>
+            </div>
+            <p className="text-muted-foreground text-xs">
+              Pulls the description and languages from GitHub to help fill out
+              the form below. This is a preview only — it doesn&apos;t prove
+              ownership or link the repository, so you still need to paste
+              the matching Repository ID manually until repo import ships.
+            </p>
+          </div>
+
+          {preview && (
+            <Card>
+              <CardContent className="space-y-2 pt-4">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="inline-flex items-center gap-1.5 text-sm font-semibold">
+                    <Github className="h-3.5 w-3.5" />
+                    {preview.repository.fullName}
+                  </p>
+                  <span className="text-muted-foreground text-[10px] font-bold tracking-wide uppercase">
+                    {preview.repository.visibility}
+                  </span>
+                </div>
+                {preview.repository.description && (
+                  <p className="text-muted-foreground text-xs">
+                    {preview.repository.description}
+                  </p>
+                )}
+                {preview.languages.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {preview.languages.map((lang) => (
+                      <span
+                        key={lang.name}
+                        className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-medium text-accent-foreground"
+                      >
+                        {lang.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="repositoryId">Repository ID</Label>
             <Input
@@ -202,7 +328,18 @@ export default function NewProjectPage() {
 
           <div className="space-y-2">
             <Label>Tech stack</Label>
-            <TechPicker selected={technologies} onChange={setTechnologies} />
+            <TechPicker
+              selected={technologies}
+              onChange={setTechnologies}
+              suggestions={preview ? [] : undefined}
+            />
+            {preview && (
+              <p className="text-muted-foreground text-xs">
+                Showing languages fetched from GitHub. Remove a tag by
+                clicking it — there&apos;s no fixture suggestion list here
+                since it wouldn&apos;t reflect this repository.
+              </p>
+            )}
           </div>
         </div>
 
