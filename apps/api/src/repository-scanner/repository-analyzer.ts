@@ -23,6 +23,7 @@ const PACKAGE_DEPENDENCY_SECTIONS = [
 export function analyzeRepositorySnapshot(
   snapshot: RepositorySnapshot,
 ): DetectedTechnology[] {
+  // Merge detections by slug so each technology appears once in the response.
   const detections = new Map<string, DetectedTechnology>();
 
   for (const language of snapshot.languages ?? []) {
@@ -196,6 +197,7 @@ function addDetection(
     return;
   }
 
+  // Keep distinct evidence and source details for the response audit trail.
   if (!existing.evidence.includes(details.evidence)) {
     existing.evidence.push(details.evidence);
   }

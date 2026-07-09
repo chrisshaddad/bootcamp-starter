@@ -32,10 +32,15 @@ export class GithubRepositorySnapshotService {
 
   constructor(private readonly githubService: GithubService) {}
 
+  /** Builds an analysis preview from GitHub metadata and selected source/config files. */
   async previewRepositoryAnalysis(
     repositoryUrl: string,
   ): Promise<GithubRepositoryAnalysisPreviewResponse> {
     const repository = parseGithubRepositoryUrl(repositoryUrl);
+    this.logger.debug(
+      `Starting GitHub analysis preview for ${repository.owner}/${repository.repo}`,
+    );
+
     const preview = await this.githubService.fetchRepositoryPreview(repository);
     const files = await this.fetchSnapshotFiles(
       repository,
@@ -45,22 +50,28 @@ export class GithubRepositorySnapshotService {
     const missingOptionalFiles = GITHUB_ANALYSIS_FILE_PATHS.filter(
       (path) => !inspectedFiles.includes(path),
     );
+    const detectedTechnologies = analyzeRepositorySnapshot({
+      repository: {
+        fullName: preview.repository.fullName,
+        defaultBranch: preview.repository.defaultBranch,
+      },
+      languages: preview.languages,
+      files,
+    });
+
+    this.logger.debug(
+      `Completed GitHub analysis preview for ${preview.repository.fullName}: ${detectedTechnologies.length} technologies, ${inspectedFiles.length} files inspected`,
+    );
 
     return {
       ...preview,
-      detectedTechnologies: analyzeRepositorySnapshot({
-        repository: {
-          fullName: preview.repository.fullName,
-          defaultBranch: preview.repository.defaultBranch,
-        },
-        languages: preview.languages,
-        files,
-      }),
+      detectedTechnologies,
       inspectedFiles,
       missingOptionalFiles,
     };
   }
 
+  /** Fetches optional scanner files from the repository default branch. */
   private async fetchSnapshotFiles(
     repository: ParsedGithubRepository,
     ref: string | null,
