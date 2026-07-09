@@ -66,6 +66,6 @@ export class UsersController {
       );
     }
 
-    return this.usersService.update(user.organizationId, id, body);
+    return this.usersService.update(user, id, body);
   }
 }

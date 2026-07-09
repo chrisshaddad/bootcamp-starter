@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { useUser } from '@/hooks/use-auth';
 import { useUsers, useCreateUser, useUpdateUser } from '@/hooks/use-users';
@@ -34,7 +36,13 @@ import {
 } from '@/components/ui/dialog';
 import { UserPlus, Users, ShieldX } from 'lucide-react';
 import { ApiError } from '@/lib/api';
-import type { AssignableUserRole, UserListItem } from '@repo/contracts';
+import {
+  createUserRequestSchema,
+  updateUserRequestSchema,
+  type CreateUserRequest,
+  type UpdateUserRequest,
+  type UserListItem,
+} from '@repo/contracts';
 
 function errorMessage(err: unknown, fallback: string): string {
   return err instanceof ApiError ? err.message : fallback;
@@ -46,16 +54,17 @@ const ROLE_LABELS: Record<string, string> = {
   MEMBER: 'Member',
 };
 
+// Uses design tokens (blue/purple/gray) from globals.css rather than raw Tailwind palette.
 const ROLE_COLORS: Record<string, string> = {
-  ORG_ADMIN: 'bg-purple-100 text-purple-800',
-  RECEPTIONIST: 'bg-blue-100 text-blue-800',
-  MEMBER: 'bg-gray-100 text-gray-800',
+  ORG_ADMIN: 'bg-purple/10 text-purple',
+  RECEPTIONIST: 'bg-blue/10 text-blue',
+  MEMBER: 'bg-gray-200 text-gray-700',
 };
 
 function RoleBadge({ role }: { role: string }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${ROLE_COLORS[role] || 'bg-gray-100 text-gray-800'}`}
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${ROLE_COLORS[role] || 'bg-gray-200 text-gray-700'}`}
     >
       {ROLE_LABELS[role] || role}
     </span>
@@ -88,13 +97,16 @@ function LoadingSkeleton() {
   );
 }
 
-interface UserFormState {
-  name: string;
-  email: string;
-  role: AssignableUserRole;
-}
+const ROLE_OPTIONS = [
+  { value: 'MEMBER', label: 'Member' },
+  { value: 'RECEPTIONIST', label: 'Receptionist' },
+  { value: 'ORG_ADMIN', label: 'Org Admin' },
+] as const;
 
-const EMPTY_FORM: UserFormState = { name: '', email: '', role: 'MEMBER' };
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null;
+  return <p className="text-sm text-error">{message}</p>;
+}
 
 function OrgAdminUsersView() {
   const { users, total, isLoading, error } = useUsers();
@@ -102,54 +114,51 @@ function OrgAdminUsersView() {
   const updateUser = useUpdateUser();
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [createForm, setCreateForm] = useState<UserFormState>(EMPTY_FORM);
-  const [isCreating, setIsCreating] = useState(false);
-
   const [editingUser, setEditingUser] = useState<UserListItem | null>(null);
-  const [editForm, setEditForm] = useState<UserFormState>(EMPTY_FORM);
-  const [isEditing, setIsEditing] = useState(false);
 
-  const handleCreate = async () => {
-    setIsCreating(true);
+  const createForm = useForm<CreateUserRequest>({
+    resolver: zodResolver(createUserRequestSchema),
+    mode: 'onChange',
+    defaultValues: { name: '', email: '', role: 'MEMBER' },
+  });
+
+  const editForm = useForm<UpdateUserRequest>({
+    resolver: zodResolver(updateUserRequestSchema),
+    mode: 'onChange',
+    defaultValues: { name: '', role: 'MEMBER' },
+  });
+
+  const handleCreate = createForm.handleSubmit(async (data) => {
     try {
-      await createUser(createForm);
+      await createUser(data);
       toast.success('User created successfully');
       setShowCreateDialog(false);
-      setCreateForm(EMPTY_FORM);
+      createForm.reset();
     } catch (err) {
       toast.error(errorMessage(err, 'Failed to create user'));
       console.error(err);
-    } finally {
-      setIsCreating(false);
     }
-  };
+  });
 
   const openEdit = (user: UserListItem) => {
     setEditingUser(user);
-    setEditForm({
+    editForm.reset({
       name: user.name,
-      email: user.email,
-      role: user.role as AssignableUserRole,
+      role: user.role as UpdateUserRequest['role'],
     });
   };
 
-  const handleUpdate = async () => {
+  const handleUpdate = editForm.handleSubmit(async (data) => {
     if (!editingUser) return;
-    setIsEditing(true);
     try {
-      await updateUser(editingUser.id, {
-        name: editForm.name,
-        role: editForm.role,
-      });
+      await updateUser(editingUser.id, data);
       toast.success('User updated successfully');
       setEditingUser(null);
     } catch (err) {
       toast.error(errorMessage(err, 'Failed to update user'));
       console.error(err);
-    } finally {
-      setIsEditing(false);
     }
-  };
+  });
 
   return (
     <div className="space-y-6">
@@ -237,74 +246,90 @@ function OrgAdminUsersView() {
       </Card>
 
       {/* Create User Dialog */}
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+      <Dialog
+        open={showCreateDialog}
+        onOpenChange={(open) => {
+          setShowCreateDialog(open);
+          if (!open) createForm.reset();
+        }}
+      >
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create User</DialogTitle>
-            <DialogDescription>
-              The new user will be added to your organization and can log in via
-              email once created.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="create-name">Name</Label>
-              <Input
-                id="create-name"
-                value={createForm.name}
-                onChange={(e) =>
-                  setCreateForm((f) => ({ ...f, name: e.target.value }))
-                }
-              />
+          <form onSubmit={handleCreate}>
+            <DialogHeader>
+              <DialogTitle>Create User</DialogTitle>
+              <DialogDescription>
+                The new user will be added to your organization and can log in
+                via email once created.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="create-name">Name</Label>
+                <Input
+                  id="create-name"
+                  aria-invalid={!!createForm.formState.errors.name}
+                  {...createForm.register('name')}
+                />
+                <FieldError
+                  message={createForm.formState.errors.name?.message}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="create-email">Email</Label>
+                <Input
+                  id="create-email"
+                  type="email"
+                  aria-invalid={!!createForm.formState.errors.email}
+                  {...createForm.register('email')}
+                />
+                <FieldError
+                  message={createForm.formState.errors.email?.message}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="create-role">Role</Label>
+                <Controller
+                  control={createForm.control}
+                  name="role"
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger id="create-role" className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ROLE_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="create-email">Email</Label>
-              <Input
-                id="create-email"
-                type="email"
-                value={createForm.email}
-                onChange={(e) =>
-                  setCreateForm((f) => ({ ...f, email: e.target.value }))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="create-role">Role</Label>
-              <Select
-                value={createForm.role}
-                onValueChange={(value) =>
-                  setCreateForm((f) => ({
-                    ...f,
-                    role: value as AssignableUserRole,
-                  }))
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowCreateDialog(false)}
+                disabled={createForm.formState.isSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={
+                  createForm.formState.isSubmitting ||
+                  !createForm.formState.isValid
                 }
               >
-                <SelectTrigger id="create-role" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="MEMBER">Member</SelectItem>
-                  <SelectItem value="RECEPTIONIST">Receptionist</SelectItem>
-                  <SelectItem value="ORG_ADMIN">Org Admin</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowCreateDialog(false)}
-              disabled={isCreating}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleCreate}
-              disabled={isCreating || !createForm.name || !createForm.email}
-            >
-              {isCreating ? 'Creating...' : 'Create User'}
-            </Button>
-          </DialogFooter>
+                {createForm.formState.isSubmitting
+                  ? 'Creating...'
+                  : 'Create User'}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -314,60 +339,59 @@ function OrgAdminUsersView() {
         onOpenChange={(open) => !open && setEditingUser(null)}
       >
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit User</DialogTitle>
-            <DialogDescription>
-              Update {editingUser?.email}&apos;s name or role.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-name">Name</Label>
-              <Input
-                id="edit-name"
-                value={editForm.name}
-                onChange={(e) =>
-                  setEditForm((f) => ({ ...f, name: e.target.value }))
-                }
-              />
+          <form onSubmit={handleUpdate}>
+            <DialogHeader>
+              <DialogTitle>Edit User</DialogTitle>
+              <DialogDescription>
+                Update {editingUser?.email}&apos;s name or role.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">Name</Label>
+                <Input
+                  id="edit-name"
+                  aria-invalid={!!editForm.formState.errors.name}
+                  {...editForm.register('name')}
+                />
+                <FieldError message={editForm.formState.errors.name?.message} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-role">Role</Label>
+                <Controller
+                  control={editForm.control}
+                  name="role"
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger id="edit-role" className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ROLE_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-role">Role</Label>
-              <Select
-                value={editForm.role}
-                onValueChange={(value) =>
-                  setEditForm((f) => ({
-                    ...f,
-                    role: value as AssignableUserRole,
-                  }))
-                }
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditingUser(null)}
+                disabled={editForm.formState.isSubmitting}
               >
-                <SelectTrigger id="edit-role" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="MEMBER">Member</SelectItem>
-                  <SelectItem value="RECEPTIONIST">Receptionist</SelectItem>
-                  <SelectItem value="ORG_ADMIN">Org Admin</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setEditingUser(null)}
-              disabled={isEditing}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleUpdate}
-              disabled={isEditing || !editForm.name}
-            >
-              {isEditing ? 'Saving...' : 'Save Changes'}
-            </Button>
-          </DialogFooter>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={editForm.formState.isSubmitting}>
+                {editForm.formState.isSubmitting ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>
@@ -376,22 +400,23 @@ function OrgAdminUsersView() {
 
 function ReceptionistCreateUserView() {
   const createUser = useCreateUser();
-  const [form, setForm] = useState({ name: '', email: '' });
-  const [isCreating, setIsCreating] = useState(false);
 
-  const handleCreate = async () => {
-    setIsCreating(true);
+  const form = useForm<CreateUserRequest>({
+    resolver: zodResolver(createUserRequestSchema),
+    mode: 'onChange',
+    defaultValues: { name: '', email: '', role: 'MEMBER' },
+  });
+
+  const handleCreate = form.handleSubmit(async (data) => {
     try {
-      await createUser({ ...form, role: 'MEMBER' });
+      await createUser({ ...data, role: 'MEMBER' });
       toast.success('User created successfully');
-      setForm({ name: '', email: '' });
+      form.reset();
     } catch (err) {
       toast.error(errorMessage(err, 'Failed to create user'));
       console.error(err);
-    } finally {
-      setIsCreating(false);
     }
-  };
+  });
 
   return (
     <div className="mx-auto max-w-md space-y-6">
@@ -409,33 +434,35 @@ function ReceptionistCreateUserView() {
             New Member
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="rec-name">Name</Label>
-            <Input
-              id="rec-name"
-              value={form.name}
-              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="rec-email">Email</Label>
-            <Input
-              id="rec-email"
-              type="email"
-              value={form.email}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, email: e.target.value }))
-              }
-            />
-          </div>
-          <Button
-            className="w-full"
-            onClick={handleCreate}
-            disabled={isCreating || !form.name || !form.email}
-          >
-            {isCreating ? 'Creating...' : 'Create User'}
-          </Button>
+        <CardContent>
+          <form onSubmit={handleCreate} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="rec-name">Name</Label>
+              <Input
+                id="rec-name"
+                aria-invalid={!!form.formState.errors.name}
+                {...form.register('name')}
+              />
+              <FieldError message={form.formState.errors.name?.message} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="rec-email">Email</Label>
+              <Input
+                id="rec-email"
+                type="email"
+                aria-invalid={!!form.formState.errors.email}
+                {...form.register('email')}
+              />
+              <FieldError message={form.formState.errors.email?.message} />
+            </div>
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={form.formState.isSubmitting || !form.formState.isValid}
+            >
+              {form.formState.isSubmitting ? 'Creating...' : 'Create User'}
+            </Button>
+          </form>
         </CardContent>
       </Card>
     </div>

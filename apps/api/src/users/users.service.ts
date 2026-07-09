@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -57,8 +58,8 @@ export class UsersService {
   /**
    * Create a user within the creator's organization.
    * organizationId is always derived from the creator, never from the request body.
-   * A Receptionist can only ever create MEMBER accounts, regardless of the
-   * role sent in the request (defense in depth on top of the FE not exposing a picker).
+   * A Receptionist may only create MEMBER accounts; any other role is rejected
+   * (defense in depth on top of the FE not exposing a picker).
    */
   async create(
     creator: Pick<User, 'organizationId' | 'role'>,
@@ -70,21 +71,25 @@ export class UsersService {
       );
     }
 
-    const role = creator.role === 'RECEPTIONIST' ? 'MEMBER' : dto.role;
+    if (creator.role === 'RECEPTIONIST' && dto.role !== 'MEMBER') {
+      throw new ForbiddenException(
+        'Receptionists can only create users with the MEMBER role',
+      );
+    }
 
     try {
       const user = await this.prisma.user.create({
         data: {
           name: dto.name,
           email: dto.email,
-          role,
+          role: dto.role,
           organizationId: creator.organizationId,
         },
         select: USER_SELECT,
       });
 
       this.logger.log(
-        `Created user ${user.id} (${role}) in organization ${creator.organizationId}`,
+        `Created user ${user.id} (${user.role}) in organization ${creator.organizationId}`,
       );
 
       return { user };
@@ -103,15 +108,31 @@ export class UsersService {
 
   /**
    * Update a user's name/role. Restricted to users within the caller's own organization.
+   * An admin cannot strip their own ORG_ADMIN role, which would otherwise lock them
+   * out of user management.
    */
   async update(
-    organizationId: string,
+    caller: Pick<User, 'id' | 'organizationId'>,
     targetUserId: string,
     dto: UpdateUserRequest,
   ): Promise<UserActionResponse> {
+    if (dto.name === undefined && dto.role === undefined) {
+      throw new BadRequestException(
+        'At least one field (name or role) must be provided',
+      );
+    }
+
+    if (
+      targetUserId === caller.id &&
+      dto.role !== undefined &&
+      dto.role !== 'ORG_ADMIN'
+    ) {
+      throw new ForbiddenException('You cannot change your own admin role');
+    }
+
     // Tenant-scoped lookup: never read a row belonging to another org.
     const existing = await this.prisma.user.findFirst({
-      where: { id: targetUserId, organizationId },
+      where: { id: targetUserId, organizationId: caller.organizationId },
       select: { id: true },
     });
 
@@ -129,7 +150,7 @@ export class UsersService {
     });
 
     this.logger.log(
-      `Updated user ${user.id} in organization ${organizationId}`,
+      `Updated user ${user.id} in organization ${caller.organizationId}`,
     );
 
     return { user };
