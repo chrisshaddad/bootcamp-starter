@@ -147,6 +147,53 @@ export class ExpensesService {
     this.logger.log(`Expense deleted: ${id}`);
   }
 
+  async getTopNExpenses(
+    organizationId: string,
+    query: ExpenseQuery,
+  ): Promise<ExpenseListResponse> {
+    const { page = 1, limit = 10, categoryId, dateFrom, dateTo, search } = query;
+    const skip = (page - 1) * limit;
+
+    const where: Record<string, unknown> = { organizationId };
+
+    if (categoryId) where.categoryId = categoryId;
+
+    if (dateFrom || dateTo) {
+      where.date = {
+        ...(dateFrom ? { gte: new Date(dateFrom) } : {}),
+        ...(dateTo ? { lte: new Date(dateTo) } : {}),
+      };
+    }
+
+    if (search) {
+      where.description = { contains: search, mode: 'insensitive' };
+    }
+
+    const [expenses, total] = await Promise.all([
+      this.prisma.expense.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { amount: 'desc' },
+        include: {
+          category: true,
+          createdBy: { select: { id: true, name: true, email: true } },
+        },
+      }),
+      this.prisma.expense.count({ where }),
+    ]);
+
+    return {
+      expenses: expenses.map((e) => this.toResponse(e)),
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
   toResponse(e: any): ExpenseResponse {
     return {
       id: e.id,

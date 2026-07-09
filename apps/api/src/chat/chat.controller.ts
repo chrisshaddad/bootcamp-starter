@@ -2,6 +2,8 @@ import { Body, Controller, Post, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import type { UIMessage } from 'ai';
 import { chatRequestSchema, type ChatRequest } from '@repo/contracts';
+import type { User } from '@repo/db';
+import { CurrentUser } from '../auth/decorators';
 import { ZodValidationPipe } from '../common';
 import { ChatService } from './chat.service';
 
@@ -13,6 +15,7 @@ export class ChatController {
   @Post()
   async chat(
     @Body(new ZodValidationPipe(chatRequestSchema)) body: ChatRequest,
+    @CurrentUser() user: User,
     @Res() res: Response,
   ): Promise<void> {
     // The schema validates the envelope; the AI SDK owns the full UIMessage shape,
@@ -20,6 +23,7 @@ export class ChatController {
     await this.chatService.streamChat(
       body.messages as unknown as UIMessage[],
       res,
+      user.organizationId!,
     );
   }
 }

@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import type { Response } from 'express';
 import type { UIMessage } from 'ai';
+import type { ChatRequest } from '@repo/contracts';
 import { ChatController } from './chat.controller';
 import { ChatService } from './chat.service';
 
@@ -27,9 +28,10 @@ describe('ChatController', () => {
       { id: '1', role: 'user', parts: [{ type: 'text', text: 'hi' }] },
     ] as unknown as UIMessage[];
     const res = {} as Response;
+    const user = { organizationId: 'org-123' } as any;
 
-    await controller.chat({ messages }, res);
+    await controller.chat({ messages } as unknown as ChatRequest, user, res);
 
-    expect(streamChat).toHaveBeenCalledWith(messages, res);
+    expect(streamChat).toHaveBeenCalledWith(messages, res, 'org-123');
   });
 });
