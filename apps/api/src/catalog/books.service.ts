@@ -71,7 +71,14 @@ export class BooksService {
     organizationId: string,
     data: BookCreateRequest,
   ): Promise<BookResponse> {
-    const { authorIds = [], categoryIds = [], ...bookFields } = data;
+    const {
+      authorIds: rawAuthorIds = [],
+      categoryIds: rawCategoryIds = [],
+      ...bookFields
+    } = data;
+
+    const authorIds = [...new Set(rawAuthorIds)];
+    const categoryIds = [...new Set(rawCategoryIds)];
 
     await this.validateRelatedEntities(organizationId, {
       publisherId: bookFields.publisherId,
