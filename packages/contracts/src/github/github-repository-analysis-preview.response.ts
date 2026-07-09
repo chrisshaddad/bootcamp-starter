@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { githubRepositoryPreviewResponseSchema } from './github-repository-preview.response';
 
-export const githubTechnologyCategorySchema = z.enum([
+export const githubTechnologyCategories = [
   'LANGUAGE',
   'FRAMEWORK',
   'LIBRARY',
@@ -10,16 +10,22 @@ export const githubTechnologyCategorySchema = z.enum([
   'DEVOPS',
   'TOOL',
   'OTHER',
-]);
+] as const;
 
-export const githubDetectionSignalSchema = z.enum([
+export const githubDetectionSignals = [
   'github-language',
   'package-json',
   'dockerfile',
   'docker-compose',
   'prisma-schema',
   'github-actions',
-]);
+] as const;
+
+export const githubTechnologyCategorySchema = z.enum(
+  githubTechnologyCategories,
+);
+
+export const githubDetectionSignalSchema = z.enum(githubDetectionSignals);
 
 export const githubDetectedTechnologySchema = z.strictObject({
   name: z.string(),

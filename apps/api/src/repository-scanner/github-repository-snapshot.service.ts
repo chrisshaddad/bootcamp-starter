@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import type { GithubRepositoryAnalysisPreviewResponse } from '@repo/contracts';
 import { GithubService } from '../github/github.service';
 import type { ParsedGithubRepository } from '../github/github.types';
@@ -28,6 +28,8 @@ const GITHUB_ANALYSIS_FILE_PATHS = [
 
 @Injectable()
 export class GithubRepositorySnapshotService {
+  private readonly logger = new Logger(GithubRepositorySnapshotService.name);
+
   constructor(private readonly githubService: GithubService) {}
 
   async previewRepositoryAnalysis(
