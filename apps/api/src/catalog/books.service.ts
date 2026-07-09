@@ -144,7 +144,14 @@ export class BooksService {
     });
 
     await this.prisma.$transaction(async (tx) => {
-      await tx.book.update({ where: { id }, data: bookFields });
+      const { count } = await tx.book.updateMany({
+        where: { id, organizationId },
+        data: bookFields,
+      });
+
+      if (count === 0) {
+        throw new NotFoundException(`Book with ID ${id} not found`);
+      }
 
       if (authorIds !== undefined) {
         await tx.bookAuthor.deleteMany({ where: { bookId: id } });
