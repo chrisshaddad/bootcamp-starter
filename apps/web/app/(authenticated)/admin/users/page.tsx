@@ -70,6 +70,18 @@ import {
   TableRow,
 } from '@/components/ui/table';
 
+// Shared entrance animation, matched to the dashboard: sections fade + rise in,
+// staggered via an inline animationDelay so they arrive one after another
+// instead of all at once.
+const ENTER = 'animate-in fade-in-0 slide-in-from-bottom-4 duration-500';
+
+function enterStyle(delayMs: number) {
+  return {
+    animationDelay: `${delayMs}ms`,
+    animationFillMode: 'backwards' as const,
+  };
+}
+
 // Every role is selectable — super admins are managed from this console too.
 // The only user hidden from the list is the signed-in admin (done server-side).
 const SELECTABLE_ROLES = userRoleSchema.options;
@@ -990,7 +1002,10 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
+      <div
+        className={`flex items-start justify-between gap-4 ${ENTER}`}
+        style={enterStyle(0)}
+      >
         <div>
           <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
           <p className="mt-1 text-sm text-gray-500">
@@ -1011,8 +1026,12 @@ export default function UsersPage() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {STAT_TILES.map((tile) => (
-          <Card key={tile.key} className="py-0">
+        {STAT_TILES.map((tile, index) => (
+          <Card
+            key={tile.key}
+            className={`py-0 ${ENTER}`}
+            style={enterStyle(70 + index * 70)}
+          >
             <CardContent className="flex items-center gap-3 p-4">
               <div
                 className={`flex h-10 w-10 items-center justify-center rounded-lg ${tile.iconClass}`}
@@ -1035,7 +1054,10 @@ export default function UsersPage() {
       </div>
 
       {/* Toolbar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div
+        className={`flex flex-col gap-3 sm:flex-row sm:items-center ${ENTER}`}
+        style={enterStyle(360)}
+      >
         <div className="relative w-full sm:flex-1">
           <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <Input
@@ -1076,7 +1098,10 @@ export default function UsersPage() {
       </div>
 
       {/* Table */}
-      <Card className="gap-0 overflow-hidden py-0">
+      <Card
+        className={`gap-0 overflow-hidden py-0 ${ENTER}`}
+        style={enterStyle(420)}
+      >
         {error ? (
           <div className="flex flex-col items-center justify-center py-16">
             <AlertTriangle className="mb-4 h-12 w-12 text-error" />
