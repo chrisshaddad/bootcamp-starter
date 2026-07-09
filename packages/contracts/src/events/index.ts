@@ -3,3 +3,8 @@ export * from './event-detail.response';
 export * from './event-list.response';
 export * from './event-list.query';
 export * from './event-register.response';
+export * from './attendance-status.schema';
+export * from './event-attendee.response';
+export * from './event-attendee-list.response';
+export * from './event-attendance-update.request';
+export * from './event-attendance-update.response';
