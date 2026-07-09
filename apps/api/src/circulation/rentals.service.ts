@@ -123,7 +123,8 @@ export class RentalsService {
       );
     }
 
-    const dueDate = data.dueDate ?? new Date(Date.now() + DEFAULT_LOAN_DAYS * MS_PER_DAY);
+    const dueDate =
+      data.dueDate ?? new Date(Date.now() + DEFAULT_LOAN_DAYS * MS_PER_DAY);
 
     const rentalId = await this.prisma.$transaction(async (tx) => {
       const rental = await tx.rental.create({
@@ -160,7 +161,9 @@ export class RentalsService {
     const returnedAt = new Date();
     const lateDays = Math.max(
       0,
-      Math.ceil((returnedAt.getTime() - existing.dueDate.getTime()) / MS_PER_DAY),
+      Math.ceil(
+        (returnedAt.getTime() - existing.dueDate.getTime()) / MS_PER_DAY,
+      ),
     );
     const fineAmount = (lateDays * LATE_FEE_PER_DAY).toFixed(2);
 

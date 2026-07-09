@@ -61,7 +61,10 @@ export class ReservationsService {
   /**
    * Get a single reservation, scoped to the organization
    */
-  async findOne(organizationId: string, id: string): Promise<ReservationResponse> {
+  async findOne(
+    organizationId: string,
+    id: string,
+  ): Promise<ReservationResponse> {
     const reservation = await this.prisma.reservation.findFirst({
       where: { id, organizationId },
       include: reservationInclude,
@@ -177,8 +180,12 @@ export class ReservationsService {
       'READY_FOR_PICKUP',
     );
 
-    const bookCopy = await this.findReservedCopy(organizationId, existing.bookId);
-    const dueDate = data.dueDate ?? new Date(Date.now() + DEFAULT_LOAN_DAYS * MS_PER_DAY);
+    const bookCopy = await this.findReservedCopy(
+      organizationId,
+      existing.bookId,
+    );
+    const dueDate =
+      data.dueDate ?? new Date(Date.now() + DEFAULT_LOAN_DAYS * MS_PER_DAY);
 
     await this.prisma.$transaction(async (tx) => {
       await tx.rental.create({
@@ -208,7 +215,10 @@ export class ReservationsService {
   /**
    * Cancel a hold, releasing its set-aside copy back to AVAILABLE if one was assigned
    */
-  async cancel(organizationId: string, id: string): Promise<ReservationResponse> {
+  async cancel(
+    organizationId: string,
+    id: string,
+  ): Promise<ReservationResponse> {
     const existing = await this.prisma.reservation.findFirst({
       where: { id, organizationId },
     });
