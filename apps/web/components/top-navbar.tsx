@@ -1,11 +1,9 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
-import { Search, Settings, LogOut, ChevronDown } from 'lucide-react';
+import { Settings, LogOut, ChevronDown } from 'lucide-react';
 import { useAuth, useUser } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -14,14 +12,32 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { SidebarTrigger } from '@/components/ui/sidebar';
+
+/** Design 4 — logo mark: amber tile + document glyph */
+function BrandMark() {
+  return (
+    <span className="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-amber">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path
+          d="M3 2.5h7l3 3V13a.5.5 0 0 1-.5.5H3a.5.5 0 0 1-.5-.5V3a.5.5 0 0 1 .5-.5Z"
+          stroke="var(--amber-contrast)"
+          strokeWidth="1.3"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M9.5 2.5V6h3.5M5 8.5h6M5 10.8h4"
+          stroke="var(--amber-contrast)"
+          strokeWidth="1.3"
+          strokeLinecap="round"
+        />
+      </svg>
+    </span>
+  );
+}
 
 export function TopNavbar() {
   const { user } = useUser({ redirectOnUnauthenticated: false });
   const { logout } = useAuth();
-  const [searchQuery, setSearchQuery] = useState('');
-
-  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
 
   const getInitials = (name?: string | null, email?: string) => {
     if (name) {
@@ -41,44 +57,33 @@ export function TopNavbar() {
   };
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-gray-200 bg-white px-6">
-      {/* Left Section - Sidebar Toggle & Search */}
-      <div className="flex items-center gap-4">
-        <SidebarTrigger className="-ml-1 h-9 w-9 text-gray-500 hover:bg-gray-100 hover:text-gray-900" />
+    <header className="flex items-center gap-3.5 border-b border-border bg-surface px-[18px] py-2.5">
+      {/* Brand */}
+      <Link href="/dashboard" className="flex items-center gap-2.5">
+        <BrandMark />
+        <span className="font-display text-base font-medium text-text-1">
+          Registry
+        </span>
+      </Link>
 
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <Input
-            type="search"
-            placeholder={isSuperAdmin ? 'Search organizations...' : 'Search...'}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-10 w-64 rounded-lg border-gray-200 bg-gray-50 pl-10 text-sm placeholder:text-gray-400 focus-visible:border-primary-base focus-visible:ring-primary-base/20"
-          />
-        </div>
-      </div>
-
-      {/* Right Section - User */}
-      <div className="flex items-center gap-3">
-        {/* User Dropdown */}
+      {/* Right cluster */}
+      <div className="ml-auto flex items-center gap-2.5">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className="flex h-10 items-center gap-2 rounded-lg px-2 hover:bg-gray-100"
+              className="flex h-10 items-center gap-2 rounded-lg px-2 hover:bg-sunken"
             >
-              <Avatar className="h-8 w-8">
+              <Avatar className="h-[30px] w-[30px] rounded-lg">
                 <AvatarImage src={undefined} />
-                <AvatarFallback className="bg-primary-base text-sm font-medium text-white">
+                <AvatarFallback className="rounded-lg bg-amber-soft text-xs font-bold text-amber-strong">
                   {getInitials(user?.name, user?.email)}
                 </AvatarFallback>
               </Avatar>
-              <div className="hidden text-left md:block">
-                <p className="text-sm font-medium text-gray-900">
-                  {getDisplayName()}
-                </p>
-              </div>
-              <ChevronDown className="h-4 w-4 text-gray-500" />
+              <span className="hidden text-sm font-medium text-text-1 md:block">
+                {getDisplayName()}
+              </span>
+              <ChevronDown className="h-4 w-4 text-text-3" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
@@ -91,7 +96,7 @@ export function TopNavbar() {
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => logout()}
-              className="flex items-center gap-2 text-red-600 focus:bg-red-50 focus:text-red-600"
+              className="flex items-center gap-2 text-danger focus:bg-error-light focus:text-danger"
             >
               <LogOut className="h-4 w-4" />
               <span>Logout</span>

@@ -33,7 +33,12 @@ a {
 
 @theme inline {
   /* Font Family */
-  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --font-sans:
+    var(--font-hanken), var(--font-manrope), ui-sans-serif, system-ui,
+    sans-serif;
+  --font-display: var(--font-newsreader), Georgia, 'Times New Roman', serif;
+  --font-mono:
+    var(--font-plex-mono), ui-monospace, 'Cascadia Code', Consolas, monospace;
 
   /* Border Radius */
   --radius-sm: calc(var(--radius) - 4px);
@@ -77,52 +82,71 @@ a {
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  /* Primary Colors (Green) */
-  --color-primary-base: #27a376;
-  --color-primary-400: #55c790;
-  --color-primary-300: #86d7b0;
-  --color-primary-200: #ceefdf;
-  --color-primary-100: #e7f7ef;
+  /* Design 4 — warm graphite + marigold surfaces & ink */
+  --color-canvas: var(--bg-canvas);
+  --color-surface: var(--bg-surface);
+  --color-sunken: var(--bg-sunken);
+  --color-border-strong: var(--border-strong);
+  --color-text-1: var(--text-1);
+  --color-text-2: var(--text-2);
+  --color-text-3: var(--text-3);
 
-  /* Secondary Colors (Yellow) */
-  --color-secondary-base: #ffd023;
-  --color-secondary-400: #ffde65;
-  --color-secondary-300: #ffeca7;
-  --color-secondary-200: #fff6d3;
-  --color-secondary-100: #fffae9;
+  /* Design 4 — marigold accent ramp */
+  --color-amber: var(--amber);
+  --color-amber-strong: var(--amber-strong);
+  --color-amber-soft: var(--amber-soft);
+  --color-amber-contrast: var(--amber-contrast);
+
+  /* Design 4 — teal spine + status */
+  --color-spine: var(--spine);
+  --color-danger: var(--danger);
+
+  /* Primary Colors (marigold) */
+  --color-primary-base: #d9911e;
+  --color-primary-400: #e2a53f;
+  --color-primary-300: #ecc079;
+  --color-primary-200: #f6e4c4;
+  --color-primary-100: #faf0da;
+
+  /* Secondary Colors (teal spine) */
+  --color-secondary-base: #14524c;
+  --color-secondary-400: #2f6f68;
+  --color-secondary-300: #6ba49d;
+  --color-secondary-200: #c3ddd8;
+  --color-secondary-100: #e2efec;
 
   /* Alert - Success */
-  --color-success: #0caf60;
-  --color-success-dark: #0ba259;
-  --color-success-light: #55c790;
+  --color-success: #1f7a52;
+  --color-success-dark: #176241;
+  --color-success-light: #45b586;
 
   /* Alert - Warning */
-  --color-warning: #ffd023;
-  --color-warning-dark: #e6bb20;
-  --color-warning-light: #ffde65;
+  --color-warning: #d9911e;
+  --color-warning-dark: #b8760f;
+  --color-warning-light: #e8a63a;
 
   /* Alert - Error */
-  --color-error: #e03137;
-  --color-error-dark: #c02337;
-  --color-error-light: #ffedec;
+  --color-error: #b23b3b;
+  --color-error-dark: #8f2f2f;
+  --color-error-light: #f3ddd9;
 
-  /* Greyscale */
-  --color-gray-50: #fafafa;
-  --color-gray-100: #f8f8f8;
-  --color-gray-200: #f1f2f4;
-  --color-gray-300: #e9eaec;
-  --color-gray-400: #cbd5e0;
-  --color-gray-500: #a0aec0;
-  --color-gray-600: #687588;
-  --color-gray-700: #323b49;
-  --color-gray-800: #1f2937;
-  --color-gray-900: #111827;
+  /* Greyscale (warm graphite) */
+  --color-gray-50: #faf9f5;
+  --color-gray-100: #f2efe8;
+  --color-gray-200: #e4dfd4;
+  --color-gray-300: #d3ccbd;
+  --color-gray-400: #b8ad9c;
+  --color-gray-500: #9a9082;
+  --color-gray-600: #6b6357;
+  --color-gray-700: #4a443b;
+  --color-gray-800: #2c2823;
+  --color-gray-900: #1a1712;
 
   /* Additional Colors */
   --color-white: #ffffff;
-  --color-orange: #fe964a;
-  --color-blue: #2f78ee;
-  --color-purple: #8c62ff;
+  --color-orange: #d9911e;
+  --color-blue: #14524c;
+  --color-purple: #b8760f;
 
   /* Typography - Font Sizes */
   --font-size-xs: 0.625rem; /* 10px */
@@ -147,72 +171,104 @@ a {
 :root {
   --radius: 0.625rem;
 
-  /* Light Theme - Updated with Humanline Design System */
-  --background: #ffffff;
-  --foreground: #111827;
-  --card: #ffffff;
-  --card-foreground: #111827;
-  --popover: #ffffff;
-  --popover-foreground: #111827;
-  --primary: #27a376;
-  --primary-foreground: #ffffff;
-  --secondary: #ffd023;
-  --secondary-foreground: #111827;
-  --muted: #f1f2f4;
-  --muted-foreground: #687588;
-  --accent: #e7f7ef;
-  --accent-foreground: #27a376;
-  --destructive: #e03137;
-  --border: #e9eaec;
-  --input: #e9eaec;
-  --ring: #27a376;
-  --chart-1: #27a376;
-  --chart-2: #ffd023;
-  --chart-3: #2f78ee;
-  --chart-4: #8c62ff;
-  --chart-5: #fe964a;
-  --sidebar: #fafafa;
-  --sidebar-foreground: #111827;
-  --sidebar-primary: #27a376;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #e7f7ef;
-  --sidebar-accent-foreground: #27a376;
-  --sidebar-border: #e9eaec;
-  --sidebar-ring: #27a376;
+  /* Light Theme — Design 4 "Horizontal Deck" (warm graphite + marigold) */
+  --background: #f7f5f1; /* bg-canvas */
+  --foreground: #1a1712; /* text-1 */
+  --card: #fffdf9; /* bg-surface */
+  --card-foreground: #1a1712;
+  --popover: #fffdf9;
+  --popover-foreground: #1a1712;
+  --primary: #d9911e; /* amber */
+  --primary-foreground: #241a08; /* amber-contrast */
+  --secondary: #f2efe8; /* bg-sunken */
+  --secondary-foreground: #1a1712;
+  --muted: #f2efe8;
+  --muted-foreground: #6b6357; /* text-2 */
+  --accent: #f6e4c4; /* amber-soft */
+  --accent-foreground: #b8760f; /* amber-strong */
+  --destructive: #b23b3b; /* danger */
+  --border: #e4dfd4;
+  --input: #e4dfd4;
+  --ring: #d9911e;
+  --chart-1: #d9911e;
+  --chart-2: #14524c;
+  --chart-3: #1f7a52;
+  --chart-4: #b23b3b;
+  --chart-5: #6b6357;
+  --sidebar: #fffdf9;
+  --sidebar-foreground: #1a1712;
+  --sidebar-primary: #d9911e;
+  --sidebar-primary-foreground: #241a08;
+  --sidebar-accent: #f6e4c4;
+  --sidebar-accent-foreground: #b8760f;
+  --sidebar-border: #e4dfd4;
+  --sidebar-ring: #d9911e;
+
+  /* Design-4 raw tokens */
+  --bg-canvas: #f7f5f1;
+  --bg-surface: #fffdf9;
+  --bg-sunken: #f2efe8;
+  --border-strong: #d3ccbd;
+  --text-1: #1a1712;
+  --text-2: #6b6357;
+  --text-3: #9a9082;
+  --amber: #d9911e;
+  --amber-strong: #b8760f;
+  --amber-soft: #f6e4c4;
+  --amber-contrast: #241a08;
+  --spine: #14524c;
+  --danger: #b23b3b;
+  --grid-line: rgba(26, 23, 18, 0.045);
 }
 
 .dark {
-  --background: #111827;
-  --foreground: #fafafa;
-  --card: #1f2937;
-  --card-foreground: #fafafa;
-  --popover: #1f2937;
-  --popover-foreground: #fafafa;
-  --primary: #27a376;
-  --primary-foreground: #ffffff;
-  --secondary: #ffd023;
-  --secondary-foreground: #111827;
-  --muted: #323b49;
-  --muted-foreground: #a0aec0;
-  --accent: #0ba259;
-  --accent-foreground: #ffffff;
-  --destructive: #e03137;
-  --border: #323b49;
-  --input: #323b49;
-  --ring: #27a376;
-  --chart-1: #55c790;
-  --chart-2: #ffde65;
-  --chart-3: #2f78ee;
-  --chart-4: #8c62ff;
-  --chart-5: #fe964a;
-  --sidebar: #1f2937;
-  --sidebar-foreground: #fafafa;
-  --sidebar-primary: #27a376;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #323b49;
-  --sidebar-accent-foreground: #55c790;
-  --sidebar-border: #323b49;
-  --sidebar-ring: #27a376;
+  --background: #141210; /* bg-canvas */
+  --foreground: #f2ede4; /* text-1 */
+  --card: #1d1a16; /* bg-surface */
+  --card-foreground: #f2ede4;
+  --popover: #1d1a16;
+  --popover-foreground: #f2ede4;
+  --primary: #e8a63a; /* amber */
+  --primary-foreground: #1a1305; /* amber-contrast */
+  --secondary: #100e0c; /* bg-sunken */
+  --secondary-foreground: #f2ede4;
+  --muted: #100e0c;
+  --muted-foreground: #a89e8f; /* text-2 */
+  --accent: #3a2f18; /* amber-soft */
+  --accent-foreground: #f0bc5c; /* amber-strong */
+  --destructive: #e0716f; /* danger */
+  --border: #2c2823;
+  --input: #2c2823;
+  --ring: #e8a63a;
+  --chart-1: #e8a63a;
+  --chart-2: #4fb3a6;
+  --chart-3: #45b586;
+  --chart-4: #e0716f;
+  --chart-5: #a89e8f;
+  --sidebar: #1d1a16;
+  --sidebar-foreground: #f2ede4;
+  --sidebar-primary: #e8a63a;
+  --sidebar-primary-foreground: #1a1305;
+  --sidebar-accent: #3a2f18;
+  --sidebar-accent-foreground: #f0bc5c;
+  --sidebar-border: #2c2823;
+  --sidebar-ring: #e8a63a;
+
+  /* Design-4 raw tokens */
+  --bg-canvas: #141210;
+  --bg-surface: #1d1a16;
+  --bg-sunken: #100e0c;
+  --border-strong: #3a352d;
+  --text-1: #f2ede4;
+  --text-2: #a89e8f;
+  --text-3: #756c5e;
+  --amber: #e8a63a;
+  --amber-strong: #f0bc5c;
+  --amber-soft: #3a2f18;
+  --amber-contrast: #1a1305;
+  --spine: #4fb3a6;
+  --danger: #e0716f;
+  --grid-line: rgba(255, 250, 240, 0.035);
 }
 
 @layer base {
@@ -221,6 +277,16 @@ a {
   }
   body {
     @apply bg-background text-foreground;
+    /* faint 26px graphite grid — Design 4 canvas */
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 26px 26px;
+  }
+
+  ::selection {
+    background: var(--amber);
+    color: var(--amber-contrast);
   }
 
   /* Heading Styles - Manrope Bold */

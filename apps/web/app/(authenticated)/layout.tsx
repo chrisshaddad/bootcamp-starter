@@ -1,8 +1,7 @@
 'use client';
 
-import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
-import { AppSidebar } from '@/components/app-sidebar';
 import { TopNavbar } from '@/components/top-navbar';
+import { TabNav } from '@/components/tab-nav';
 
 export default function DashboardLayout({
   children,
@@ -10,12 +9,10 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <TopNavbar />
-        <main className="flex-1 bg-gray-50 p-6">{children}</main>
-      </SidebarInset>
-    </SidebarProvider>
+    <div className="min-h-screen bg-background">
+      <TopNavbar />
+      <TabNav />
+      <main className="mx-auto max-w-[1240px] px-5 py-8">{children}</main>
+    </div>
   );
 }

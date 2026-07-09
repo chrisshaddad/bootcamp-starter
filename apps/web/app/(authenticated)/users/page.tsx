@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { useUser } from '@/hooks/use-auth';
 import { useUsers, useCreateUser, useUpdateUser } from '@/hooks/use-users';
+import { cn } from '@/lib/utils';
 import {
   Table,
   TableBody,
@@ -34,7 +35,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { UserPlus, Users, ShieldX } from 'lucide-react';
+import { UserPlus, ShieldX, Search } from 'lucide-react';
 import { ApiError } from '@/lib/api';
 import {
   createUserRequestSchema,
@@ -49,34 +50,96 @@ function errorMessage(err: unknown, fallback: string): string {
 }
 
 const ROLE_LABELS: Record<string, string> = {
+  SUPER_ADMIN: 'Super Admin',
   ORG_ADMIN: 'Org Admin',
   RECEPTIONIST: 'Receptionist',
   MEMBER: 'Member',
 };
 
-// Uses design tokens (blue/purple/gray) from globals.css rather than raw Tailwind palette.
-const ROLE_COLORS: Record<string, string> = {
-  ORG_ADMIN: 'bg-purple/10 text-purple',
-  RECEPTIONIST: 'bg-blue/10 text-blue',
-  MEMBER: 'bg-gray-200 text-gray-700',
+// Design 4 role badges — tinted pill + tick square, keyed off palette tokens.
+const ROLE_BADGE: Record<string, { cls: string; tick: string }> = {
+  SUPER_ADMIN: { cls: 'bg-spine/15 text-spine border-spine/30', tick: 'bg-spine' },
+  ORG_ADMIN: {
+    cls: 'bg-sunken text-text-1 border-border-strong',
+    tick: 'bg-text-1',
+  },
+  RECEPTIONIST: {
+    cls: 'bg-amber-soft text-amber-strong border-amber/35',
+    tick: 'bg-amber',
+  },
+  MEMBER: { cls: 'bg-transparent text-text-2 border-border', tick: 'bg-text-3' },
 };
 
 function RoleBadge({ role }: { role: string }) {
+  const v = ROLE_BADGE[role] ?? ROLE_BADGE.MEMBER!;
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${ROLE_COLORS[role] || 'bg-gray-200 text-gray-700'}`}
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[10.5px] font-bold',
+        v.cls,
+      )}
     >
-      {ROLE_LABELS[role] || role}
+      <span className={cn('h-1.5 w-1.5 rounded-[1.5px]', v.tick)} />
+      {ROLE_LABELS[role] ?? role}
     </span>
   );
+}
+
+// Active when confirmed, otherwise still an outstanding invite.
+function StatusPill({ confirmed }: { confirmed: boolean }) {
+  if (confirmed) {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-success">
+        <span className="h-[7px] w-[7px] rounded-full bg-success ring-[3px] ring-success/20" />
+        Active
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-amber-strong">
+      <span className="h-[7px] w-[7px] rounded-full bg-amber ring-[3px] ring-amber/25" />
+      Invited
+    </span>
+  );
+}
+
+// Soft per-person avatar tints from the mockup, chosen stably by id.
+const AVATAR_TINTS = [
+  'bg-[#f6e4c4] text-[#b8760f]',
+  'bg-[#d8e9e3] text-[#14524c]',
+  'bg-[#e7e2d6] text-[#6b6357]',
+  'bg-[#f3ddd9] text-[#b23b3b]',
+  'bg-[#e0ece6] text-[#1f7a52]',
+];
+
+function tintFor(id: string): string {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return AVATAR_TINTS[h % AVATAR_TINTS.length]!;
+}
+
+function initials(name: string, email: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2 && parts[0] && parts[1]) {
+    return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase();
+  }
+  if (name.trim()) return name.trim().charAt(0).toUpperCase();
+  return email.charAt(0).toUpperCase();
+}
+
+function fmtDate(value: string | Date): string {
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? '—' : d.toISOString().slice(0, 10);
 }
 
 function ForbiddenPage() {
   return (
     <div className="flex flex-col items-center justify-center py-20">
-      <ShieldX className="h-16 w-16 text-error mb-4" />
-      <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
-      <p className="text-gray-500 text-center max-w-md">
+      <ShieldX className="mb-4 h-16 w-16 text-danger" />
+      <h1 className="mb-2 font-display text-2xl font-medium text-text-1">
+        Access Denied
+      </h1>
+      <p className="max-w-md text-center text-text-2">
         You don&apos;t have permission to access this page.
       </p>
     </div>
@@ -105,7 +168,20 @@ const ROLE_OPTIONS = [
 
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
-  return <p className="text-sm text-error">{message}</p>;
+  return <p className="text-sm text-danger">{message}</p>;
+}
+
+function Kpi({ label, value }: { label: string; value: number | string }) {
+  return (
+    <div className="rounded-[11px] border border-border bg-surface px-[15px] py-3 shadow-sm">
+      <div className="text-[10.5px] font-bold uppercase tracking-[0.05em] text-text-3">
+        {label}
+      </div>
+      <div className="mt-[3px] font-display text-[26px] font-medium text-text-1">
+        {value}
+      </div>
+    </div>
+  );
 }
 
 function OrgAdminUsersView() {
@@ -115,6 +191,7 @@ function OrgAdminUsersView() {
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingUser, setEditingUser] = useState<UserListItem | null>(null);
+  const [search, setSearch] = useState('');
 
   const createForm = useForm<CreateUserRequest>({
     resolver: zodResolver(createUserRequestSchema),
@@ -127,6 +204,21 @@ function OrgAdminUsersView() {
     mode: 'onChange',
     defaultValues: { name: '', role: 'MEMBER' },
   });
+
+  const activeCount = useMemo(
+    () => (users ?? []).filter((u) => u.isConfirmed).length,
+    [users],
+  );
+  const pendingCount = (users?.length ?? 0) - activeCount;
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return users ?? [];
+    return (users ?? []).filter(
+      (u) =>
+        u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q),
+    );
+  }, [users, search]);
 
   const handleCreate = createForm.handleSubmit(async (data) => {
     try {
@@ -162,11 +254,14 @@ function OrgAdminUsersView() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      {/* Page head */}
+      <div className="flex items-end justify-between gap-3.5">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Users</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Manage users in your organization
+          <h1 className="font-display text-[26px] font-medium text-text-1">
+            Users
+          </h1>
+          <p className="mt-0.5 text-[13px] text-text-2">
+            Every person on record in your organization.
           </p>
         </div>
         <Button className="gap-2" onClick={() => setShowCreateDialog(true)}>
@@ -175,75 +270,118 @@ function OrgAdminUsersView() {
         </Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Organization Users
-            {total !== undefined && (
-              <span className="text-sm font-normal text-gray-500">
-                ({total} total)
-              </span>
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-2">
-              {[...Array(5)].map((_, i) => (
-                <Skeleton key={i} className="h-14 w-full" />
-              ))}
-            </div>
-          ) : error ? (
-            <div className="py-10 text-center text-error">
-              Failed to load users
-            </div>
-          ) : !users?.length ? (
-            <div className="py-10 text-center text-gray-500">
-              No users found. Create your first user above.
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Confirmed</TableHead>
-                  <TableHead />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium text-gray-900">
-                      {user.name}
-                    </TableCell>
-                    <TableCell className="text-gray-600">
-                      {user.email}
-                    </TableCell>
-                    <TableCell>
-                      <RoleBadge role={user.role} />
-                    </TableCell>
-                    <TableCell className="text-gray-500 text-sm">
-                      {user.isConfirmed ? 'Yes' : 'Pending'}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openEdit(user)}
+      {/* KPI strip */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <Kpi label="On record" value={total ?? users?.length ?? 0} />
+        <Kpi label="Active" value={activeCount} />
+        <Kpi label="Pending" value={pendingCount} />
+      </div>
+
+      {/* Deck table */}
+      <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
+        {/* toolbar */}
+        <div className="flex items-center gap-2 border-b border-border px-3.5 py-2.5">
+          <div className="flex min-w-[190px] items-center gap-2 rounded-lg border border-border bg-canvas px-2.5 py-1.5 text-text-3 focus-within:border-border-strong">
+            <Search className="h-3.5 w-3.5" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search users"
+              className="w-full bg-transparent text-[12.5px] text-text-1 outline-none placeholder:text-text-3"
+            />
+          </div>
+        </div>
+
+        {isLoading ? (
+          <div className="space-y-2 p-4">
+            {[...Array(5)].map((_, i) => (
+              <Skeleton key={i} className="h-12 w-full" />
+            ))}
+          </div>
+        ) : error ? (
+          <div className="py-10 text-center text-danger">
+            Failed to load users
+          </div>
+        ) : !users?.length ? (
+          <div className="py-10 text-center text-text-2">
+            No users found. Create your first user above.
+          </div>
+        ) : !filtered.length ? (
+          <div className="py-10 text-center text-text-2">
+            No users match “{search}”.
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="h-auto w-10 border-r border-border bg-sunken px-3.5 py-2.5 text-right text-[10px] font-bold uppercase tracking-[0.06em] text-text-3">
+                  #
+                </TableHead>
+                <TableHead className="h-auto bg-sunken px-3.5 py-2.5 text-[10px] font-bold uppercase tracking-[0.06em] text-text-3">
+                  Name
+                </TableHead>
+                <TableHead className="h-auto bg-sunken px-3.5 py-2.5 text-[10px] font-bold uppercase tracking-[0.06em] text-text-3">
+                  Role
+                </TableHead>
+                <TableHead className="h-auto bg-sunken px-3.5 py-2.5 text-[10px] font-bold uppercase tracking-[0.06em] text-text-3">
+                  Status
+                </TableHead>
+                <TableHead className="h-auto bg-sunken px-3.5 py-2.5 text-[10px] font-bold uppercase tracking-[0.06em] text-text-3">
+                  Added
+                </TableHead>
+                <TableHead className="h-auto bg-sunken px-3.5 py-2.5" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((user, i) => (
+                <TableRow key={user.id} className="hover:bg-amber/5">
+                  <TableCell className="w-10 border-r border-border px-3.5 py-2.5 text-right font-mono text-[11px] text-text-3">
+                    {String(i + 1).padStart(3, '0')}
+                  </TableCell>
+                  <TableCell className="px-3.5 py-2.5">
+                    <div className="flex items-center gap-2.5">
+                      <span
+                        className={cn(
+                          'flex h-7 w-7 items-center justify-center rounded-lg text-[10px] font-bold',
+                          tintFor(user.id),
+                        )}
                       >
-                        Edit
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                        {initials(user.name, user.email)}
+                      </span>
+                      <div>
+                        <div className="text-[13px] font-semibold text-text-1">
+                          {user.name}
+                        </div>
+                        <div className="font-mono text-[11px] text-text-3">
+                          {user.email}
+                        </div>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="px-3.5 py-2.5">
+                    <RoleBadge role={user.role} />
+                  </TableCell>
+                  <TableCell className="px-3.5 py-2.5">
+                    <StatusPill confirmed={user.isConfirmed} />
+                  </TableCell>
+                  <TableCell className="px-3.5 py-2.5 font-mono text-[12px] text-text-2">
+                    {fmtDate(user.createdAt)}
+                  </TableCell>
+                  <TableCell className="px-3.5 py-2.5 text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => openEdit(user)}
+                    >
+                      Edit
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </div>
 
       {/* Create User Dialog */}
       <Dialog
@@ -421,8 +559,10 @@ function ReceptionistCreateUserView() {
   return (
     <div className="mx-auto max-w-md space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Create User</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <h1 className="font-display text-[26px] font-medium text-text-1">
+          Create User
+        </h1>
+        <p className="mt-0.5 text-[13px] text-text-2">
           Add a new member to your organization.
         </p>
       </div>

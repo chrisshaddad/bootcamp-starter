@@ -44,7 +44,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-white">
+    <div className="flex min-h-screen bg-background">
       {/* Left Panel - Hero Section */}
       <div className="relative hidden w-1/2 bg-gray-900 lg:flex lg:flex-col lg:justify-end">
         {/* Background Image */}
@@ -71,7 +71,7 @@ export default function LoginPage() {
           </div>
 
           {/* Headline */}
-          <h1 className="text-5xl font-bold leading-[1.2] tracking-[-0.5px] text-white">
+          <h1 className="font-display text-5xl font-medium leading-[1.2] tracking-[-0.5px] text-white">
             Build your next project on a solid foundation.
           </h1>
 
@@ -88,7 +88,7 @@ export default function LoginPage() {
         <div className="flex flex-1 items-center justify-center px-6 py-12">
           <div className="flex w-full max-w-120 flex-col items-center gap-8">
             {/* Title */}
-            <h2 className="w-full text-center text-2xl font-bold leading-[1.3] text-gray-900">
+            <h2 className="w-full text-center font-display text-2xl font-medium leading-[1.3] text-text-1">
               Login first to your account
             </h2>
 

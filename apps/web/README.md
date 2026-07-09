@@ -36,8 +36,9 @@ app/
   login/            # Public login
 components/
   ui/               # shadcn primitives (don't hand-edit)
-  app-sidebar.tsx
-  top-navbar.tsx
+  top-navbar.tsx    # Top bar: brand + account menu
+  tab-nav.tsx       # Role-aware horizontal navigation
+  status-badge.tsx  # Shared status pill
 hooks/              # SWR data hooks (one per resource)
 lib/                # api.ts, swr-provider, utils
 proxy.ts            # Auth proxy (cookie checks + redirects)

@@ -18,10 +18,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Building2, ShieldX } from 'lucide-react';
+import { StatusBadge } from '@/components/status-badge';
+import { ShieldX } from 'lucide-react';
 import { useState } from 'react';
+import { cn } from '@/lib/utils';
 import type { OrganizationStatus } from '@repo/contracts';
 
 type StatusFilter =
@@ -32,38 +33,22 @@ type StatusFilter =
   | 'SUSPENDED'
   | 'INACTIVE';
 
-const STATUS_LABELS: Record<string, string> = {
-  PENDING: 'Pending',
-  ACTIVE: 'Active',
-  REJECTED: 'Rejected',
-  SUSPENDED: 'Suspended',
-  INACTIVE: 'Inactive',
-};
-
-const STATUS_COLORS: Record<string, string> = {
-  PENDING: 'bg-yellow-100 text-yellow-800',
-  ACTIVE: 'bg-green-100 text-green-800',
-  REJECTED: 'bg-red-100 text-red-800',
-  SUSPENDED: 'bg-orange-100 text-orange-800',
-  INACTIVE: 'bg-gray-100 text-gray-800',
-};
-
-function StatusBadge({ status }: { status: string }) {
-  return (
-    <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[status] || 'bg-gray-100 text-gray-800'}`}
-    >
-      {STATUS_LABELS[status] || status}
-    </span>
-  );
+function orgInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2 && parts[0] && parts[1]) {
+    return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase();
+  }
+  return name.trim().slice(0, 2).toUpperCase() || 'OR';
 }
 
 function ForbiddenPage() {
   return (
     <div className="flex flex-col items-center justify-center py-20">
-      <ShieldX className="h-16 w-16 text-red-400 mb-4" />
-      <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
-      <p className="text-gray-500 text-center max-w-md">
+      <ShieldX className="mb-4 h-16 w-16 text-danger" />
+      <h1 className="mb-2 font-display text-2xl font-medium text-text-1">
+        Access Denied
+      </h1>
+      <p className="max-w-md text-center text-text-2">
         You don&apos;t have permission to access this page. Only Super Admins
         can manage organizations.
       </p>
@@ -114,20 +99,37 @@ export default function OrganizationsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      {/* Page head */}
+      <div className="flex items-end justify-between gap-3.5">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Organizations</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Manage organization registrations and approvals
+          <h1 className="font-display text-[26px] font-medium text-text-1">
+            Organizations
+          </h1>
+          <p className="mt-0.5 text-[13px] text-text-2">
+            Review registrations and manage approvals across the platform.
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        {total !== undefined && (
+          <div className="rounded-[11px] border border-border bg-surface px-[15px] py-3 shadow-sm">
+            <div className="text-[10.5px] font-bold uppercase tracking-[0.05em] text-text-3">
+              On record
+            </div>
+            <div className="mt-[3px] font-display text-[26px] font-medium text-text-1">
+              {total}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Deck table */}
+      <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
+        {/* toolbar */}
+        <div className="flex items-center gap-2 border-b border-border px-3.5 py-2.5">
           <Select
             value={statusFilter}
             onValueChange={(value) => setStatusFilter(value as StatusFilter)}
           >
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="h-8 w-44 text-[12.5px]">
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
             <SelectContent>
@@ -140,92 +142,100 @@ export default function OrganizationsPage() {
             </SelectContent>
           </Select>
         </div>
-      </div>
 
-      {/* Organizations Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Building2 className="h-5 w-5" />
-            Organizations
-            {total !== undefined && (
-              <span className="text-sm font-normal text-gray-500">
-                ({total} total)
-              </span>
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {orgsLoading ? (
-            <div className="space-y-2">
-              {[...Array(5)].map((_, i) => (
-                <Skeleton key={i} className="h-14 w-full" />
-              ))}
-            </div>
-          ) : error ? (
-            <div className="py-10 text-center text-red-500">
-              Failed to load organizations
-            </div>
-          ) : !organizations?.length ? (
-            <div className="py-10 text-center text-gray-500">
-              No organizations found
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Organization</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Created By</TableHead>
-                  <TableHead>Members</TableHead>
-                  <TableHead>Registered</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {organizations.map((org) => (
-                  <TableRow
-                    key={org.id}
-                    className="cursor-pointer"
-                    onClick={() => router.push(`/organizations/${org.id}`)}
-                  >
-                    <TableCell>
+        {orgsLoading ? (
+          <div className="space-y-2 p-4">
+            {[...Array(5)].map((_, i) => (
+              <Skeleton key={i} className="h-12 w-full" />
+            ))}
+          </div>
+        ) : error ? (
+          <div className="py-10 text-center text-danger">
+            Failed to load organizations
+          </div>
+        ) : !organizations?.length ? (
+          <div className="py-10 text-center text-text-2">
+            No organizations found
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="h-auto w-10 border-r border-border bg-sunken px-3.5 py-2.5 text-right text-[10px] font-bold uppercase tracking-[0.06em] text-text-3">
+                  #
+                </TableHead>
+                <TableHead className="h-auto bg-sunken px-3.5 py-2.5 text-[10px] font-bold uppercase tracking-[0.06em] text-text-3">
+                  Organization
+                </TableHead>
+                <TableHead className="h-auto bg-sunken px-3.5 py-2.5 text-[10px] font-bold uppercase tracking-[0.06em] text-text-3">
+                  Status
+                </TableHead>
+                <TableHead className="h-auto bg-sunken px-3.5 py-2.5 text-[10px] font-bold uppercase tracking-[0.06em] text-text-3">
+                  Created By
+                </TableHead>
+                <TableHead className="h-auto bg-sunken px-3.5 py-2.5 text-[10px] font-bold uppercase tracking-[0.06em] text-text-3">
+                  Members
+                </TableHead>
+                <TableHead className="h-auto bg-sunken px-3.5 py-2.5 text-[10px] font-bold uppercase tracking-[0.06em] text-text-3">
+                  Registered
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {organizations.map((org, i) => (
+                <TableRow
+                  key={org.id}
+                  className="cursor-pointer hover:bg-amber/5"
+                  onClick={() => router.push(`/organizations/${org.id}`)}
+                >
+                  <TableCell className="w-10 border-r border-border px-3.5 py-2.5 text-right font-mono text-[11px] text-text-3">
+                    {String(i + 1).padStart(3, '0')}
+                  </TableCell>
+                  <TableCell className="px-3.5 py-2.5">
+                    <div className="flex items-center gap-2.5">
+                      <span
+                        className={cn(
+                          'flex h-7 w-7 items-center justify-center rounded-lg text-[10px] font-bold text-white',
+                          'bg-spine',
+                        )}
+                      >
+                        {orgInitials(org.name)}
+                      </span>
                       <div>
-                        <div className="font-medium text-gray-900">
+                        <div className="text-[13px] font-semibold text-text-1">
                           {org.name}
                         </div>
                         {org.website && (
-                          <div className="text-sm text-gray-500">
+                          <div className="font-mono text-[11px] text-text-3">
                             {org.website}
                           </div>
                         )}
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge status={org.status} />
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <div className="text-sm text-gray-900">
-                          {org.createdBy.name}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {org.createdBy.email}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-gray-600">
-                      {org._count.users}
-                    </TableCell>
-                    <TableCell className="text-gray-500 text-sm">
-                      {new Date(org.createdAt).toLocaleDateString()}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                    </div>
+                  </TableCell>
+                  <TableCell className="px-3.5 py-2.5">
+                    <StatusBadge status={org.status} />
+                  </TableCell>
+                  <TableCell className="px-3.5 py-2.5">
+                    <div className="text-[13px] font-semibold text-text-1">
+                      {org.createdBy.name}
+                    </div>
+                    <div className="font-mono text-[11px] text-text-3">
+                      {org.createdBy.email}
+                    </div>
+                  </TableCell>
+                  <TableCell className="px-3.5 py-2.5 text-[13px] text-text-2">
+                    {org._count.users}
+                  </TableCell>
+                  <TableCell className="px-3.5 py-2.5 font-mono text-[12px] text-text-2">
+                    {new Date(org.createdAt).toLocaleDateString()}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </div>
     </div>
   );
 }

@@ -19,35 +19,40 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">
+        <h1 className="font-display text-[26px] font-medium text-text-1">
           Welcome,{' '}
           {user?.profile?.firstName ||
             user?.name ||
             user?.email?.split('@')[0] ||
             'User'}
-          !
         </h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <p className="mt-0.5 text-[13px] text-text-2">
           You&apos;re signed in. Start building your project.
         </p>
       </div>
 
       {user && (
-        <Card className="border-gray-200 bg-white shadow-sm">
+        <Card className="border-border bg-card shadow-sm">
           <CardHeader>
-            <CardTitle className="text-lg font-semibold text-gray-900">
+            <CardTitle className="font-display text-lg font-medium text-text-1">
               Your Profile
             </CardTitle>
           </CardHeader>
           <CardContent>
             <dl className="grid gap-4 sm:grid-cols-3">
               <div>
-                <dt className="text-sm font-medium text-gray-500">Email</dt>
-                <dd className="mt-1 text-sm text-gray-900">{user.email}</dd>
+                <dt className="text-[10.5px] font-bold uppercase tracking-[0.05em] text-text-3">
+                  Email
+                </dt>
+                <dd className="mt-1 font-mono text-[13px] text-text-1">
+                  {user.email}
+                </dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-gray-500">Role</dt>
-                <dd className="mt-1 text-sm capitalize text-gray-900">
+                <dt className="text-[10.5px] font-bold uppercase tracking-[0.05em] text-text-3">
+                  Role
+                </dt>
+                <dd className="mt-1 text-[13px] capitalize text-text-1">
                   {user.role.toLowerCase().replace('_', ' ')}
                 </dd>
               </div>

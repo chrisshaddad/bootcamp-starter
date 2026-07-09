@@ -16,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { StatusBadge } from '@/components/status-badge';
 import {
   ArrowLeft,
   Building2,
@@ -29,38 +30,19 @@ import {
   Clock,
 } from 'lucide-react';
 
+// Detail page uses a slightly fuller label for the pending state.
 const STATUS_LABELS: Record<string, string> = {
   PENDING: 'Pending Approval',
-  ACTIVE: 'Active',
-  REJECTED: 'Rejected',
-  SUSPENDED: 'Suspended',
-  INACTIVE: 'Inactive',
 };
-
-const STATUS_COLORS: Record<string, string> = {
-  PENDING: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  ACTIVE: 'bg-green-100 text-green-800 border-green-200',
-  REJECTED: 'bg-red-100 text-red-800 border-red-200',
-  SUSPENDED: 'bg-orange-100 text-orange-800 border-orange-200',
-  INACTIVE: 'bg-gray-100 text-gray-800 border-gray-200',
-};
-
-function StatusBadge({ status }: { status: string }) {
-  return (
-    <span
-      className={`inline-flex items-center rounded-full border px-3 py-1 text-sm font-medium ${STATUS_COLORS[status] || 'bg-gray-100 text-gray-800'}`}
-    >
-      {STATUS_LABELS[status] || status}
-    </span>
-  );
-}
 
 function ForbiddenPage() {
   return (
     <div className="flex flex-col items-center justify-center py-20">
-      <ShieldX className="h-16 w-16 text-red-400 mb-4" />
-      <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
-      <p className="text-gray-500 text-center max-w-md">
+      <ShieldX className="mb-4 h-16 w-16 text-danger" />
+      <h1 className="mb-2 font-display text-2xl font-medium text-text-1">
+        Access Denied
+      </h1>
+      <p className="max-w-md text-center text-text-2">
         You don&apos;t have permission to access this page. Only Super Admins
         can manage organizations.
       </p>
@@ -91,11 +73,11 @@ function InfoRow({
   value: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start gap-3 py-3 border-b border-gray-100 last:border-0">
-      <Icon className="h-5 w-5 text-gray-400 mt-0.5 shrink-0" />
+    <div className="flex items-start gap-3 border-b border-border py-3 last:border-0">
+      <Icon className="mt-0.5 h-5 w-5 shrink-0 text-text-3" />
       <div className="min-w-0 flex-1">
-        <div className="text-sm text-gray-500">{label}</div>
-        <div className="text-sm font-medium text-gray-900 mt-0.5">{value}</div>
+        <div className="text-sm text-text-2">{label}</div>
+        <div className="mt-0.5 text-sm font-medium text-text-1">{value}</div>
       </div>
     </div>
   );
@@ -161,7 +143,7 @@ export default function OrganizationDetailPage() {
   if (error) {
     return (
       <div className="py-10 text-center">
-        <div className="text-red-500 mb-4">Failed to load organization</div>
+        <div className="mb-4 text-danger">Failed to load organization</div>
         <Button variant="outline" onClick={() => router.back()}>
           Go Back
         </Button>
@@ -172,7 +154,7 @@ export default function OrganizationDetailPage() {
   if (!org) {
     return (
       <div className="py-10 text-center">
-        <div className="text-gray-500 mb-4">Organization not found</div>
+        <div className="mb-4 text-text-2">Organization not found</div>
         <Button variant="outline" onClick={() => router.back()}>
           Go Back
         </Button>
@@ -198,9 +180,15 @@ export default function OrganizationDetailPage() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{org.name}</h1>
+          <h1 className="font-display text-[26px] font-medium text-text-1">
+            {org.name}
+          </h1>
           <div className="mt-2">
-            <StatusBadge status={org.status} />
+            <StatusBadge
+              status={org.status}
+              label={STATUS_LABELS[org.status]}
+              size="md"
+            />
           </div>
         </div>
 
@@ -209,14 +197,14 @@ export default function OrganizationDetailPage() {
           <div className="flex gap-3">
             <Button
               variant="outline"
-              className="gap-2 text-red-600 border-red-200 hover:bg-red-50"
+              className="gap-2 border-danger/30 text-danger hover:bg-error-light hover:text-danger"
               onClick={() => setShowRejectDialog(true)}
             >
               <XCircle className="h-4 w-4" />
               Reject
             </Button>
             <Button
-              className="gap-2 bg-green-600 hover:bg-green-700"
+              className="gap-2 bg-success text-white hover:bg-success/90"
               onClick={() => setShowApproveDialog(true)}
             >
               <CheckCircle className="h-4 w-4" />
@@ -231,16 +219,16 @@ export default function OrganizationDetailPage() {
         {/* Organization Info */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
+            <CardTitle className="flex items-center gap-2 font-display text-lg font-medium">
               <Building2 className="h-5 w-5" />
               Organization Details
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
             {org.description && (
-              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                <div className="text-sm text-gray-500 mb-1">Description</div>
-                <p className="text-sm text-gray-700">{org.description}</p>
+              <div className="mb-4 rounded-lg bg-sunken p-3">
+                <div className="mb-1 text-sm text-text-2">Description</div>
+                <p className="text-sm text-text-1">{org.description}</p>
               </div>
             )}
             <InfoRow
@@ -252,12 +240,12 @@ export default function OrganizationDetailPage() {
                     href={org.website}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline"
+                    className="text-spine hover:underline"
                   >
                     {org.website}
                   </a>
                 ) : (
-                  <span className="text-gray-400">Not provided</span>
+                  <span className="text-text-3">Not provided</span>
                 )
               }
             />
@@ -292,7 +280,7 @@ export default function OrganizationDetailPage() {
         {/* Creator & Approver Info */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
+            <CardTitle className="flex items-center gap-2 font-display text-lg font-medium">
               <Users className="h-5 w-5" />
               People
             </CardTitle>
@@ -300,14 +288,14 @@ export default function OrganizationDetailPage() {
           <CardContent className="pt-0">
             <div className="space-y-4">
               {/* Created By */}
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">
+              <div className="rounded-lg bg-sunken p-4">
+                <div className="mb-2 text-xs uppercase tracking-wide text-text-3">
                   Created By
                 </div>
-                <div className="font-medium text-gray-900">
+                <div className="font-medium text-text-1">
                   {org.createdBy.name}
                 </div>
-                <div className="flex items-center gap-2 mt-1 text-sm text-gray-500">
+                <div className="mt-1 flex items-center gap-2 text-sm text-text-2">
                   <Mail className="h-4 w-4" />
                   {org.createdBy.email}
                 </div>
@@ -315,25 +303,25 @@ export default function OrganizationDetailPage() {
 
               {/* Approved By (if applicable) */}
               {org.approvedBy ? (
-                <div className="p-4 bg-green-50 rounded-lg">
-                  <div className="text-xs text-green-600 uppercase tracking-wide mb-2">
+                <div className="rounded-lg bg-success/10 p-4">
+                  <div className="mb-2 text-xs uppercase tracking-wide text-success">
                     Approved By
                   </div>
-                  <div className="font-medium text-gray-900">
+                  <div className="font-medium text-text-1">
                     {org.approvedBy.name}
                   </div>
-                  <div className="flex items-center gap-2 mt-1 text-sm text-gray-500">
+                  <div className="mt-1 flex items-center gap-2 text-sm text-text-2">
                     <Mail className="h-4 w-4" />
                     {org.approvedBy.email}
                   </div>
                 </div>
               ) : isPending ? (
-                <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                  <div className="flex items-center gap-2 text-yellow-700">
+                <div className="rounded-lg border border-amber/40 bg-amber-soft p-4">
+                  <div className="flex items-center gap-2 text-amber-strong">
                     <Clock className="h-5 w-5" />
                     <span className="font-medium">Awaiting Approval</span>
                   </div>
-                  <p className="mt-1 text-sm text-yellow-600">
+                  <p className="mt-1 text-sm text-amber-strong">
                     This organization is waiting for a super admin to review and
                     approve the registration.
                   </p>
@@ -364,7 +352,7 @@ export default function OrganizationDetailPage() {
               Cancel
             </Button>
             <Button
-              className="bg-green-600 hover:bg-green-700"
+              className="bg-success text-white hover:bg-success/90"
               onClick={handleApprove}
               disabled={isApproving}
             >

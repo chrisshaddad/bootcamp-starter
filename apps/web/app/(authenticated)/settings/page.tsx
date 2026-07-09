@@ -5,26 +5,30 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <h1 className="font-display text-[26px] font-medium text-text-1">
+          Settings
+        </h1>
+        <p className="mt-0.5 text-[13px] text-text-2">
           Manage your account and organization settings
         </p>
       </div>
 
-      <Card className="border-gray-200 bg-white shadow-sm">
+      <Card className="border-border bg-card shadow-sm">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg font-semibold text-gray-900">
-            <Settings className="h-5 w-5 text-gray-500" />
+          <CardTitle className="flex items-center gap-2 font-display text-lg font-medium text-text-1">
+            <Settings className="h-5 w-5 text-text-3" />
             Account Settings
           </CardTitle>
         </CardHeader>
         <CardContent className="flex min-h-75 flex-col items-center justify-center">
           <div className="text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
-              <Settings className="h-8 w-8 text-gray-400" />
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-sunken">
+              <Settings className="h-8 w-8 text-text-3" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900">Coming Soon</h3>
-            <p className="mt-1 text-sm text-gray-500">
+            <h3 className="font-display text-lg font-medium text-text-1">
+              Coming Soon
+            </h3>
+            <p className="mt-1 text-[13px] text-text-2">
               Settings features are being developed.
             </p>
           </div>
