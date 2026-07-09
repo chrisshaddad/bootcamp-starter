@@ -92,7 +92,7 @@ export class AuthController {
     return {
       id: user.id,
       email: user.email,
-      name: user.fullName,
+      fullName: user.fullName,
       role: user.role,
       phone: user.phone,
       institutionId: user.institutionId,
