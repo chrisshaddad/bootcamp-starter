@@ -1,6 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import { AnnouncementList } from '@/components/announcement-list';
+import { useAnnouncements } from '@/hooks/use-announcements';
 import { useUser } from '@/hooks/use-auth';
 import { useStatsOverview } from '@/hooks/use-stats';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -52,7 +54,8 @@ const FEATURE_CARDS: FeatureCard[] = [
     title: 'Announcements',
     description: 'Post updates targeted to specific groups or all members.',
     icon: Megaphone,
-    status: 'soon',
+    status: 'active',
+    href: '/announcements',
   },
   {
     title: 'Groups',
@@ -178,6 +181,14 @@ export default function AdminPage() {
   const { overview, isLoading: overviewLoading } = useStatsOverview({
     enabled: isSuperAdmin,
   });
+  const {
+    announcements,
+    isLoading: announcementsLoading,
+    error: announcementsError,
+  } = useAnnouncements({
+    enabled: isSuperAdmin,
+    limit: 5,
+  });
 
   if (userLoading) {
     return <LoadingSkeleton />;
@@ -231,6 +242,14 @@ export default function AdminPage() {
           ))}
         </div>
       </div>
+
+      <AnnouncementList
+        announcements={announcements}
+        isLoading={announcementsLoading}
+        error={announcementsError}
+        compact
+        showViewAll
+      />
     </div>
   );
 }

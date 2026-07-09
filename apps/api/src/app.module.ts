@@ -9,6 +9,7 @@ import { OrganizationsModule } from './organizations/organizations.module';
 import { MembersModule } from './members/members.module';
 import { EventsModule } from './events/events.module';
 import { StatsModule } from './stats/stats.module';
+import { AnnouncementsModule } from './announcements/announcements.module';
 import { DatabaseModule } from './database/database.module';
 
 @Module({
@@ -26,6 +27,7 @@ import { DatabaseModule } from './database/database.module';
     MembersModule,
     EventsModule,
     StatsModule,
+    AnnouncementsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

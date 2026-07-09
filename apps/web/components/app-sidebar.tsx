@@ -10,6 +10,7 @@ import {
   LogOut,
   Building2,
   Calendar,
+  Megaphone,
   BarChart3,
 } from 'lucide-react';
 import { useAuth, useUser } from '@/hooks/use-auth';
@@ -53,6 +54,11 @@ const orgAdminNavItems: NavItem[] = [
     icon: Calendar,
   },
   {
+    title: 'Announcements',
+    url: '/announcements',
+    icon: Megaphone,
+  },
+  {
     title: 'Reports',
     url: '/reports',
     icon: BarChart3,
@@ -71,6 +77,11 @@ const memberNavItems: NavItem[] = [
     url: '/events',
     icon: Calendar,
   },
+  {
+    title: 'Announcements',
+    url: '/announcements',
+    icon: Megaphone,
+  },
 ];
 
 // Navigation items for presenter members
@@ -84,6 +95,11 @@ const presenterNavItems: NavItem[] = [
     title: 'My Events',
     url: '/events',
     icon: Calendar,
+  },
+  {
+    title: 'Announcements',
+    url: '/announcements',
+    icon: Megaphone,
   },
 ];
 
@@ -108,6 +124,11 @@ const superAdminNavItems: NavItem[] = [
     title: 'Events',
     url: '/events',
     icon: Calendar,
+  },
+  {
+    title: 'Announcements',
+    url: '/announcements',
+    icon: Megaphone,
   },
   {
     title: 'Reports',

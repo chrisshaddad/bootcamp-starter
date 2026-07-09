@@ -36,6 +36,21 @@ enum MemberRole {
   @@schema("public")
 }
 
+enum AnnouncementScope {
+  SITE
+  ORG
+  EVENT
+
+  @@schema("public")
+}
+
+enum AnnouncementAudience {
+  WHOLE_ORG
+  EVENT_ATTENDEES
+
+  @@schema("public")
+}
+
 enum AttendanceStatus {
   PENDING
   ATTENDED
@@ -62,6 +77,7 @@ model User {
   approvedOrganizations Organization[]  @relation("OrganizationApprover")
   eventAttendees        EventAttendee[]
   orgMemberships        Member[]
+  announcements         Announcement[]
 
   @@index([organizationId])
   @@schema("public")
@@ -136,6 +152,7 @@ model Organization {
   members        Member[]
   events         Event[]
   eventAttendees EventAttendee[]
+  announcements  Announcement[]
 
   @@index([approvedById])
   @@index([status])
@@ -170,13 +187,38 @@ model Event {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  presenter    Member?         @relation(fields: [presenterId], references: [id], onDelete: SetNull)
-  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  attendees    EventAttendee[]
+  presenter     Member?         @relation(fields: [presenterId], references: [id], onDelete: SetNull)
+  organization  Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  attendees     EventAttendee[]
+  announcements Announcement[]
 
   @@index([presenterId])
   @@index([organizationId])
   @@index([startsAt])
+  @@schema("public")
+}
+
+model Announcement {
+  id             String                @id @default(uuid())
+  title          String
+  bodyHtml       String                @db.Text
+  scope          AnnouncementScope
+  audience       AnnouncementAudience?
+  organizationId String?
+  eventId        String?
+  authorId       String
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  event        Event?        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  author       User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([eventId])
+  @@index([authorId])
+  @@index([scope])
+  @@index([createdAt])
   @@schema("public")
 }
 
