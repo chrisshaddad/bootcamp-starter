@@ -2,6 +2,7 @@ import { prisma } from '../../src/client';
 import { seedSuperAdmins, seedOrgAdmins, seedAttendeeUsers } from './seedUsers';
 import { seedOrganizations } from './seedOrganizations';
 import { seedCoordly } from './seedCoordly';
+import { seedAnnouncements } from './seedAnnouncements';
 
 async function main() {
   // Seed users first (org admins need to exist before organizations)
@@ -14,6 +15,9 @@ async function main() {
 
   // Seed Coordly domain data (members and events)
   await seedCoordly(prisma);
+
+  // Seed announcements after organizations and events exist
+  await seedAnnouncements(prisma);
 }
 main()
   .then(async () => {
