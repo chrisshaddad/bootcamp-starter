@@ -5,9 +5,21 @@ import { CategoriesService } from './categories.service';
 import { CategoriesController } from './categories.controller';
 import { PublishersService } from './publishers.service';
 import { PublishersController } from './publishers.controller';
+import { BooksService } from './books.service';
+import { BooksController } from './books.controller';
 
 @Module({
-  providers: [AuthorsService, CategoriesService, PublishersService],
-  controllers: [AuthorsController, CategoriesController, PublishersController],
+  providers: [
+    AuthorsService,
+    CategoriesService,
+    PublishersService,
+    BooksService,
+  ],
+  controllers: [
+    AuthorsController,
+    CategoriesController,
+    PublishersController,
+    BooksController,
+  ],
 })
 export class CatalogModule {}
