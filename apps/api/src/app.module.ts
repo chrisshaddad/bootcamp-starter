@@ -7,7 +7,8 @@ import { AuthModule } from './auth/auth.module';
 import { MailModule } from './mail/mail.module';
 import { OrganizationsModule } from './organizations/organizations.module';
 import { DatabaseModule } from './database/database.module';
-import { ProjectsModule } from './projects/projects.module'; // 1. ADD THIS IMPORT
+import { GithubModule } from './github/github.module';
+import { ProjectsModule } from './projects/projects.module';
 
 @Module({
   imports: [
@@ -21,7 +22,8 @@ import { ProjectsModule } from './projects/projects.module'; // 1. ADD THIS IMPO
     AuthModule,
     MailModule,
     OrganizationsModule,
-    ProjectsModule, // 2. ADD THIS TO THE IMPORTS ARRAY
+    GithubModule,
+    ProjectsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

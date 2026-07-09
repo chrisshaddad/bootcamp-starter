@@ -1,5 +1,6 @@
 import type { ApiBodyOptions } from '@nestjs/swagger';
 import {
+  githubRepositoryPreviewRequestSchema as githubRepositoryPreviewRequestContractSchema,
   loginRequestSchema as loginRequestContractSchema,
   magicLinkRequestSchema,
   magicLinkVerifyRequestSchema as magicLinkVerifyRequestContractSchema,
@@ -79,6 +80,8 @@ export const updateProfileRequestSchema: ApiBodySchema = withExample(
   },
 );
 
+// Multipart file uploads are documented manually because they are not JSON
+// request bodies represented by the shared Zod contracts.
 export const profilePictureUploadSchema: ApiBodySchema = {
   type: 'object',
   required: ['file'],
@@ -89,3 +92,10 @@ export const profilePictureUploadSchema: ApiBodySchema = {
     },
   },
 };
+
+export const githubRepositoryPreviewRequestSchema: ApiBodySchema = withExample(
+  toOpenApiSchema(githubRepositoryPreviewRequestContractSchema),
+  {
+    repositoryUrl: 'https://github.com/vercel/next.js',
+  },
+);
