@@ -181,7 +181,7 @@ export class LibraryMembersService {
   private extractConflictingFields(
     error: Prisma.PrismaClientKnownRequestError,
   ): string[] {
-    const meta = error.meta as Record<string, unknown> | undefined;
+    const meta = error.meta;
     const nestedFields = (
       meta?.driverAdapterError as
         | { cause?: { constraint?: { fields?: string[] } } }
@@ -193,6 +193,8 @@ export class LibraryMembersService {
     }
 
     const target = meta?.target;
-    return Array.isArray(target) ? target : [];
+    return Array.isArray(target)
+      ? target.filter((field): field is string => typeof field === 'string')
+      : [];
   }
 }
