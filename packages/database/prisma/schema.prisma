@@ -126,7 +126,7 @@ model Institution {
   id                 String            @id @default(uuid())
   name               String
   type               InstitutionType
-  status             InstitutionStatus @default(ACTIVE)
+  status             InstitutionStatus @default(PENDING)
   address            String?
   phone              String?           @db.VarChar(20)
   logoUrl            String?           @db.VarChar(500)

@@ -1,13 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Query,
-  UsePipes,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { InstitutionsService } from './institutions.service';
 import { Roles, CurrentUser } from '../auth/decorators';
 import type { User, InstitutionStatus } from '@repo/db';
@@ -46,9 +37,9 @@ export class InstitutionsController {
 
   @Post()
   @Roles('SUPER_ADMIN')
-  @UsePipes(new ZodValidationPipe(institutionCreateRequestSchema))
   async create(
-    @Body() body: InstitutionCreateRequest,
+    @Body(new ZodValidationPipe(institutionCreateRequestSchema))
+    body: InstitutionCreateRequest,
     @CurrentUser() user: User,
   ): Promise<InstitutionDetailResponse> {
     return this.institutionsService.create(body, user.id);
