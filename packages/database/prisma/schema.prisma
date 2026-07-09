@@ -14,7 +14,7 @@ datasource db {
   schemas  = ["public", "private"]
 }
 
-enum Role {
+enum UserRole {
   SUPER_ADMIN
   INSTITUTION_ADMIN
   STAFF
@@ -152,11 +152,10 @@ model Institution {
 
 model User {
   id            String   @id @default(uuid())
-  username      String   @db.VarChar(50)
   email         String   @unique @db.VarChar(255)
   fullName      String   @db.VarChar(255)
   phone         String   @db.VarChar(20)
-  role          Role
+  role          UserRole
   isActive      Boolean  @default(true)
   isConfirmed   Boolean  @default(false)
   institutionId String
@@ -178,7 +177,6 @@ model User {
   notifications       Notification[]       @relation("NotificationRecipient")
   sentNotifications   Notification[]       @relation("NotificationSender")
 
-  @@unique([username, institutionId])
   @@index([institutionId])
   @@index([role])
   @@index([createdById])

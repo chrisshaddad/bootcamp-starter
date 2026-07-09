@@ -1,7 +1,6 @@
 import { PrismaClient } from '../../src/generated/prisma/client';
 
 interface InstitutionAdminSeed {
-  username: string;
   email: string;
   fullName: string;
   phone: string;
@@ -23,7 +22,6 @@ const INSTITUTIONS: InstitutionSeed[] = [
     status: 'ACTIVE',
     address: '100 Innovation Drive, San Francisco, CA',
     admin: {
-      username: 'sarah.chen',
       email: 'admin@techcorp.example.com',
       fullName: 'Sarah Chen',
       phone: '+14155550101',
@@ -35,7 +33,6 @@ const INSTITUTIONS: InstitutionSeed[] = [
     status: 'ACTIVE',
     address: '200 Renewable Way, Austin, TX',
     admin: {
-      username: 'michael.green',
       email: 'admin@greenvalley.example.com',
       fullName: 'Michael Green',
       phone: '+15125550102',
@@ -47,7 +44,6 @@ const INSTITUTIONS: InstitutionSeed[] = [
     status: 'PENDING',
     address: '300 Wellness Blvd, Boston, MA',
     admin: {
-      username: 'emily.watson',
       email: 'admin@healthfirst.example.com',
       fullName: 'Dr. Emily Watson',
       phone: '+16175550103',
@@ -59,7 +55,6 @@ const INSTITUTIONS: InstitutionSeed[] = [
     status: 'PENDING',
     address: '400 Main St, Denver, CO',
     admin: {
-      username: 'robert.martinez',
       email: 'admin@urbancare.example.com',
       fullName: 'Robert Martinez',
       phone: '+13035550104',
@@ -71,7 +66,6 @@ const INSTITUTIONS: InstitutionSeed[] = [
     status: 'REJECTED',
     address: null,
     admin: {
-      username: 'john.suspicious',
       email: 'admin@fraudulent.example.com',
       fullName: 'John Suspicious',
       phone: '+19995550105',
@@ -83,7 +77,6 @@ const INSTITUTIONS: InstitutionSeed[] = [
     status: 'SUSPENDED',
     address: '500 Analytics Ave, Seattle, WA',
     admin: {
-      username: 'anna.data',
       email: 'admin@datasync.example.com',
       fullName: 'Anna Data',
       phone: '+12065550106',
@@ -124,7 +117,7 @@ export async function seedInstitutions(prisma: PrismaClient) {
     });
 
     console.log(
-      `  Created institution: ${institution.name} (${institution.status}) - Admin: ${institution.admin.username}`,
+      `  Created institution: ${institution.name} (${institution.status}) - Admin: ${institution.admin.email}`,
     );
   }
 

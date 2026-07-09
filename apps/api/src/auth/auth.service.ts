@@ -67,7 +67,7 @@ export class AuthService {
     await this.mailQueue.add(MAIL_JOBS.SEND_MAGIC_LINK, {
       email: user.email,
       magicLink: magicLinkUrl,
-      userName: user.name,
+      userName: user.fullName,
     });
 
     this.logger.log(`Magic link queued for user ${user.id}`);
@@ -126,7 +126,7 @@ export class AuthService {
       user: {
         id: magicLink.user.id,
         email: magicLink.user.email,
-        name: magicLink.user.name,
+        name: magicLink.user.fullName,
         role: magicLink.user.role,
       },
     };
@@ -151,9 +151,9 @@ export class AuthService {
     return {
       id: user.id,
       email: user.email,
-      name: user.name,
+      name: user.fullName,
       role: user.role,
-      organizationId: user.organizationId,
+      institutionId: user.institutionId,
       isConfirmed: user.isConfirmed,
     };
   }

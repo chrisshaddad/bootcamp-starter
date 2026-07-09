@@ -4,7 +4,6 @@ import { roleSchema } from './role.schema';
 // Response from /auth/me endpoint
 export const userResponseSchema = z.object({
   id: z.uuid(),
-  username: z.string(),
   email: z.email(),
   fullName: z.string(),
   phone: z.string(),

@@ -6,7 +6,6 @@ import { PrismaClient } from '../../src/generated/prisma/client';
 export const PLATFORM_INSTITUTION_ID = '00000000-0000-0000-0000-000000000000';
 
 interface SuperAdminSeed {
-  username: string;
   email: string;
   fullName: string;
   phone: string;
@@ -14,7 +13,6 @@ interface SuperAdminSeed {
 
 const SUPER_ADMINS: SuperAdminSeed[] = [
   {
-    username: 'superadmin',
     email: 'admin@medilink.local',
     fullName: 'Super Admin',
     phone: '+10000000000',
@@ -53,6 +51,6 @@ export async function seedSuperAdmins(prisma: PrismaClient) {
   });
 
   console.log(
-    `Super admins: ${SUPER_ADMINS.map((u) => u.username).join(', ')} seeded.`,
+    `Super admins: ${SUPER_ADMINS.map((u) => u.email).join(', ')} seeded.`,
   );
 }

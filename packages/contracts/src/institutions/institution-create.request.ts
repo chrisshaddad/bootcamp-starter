@@ -4,7 +4,6 @@ import { institutionTypeSchema } from './institution-type.schema';
 // An institution with no admin user has no one who can log in to manage it,
 // so creation requires both the institution and its first admin at once.
 const institutionAdminSchema = z.object({
-  username: z.string().min(3).max(50),
   email: z.email(),
   fullName: z.string().min(1),
   phone: z.string().min(1),
