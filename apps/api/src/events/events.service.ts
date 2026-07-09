@@ -9,6 +9,9 @@ import { Prisma, type User } from '@repo/db';
 import { PrismaService } from '../database/prisma.service';
 import { resolveOrganizationScope } from '../common/organization-scope';
 import type {
+  EventAttendanceUpdateRequest,
+  EventAttendanceUpdateResponse,
+  EventAttendeeListResponse,
   EventDetailResponse,
   EventListQuery,
   EventListResponse,
@@ -18,6 +21,7 @@ import type {
 @Injectable()
 export class EventsService {
   private readonly logger = new Logger(EventsService.name);
+  private readonly attendanceGracePeriodMs = 30 * 60 * 1000;
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -44,6 +48,46 @@ export class EventsService {
 
   private isUpcoming(startsAt: Date): boolean {
     return startsAt.getTime() > Date.now();
+  }
+
+  private getAttendanceAutoSkipDeadline(startsAt: Date): Date {
+    return new Date(startsAt.getTime() + this.attendanceGracePeriodMs);
+  }
+
+  private assertEventHasStarted(startsAt: Date): void {
+    if (this.isUpcoming(startsAt)) {
+      throw new BadRequestException(
+        'Attendance cannot be updated before the event starts',
+      );
+    }
+  }
+
+  private async autoSkipPendingAttendees(
+    eventId: string,
+    organizationId: string,
+    startsAt: Date,
+  ): Promise<void> {
+    const deadline = this.getAttendanceAutoSkipDeadline(startsAt);
+    if (Date.now() < deadline.getTime()) {
+      return;
+    }
+
+    const result = await this.prisma.eventAttendee.updateMany({
+      where: {
+        eventId,
+        organizationId,
+        attendanceStatus: 'PENDING',
+      },
+      data: {
+        attendanceStatus: 'SKIPPED',
+      },
+    });
+
+    if (result.count > 0) {
+      this.logger.log(
+        `Auto-skipped ${result.count} pending attendee(s) for event ${eventId}`,
+      );
+    }
   }
 
   private async getOrgMembership(userId: string, organizationId: string) {
@@ -152,6 +196,69 @@ export class EventsService {
     return this.evaluateRegistrationEligibility(user, event);
   }
 
+  private async canManageAttendance(
+    user: User,
+    event: {
+      organizationId: string;
+      presenterId: string | null;
+    },
+  ): Promise<boolean> {
+    if (user.role === 'SUPER_ADMIN' || user.role === 'ORG_ADMIN') {
+      return true;
+    }
+
+    if (user.role !== 'MEMBER') {
+      return false;
+    }
+
+    const presenterMemberId = await this.getPresenterMemberId(
+      user.id,
+      event.organizationId,
+    );
+
+    return (
+      presenterMemberId !== null && event.presenterId === presenterMemberId
+    );
+  }
+
+  private async assertCanManageAttendance(
+    user: User,
+    event: {
+      organizationId: string;
+      presenterId: string | null;
+    },
+  ): Promise<void> {
+    if (!(await this.canManageAttendance(user, event))) {
+      throw new ForbiddenException(
+        'You do not have permission to manage attendance for this event',
+      );
+    }
+  }
+
+  private async getScopedEvent(eventId: string, user: User) {
+    const organizationId =
+      user.role === 'SUPER_ADMIN' ? undefined : resolveOrganizationScope(user);
+
+    const event = await this.prisma.event.findFirst({
+      where: {
+        id: eventId,
+        ...(organizationId ? { organizationId } : {}),
+      },
+      select: {
+        id: true,
+        organizationId: true,
+        presenterId: true,
+        startsAt: true,
+      },
+    });
+
+    if (!event) {
+      throw new NotFoundException(`Event with ID ${eventId} not found`);
+    }
+
+    return event;
+  }
+
   private async getRegisteredEventIds(
     userId: string,
     eventIds: string[],
@@ -177,12 +284,12 @@ export class EventsService {
       limit = 20,
       organizationId: requestedOrgId,
       upcoming,
+      hostedByMe,
     } = query;
     const skip = (page - 1) * limit;
 
     const organizationId = resolveOrganizationScope(user, requestedOrgId);
 
-    // Check if user is a presenter in the organization
     let presenterMemberId: string | null = null;
     if (user.role === 'MEMBER' && organizationId) {
       presenterMemberId = await this.getPresenterMemberId(
@@ -193,8 +300,9 @@ export class EventsService {
 
     const where = {
       ...(organizationId ? { organizationId } : {}),
-      // If user is a presenter, filter by their presented events
-      ...(presenterMemberId ? { presenterId: presenterMemberId } : {}),
+      ...(hostedByMe === true && presenterMemberId
+        ? { presenterId: presenterMemberId }
+        : {}),
       ...(upcoming === true ? { startsAt: { gt: new Date() } } : {}),
       ...(upcoming === false ? { startsAt: { lte: new Date() } } : {}),
     };
@@ -240,6 +348,9 @@ export class EventsService {
       presenter: presenter ?? null,
       isRegistered: registeredEventIds.has(event.id),
       isUpcoming: this.isUpcoming(startsAt),
+      ...(presenterMemberId
+        ? { hostedByMe: event.presenterId === presenterMemberId }
+        : {}),
       attendeeCount: _count.attendees,
     }));
 
@@ -250,21 +361,10 @@ export class EventsService {
     const organizationId =
       user.role === 'SUPER_ADMIN' ? undefined : resolveOrganizationScope(user);
 
-    // Check if user is a presenter in the organization
-    let presenterMemberId: string | null = null;
-    if (user.role === 'MEMBER' && organizationId) {
-      presenterMemberId = await this.getPresenterMemberId(
-        user.id,
-        organizationId,
-      );
-    }
-
     const event = await this.prisma.event.findFirst({
       where: {
         id,
         ...(organizationId ? { organizationId } : {}),
-        // If user is a presenter, ensure they can only view their own events
-        ...(presenterMemberId ? { presenterId: presenterMemberId } : {}),
       },
       select: this.eventSelect,
     });
@@ -283,6 +383,7 @@ export class EventsService {
     const { presenter, _count, ...rest } = event;
     const isRegistered = !!registration;
     const isUpcoming = this.isUpcoming(event.startsAt);
+    const canManageAttendance = await this.canManageAttendance(user, event);
 
     return {
       ...rest,
@@ -290,7 +391,124 @@ export class EventsService {
       isRegistered,
       isUpcoming,
       canRegister: !isRegistered && (await this.canUserRegister(user, event)),
+      canManageAttendance,
+      canUpdateAttendance: canManageAttendance && !isUpcoming,
       attendeeCount: _count.attendees,
+    };
+  }
+
+  async findAttendees(
+    eventId: string,
+    user: User,
+  ): Promise<EventAttendeeListResponse> {
+    const event = await this.getScopedEvent(eventId, user);
+    await this.autoSkipPendingAttendees(
+      event.id,
+      event.organizationId,
+      event.startsAt,
+    );
+
+    const rows = await this.prisma.eventAttendee.findMany({
+      where: {
+        eventId,
+        organizationId: event.organizationId,
+      },
+      orderBy: { createdAt: 'asc' },
+      select: {
+        id: true,
+        userId: true,
+        attendanceStatus: true,
+        createdAt: true,
+        user: {
+          select: {
+            email: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    const attendees = rows.map((row) => ({
+      id: row.id,
+      userId: row.userId,
+      email: row.user.email,
+      name: row.user.name,
+      attendanceStatus: row.attendanceStatus,
+      registeredAt: row.createdAt,
+    }));
+
+    return { attendees, total: attendees.length };
+  }
+
+  async updateAttendance(
+    eventId: string,
+    attendeeUserId: string,
+    body: EventAttendanceUpdateRequest,
+    user: User,
+  ): Promise<EventAttendanceUpdateResponse> {
+    const event = await this.getScopedEvent(eventId, user);
+    await this.assertCanManageAttendance(user, event);
+    this.assertEventHasStarted(event.startsAt);
+    await this.autoSkipPendingAttendees(
+      event.id,
+      event.organizationId,
+      event.startsAt,
+    );
+
+    const attendee = await this.prisma.eventAttendee.findFirst({
+      where: {
+        eventId,
+        userId: attendeeUserId,
+        organizationId: event.organizationId,
+      },
+      select: {
+        id: true,
+        userId: true,
+        attendanceStatus: true,
+        createdAt: true,
+        user: {
+          select: {
+            email: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (!attendee) {
+      throw new NotFoundException(
+        `Attendee with user ID ${attendeeUserId} not found for this event`,
+      );
+    }
+
+    const updated = await this.prisma.eventAttendee.update({
+      where: { id: attendee.id },
+      data: { attendanceStatus: body.attendanceStatus },
+      select: {
+        id: true,
+        userId: true,
+        attendanceStatus: true,
+        createdAt: true,
+        user: {
+          select: {
+            email: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    this.logger.log(
+      `Attendance for user ${attendeeUserId} on event ${eventId} set to ${body.attendanceStatus}`,
+    );
+
+    return {
+      id: updated.id,
+      userId: updated.userId,
+      email: updated.user.email,
+      name: updated.user.name,
+      attendanceStatus: updated.attendanceStatus,
+      registeredAt: updated.createdAt,
     };
   }
 
