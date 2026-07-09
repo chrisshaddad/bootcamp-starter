@@ -131,6 +131,7 @@ export default function AnnouncementsPage() {
   const { events, isLoading: eventsLoading } = useEvents({
     enabled: canCreate && scope === 'EVENT',
     upcoming: true,
+    ...(isPresenter ? { hostedByMe: true } : {}),
   });
   const filteredEvents = useMemo(() => {
     const query = eventSearch.trim().toLowerCase();
