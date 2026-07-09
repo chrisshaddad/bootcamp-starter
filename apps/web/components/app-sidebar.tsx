@@ -10,6 +10,7 @@ import {
   LogOut,
   Building2,
   Calendar,
+  BarChart3,
 } from 'lucide-react';
 import { useAuth, useUser } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
@@ -50,6 +51,11 @@ const orgAdminNavItems: NavItem[] = [
     title: 'Events',
     url: '/events',
     icon: Calendar,
+  },
+  {
+    title: 'Reports',
+    url: '/reports',
+    icon: BarChart3,
   },
 ];
 
@@ -102,6 +108,11 @@ const superAdminNavItems: NavItem[] = [
     title: 'Events',
     url: '/events',
     icon: Calendar,
+  },
+  {
+    title: 'Reports',
+    url: '/reports',
+    icon: BarChart3,
   },
 ];
 

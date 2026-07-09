@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import type { EventListResponse, UserResponse } from '@repo/contracts';
 import { useUser } from '@/hooks/use-auth';
 import { useEvents } from '@/hooks/use-events';
+import { useStatsOverview } from '@/hooks/use-stats';
 import { EventCalendar } from '@/components/event-calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -164,6 +165,62 @@ function PresenterDashboard({
   );
 }
 
+function formatRate(rate: number | null | undefined) {
+  if (rate === null || rate === undefined) return '—';
+  return `${Math.round(rate * 100)}%`;
+}
+
+function OrgAdminStatCard({
+  title,
+  value,
+  subtitle,
+}: {
+  title: string;
+  value: string | number;
+  subtitle?: string;
+}) {
+  return (
+    <Card className="border-gray-200 bg-white shadow-sm">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium text-gray-500">
+          {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold text-gray-900">{value}</div>
+        {subtitle && <p className="mt-1 text-xs text-gray-500">{subtitle}</p>}
+      </CardContent>
+    </Card>
+  );
+}
+
+function OrgAdminStats() {
+  const { overview, isLoading } = useStatsOverview();
+
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <OrgAdminStatCard
+        title="Members"
+        value={isLoading ? '—' : (overview?.memberCount ?? 0)}
+      />
+      <OrgAdminStatCard
+        title="Upcoming Events"
+        value={isLoading ? '—' : (overview?.upcomingEvents ?? 0)}
+        subtitle={overview ? `${overview.totalEvents} total` : undefined}
+      />
+      <OrgAdminStatCard
+        title="Registrations"
+        value={isLoading ? '—' : (overview?.totalRegistrations ?? 0)}
+      />
+      <OrgAdminStatCard
+        title="Attendance Rate"
+        value={isLoading ? '—' : formatRate(overview?.attendanceRate)}
+        subtitle="Across past events"
+      />
+    </div>
+  );
+}
+
 /**
  * Renders the dashboard for the current user and routes super admins to the admin area.
  *
@@ -222,6 +279,8 @@ export default function DashboardPage() {
           You&apos;re signed in. Start building your project.
         </p>
       </div>
+
+      {user?.role === 'ORG_ADMIN' && <OrgAdminStats />}
 
       <Card className="border-gray-200 bg-white shadow-sm">
         <CardHeader>

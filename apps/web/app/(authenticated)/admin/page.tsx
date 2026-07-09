@@ -2,8 +2,7 @@
 
 import Link from 'next/link';
 import { useUser } from '@/hooks/use-auth';
-import { useMembers } from '@/hooks/use-members';
-import { useEvents } from '@/hooks/use-events';
+import { useStatsOverview } from '@/hooks/use-stats';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -46,7 +45,8 @@ const FEATURE_CARDS: FeatureCard[] = [
     title: 'Attendance Tracking',
     description: 'Log attendance per event and view history per member.',
     icon: ClipboardCheck,
-    status: 'soon',
+    status: 'active',
+    href: '/reports',
   },
   {
     title: 'Announcements',
@@ -66,6 +66,7 @@ const FEATURE_CARDS: FeatureCard[] = [
       'Key metrics: total members, upcoming events, attendance rates.',
     icon: BarChart3,
     status: 'active',
+    href: '/reports',
   },
 ];
 
@@ -174,10 +175,7 @@ export default function AdminPage() {
   const { user, isLoading: userLoading } = useUser();
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
 
-  const { total: memberTotal, isLoading: membersLoading } = useMembers({
-    enabled: isSuperAdmin,
-  });
-  const { total: eventTotal, isLoading: eventsLoading } = useEvents({
+  const { overview, isLoading: overviewLoading } = useStatsOverview({
     enabled: isSuperAdmin,
   });
 
@@ -202,14 +200,27 @@ export default function AdminPage() {
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard
           title="Total Members"
-          value={membersLoading ? '—' : (memberTotal ?? 0)}
+          value={overviewLoading ? '—' : (overview?.memberCount ?? 0)}
         />
         <StatCard
           title="Upcoming Events"
-          value={eventsLoading ? '—' : (eventTotal ?? 0)}
-          subtitle="Placeholder until event dates are added"
+          value={overviewLoading ? '—' : (overview?.upcomingEvents ?? 0)}
+          subtitle={
+            overview ? `${overview.totalEvents} total events` : undefined
+          }
         />
-        <StatCard title="Attendance Rate" value="—" subtitle="Coming soon" />
+        <StatCard
+          title="Attendance Rate"
+          value={
+            overviewLoading
+              ? '—'
+              : overview?.attendanceRate === null ||
+                  overview?.attendanceRate === undefined
+                ? '—'
+                : `${Math.round(overview.attendanceRate * 100)}%`
+          }
+          subtitle="Across past events"
+        />
       </div>
 
       <div>
