@@ -8,62 +8,28 @@ import type {
   UpdateProjectRequest,
   ProjectResponse,
 } from '@repo/contracts';
-import {
-  MOCK_PROJECTS,
-  type MockProjectCard,
-  type MockTechnology,
-} from '@/lib/mock-projects';
 
-const LOCAL_PROJECTS_KEY = 'local:projects';
+const PROJECTS_KEY = '/projects';
+const projectKey = (id: string) => `/projects/id/${id}`;
 
-export interface RealProjectCard extends ProjectResponse {
-  isMock: false;
-  repositoryFullName?: string;
-  technologies?: MockTechnology[];
-}
-
-export type LocalProject = MockProjectCard | RealProjectCard;
-
-async function seedLocalProjects(): Promise<LocalProject[]> {
-  return MOCK_PROJECTS;
-}
-
-// mock: no GET /projects (list) endpoint yet. The grid reads from this
-// client-only SWR cache, seeded with fixture data. Real projects created or
-// updated via the real POST/PATCH calls below get merged into the same
-// cache key so they show up immediately, without needing the list endpoint.
+// real: GET /projects, list of projects owned by the current user.
 export function useProjects() {
-  const { data, isLoading } = useSWR<LocalProject[]>(
-    LOCAL_PROJECTS_KEY,
-    seedLocalProjects,
-    // revalidateOnMount would re-run the fetcher (which only knows the
-    // static fixtures) on every mount, silently wiping out real projects
-    // merged in by create/update below. Only fetch once, ever.
-    { revalidateIfStale: false, revalidateOnFocus: false },
-  );
-
-  return { projects: data ?? [], isLoading };
+  const { data, error, isLoading } = useSWR<ProjectResponse[]>(PROJECTS_KEY);
+  return { projects: data ?? [], error, isLoading };
 }
 
-// mock: no GET /projects/:id endpoint yet. Only resolves projects already
-// known to this session (fixtures, or ones just created/updated for real).
+// real: GET /projects/id/:id, for prefilling edit forms.
 export function useProject(id: string | undefined) {
-  const { projects, isLoading } = useProjects();
-  const project = id ? projects.find((p) => p.id === id) : undefined;
-  return { project, isLoading };
+  const { data, error, isLoading } = useSWR<ProjectResponse>(
+    id ? projectKey(id) : null,
+  );
+  return { project: data, error, isLoading };
 }
 
 export function useCreateProject() {
   return useCallback(async (data: CreateProjectRequest) => {
     const project = await apiPost<ProjectResponse>('/projects', data);
-    const card: RealProjectCard = { ...project, isMock: false };
-
-    await globalMutate<LocalProject[]>(
-      LOCAL_PROJECTS_KEY,
-      (current) => [card, ...(current ?? [])],
-      { revalidate: false },
-    );
-
+    await globalMutate(PROJECTS_KEY);
     return project;
   }, []);
 }
@@ -71,22 +37,18 @@ export function useCreateProject() {
 export function useUpdateProject() {
   return useCallback(async (id: string, data: UpdateProjectRequest) => {
     const project = await apiPatch<ProjectResponse>(`/projects/${id}`, data);
-    const card: RealProjectCard = { ...project, isMock: false };
-
-    await globalMutate<LocalProject[]>(
-      LOCAL_PROJECTS_KEY,
-      (current) => (current ?? []).map((p) => (p.id === id ? card : p)),
-      { revalidate: false },
-    );
-
+    await Promise.all([
+      globalMutate(PROJECTS_KEY),
+      globalMutate(projectKey(id)),
+    ]);
     return project;
   }, []);
 }
 
-// real: GET /projects/:slug, public, only returns PUBLISHED projects.
+// real: GET /projects/slug/:slug, public, only returns PUBLISHED projects.
 export function useProjectBySlug(slug: string | undefined) {
   const { data, error, isLoading } = useSWR<ProjectResponse>(
-    slug ? `/projects/${slug}` : null,
+    slug ? `/projects/slug/${slug}` : null,
   );
 
   return { project: data, error, isLoading };

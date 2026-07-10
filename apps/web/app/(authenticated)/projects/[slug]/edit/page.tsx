@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useForm, Controller } from 'react-hook-form';
@@ -63,25 +63,8 @@ export default function EditProjectPage() {
       : undefined,
   });
 
-  // mock: only sample cards carry a `technologies` array today (real ones
-  // don't, since ProjectTechnology has no endpoint) — seed the picker once
-  // per project so it doesn't fight with the user's own edits afterward.
-  useEffect(() => {
-    if (project && 'technologies' in project && project.technologies) {
-      setTechnologies(project.technologies);
-    }
-  }, [project?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
   const onSubmit = async (data: UpdateProjectRequest) => {
     if (!project) return;
-
-    // mock: sample cards aren't backed by a real Project row, so PATCHing
-    // one for real would 404. Nothing to swap here later — real projects
-    // (created via the real POST above) always go through updateProject.
-    if (project.isMock) {
-      toast.info('This is sample data — nothing to save against the backend.');
-      return;
-    }
 
     setIsSubmitting(true);
     try {
@@ -124,11 +107,7 @@ export default function EditProjectPage() {
           <ArrowLeft className="h-3.5 w-3.5" />
           Projects
         </Link>
-        <p className="text-muted-foreground text-sm">
-          Project not found. mock: there&apos;s no GET /projects/:id endpoint
-          yet, so only projects already loaded this session (sample data, or
-          ones you just created/edited for real) can be opened here directly.
-        </p>
+        <p className="text-muted-foreground text-sm">Project not found.</p>
       </div>
     );
   }
@@ -145,11 +124,6 @@ export default function EditProjectPage() {
 
       <div>
         <h1 className="text-foreground text-2xl font-bold">Edit project</h1>
-        {project.isMock && (
-          <p className="text-muted-foreground mt-1 text-sm">
-            Sample data — changes here won&apos;t be saved to the backend.
-          </p>
-        )}
       </div>
 
       <form

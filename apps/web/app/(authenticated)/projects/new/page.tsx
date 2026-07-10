@@ -50,9 +50,8 @@ export default function NewProjectPage() {
 
   const [repositoryUrl, setRepositoryUrl] = useState('');
   const [isFetchingPreview, setIsFetchingPreview] = useState(false);
-  const [preview, setPreview] = useState<GithubRepositoryPreviewResponse | null>(
-    null,
-  );
+  const [preview, setPreview] =
+    useState<GithubRepositoryPreviewResponse | null>(null);
 
   const {
     register,
@@ -196,8 +195,8 @@ export default function NewProjectPage() {
             <p className="text-muted-foreground text-xs">
               Pulls the description and languages from GitHub to help fill out
               the form below. This is a preview only — it doesn&apos;t prove
-              ownership or link the repository, so you still need to paste
-              the matching Repository ID manually until repo import ships.
+              ownership or link the repository, so you still need to paste the
+              matching Repository ID manually until repo import ships.
             </p>
           </div>
 
@@ -335,9 +334,9 @@ export default function NewProjectPage() {
             />
             {preview && (
               <p className="text-muted-foreground text-xs">
-                Showing languages fetched from GitHub. Remove a tag by
-                clicking it — there&apos;s no fixture suggestion list here
-                since it wouldn&apos;t reflect this repository.
+                Showing languages fetched from GitHub. Remove a tag by clicking
+                it — there&apos;s no fixture suggestion list here since it
+                wouldn&apos;t reflect this repository.
               </p>
             )}
           </div>

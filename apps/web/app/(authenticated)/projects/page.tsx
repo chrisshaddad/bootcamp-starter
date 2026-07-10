@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { FolderGit2, Github, ExternalLink, Pencil, Plus } from 'lucide-react';
+import { FolderGit2, ExternalLink, Pencil, Plus } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -75,11 +75,6 @@ export default function ProjectsPage() {
               </div>
 
               <div className="flex flex-1 flex-col gap-2 px-4 pt-3">
-                {project.isMock && (
-                  <span className="text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
-                    Sample data
-                  </span>
-                )}
                 <Link
                   href={`/projects/${project.id}/edit`}
                   className="text-sm font-semibold hover:text-primary"
@@ -91,31 +86,10 @@ export default function ProjectsPage() {
                     {project.shortDescription}
                   </p>
                 )}
-                {project.technologies && project.technologies.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {project.technologies.map((tech) => (
-                      <span
-                        key={tech.id}
-                        className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-medium text-accent-foreground"
-                      >
-                        {tech.name}
-                      </span>
-                    ))}
-                  </div>
-                )}
               </div>
 
               <div className="mt-3 flex items-center justify-between border-t px-4 py-2.5">
                 <div className="flex items-center gap-3 text-muted-foreground">
-                  {'repositoryFullName' in project &&
-                    project.repositoryFullName && (
-                      <span
-                        className="inline-flex items-center gap-1 text-xs"
-                        title={project.repositoryFullName}
-                      >
-                        <Github className="h-3.5 w-3.5" />
-                      </span>
-                    )}
                   {project.deploymentUrl && (
                     <a
                       href={project.deploymentUrl}
