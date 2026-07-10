@@ -10,13 +10,20 @@ import {
   Building2,
   Settings,
   ChevronDown,
-  ChevronUp,
   Loader2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { useUser } from '@/hooks/use-auth';
 import { useDashboard, useUpdateGymSettings } from '@/hooks/use-dashboard';
 import { ApiError } from '@/lib/api';
@@ -32,6 +39,55 @@ function DashboardSkeleton() {
       </div>
       <Skeleton className="h-48 w-full rounded-xl" />
     </div>
+  );
+}
+
+/**
+ * Dialog trigger + scrollable list, shared by the Active Members and
+ * Expiring Soon cards. The list body scrolls independently of the header so
+ * arbitrarily long lists never push the dialog past the viewport.
+ */
+function ListDialog({
+  triggerLabel,
+  title,
+  description,
+  itemCount,
+  emptyMessage,
+  children,
+}: {
+  triggerLabel: string;
+  title: string;
+  description?: string;
+  itemCount: number;
+  emptyMessage: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <button
+          type="button"
+          className="mt-3 flex items-center gap-1 text-xs font-medium text-primary-base hover:underline"
+        >
+          <ChevronDown className="h-3 w-3" /> {triggerLabel}
+        </button>
+      </DialogTrigger>
+      <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          {description && <DialogDescription>{description}</DialogDescription>}
+        </DialogHeader>
+        <div className="-mx-6 min-h-0 flex-1 overflow-y-auto overscroll-contain px-6">
+          {itemCount === 0 ? (
+            <p className="py-6 text-center text-sm text-gray-400">
+              {emptyMessage}
+            </p>
+          ) : (
+            children
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -72,8 +128,6 @@ function ActiveMembersCard({
   count: number;
   items: { memberId: string; memberName: string }[];
 }) {
-  const [expanded, setExpanded] = useState(false);
-
   return (
     <Card className="border-gray-200 bg-white shadow-sm">
       <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
@@ -87,34 +141,25 @@ function ActiveMembersCard({
         <p className="mt-1 text-xs text-gray-400">
           With an active subscription
         </p>
-        {count > 0 && (
-          <button
-            type="button"
-            onClick={() => setExpanded((p) => !p)}
-            className="mt-3 flex items-center gap-1 text-xs font-medium text-primary-base hover:underline"
+        {items.length > 0 && (
+          <ListDialog
+            triggerLabel="Show list"
+            title={`Active Members (${items.length})`}
+            description="Members with an active subscription."
+            itemCount={items.length}
+            emptyMessage="No active members."
           >
-            {expanded ? (
-              <>
-                <ChevronUp className="h-3 w-3" /> Hide list
-              </>
-            ) : (
-              <>
-                <ChevronDown className="h-3 w-3" /> Show list
-              </>
-            )}
-          </button>
-        )}
-        {expanded && (
-          <ul className="mt-2 space-y-1.5">
-            {items.map((item) => (
-              <li
-                key={item.memberId}
-                className="flex items-center rounded-md bg-green-50 px-2 py-1.5 text-xs font-medium text-gray-800"
-              >
-                {item.memberName}
-              </li>
-            ))}
-          </ul>
+            <ul className="space-y-1.5 py-1">
+              {items.map((item) => (
+                <li
+                  key={item.memberId}
+                  className="flex items-center rounded-md bg-green-50 px-2 py-1.5 text-xs font-medium wrap-break-word text-gray-800"
+                >
+                  {item.memberName}
+                </li>
+              ))}
+            </ul>
+          </ListDialog>
         )}
       </CardContent>
     </Card>
@@ -199,7 +244,7 @@ function CapacityCard({
   );
 }
 
-/** Expiring-soon collapsible list */
+/** Expiring-soon list */
 function ExpiringSoonCard({
   count,
   items,
@@ -212,8 +257,6 @@ function ExpiringSoonCard({
     endDate: Date | string;
   }[];
 }) {
-  const [expanded, setExpanded] = useState(false);
-
   return (
     <Card className="border-gray-200 bg-white shadow-sm">
       <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
@@ -229,49 +272,40 @@ function ExpiringSoonCard({
         <p className="mt-1 text-xs text-gray-400">
           subscriptions expiring in 30 days
         </p>
-        {count > 0 && (
-          <button
-            type="button"
-            onClick={() => setExpanded((p) => !p)}
-            className="mt-3 flex items-center gap-1 text-xs font-medium text-primary-base hover:underline"
+        {items.length > 0 && (
+          <ListDialog
+            triggerLabel="Show list"
+            title={`Expiring Soon (${items.length})`}
+            description="Active subscriptions ending within 30 days."
+            itemCount={items.length}
+            emptyMessage="No subscriptions expiring soon."
           >
-            {expanded ? (
-              <>
-                <ChevronUp className="h-3 w-3" /> Hide list
-              </>
-            ) : (
-              <>
-                <ChevronDown className="h-3 w-3" /> Show list
-              </>
-            )}
-          </button>
-        )}
-        {expanded && (
-          <ul className="mt-2 space-y-1.5">
-            {items.map((item) => {
-              const daysLeft = differenceInDays(
-                new Date(item.endDate),
-                new Date(),
-              );
-              return (
-                <li
-                  key={item.subscriptionId}
-                  className="flex items-center justify-between rounded-md bg-amber-50 px-2 py-1.5 text-xs"
-                >
-                  <span className="font-medium text-gray-800">
-                    {item.memberName}
-                  </span>
-                  <span
-                    className={`font-semibold ${daysLeft <= 7 ? 'text-red-600' : 'text-amber-700'}`}
+            <ul className="space-y-1.5 py-1">
+              {items.map((item) => {
+                const daysLeft = differenceInDays(
+                  new Date(item.endDate),
+                  new Date(),
+                );
+                return (
+                  <li
+                    key={item.subscriptionId}
+                    className="flex items-center justify-between gap-2 rounded-md bg-amber-50 px-2 py-1.5 text-xs"
                   >
-                    {daysLeft <= 0
-                      ? 'Expires today'
-                      : `${daysLeft}d left — ${format(new Date(item.endDate), 'MMM d')}`}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
+                    <span className="min-w-0 wrap-break-word font-medium text-gray-800">
+                      {item.memberName}
+                    </span>
+                    <span
+                      className={`shrink-0 font-semibold ${daysLeft <= 7 ? 'text-red-600' : 'text-amber-700'}`}
+                    >
+                      {daysLeft <= 0
+                        ? 'Expires today'
+                        : `${daysLeft}d left — ${format(new Date(item.endDate), 'MMM d')}`}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </ListDialog>
         )}
       </CardContent>
     </Card>

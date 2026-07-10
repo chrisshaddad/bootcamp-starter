@@ -30,3 +30,13 @@
 ## Notes for the next agent
 
 _(Feature C is complete — all 3 phases ✅)_
+
+- 2026-07-10 (Claude, post-completion UI tweak): on `dashboard/page.tsx` (C2),
+  replaced the inline expand/collapse "Show list" for the **Active Members**
+  and **Expiring Soon** cards with a `Dialog` (shared local `ListDialog`
+  helper) whose list body scrolls independently (`min-h-0 flex-1
+overflow-y-auto`, dialog capped at `85vh`) — the API returns both lists
+  uncapped, so a gym with many members had no scroll/height limit on the old
+  inline `<ul>`. No API/contract changes. `lint`/`check-types`/`format:check`
+  all pass; not yet visually confirmed in a browser (no browser tool in this
+  environment).
