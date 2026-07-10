@@ -15,6 +15,7 @@ import { AuthenticatedUser } from '@/common/types/authenticated-user.type';
 import { Role } from '@/common/enums';
 import { CreateLeaseDto } from './dto/create-lease.dto';
 import { UpdateLeaseDto } from './dto/update-lease.dto';
+import { RenewLeaseDto } from './dto/renew-lease.dto';
 
 @ApiTags('leases')
 @ApiBearerAuth()
@@ -99,6 +100,28 @@ export class LeasesController {
   ) {
     const { orgId } = await this.orgScope.resolveForCaller(user);
     return this.leasesService.update(
+      orgId,
+      user.sub,
+      buildingId,
+      floorId,
+      apartmentId,
+      id,
+      dto,
+    );
+  }
+
+  @Roles(Role.ORG_ADMIN)
+  @Post(':id/renew')
+  async renewLease(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('buildingId') buildingId: string,
+    @Param('floorId') floorId: string,
+    @Param('apartmentId') apartmentId: string,
+    @Param('id') id: string,
+    @Body() dto: RenewLeaseDto,
+  ) {
+    const { orgId } = await this.orgScope.resolveForCaller(user);
+    return this.leasesService.renew(
       orgId,
       user.sub,
       buildingId,

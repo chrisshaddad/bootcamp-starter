@@ -415,3 +415,16 @@ export type PatchLeaseBody = {
   renewalTerms?: string;
   notes?: string;
 };
+
+/**
+ * Renter and apartment are implicit from the existing lease/route being
+ * renewed — not overridable here.
+ */
+export type RenewLeaseBody = {
+  startDate: string;
+  endDate: string;
+  rentAmount?: number;
+  depositAmount?: number;
+  renewalTerms?: string;
+  notes?: string;
+};

@@ -12,6 +12,7 @@ import {
   FileTextIcon,
   PlusIcon,
   MoreHorizontalIcon,
+  RefreshCwIcon,
   XCircleIcon,
 } from 'lucide-react';
 
@@ -59,6 +60,7 @@ import {
   useListLeasesQuery,
   useCreateLeaseMutation,
   useUpdateLeaseMutation,
+  useRenewLeaseMutation,
 } from '@/store/api/endpoints/leases.api';
 import type { ApartmentStatus, LeaseResponse, LeaseStatus } from '@/types/api';
 
@@ -158,6 +160,21 @@ const DEFAULT_VALUES: LeaseFormValues = {
   notes: '',
 };
 
+const renewSchema = z
+  .object({
+    startDate: z.string().min(1, 'Start date is required'),
+    endDate: z.string().min(1, 'End date is required'),
+    rentAmount: numericField('Rent amount'),
+    depositAmount: numericField('Deposit amount'),
+    renewalTerms: z.string().optional(),
+    notes: z.string().optional(),
+  })
+  .refine((v) => v.endDate >= v.startDate, {
+    message: 'End date must be on or after the start date',
+    path: ['endDate'],
+  });
+type RenewFormValues = z.infer<typeof renewSchema>;
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 interface ApartmentDetailPageProps {
@@ -188,11 +205,13 @@ export function ApartmentDetailPage({
   });
   const [createLease, { isLoading: creating }] = useCreateLeaseMutation();
   const [updateLease, { isLoading: terminating }] = useUpdateLeaseMutation();
+  const [renewLease, { isLoading: renewing }] = useRenewLeaseMutation();
 
   const [createOpen, setCreateOpen] = useState(false);
   const [terminateTarget, setTerminateTarget] = useState<LeaseResponse | null>(
     null,
   );
+  const [renewTarget, setRenewTarget] = useState<LeaseResponse | null>(null);
 
   const {
     register,
@@ -203,6 +222,15 @@ export function ApartmentDetailPage({
   } = useForm<LeaseFormValues>({
     resolver: zodResolver(leaseSchema),
     defaultValues: DEFAULT_VALUES,
+  });
+
+  const {
+    register: regRenew,
+    handleSubmit: handleRenewSubmit,
+    reset: resetRenew,
+    formState: { errors: renewErrors },
+  } = useForm<RenewFormValues>({
+    resolver: zodResolver(renewSchema),
   });
 
   async function onCreateSubmit(values: LeaseFormValues) {
@@ -245,6 +273,43 @@ export function ApartmentDetailPage({
     } catch (err: unknown) {
       const apiErr = err as { data?: { message?: string } };
       toast.error(apiErr?.data?.message ?? 'Failed to terminate lease.');
+    }
+  }
+
+  function openRenew(lease: LeaseResponse) {
+    setRenewTarget(lease);
+    resetRenew({
+      startDate: '',
+      endDate: '',
+      rentAmount: lease.rentAmount,
+      depositAmount: lease.depositAmount,
+      renewalTerms: lease.renewalTerms ?? '',
+      notes: lease.notes ?? '',
+    });
+  }
+
+  async function onRenewSubmit(values: RenewFormValues) {
+    if (!renewTarget) return;
+    try {
+      await renewLease({
+        buildingId,
+        floorId,
+        apartmentId,
+        leaseId: renewTarget.id,
+        body: {
+          startDate: new Date(values.startDate).toISOString(),
+          endDate: new Date(values.endDate).toISOString(),
+          rentAmount: Number(values.rentAmount),
+          depositAmount: Number(values.depositAmount),
+          renewalTerms: values.renewalTerms || undefined,
+          notes: values.notes || undefined,
+        },
+      }).unwrap();
+      toast.success('Lease renewed.');
+      setRenewTarget(null);
+    } catch (err: unknown) {
+      const apiErr = err as { data?: { message?: string } };
+      toast.error(apiErr?.data?.message ?? 'Failed to renew lease.');
     }
   }
 
@@ -400,6 +465,12 @@ export function ApartmentDetailPage({
                               }
                             />
                             <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => openRenew(lease)}
+                              >
+                                <RefreshCwIcon className="size-3.5 mr-1.5" />
+                                Renew
+                              </DropdownMenuItem>
                               <DropdownMenuItem
                                 variant="destructive"
                                 onClick={() => setTerminateTarget(lease)}
@@ -598,6 +669,138 @@ export function ApartmentDetailPage({
               {terminating ? 'Terminating…' : 'Terminate'}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Renew Lease Dialog ─────────────────────────────────────────────── */}
+      <Dialog
+        open={!!renewTarget}
+        onOpenChange={(open) => {
+          if (!open) setRenewTarget(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Renew lease</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={handleRenewSubmit(onRenewSubmit)}
+            className="flex flex-col gap-4"
+          >
+            <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+              Renewing for{' '}
+              <span className="font-medium text-foreground">
+                {renters?.find((r) => r.id === renewTarget?.renterId)
+                  ?.fullName ?? renewTarget?.renterId}
+              </span>{' '}
+              — Unit {apartment?.unitNumber}
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="rn-start">
+                  Start date <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="rn-start"
+                  type="date"
+                  aria-invalid={!!renewErrors.startDate}
+                  {...regRenew('startDate')}
+                />
+                {renewErrors.startDate && (
+                  <p className="text-xs text-destructive">
+                    {renewErrors.startDate.message}
+                  </p>
+                )}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="rn-end">
+                  End date <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="rn-end"
+                  type="date"
+                  aria-invalid={!!renewErrors.endDate}
+                  {...regRenew('endDate')}
+                />
+                {renewErrors.endDate && (
+                  <p className="text-xs text-destructive">
+                    {renewErrors.endDate.message}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="rn-rent">
+                  Rent amount <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="rn-rent"
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  aria-invalid={!!renewErrors.rentAmount}
+                  {...regRenew('rentAmount')}
+                />
+                {renewErrors.rentAmount && (
+                  <p className="text-xs text-destructive">
+                    {renewErrors.rentAmount.message}
+                  </p>
+                )}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="rn-deposit">
+                  Deposit amount <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="rn-deposit"
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  aria-invalid={!!renewErrors.depositAmount}
+                  {...regRenew('depositAmount')}
+                />
+                {renewErrors.depositAmount && (
+                  <p className="text-xs text-destructive">
+                    {renewErrors.depositAmount.message}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="rn-renewal">
+                Renewal terms{' '}
+                <span className="text-muted-foreground font-normal">
+                  (optional)
+                </span>
+              </Label>
+              <Textarea
+                id="rn-renewal"
+                rows={2}
+                {...regRenew('renewalTerms')}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="rn-notes">
+                Notes{' '}
+                <span className="text-muted-foreground font-normal">
+                  (optional)
+                </span>
+              </Label>
+              <Textarea id="rn-notes" rows={2} {...regRenew('notes')} />
+            </div>
+            <DialogFooter>
+              <DialogClose
+                render={<Button variant="outline" type="button" />}
+                onClick={() => setRenewTarget(null)}
+              >
+                Cancel
+              </DialogClose>
+              <Button type="submit" disabled={renewing}>
+                {renewing ? 'Renewing…' : 'Renew'}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

@@ -4,6 +4,7 @@ import type {
   LeaseResponse,
   CreateLeaseBody,
   PatchLeaseBody,
+  RenewLeaseBody,
 } from '@/types/api';
 
 function unwrap<TData>(response: TData | ApiEnvelope<TData>): TData {
@@ -93,6 +94,28 @@ export const leasesApi = baseApi.injectEndpoints({
       ],
     }),
 
+    renewLease: build.mutation<
+      LeaseResponse,
+      ApartmentScope & { leaseId: string; body: RenewLeaseBody }
+    >({
+      query: ({ buildingId, floorId, apartmentId, leaseId, body }) => ({
+        url: `/buildings/${encodeURIComponent(buildingId)}/floors/${encodeURIComponent(floorId)}/apartments/${encodeURIComponent(apartmentId)}/leases/${encodeURIComponent(leaseId)}/renew`,
+        method: 'POST',
+        body,
+      }),
+      transformResponse: (
+        response: LeaseResponse | ApiEnvelope<LeaseResponse>,
+      ) => unwrap(response),
+      invalidatesTags: (_result, _error, { apartmentId, leaseId }) => [
+        { type: 'Lease', id: leaseId },
+        { type: 'Lease', id: 'LIST' },
+        { type: 'Apartment', id: apartmentId },
+        { type: 'Apartment', id: 'LIST' },
+        { type: 'Renter', id: 'LIST' },
+        'Timeline',
+      ],
+    }),
+
     deleteLease: build.mutation<
       { id: string },
       ApartmentScope & { leaseId: string }
@@ -118,5 +141,6 @@ export const {
   useGetLeaseQuery,
   useCreateLeaseMutation,
   useUpdateLeaseMutation,
+  useRenewLeaseMutation,
   useDeleteLeaseMutation,
 } = leasesApi;

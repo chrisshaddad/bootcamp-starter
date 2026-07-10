@@ -11,6 +11,7 @@ import { Role } from '@/common/enums';
 import { LeaseResponse } from '@repo/contracts';
 import { CreateLeaseDto } from './dto/create-lease.dto';
 import { UpdateLeaseDto } from './dto/update-lease.dto';
+import { RenewLeaseDto } from './dto/renew-lease.dto';
 import { formatLease } from './lease-formatter';
 
 const OCCUPYING_STATUSES = new Set(['occupied']);
@@ -239,6 +240,81 @@ export class LeasesService {
     });
 
     return { data: this.formatLease(lease) };
+  }
+
+  /**
+   * Closes out an active lease and opens its replacement atomically: the
+   * apartment stays 'occupied' throughout (no flicker to vacant), unlike
+   * update()'s terminate path which is a terminal state with no follow-up.
+   */
+  async renew(
+    orgId: string,
+    actorId: string,
+    buildingId: string,
+    floorId: string,
+    apartmentId: string,
+    leaseId: string,
+    dto: RenewLeaseDto,
+  ): Promise<{ data: LeaseResponse }> {
+    const existing = await this.prisma.lease.findFirst({
+      where: { id: leaseId, orgId, buildingId, floorId, apartmentId },
+    });
+    if (!existing) throw new NotFoundException('Lease not found.');
+
+    const now = new Date();
+    if (
+      !this.leaseStatus.isEffectivelyActive(
+        { status: existing.status, endDate: existing.endDate },
+        now,
+      )
+    ) {
+      throw new ConflictException('Only an active lease can be renewed.');
+    }
+
+    const { oldLease, newLease } = await this.prisma.$transaction(
+      async (tx) => {
+        const oldLease = await tx.lease.update({
+          where: { id: leaseId },
+          data: { status: 'terminated' },
+        });
+        const newLease = await tx.lease.create({
+          data: {
+            orgId,
+            buildingId,
+            floorId,
+            apartmentId,
+            renterId: existing.renterId,
+            startDate: new Date(dto.startDate),
+            endDate: new Date(dto.endDate),
+            rentAmount: dto.rentAmount ?? existing.rentAmount,
+            depositAmount: dto.depositAmount ?? existing.depositAmount,
+            status: 'active',
+            renewalTerms: dto.renewalTerms ?? existing.renewalTerms,
+            notes: dto.notes ?? existing.notes,
+          },
+        });
+        await tx.apartment.update({
+          where: { id: apartmentId },
+          data: { status: 'occupied' },
+        });
+        return { oldLease, newLease };
+      },
+    );
+
+    await this.timeline.emit({
+      orgId,
+      actorId,
+      action: 'lease.renewed',
+      targetType: 'Lease',
+      targetId: newLease.id,
+      metadata: {
+        oldLeaseId: oldLease.id,
+        newLeaseId: newLease.id,
+        apartmentId,
+      },
+    });
+
+    return { data: this.formatLease(newLease) };
   }
 
   async remove(

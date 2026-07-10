@@ -370,4 +370,167 @@ describe('LeasesService', () => {
       );
     });
   });
+
+  describe('renew', () => {
+    const renewDto = {
+      startDate: '2027-01-01T00:00:00.000Z',
+      endDate: FAR_FUTURE,
+    };
+
+    it('terminates the old lease and creates exactly one new active lease, carrying over renter/rent/deposit', async () => {
+      const { service, prisma, timeline } = makeService({
+        lease: { findFirst: jest.fn().mockResolvedValue(leaseRow()) },
+      });
+      prisma.lease.update.mockResolvedValue(leaseRow({ status: 'terminated' }));
+      prisma.lease.create.mockResolvedValue(
+        leaseRow({ id: 'lease-2', startDate: new Date(renewDto.startDate) }),
+      );
+
+      await service.renew(
+        orgId,
+        actorId,
+        buildingId,
+        floorId,
+        apartmentId,
+        'lease-1',
+        renewDto,
+      );
+
+      expect(prisma.lease.update).toHaveBeenCalledWith({
+        where: { id: 'lease-1' },
+        data: { status: 'terminated' },
+      });
+      expect(prisma.lease.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          orgId,
+          buildingId,
+          floorId,
+          apartmentId,
+          renterId,
+          rentAmount: new Prisma.Decimal('1500.00'),
+          depositAmount: new Prisma.Decimal('1500.00'),
+          status: 'active',
+        }),
+      });
+      expect(timeline.emit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'lease.renewed',
+          metadata: expect.objectContaining({
+            oldLeaseId: 'lease-1',
+            newLeaseId: 'lease-2',
+          }),
+        }),
+      );
+    });
+
+    it('keeps the apartment occupied throughout', async () => {
+      const { service, prisma } = makeService({
+        lease: { findFirst: jest.fn().mockResolvedValue(leaseRow()) },
+      });
+      prisma.lease.update.mockResolvedValue(leaseRow({ status: 'terminated' }));
+      prisma.lease.create.mockResolvedValue(leaseRow({ id: 'lease-2' }));
+
+      await service.renew(
+        orgId,
+        actorId,
+        buildingId,
+        floorId,
+        apartmentId,
+        'lease-1',
+        renewDto,
+      );
+
+      expect(prisma.apartment.update).toHaveBeenCalledWith({
+        where: { id: apartmentId },
+        data: { status: 'occupied' },
+      });
+    });
+
+    it('applies rent/deposit/renewalTerms/notes overrides when provided', async () => {
+      const { service, prisma } = makeService({
+        lease: { findFirst: jest.fn().mockResolvedValue(leaseRow()) },
+      });
+      prisma.lease.update.mockResolvedValue(leaseRow({ status: 'terminated' }));
+      prisma.lease.create.mockResolvedValue(leaseRow({ id: 'lease-2' }));
+
+      await service.renew(
+        orgId,
+        actorId,
+        buildingId,
+        floorId,
+        apartmentId,
+        'lease-1',
+        { ...renewDto, rentAmount: 1800, renewalTerms: '12-month renewal' },
+      );
+
+      expect(prisma.lease.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          rentAmount: 1800,
+          renewalTerms: '12-month renewal',
+        }),
+      });
+    });
+
+    it('rejects renewing a lease that is not effectively active', async () => {
+      const { service, prisma } = makeService({
+        lease: {
+          findFirst: jest
+            .fn()
+            .mockResolvedValue(leaseRow({ status: 'terminated' })),
+        },
+      });
+
+      await expect(
+        service.renew(
+          orgId,
+          actorId,
+          buildingId,
+          floorId,
+          apartmentId,
+          'lease-1',
+          renewDto,
+        ),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(prisma.lease.update).not.toHaveBeenCalled();
+      expect(prisma.lease.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects renewing an active lease that has already expired', async () => {
+      const { service } = makeService({
+        lease: {
+          findFirst: jest
+            .fn()
+            .mockResolvedValue(leaseRow({ endDate: new Date(FAR_PAST) })),
+        },
+      });
+
+      await expect(
+        service.renew(
+          orgId,
+          actorId,
+          buildingId,
+          floorId,
+          apartmentId,
+          'lease-1',
+          renewDto,
+        ),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('throws NotFoundException for a lease outside the apartment/floor/building/org', async () => {
+      const { service } = makeService();
+
+      await expect(
+        service.renew(
+          orgId,
+          actorId,
+          buildingId,
+          floorId,
+          apartmentId,
+          'missing',
+          renewDto,
+        ),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
 });
