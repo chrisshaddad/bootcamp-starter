@@ -30,6 +30,19 @@ export function ThemePicker() {
   const [saving, setSaving] = useState(false);
   const initialized = useRef(false);
 
+  // Preset hex values are read from CSS custom properties, which requires
+  // the DOM — resolve once after mount and cache them instead of calling
+  // getComputedStyle() during render (unsafe on the server, wasteful on the
+  // client).
+  const [presetHexes, setPresetHexes] = useState<Record<string, string>>({});
+  useEffect(() => {
+    const hexes: Record<string, string> = {};
+    for (const preset of THEME_PRESETS) {
+      hexes[preset.slug] = getPresetHex(preset.cssVar);
+    }
+    setPresetHexes(hexes);
+  }, []);
+
   // Sync local state when the saved value changes from outside this component
   // (e.g. after a successful save refreshes /auth/me, or on first load).
   useEffect(() => {
@@ -48,8 +61,8 @@ export function ThemePicker() {
     applyTheme(hex);
   };
 
-  const handlePresetClick = (cssVar: string) => {
-    const hex = getPresetHex(cssVar);
+  const handlePresetClick = (slug: string) => {
+    const hex = presetHexes[slug];
     if (hex) handlePreview(hex);
   };
 
@@ -106,32 +119,34 @@ export function ThemePicker() {
       </div>
 
       <div className="grid grid-cols-6 gap-3 sm:grid-cols-12">
-        {THEME_PRESETS.map((preset) => (
-          <button
-            key={preset.slug}
-            type="button"
-            aria-label={`${preset.label} theme`}
-            title={preset.label}
-            onClick={() => handlePresetClick(preset.cssVar)}
-            className="group flex flex-col items-center gap-1"
-          >
-            <span
-              className={cn(
-                'flex h-9 w-9 items-center justify-center rounded-full ring-2 ring-offset-2 transition-transform group-hover:scale-105',
-                previewHex?.toLowerCase() ===
-                  getPresetHex(preset.cssVar).toLowerCase()
-                  ? 'ring-gray-900'
-                  : 'ring-transparent',
-              )}
-              style={{ backgroundColor: `var(${preset.cssVar})` }}
+        {THEME_PRESETS.map((preset) => {
+          const presetHex = presetHexes[preset.slug];
+          const isSelected =
+            !!presetHex &&
+            previewHex?.toLowerCase() === presetHex.toLowerCase();
+          return (
+            <button
+              key={preset.slug}
+              type="button"
+              aria-label={`${preset.label} theme`}
+              title={preset.label}
+              onClick={() => handlePresetClick(preset.slug)}
+              className="group flex flex-col items-center gap-1"
             >
-              {previewHex?.toLowerCase() ===
-                getPresetHex(preset.cssVar).toLowerCase() && (
-                <Check className="h-4 w-4 text-white drop-shadow" />
-              )}
-            </span>
-          </button>
-        ))}
+              <span
+                className={cn(
+                  'flex h-9 w-9 items-center justify-center rounded-full ring-2 ring-offset-2 transition-transform group-hover:scale-105',
+                  isSelected ? 'ring-gray-900' : 'ring-transparent',
+                )}
+                style={{ backgroundColor: `var(${preset.cssVar})` }}
+              >
+                {isSelected && (
+                  <Check className="h-4 w-4 text-white drop-shadow" />
+                )}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       <div className="flex items-end gap-3 border-t border-gray-200 pt-4">

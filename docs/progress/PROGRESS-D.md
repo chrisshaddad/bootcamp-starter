@@ -63,11 +63,12 @@ number | null }` TS type onto the new shared `gymSettingsUpdateRequestSchema`
   separate hooks per feature-ownership convention rather than merging them,
   even though they hit the same route.
 - D2: 12 preset **swatch buttons** render their background via
-  `style={{ backgroundColor: 'var(--theme-preset-x)' }}` (CSS resolves it,
-  no JS read needed for display) and only call `getComputedStyle` to resolve
-  the actual hex string at click-time (for preview/save) — avoids any
-  client/server hydration mismatch risk from reading `document` during
-  render.
+  `style={{ backgroundColor: 'var(--theme-preset-x)' }}` (CSS resolves it, no
+  JS read needed for display); the actual hex string (needed for the
+  selected-state check and for preview/save) is resolved via
+  `getComputedStyle` **once in a `useEffect` on mount** and cached in state
+  — see bug #5 below, which corrected an earlier version of this that called
+  `getComputedStyle` during render/on every click instead.
 - D3: full round-trip QA was run against the live dev servers + seeded data
   via `curl` (magic-link login flow through Mailpit): confirmed (a) Iron
   Peak's `ORG_ADMIN` setting a theme is visible to Iron Peak's `MEMBER` via
@@ -173,13 +174,46 @@ focus-visible:ring-success/20` instead of the standard shadcn
   `ring`/`primary-base` (both theme-reactive since bug #1's fix). Re-ran
   lint/check-types/format — all pass.
 
+- **D3 bug #4 found + fixed (CodeRabbit PR review):** dark-mode
+  `accent-foreground` was hardcoded to `'#ffffff'` instead of using
+  `pickForeground(darkAccentHex)` like `primary-foreground` already does.
+  For lighter/warmer seed colors (orange, amber, lime, teal) `darkAccent()`
+  only drops lightness by 6 points, leaving a medium-lightness color where
+  white text scores 2.28–2.95:1 contrast — well under WCAG AA. **Audit while
+  fixing this also found a worse, pre-existing instance of the same bug**:
+  dark-mode `sidebar-accent-foreground` used `base400` (a light tint of the
+  hue) as text on `darkAccentHex`, giving 1.48–1.77:1 contrast — including
+  for the **default green theme itself** (1.77:1), not just custom colors.
+  That pairing was never `#ffffff`-vs-dark, so CodeRabbit's comment didn't
+  catch it directly, but it's the exact same root cause. This was a
+  self-inflicted regression: the original (pre-Feature-D) dark sidebar used
+  a neutral gray background with tinted text (5.36:1, safe); the deviation
+  logged in bug #1 above ("brand `sidebar-accent` for consistency") swapped
+  in a saturated background without re-deriving a matching foreground.
+  **Fix:** compute `darkAccentForeground = pickForeground(darkAccentHex)`
+  once and use it for both `accent-foreground` and `sidebar-accent-foreground`
+  in the dark token set. Verified across 7 presets: contrast now ranges
+  4.32–7.78:1 (was 1.48–2.95:1). `lint`/`check-types`/`format:check` pass.
+
+- **D3 bug #5 found + fixed (CodeRabbit PR review):** `theme-picker.tsx`
+  called `getPresetHex()` (a `getComputedStyle(document.documentElement)`
+  read) directly inside the `THEME_PRESETS.map()` in the JSX — twice per
+  preset (once for the selected-ring class, once for the check-icon
+  condition), so 24 DOM reads every render. Reading `document` during render
+  is also unsafe if this component is ever server-rendered. **Fix:** resolve
+  all 12 preset hexes once in a `useEffect` on mount into a `presetHexes`
+  state map, and read from that in both the JSX and `handlePresetClick`
+  (which previously also called `getPresetHex()` again on every click). The
+  swatch background itself was already fine (`style={{ backgroundColor:
+'var(...)' }}`, pure CSS, no JS read) — only the "is this preset selected"
+  comparison needed caching. `lint`/`check-types`/`format:check` pass.
+
 ## Notes for the next agent
 
 **Feature D is complete — all 4 phases ✅.** D0-D2 built the feature; D3's
-API-level QA passed immediately, and three real bugs surfaced across
-multiple rounds of the user testing in an actual browser — each found, root
-caused, and fixed (see the three D3 bug entries above). The user confirmed
-each fix worked. If you're touching this area later:
+API-level QA passed immediately, and five real bugs surfaced across multiple
+rounds of user + CodeRabbit review — each found, root caused, and fixed (see
+the five D3 bug entries above). If you're touching this area later:
 
 - Any new brand-ramp token in `globals.css` must be a `var(...)` reference,
   never a literal, or the runtime theme override can't reach it (bug #1).
@@ -187,6 +221,12 @@ each fix worked. If you're touching this area later:
   never `bg-primary-*` — status color communicates state, not brand (bug #2).
 - Shared form primitives' focus states must use `border-ring`/`ring-ring`,
   matching `Button`/`Textarea`/`Select` (bug #3).
+- Any foreground/text token paired with a computed background must go
+  through `pickForeground()`, never a hardcoded or unrelated tint — this bit
+  us twice in the same dark-mode accent pairing (bug #4).
+- Never call `getComputedStyle()`/read `document` directly inside JSX render
+  — resolve once in a `useEffect` and read from state, as `theme-picker.tsx`
+  now does for `presetHexes` (bug #5).
 
 Full detail in [`../gym-management-plan.md`](../gym-management-plan.md)
 "Feature D" for the original design; this file's Decisions & deviations

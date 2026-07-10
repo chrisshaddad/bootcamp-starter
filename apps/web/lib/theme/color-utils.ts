@@ -156,6 +156,7 @@ export function deriveThemeTokens(hex: string): {
   const base200 = tint(hsl, 0.78, 0.8);
   const base100 = tint(hsl, 0.9, 0.75);
   const darkAccentHex = darkAccent(hsl);
+  const darkAccentForeground = pickForeground(darkAccentHex);
 
   const light: ThemeTokens = {
     primary: hex,
@@ -185,12 +186,12 @@ export function deriveThemeTokens(hex: string): {
     'primary-200': base200,
     'primary-100': base100,
     accent: darkAccentHex,
-    'accent-foreground': '#ffffff',
+    'accent-foreground': darkAccentForeground,
     ring: hex,
     'sidebar-primary': hex,
     'sidebar-primary-foreground': foreground,
     'sidebar-accent': darkAccentHex,
-    'sidebar-accent-foreground': base400,
+    'sidebar-accent-foreground': darkAccentForeground,
     'sidebar-ring': hex,
     'chart-1': base400,
   };
