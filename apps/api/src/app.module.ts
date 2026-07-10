@@ -24,6 +24,7 @@ import { UsersModule } from '@/modules/users/users.module';
 import { BuildingsModule } from '@/modules/buildings/buildings.module';
 import { FloorsModule } from '@/modules/floors/floors.module';
 import { ApartmentsModule } from '@/modules/apartments/apartments.module';
+import { RentersModule } from '@/modules/renters/renters.module';
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { ApartmentsModule } from '@/modules/apartments/apartments.module';
     BuildingsModule,
     FloorsModule,
     ApartmentsModule,
+    RentersModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

@@ -314,3 +314,45 @@ export type PatchApartmentBody = {
   status?: ApartmentStatus;
   notes?: string;
 };
+
+// ── Renters ──────────────────────────────────────────────────────────────────
+
+export const renterEffectiveStatusSchema = z.enum([
+  'current',
+  'former',
+  'none',
+]);
+export type RenterEffectiveStatus = z.infer<typeof renterEffectiveStatusSchema>;
+
+export type RenterResponse = {
+  id: string;
+  orgId: string;
+  fullName: string;
+  email?: string | null;
+  phone?: string | null;
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
+  notes?: string | null;
+  /** Always 'none' until Leases exist (see issues/002-leases-crud.md). */
+  effectiveStatus: RenterEffectiveStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateRenterBody = {
+  fullName: string;
+  email?: string;
+  phone?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  notes?: string;
+};
+
+export type PatchRenterBody = {
+  fullName?: string;
+  email?: string;
+  phone?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  notes?: string;
+};

@@ -16,6 +16,7 @@ import {
   Menu,
   BarChart3,
   Wrench,
+  Contact,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -70,6 +71,13 @@ function buildNavItems(
       label: isMaintenance ? dict.nav.myBuildings : dict.nav.buildings,
       icon: Building2,
       href: `/${locale}/dashboard/buildings`,
+      areaKey: 'buildings',
+    },
+    {
+      key: 'renters',
+      label: dict.nav.renters,
+      icon: Contact,
+      href: `/${locale}/dashboard/renters`,
       areaKey: 'buildings',
     },
     {
