@@ -100,3 +100,18 @@ model BuildingAssignment {
   @@index([orgId])
   @@index([userId])
 }
+
+model Renter {
+  id                    String   @id @default(cuid())
+  orgId                 String
+  fullName              String
+  email                 String?
+  phone                 String?
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  notes                 String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([orgId])
+}

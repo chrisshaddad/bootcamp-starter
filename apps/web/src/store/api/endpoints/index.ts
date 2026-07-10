@@ -5,3 +5,4 @@ import './payments.api';
 import './timeline.api';
 import './users.api';
 import './buildings.api';
+import './renters.api';

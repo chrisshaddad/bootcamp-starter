@@ -6,7 +6,8 @@
  *
  * Area keys map 1-to-1 to dashboard sub-paths:
  *   "dashboard"   → /dashboard
- *   "buildings"   → /dashboard/buildings
+ *   "buildings"   → /dashboard/buildings (also gates /dashboard/renters — no
+ *                   dedicated area; Renters reuses the buildings permission)
  *   "users"       → /dashboard/users
  *   "payments"    → /dashboard/payments
  *   "reports"     → /dashboard/reports
