@@ -1,5 +1,7 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
+/* Base styles for the react-day-picker calendar (used by the date picker). */
+@import 'react-day-picker/style.css';
 
 @custom-variant dark (&:is(.dark *));
 

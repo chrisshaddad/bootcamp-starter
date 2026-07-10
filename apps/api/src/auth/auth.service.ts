@@ -14,6 +14,8 @@ import { PrismaService } from '../database/prisma.service';
 import { SessionService } from './session.service';
 import { PasswordService } from './password.service';
 import { MAIL_QUEUE, MAIL_JOBS } from '../mail/mail.constants';
+import { AuditService } from '../audit/audit.service';
+import { AUDIT_ACTIONS, AUDIT_ENTITIES } from '../audit/audit.constants';
 
 const MAGIC_LINK_EXPIRY_MINUTES = 15;
 
@@ -25,6 +27,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly sessionService: SessionService,
     private readonly passwordService: PasswordService,
+    private readonly audit: AuditService,
     @InjectQueue(MAIL_QUEUE) private readonly mailQueue: Queue,
   ) {}
 
@@ -105,6 +108,14 @@ export class AuthService {
 
     this.logger.log(`User ${magicLink.userId} authenticated via magic link`);
 
+    await this.audit.record({
+      userId: magicLink.userId,
+      action: AUDIT_ACTIONS.AUTH_LOGIN,
+      entity: AUDIT_ENTITIES.USER,
+      entityId: magicLink.userId,
+      details: { method: 'magic_link' },
+    });
+
     return { sessionId, user: this.toUserResponse(magicLink.user) };
   }
 
@@ -140,6 +151,14 @@ export class AuthService {
     const sessionId = await this.sessionService.createSession(user.id);
     this.logger.log(`User ${user.id} authenticated via password`);
 
+    await this.audit.record({
+      userId: user.id,
+      action: AUDIT_ACTIONS.AUTH_LOGIN,
+      entity: AUDIT_ENTITIES.USER,
+      entityId: user.id,
+      details: { method: 'password' },
+    });
+
     return { sessionId, user: this.toUserResponse(user) };
   }
 
@@ -163,7 +182,7 @@ export class AuthService {
 
     if (!existing) {
       try {
-        await this.prisma.user.create({
+        const created = await this.prisma.user.create({
           data: {
             firstName: input.firstName,
             lastName: input.lastName,
@@ -172,8 +191,21 @@ export class AuthService {
             role: 'CLIENT',
             status: 'ACTIVE',
           },
+          select: { id: true },
         });
         this.logger.log('New CLIENT registered');
+
+        // Self-actor: the newly registered user is the only actor available for
+        // a public signup. Logged only on real creation, never for the
+        // existing-email path, so the audit trail can't be used to probe which
+        // emails already exist.
+        await this.audit.record({
+          userId: created.id,
+          action: AUDIT_ACTIONS.AUTH_SIGNUP,
+          entity: AUDIT_ENTITIES.USER,
+          entityId: created.id,
+          details: { email },
+        });
       } catch (error) {
         // A concurrent signup for the same email can win the race between the
         // findUnique above and this create, raising a unique-constraint
@@ -223,14 +255,32 @@ export class AuthService {
     this.logger.log(
       `Password set for user ${userId} (status ${updated.status})`,
     );
+
+    await this.audit.record({
+      userId,
+      action: AUDIT_ACTIONS.AUTH_SET_PASSWORD,
+      entity: AUDIT_ENTITIES.USER,
+      entityId: userId,
+      // Flags the onboarding case where setting a password activates an invited
+      // (PENDING) account.
+      details: { onboarded: user.status === 'PENDING' },
+    });
+
     return this.toUserResponse(updated);
   }
 
   /**
    * Logout user by deleting their session
    */
-  async logout(sessionId: string): Promise<void> {
+  async logout(sessionId: string, userId: string | null): Promise<void> {
     await this.sessionService.deleteSession(sessionId);
+
+    await this.audit.record({
+      userId,
+      action: AUDIT_ACTIONS.AUTH_LOGOUT,
+      entity: AUDIT_ENTITIES.USER,
+      entityId: userId,
+    });
   }
 
   // --- internals --------------------------------------------------------
@@ -262,6 +312,16 @@ export class AuthService {
     });
 
     this.logger.log(`Magic link queued for user ${user.id}`);
+
+    // Logged here (not in requestMagicLink) so it only fires for a real,
+    // authenticatable account — non-existent / blocked emails never reach this
+    // point, preserving the non-enumerable behaviour of the request endpoint.
+    await this.audit.record({
+      userId: user.id,
+      action: AUDIT_ACTIONS.AUTH_MAGIC_LINK_REQUESTED,
+      entity: AUDIT_ENTITIES.USER,
+      entityId: user.id,
+    });
   }
 
   /** Only the random token reaches the user; the DB stores its SHA-256 hash. */

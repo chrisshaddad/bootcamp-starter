@@ -31,6 +31,7 @@ describe('AuthService', () => {
     Pick<PasswordService, 'hash' | 'verify' | 'verifyAgainstDummy'>
   >;
   let mailQueue: { add: jest.Mock };
+  let audit: { record: jest.Mock };
 
   beforeEach(() => {
     process.env.APP_URL = 'http://localhost:3000';
@@ -54,11 +55,13 @@ describe('AuthService', () => {
       verifyAgainstDummy: jest.fn().mockResolvedValue(false),
     };
     mailQueue = { add: jest.fn().mockResolvedValue(undefined) };
+    audit = { record: jest.fn().mockResolvedValue(undefined) };
 
     service = new AuthService(
       prisma as never,
       sessionService as never,
       passwordService as never,
+      audit as never,
       mailQueue as never,
     );
   });
