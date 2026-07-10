@@ -402,12 +402,11 @@ export default function AnnouncementsPage() {
                                 )}
                               </button>
                             ))}
-                            {!eventsLoading &&
-                              filteredEvents?.length === 0 && (
-                                <div className="px-2 py-1.5 text-sm text-gray-500">
-                                  No events found
-                                </div>
-                              )}
+                            {!eventsLoading && filteredEvents?.length === 0 && (
+                              <div className="px-2 py-1.5 text-sm text-gray-500">
+                                No events found
+                              </div>
+                            )}
                           </div>
                         </div>
                       )}
