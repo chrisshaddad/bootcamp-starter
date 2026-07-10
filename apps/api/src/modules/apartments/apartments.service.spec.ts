@@ -17,6 +17,7 @@ describe('ApartmentsService', () => {
     overrides: {
       apartment?: Partial<Record<string, jest.Mock>>;
       floor?: Partial<Record<string, jest.Mock>>;
+      lease?: Partial<Record<string, jest.Mock>>;
       buildingAccess?: Partial<Record<string, jest.Mock>>;
     } = {},
   ) {
@@ -34,6 +35,10 @@ describe('ApartmentsService', () => {
           .fn()
           .mockResolvedValue({ id: floorId, orgId, buildingId }),
         ...overrides.floor,
+      },
+      lease: {
+        count: jest.fn().mockResolvedValue(0),
+        ...overrides.lease,
       },
     };
     const timeline = { emit: jest.fn().mockResolvedValue(undefined) };
@@ -185,6 +190,18 @@ describe('ApartmentsService', () => {
       await expect(
         service.remove(orgId, actorId, buildingId, floorId, 'missing'),
       ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('rejects deleting an apartment that has leases on record', async () => {
+      const { service, prisma } = makeService({
+        apartment: { findFirst: jest.fn().mockResolvedValue(apartmentRow()) },
+        lease: { count: jest.fn().mockResolvedValue(1) },
+      });
+
+      await expect(
+        service.remove(orgId, actorId, buildingId, floorId, 'apartment-1'),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(prisma.apartment.delete).not.toHaveBeenCalled();
     });
   });
 

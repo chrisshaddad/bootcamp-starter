@@ -2,6 +2,7 @@ import { baseApi } from '@/store/api/base-api';
 import type {
   ApiEnvelope,
   RenterResponse,
+  RenterDetailResponse,
   CreateRenterBody,
   PatchRenterBody,
 } from '@/types/api';
@@ -28,15 +29,18 @@ export const rentersApi = baseApi.injectEndpoints({
           : [{ type: 'Renter', id: 'LIST' }],
     }),
 
-    getRenter: build.query<RenterResponse, string>({
+    getRenter: build.query<RenterDetailResponse, string>({
       query: (id) => ({
         url: `/renters/${encodeURIComponent(id)}`,
         method: 'GET',
       }),
       transformResponse: (
-        response: RenterResponse | ApiEnvelope<RenterResponse>,
+        response: RenterDetailResponse | ApiEnvelope<RenterDetailResponse>,
       ) => unwrap(response),
-      providesTags: (_result, _error, id) => [{ type: 'Renter', id }],
+      providesTags: (_result, _error, id) => [
+        { type: 'Renter', id },
+        { type: 'Lease', id: 'LIST' },
+      ],
     }),
 
     createRenter: build.mutation<RenterResponse, CreateRenterBody>({

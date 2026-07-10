@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -12,6 +13,7 @@ import {
   DoorOpenIcon,
   PlusIcon,
   MoreHorizontalIcon,
+  EyeIcon,
   PencilIcon,
   TrashIcon,
 } from 'lucide-react';
@@ -147,6 +149,7 @@ export function FloorDetailPage({
   canWrite,
   locale,
 }: FloorDetailPageProps) {
+  const router = useRouter();
   const { data: building } = useGetBuildingQuery(buildingId);
   const { data: floor, isLoading: floorLoading } = useGetFloorQuery({
     buildingId,
@@ -261,6 +264,12 @@ export function FloorDetailPage({
     }
   }
 
+  function goToApartment(apartmentId: string) {
+    router.push(
+      `/${locale}/dashboard/buildings/${buildingId}/floors/${floorId}/apartments/${apartmentId}`,
+    );
+  }
+
   if (floorLoading) {
     return (
       <div className="flex flex-col gap-6">
@@ -355,7 +364,19 @@ export function FloorDetailPage({
               </TableRow>
             ) : (
               apartments?.map((apartment) => (
-                <TableRow key={apartment.id}>
+                <TableRow
+                  key={apartment.id}
+                  className="cursor-pointer hover:bg-muted/40"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => goToApartment(apartment.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      goToApartment(apartment.id);
+                    }
+                  }}
+                >
                   <TableCell>
                     <span className="font-medium text-sm">
                       {apartment.unitNumber}
@@ -371,7 +392,7 @@ export function FloorDetailPage({
                     <StatusBadge status={apartment.status} />
                   </TableCell>
                   {canWrite && (
-                    <TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger
                           render={
@@ -385,6 +406,12 @@ export function FloorDetailPage({
                           }
                         />
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => goToApartment(apartment.id)}
+                          >
+                            <EyeIcon className="size-3.5 mr-1.5" />
+                            View
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => openEdit(apartment)}>
                             <PencilIcon className="size-3.5 mr-1.5" />
                             Edit

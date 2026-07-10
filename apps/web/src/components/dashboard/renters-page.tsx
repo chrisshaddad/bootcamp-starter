@@ -51,7 +51,32 @@ import {
   useUpdateRenterMutation,
   useDeleteRenterMutation,
 } from '@/store/api/endpoints/renters.api';
-import type { RenterResponse } from '@/types/api';
+import type { RenterEffectiveStatus, RenterResponse } from '@/types/api';
+
+// ── Status badge ─────────────────────────────────────────────────────────────
+
+function RenterStatusBadge({ status }: { status: RenterEffectiveStatus }) {
+  switch (status) {
+    case 'current':
+      return (
+        <Badge
+          variant="default"
+          className="bg-green-100 text-green-800 border-green-200"
+        >
+          Current
+        </Badge>
+      );
+    case 'former':
+      return <Badge variant="secondary">Former</Badge>;
+    case 'none':
+    default:
+      return (
+        <Badge variant="outline" className="text-xs">
+          No lease yet
+        </Badge>
+      );
+  }
+}
 
 // ── Zod schema ────────────────────────────────────────────────────────────────
 
@@ -292,9 +317,7 @@ export function RentersPage({ canWrite, locale }: RentersPageProps) {
                     {renter.phone ?? '—'}
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className="text-xs">
-                      No lease yet
-                    </Badge>
+                    <RenterStatusBadge status={renter.effectiveStatus} />
                   </TableCell>
                   {canWrite && (
                     <TableCell onClick={(e) => e.stopPropagation()}>

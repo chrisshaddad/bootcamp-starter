@@ -1,31 +1,52 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '@/infrastructure/prisma/prisma.service';
 import { TimelineService } from '@/modules/timeline/timeline.service';
-import { RenterResponse } from '@repo/contracts';
+import { BuildingAccessService } from '@/common/building-access/building-access.service';
+import { LeaseStatusService } from '@/common/lease-status/lease-status.service';
+import { formatLease, LeaseRow } from '@/modules/leases/lease-formatter';
+import { Role } from '@/common/enums';
+import {
+  LeaseStatus,
+  RenterDetailResponse,
+  RenterResponse,
+} from '@repo/contracts';
 import { CreateRenterDto } from './dto/create-renter.dto';
 import { UpdateRenterDto } from './dto/update-renter.dto';
+
+type RenterRow = {
+  id: string;
+  orgId: string;
+  fullName: string;
+  email: string | null;
+  phone: string | null;
+  emergencyContactName: string | null;
+  emergencyContactPhone: string | null;
+  notes: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
 
 @Injectable()
 export class RentersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly timeline: TimelineService,
+    private readonly buildingAccess: BuildingAccessService,
+    private readonly leaseStatus: LeaseStatusService,
   ) {}
 
   // ── Format helpers ────────────────────────────────────────────────────────
 
-  private formatRenter(renter: {
-    id: string;
-    orgId: string;
-    fullName: string;
-    email: string | null;
-    phone: string | null;
-    emergencyContactName: string | null;
-    emergencyContactPhone: string | null;
-    notes: string | null;
-    createdAt: Date;
-    updatedAt: Date;
-  }): RenterResponse {
+  private formatRenter(
+    renter: RenterRow,
+    mostRecentLease: LeaseRow | null | undefined,
+  ): RenterResponse {
+    const now = new Date();
     return {
       id: renter.id,
       orgId: renter.orgId,
@@ -35,9 +56,17 @@ export class RentersService {
       emergencyContactName: renter.emergencyContactName,
       emergencyContactPhone: renter.emergencyContactPhone,
       notes: renter.notes,
-      // The Lease table doesn't exist yet; real Current/Former derivation is
-      // wired in by issues/002-leases-crud.md via LeaseStatusService.
-      effectiveStatus: 'none',
+      effectiveStatus: !mostRecentLease
+        ? 'none'
+        : this.leaseStatus.isEffectivelyActive(
+              {
+                status: mostRecentLease.status as LeaseStatus,
+                endDate: mostRecentLease.endDate,
+              },
+              now,
+            )
+          ? 'current'
+          : 'former',
       createdAt: renter.createdAt.toISOString(),
       updatedAt: renter.updatedAt.toISOString(),
     };
@@ -45,25 +74,71 @@ export class RentersService {
 
   // ── CRUD ──────────────────────────────────────────────────────────────────
 
-  async findAll(orgId: string): Promise<{ data: RenterResponse[] }> {
+  async findAll(
+    orgId: string,
+    callerId: string,
+    callerRole: Role,
+  ): Promise<{ data: RenterResponse[] }> {
+    const allowedBuildingIds = await this.buildingAccess.getAllowedBuildingIds(
+      orgId,
+      callerId,
+      callerRole,
+    );
+
+    const where =
+      allowedBuildingIds === null
+        ? { orgId }
+        : {
+            orgId,
+            leases: { some: { buildingId: { in: allowedBuildingIds } } },
+          };
+
     const renters = await this.prisma.renter.findMany({
-      where: { orgId },
+      where,
+      include: { leases: { orderBy: { startDate: 'desc' as const }, take: 1 } },
       orderBy: { createdAt: 'asc' },
     });
 
-    return { data: renters.map((r) => this.formatRenter(r)) };
+    return {
+      data: renters.map((r) => this.formatRenter(r, r.leases[0])),
+    };
   }
 
   async findOne(
     orgId: string,
+    callerId: string,
+    callerRole: Role,
     renterId: string,
-  ): Promise<{ data: RenterResponse }> {
+  ): Promise<{ data: RenterDetailResponse }> {
     const renter = await this.prisma.renter.findFirst({
       where: { id: renterId, orgId },
+      include: { leases: { orderBy: { startDate: 'desc' as const } } },
     });
     if (!renter) throw new NotFoundException('Renter not found.');
 
-    return { data: this.formatRenter(renter) };
+    const allowedBuildingIds = await this.buildingAccess.getAllowedBuildingIds(
+      orgId,
+      callerId,
+      callerRole,
+    );
+    if (allowedBuildingIds !== null) {
+      const hasAccess = renter.leases.some((l) =>
+        allowedBuildingIds.includes(l.buildingId),
+      );
+      if (!hasAccess) {
+        throw new ForbiddenException(
+          'You are not assigned to any building connected to this renter.',
+        );
+      }
+    }
+
+    const now = new Date();
+    return {
+      data: {
+        ...this.formatRenter(renter, renter.leases[0]),
+        leases: renter.leases.map((l) => formatLease(l, now, this.leaseStatus)),
+      },
+    };
   }
 
   async create(
@@ -92,7 +167,7 @@ export class RentersService {
       metadata: { fullName: renter.fullName },
     });
 
-    return { data: this.formatRenter(renter) };
+    return { data: this.formatRenter(renter, null) };
   }
 
   async update(
@@ -131,7 +206,12 @@ export class RentersService {
       metadata: { changes: Object.keys(dto) },
     });
 
-    return { data: this.formatRenter(renter) };
+    const mostRecentLease = await this.prisma.lease.findFirst({
+      where: { renterId },
+      orderBy: { startDate: 'desc' },
+    });
+
+    return { data: this.formatRenter(renter, mostRecentLease) };
   }
 
   async remove(
@@ -143,6 +223,15 @@ export class RentersService {
       where: { id: renterId, orgId },
     });
     if (!existing) throw new NotFoundException('Renter not found.');
+
+    const leaseCount = await this.prisma.lease.count({
+      where: { renterId },
+    });
+    if (leaseCount > 0) {
+      throw new ConflictException(
+        'Cannot delete a renter that has leases on record.',
+      );
+    }
 
     await this.prisma.renter.delete({ where: { id: renterId } });
 

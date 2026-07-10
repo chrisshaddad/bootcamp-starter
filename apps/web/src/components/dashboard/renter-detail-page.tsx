@@ -1,19 +1,83 @@
 'use client';
 
+import Link from 'next/link';
 import { ContactIcon, FileTextIcon } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from '@/components/ui/table';
 
 import { useGetRenterQuery } from '@/store/api/endpoints/renters.api';
+import type { LeaseStatus, RenterEffectiveStatus } from '@/types/api';
+
+// ── Status badges ────────────────────────────────────────────────────────────
+
+function RenterStatusBadge({ status }: { status: RenterEffectiveStatus }) {
+  switch (status) {
+    case 'current':
+      return (
+        <Badge
+          variant="default"
+          className="bg-green-100 text-green-800 border-green-200"
+        >
+          Current
+        </Badge>
+      );
+    case 'former':
+      return <Badge variant="secondary">Former</Badge>;
+    case 'none':
+    default:
+      return (
+        <Badge variant="outline" className="text-xs">
+          No lease yet
+        </Badge>
+      );
+  }
+}
+
+function LeaseStatusBadge({ status }: { status: LeaseStatus }) {
+  switch (status) {
+    case 'active':
+      return (
+        <Badge
+          variant="default"
+          className="bg-green-100 text-green-800 border-green-200"
+        >
+          Active
+        </Badge>
+      );
+    case 'expired':
+      return (
+        <Badge
+          variant="outline"
+          className="bg-amber-50 text-amber-800 border-amber-200"
+        >
+          Expired
+        </Badge>
+      );
+    case 'terminated':
+      return <Badge variant="destructive">Terminated</Badge>;
+    case 'draft':
+    default:
+      return <Badge variant="secondary">Draft</Badge>;
+  }
+}
 
 // ── Main component ────────────────────────────────────────────────────────────
 
 interface RenterDetailPageProps {
   renterId: string;
+  locale: string;
 }
 
-export function RenterDetailPage({ renterId }: RenterDetailPageProps) {
+export function RenterDetailPage({ renterId, locale }: RenterDetailPageProps) {
   const { data: renter, isLoading, isError } = useGetRenterQuery(renterId);
 
   if (isLoading) {
@@ -43,9 +107,7 @@ export function RenterDetailPage({ renterId }: RenterDetailPageProps) {
           <ContactIcon className="size-6 text-muted-foreground" />
           {renter.fullName}
         </h1>
-        <Badge variant="outline" className="text-xs">
-          No lease yet
-        </Badge>
+        <RenterStatusBadge status={renter.effectiveStatus} />
       </div>
 
       <div className="rounded-xl border bg-card p-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -75,19 +137,59 @@ export function RenterDetailPage({ renterId }: RenterDetailPageProps) {
         </div>
       </div>
 
-      {/* Leases section (populated in issues/002-leases-crud.md) */}
+      {/* Leases section */}
       <div>
         <h2 className="text-lg font-semibold tracking-tight">Leases</h2>
         <p className="text-sm text-muted-foreground mt-0.5">
-          This renter&apos;s lease history.
+          This renter&apos;s lease history, most recent first.
         </p>
       </div>
-      <div className="rounded-xl border bg-card overflow-hidden">
-        <div className="text-center py-10 text-muted-foreground">
-          <FileTextIcon className="size-8 mx-auto mb-2 opacity-30" />
-          No leases yet.
+
+      {!renter.leases.length ? (
+        <div className="rounded-xl border bg-card overflow-hidden">
+          <div className="text-center py-10 text-muted-foreground">
+            <FileTextIcon className="size-8 mx-auto mb-2 opacity-30" />
+            No leases yet.
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="rounded-xl border bg-card overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Apartment</TableHead>
+                <TableHead>Dates</TableHead>
+                <TableHead>Rent</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {renter.leases.map((lease) => (
+                <TableRow key={lease.id}>
+                  <TableCell>
+                    <Link
+                      href={`/${locale}/dashboard/buildings/${lease.buildingId}/floors/${lease.floorId}/apartments/${lease.apartmentId}`}
+                      className="text-sm font-medium text-primary hover:underline"
+                    >
+                      View apartment
+                    </Link>
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {new Date(lease.startDate).toLocaleDateString()} –{' '}
+                    {new Date(lease.endDate).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {lease.rentAmount}
+                  </TableCell>
+                  <TableCell>
+                    <LeaseStatusBadge status={lease.effectiveStatus} />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
     </div>
   );
 }

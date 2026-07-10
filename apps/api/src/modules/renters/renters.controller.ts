@@ -28,8 +28,8 @@ export class RentersController {
   @Roles(Role.ORG_ADMIN, Role.SUPERVISOR, Role.FINANCE, Role.MAINTENANCE)
   @Get()
   async getRenters(@CurrentUser() user: AuthenticatedUser) {
-    const { orgId } = await this.orgScope.resolveForCaller(user);
-    return this.rentersService.findAll(orgId);
+    const { orgId, role } = await this.orgScope.resolveForCaller(user);
+    return this.rentersService.findAll(orgId, user.sub, role);
   }
 
   @Roles(Role.ORG_ADMIN, Role.SUPERVISOR, Role.FINANCE, Role.MAINTENANCE)
@@ -38,8 +38,8 @@ export class RentersController {
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
   ) {
-    const { orgId } = await this.orgScope.resolveForCaller(user);
-    return this.rentersService.findOne(orgId, id);
+    const { orgId, role } = await this.orgScope.resolveForCaller(user);
+    return this.rentersService.findOne(orgId, user.sub, role, id);
   }
 
   @Roles(Role.ORG_ADMIN)

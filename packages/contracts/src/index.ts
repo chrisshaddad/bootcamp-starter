@@ -333,7 +333,7 @@ export type RenterResponse = {
   emergencyContactName?: string | null;
   emergencyContactPhone?: string | null;
   notes?: string | null;
-  /** Always 'none' until Leases exist (see issues/002-leases-crud.md). */
+  /** Derived from the renter's most recent lease via LeaseStatusService. */
   effectiveStatus: RenterEffectiveStatus;
   createdAt: string;
   updatedAt: string;
@@ -354,5 +354,64 @@ export type PatchRenterBody = {
   phone?: string;
   emergencyContactName?: string;
   emergencyContactPhone?: string;
+  notes?: string;
+};
+
+/** GET /renters/:id response — RenterResponse plus full lease history. */
+export type RenterDetailResponse = RenterResponse & {
+  leases: LeaseResponse[];
+};
+
+// ── Leases ───────────────────────────────────────────────────────────────────
+
+export const leaseStatusSchema = z.enum([
+  'draft',
+  'active',
+  'expired',
+  'terminated',
+]);
+export type LeaseStatus = z.infer<typeof leaseStatusSchema>;
+
+export type LeaseResponse = {
+  id: string;
+  orgId: string;
+  buildingId: string;
+  floorId: string;
+  apartmentId: string;
+  renterId: string;
+  startDate: string;
+  endDate: string;
+  rentAmount: string; // Decimal(12,2) serialized as string
+  depositAmount: string; // Decimal(12,2) serialized as string
+  /** Raw stored status. */
+  status: LeaseStatus;
+  /** Derived via LeaseStatusService (e.g. 'active' + past endDate -> 'expired'). */
+  effectiveStatus: LeaseStatus;
+  renewalTerms?: string | null;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateLeaseBody = {
+  renterId: string;
+  startDate: string;
+  endDate: string;
+  rentAmount: number;
+  depositAmount: number;
+  /** Defaults to 'active' when omitted. */
+  status?: LeaseStatus;
+  renewalTerms?: string;
+  notes?: string;
+};
+
+export type PatchLeaseBody = {
+  renterId?: string;
+  startDate?: string;
+  endDate?: string;
+  rentAmount?: number;
+  depositAmount?: number;
+  status?: LeaseStatus;
+  renewalTerms?: string;
   notes?: string;
 };
