@@ -147,7 +147,7 @@ describe('AuthController', () => {
         response as unknown as Response,
       );
 
-      expect(authService.logout).toHaveBeenCalledWith('session-3');
+      expect(authService.logout).toHaveBeenCalledWith('session-3', null);
       expect(response.clearCookie).toHaveBeenCalledWith(
         SESSION_COOKIE_NAME,
         expect.objectContaining({ path: '/' }),

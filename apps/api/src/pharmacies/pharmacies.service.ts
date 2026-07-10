@@ -16,6 +16,12 @@ import type {
   PharmacyListResponse,
 } from '@repo/contracts';
 import { PrismaService } from '../database/prisma.service';
+import { AuditService } from '../audit/audit.service';
+import {
+  AUDIT_ACTIONS,
+  AUDIT_ENTITIES,
+  type AuditChanges,
+} from '../audit/audit.constants';
 
 // Columns that make up a `BranchResponse` (minus the derived `userCount`).
 const BRANCH_SELECT = {
@@ -38,7 +44,10 @@ type BranchRow = Prisma.PharmacyBranchGetPayload<{
 export class PharmaciesService {
   private readonly logger = new Logger(PharmaciesService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+  ) {}
 
   /** All pharmacies, for selection dropdowns. Always reflects live data. */
   async list(): Promise<PharmacyListResponse> {
@@ -104,7 +113,10 @@ export class PharmaciesService {
    * as every other invited staff account. An optional first branch is created
    * in the same transaction (not every pharmacy opens with a branch).
    */
-  async create(dto: PharmacyCreateRequest): Promise<PharmacyAdminListResponse> {
+  async create(
+    dto: PharmacyCreateRequest,
+    actorId: string,
+  ): Promise<PharmacyAdminListResponse> {
     const email = dto.adminEmail.toLowerCase();
 
     const existingUser = await this.prisma.user.findUnique({
@@ -117,12 +129,14 @@ export class PharmaciesService {
       );
     }
 
+    let newPharmacyId: string | undefined;
     try {
       await this.prisma.$transaction(async (tx) => {
         const pharmacy = await tx.pharmacy.create({
           data: { name: dto.name },
           select: { id: true },
         });
+        newPharmacyId = pharmacy.id;
         await tx.user.create({
           data: {
             firstName: dto.adminFirstName,
@@ -161,6 +175,14 @@ export class PharmaciesService {
       throw error;
     }
 
+    await this.audit.record({
+      userId: actorId,
+      action: AUDIT_ACTIONS.PHARMACY_CREATE,
+      entity: AUDIT_ENTITIES.PHARMACY,
+      entityId: newPharmacyId ?? null,
+      details: { name: dto.name, adminEmail: email },
+    });
+
     // Return the refreshed list so the client can update in one round-trip.
     return this.adminList();
   }
@@ -170,10 +192,13 @@ export class PharmaciesService {
    * removes or reassigns its staff (admin included) first. Once it has no users,
    * deleting cascades to its branches, inquiries, and stock at the DB level.
    */
-  async remove(id: string): Promise<PharmacyAdminListResponse> {
+  async remove(
+    id: string,
+    actorId: string,
+  ): Promise<PharmacyAdminListResponse> {
     const pharmacy = await this.prisma.pharmacy.findFirst({
       where: { id },
-      select: { id: true, _count: { select: { users: true } } },
+      select: { id: true, name: true, _count: { select: { users: true } } },
     });
     if (!pharmacy) {
       throw new NotFoundException('Pharmacy not found.');
@@ -185,6 +210,15 @@ export class PharmaciesService {
     }
 
     await this.prisma.pharmacy.delete({ where: { id } });
+
+    await this.audit.record({
+      userId: actorId,
+      action: AUDIT_ACTIONS.PHARMACY_DELETE,
+      entity: AUDIT_ENTITIES.PHARMACY,
+      entityId: id,
+      details: { name: pharmacy.name },
+    });
+
     return this.adminList();
   }
 
@@ -192,11 +226,22 @@ export class PharmaciesService {
   async addBranch(
     pharmacyId: string,
     dto: BranchCreateRequest,
+    actorId: string,
   ): Promise<PharmacyDetailResponse> {
     await this.ensurePharmacy(pharmacyId);
-    await this.prisma.pharmacyBranch.create({
+    const branch = await this.prisma.pharmacyBranch.create({
       data: this.branchCreateData(pharmacyId, dto),
+      select: { id: true },
     });
+
+    await this.audit.record({
+      userId: actorId,
+      action: AUDIT_ACTIONS.BRANCH_CREATE,
+      entity: AUDIT_ENTITIES.PHARMACY_BRANCH,
+      entityId: branch.id,
+      details: { name: dto.name, pharmacyId },
+    });
+
     return this.buildDetail(pharmacyId);
   }
 
@@ -205,8 +250,23 @@ export class PharmaciesService {
     pharmacyId: string,
     branchId: string,
     dto: BranchUpdateRequest,
+    actorId: string,
   ): Promise<PharmacyDetailResponse> {
-    await this.ensureBranch(pharmacyId, branchId);
+    // Load the current values (scoped to the pharmacy, so this also enforces the
+    // tenant boundary + existence) to diff against for the audit entry.
+    const existing = await this.prisma.pharmacyBranch.findFirst({
+      where: { id: branchId, pharmacyId },
+      select: {
+        name: true,
+        phoneNumber: true,
+        address: true,
+        latitude: true,
+        longitude: true,
+      },
+    });
+    if (!existing) {
+      throw new NotFoundException('Branch not found.');
+    }
 
     const data: Prisma.PharmacyBranchUncheckedUpdateManyInput = {};
     if (dto.name !== undefined) data.name = dto.name;
@@ -216,11 +276,50 @@ export class PharmaciesService {
     if (dto.longitude !== undefined) data.longitude = dto.longitude;
 
     // Scope the write by pharmacyId too, so the tenant boundary is enforced on
-    // the mutation itself — not just the ensureBranch pre-check above.
+    // the mutation itself — not just the pre-check above.
     await this.prisma.pharmacyBranch.updateMany({
       where: { id: branchId, pharmacyId },
       data,
     });
+
+    // Before → after diff of only the fields that actually changed.
+    const changes: AuditChanges = {};
+    if (dto.name !== undefined && dto.name !== existing.name) {
+      changes.name = { from: existing.name, to: dto.name };
+    }
+    if (
+      dto.phoneNumber !== undefined &&
+      dto.phoneNumber !== existing.phoneNumber
+    ) {
+      changes.phoneNumber = { from: existing.phoneNumber, to: dto.phoneNumber };
+    }
+    if (dto.address !== undefined && dto.address !== existing.address) {
+      changes.address = { from: existing.address, to: dto.address };
+    }
+    if (
+      dto.latitude !== undefined &&
+      Number(existing.latitude) !== dto.latitude
+    ) {
+      changes.latitude = { from: Number(existing.latitude), to: dto.latitude };
+    }
+    if (
+      dto.longitude !== undefined &&
+      Number(existing.longitude) !== dto.longitude
+    ) {
+      changes.longitude = {
+        from: Number(existing.longitude),
+        to: dto.longitude,
+      };
+    }
+
+    await this.audit.record({
+      userId: actorId,
+      action: AUDIT_ACTIONS.BRANCH_UPDATE,
+      entity: AUDIT_ENTITIES.PHARMACY_BRANCH,
+      entityId: branchId,
+      details: { changes },
+    });
+
     return this.buildDetail(pharmacyId);
   }
 
@@ -231,10 +330,11 @@ export class PharmaciesService {
   async removeBranch(
     pharmacyId: string,
     branchId: string,
+    actorId: string,
   ): Promise<PharmacyDetailResponse> {
     const branch = await this.prisma.pharmacyBranch.findFirst({
       where: { id: branchId, pharmacyId },
-      select: { id: true, _count: { select: { users: true } } },
+      select: { id: true, name: true, _count: { select: { users: true } } },
     });
     if (!branch) {
       throw new NotFoundException('Branch not found.');
@@ -250,6 +350,15 @@ export class PharmaciesService {
     await this.prisma.pharmacyBranch.deleteMany({
       where: { id: branchId, pharmacyId },
     });
+
+    await this.audit.record({
+      userId: actorId,
+      action: AUDIT_ACTIONS.BRANCH_DELETE,
+      entity: AUDIT_ENTITIES.PHARMACY_BRANCH,
+      entityId: branchId,
+      details: { name: branch.name, pharmacyId },
+    });
+
     return this.buildDetail(pharmacyId);
   }
 
@@ -263,6 +372,7 @@ export class PharmaciesService {
     pharmacyId: string,
     userId: string,
     branchId: string | null,
+    actorId: string,
   ): Promise<PharmacyDetailResponse> {
     const user = await this.prisma.user.findFirst({
       where: { id: userId, pharmacyId },
@@ -290,6 +400,15 @@ export class PharmaciesService {
       where: { id: userId, pharmacyId },
       data: { branchId },
     });
+
+    await this.audit.record({
+      userId: actorId,
+      action: AUDIT_ACTIONS.USER_ASSIGN_BRANCH,
+      entity: AUDIT_ENTITIES.USER,
+      entityId: userId,
+      details: { branchId, pharmacyId },
+    });
+
     return this.buildDetail(pharmacyId);
   }
 
@@ -333,20 +452,6 @@ export class PharmaciesService {
     });
     if (!pharmacy) {
       throw new NotFoundException('Pharmacy not found.');
-    }
-  }
-
-  /** Throw 404 unless the branch exists and belongs to the pharmacy. */
-  private async ensureBranch(
-    pharmacyId: string,
-    branchId: string,
-  ): Promise<void> {
-    const branch = await this.prisma.pharmacyBranch.findFirst({
-      where: { id: branchId, pharmacyId },
-      select: { id: true },
-    });
-    if (!branch) {
-      throw new NotFoundException('Branch not found.');
     }
   }
 

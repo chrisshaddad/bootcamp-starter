@@ -16,6 +16,12 @@ import type {
 } from '@repo/contracts';
 import { isPharmacyScopedRole } from '@repo/contracts';
 import { PrismaService } from '../database/prisma.service';
+import { AuditService } from '../audit/audit.service';
+import {
+  AUDIT_ACTIONS,
+  AUDIT_ENTITIES,
+  type AuditChanges,
+} from '../audit/audit.constants';
 
 // Statuses that block authentication (see AGENTS.md). We refuse to let an
 // admin put these on their own account, which would lock them out.
@@ -37,7 +43,10 @@ const USER_SELECT = {
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+  ) {}
 
   /**
    * Platform-wide user listing for the super-admin console.
@@ -110,7 +119,7 @@ export class UsersService {
    * Create a user. The account has no password — the user completes onboarding
    * through the magic-link / set-password flow, same as seeded accounts.
    */
-  async create(dto: UserCreateRequest): Promise<UserResponse> {
+  async create(dto: UserCreateRequest, actorId: string): Promise<UserResponse> {
     const existing = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
@@ -124,10 +133,25 @@ export class UsersService {
     );
 
     try {
-      return await this.prisma.user.create({
+      const created = await this.prisma.user.create({
         data: { ...dto, pharmacyId, branchId: null, password: null },
         select: USER_SELECT,
       });
+
+      await this.audit.record({
+        userId: actorId,
+        action: AUDIT_ACTIONS.USER_CREATE,
+        entity: AUDIT_ENTITIES.USER,
+        entityId: created.id,
+        details: {
+          email: created.email,
+          role: created.role,
+          status: created.status,
+          pharmacyId: created.pharmacyId,
+        },
+      });
+
+      return created;
     } catch (error) {
       // A concurrent create for the same email can win the race between the
       // findUnique above and this insert, raising a unique-constraint
@@ -190,11 +214,53 @@ export class UsersService {
       data.branchId = null;
     }
 
-    return this.prisma.user.update({
+    const updated = await this.prisma.user.update({
       where: { id },
       data,
       select: USER_SELECT,
     });
+
+    // Build a before → after diff of only the fields that actually changed.
+    const changes: AuditChanges = {};
+    if (dto.role && dto.role !== existing.role) {
+      changes.role = { from: existing.role, to: dto.role };
+    }
+    if (dto.status && dto.status !== existing.status) {
+      changes.status = { from: existing.status, to: dto.status };
+    }
+    const finalPharmacyId =
+      data.pharmacyId !== undefined
+        ? (data.pharmacyId as string | null)
+        : existing.pharmacyId;
+    if (finalPharmacyId !== existing.pharmacyId) {
+      // Resolve to names so the diff reads "Acme → Globex", not raw UUIDs.
+      // The two lookups are independent, so run them concurrently.
+      const [fromName, toName] = await Promise.all([
+        this.pharmacyName(existing.pharmacyId),
+        this.pharmacyName(finalPharmacyId),
+      ]);
+      changes.pharmacy = { from: fromName, to: toName };
+    }
+
+    await this.audit.record({
+      userId: actor.id,
+      action: AUDIT_ACTIONS.USER_UPDATE,
+      entity: AUDIT_ENTITIES.USER,
+      entityId: id,
+      details: { changes },
+    });
+
+    return updated;
+  }
+
+  /** Resolve a pharmacy's name for human-readable audit diffs. */
+  private async pharmacyName(id: string | null): Promise<string | null> {
+    if (!id) return null;
+    const pharmacy = await this.prisma.pharmacy.findUnique({
+      where: { id },
+      select: { name: true },
+    });
+    return pharmacy?.name ?? id;
   }
 
   /** Permanently delete a user. The caller can never delete their own account. */
@@ -212,6 +278,15 @@ export class UsersService {
     }
 
     await this.prisma.user.delete({ where: { id } });
+
+    await this.audit.record({
+      userId: actor.id,
+      action: AUDIT_ACTIONS.USER_DELETE,
+      entity: AUDIT_ENTITIES.USER,
+      entityId: id,
+      details: { email: existing.email, role: existing.role },
+    });
+
     return existing;
   }
 }

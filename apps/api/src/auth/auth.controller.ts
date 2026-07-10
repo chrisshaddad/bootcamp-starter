@@ -130,7 +130,7 @@ export class AuthController {
     const sessionId = request.sessionId;
 
     if (sessionId) {
-      await this.authService.logout(sessionId);
+      await this.authService.logout(sessionId, request.user?.id ?? null);
     }
 
     response.clearCookie(SESSION_COOKIE_NAME, sessionCookieOptions());

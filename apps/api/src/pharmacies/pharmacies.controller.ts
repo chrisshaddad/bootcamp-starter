@@ -20,8 +20,9 @@ import {
   type PharmacyDetailResponse,
   type PharmacyListResponse,
 } from '@repo/contracts';
+import type { User } from '@repo/db';
 import { z } from 'zod';
-import { Roles } from '../auth/decorators';
+import { CurrentUser, Roles } from '../auth/decorators';
 import { ZodValidationPipe } from '../common/pipes';
 import { PharmaciesService } from './pharmacies.service';
 
@@ -61,16 +62,18 @@ export class PharmaciesController {
   create(
     @Body(new ZodValidationPipe(pharmacyCreateRequestSchema))
     body: PharmacyCreateRequest,
+    @CurrentUser() actor: User,
   ): Promise<PharmacyAdminListResponse> {
-    return this.pharmaciesService.create(body);
+    return this.pharmaciesService.create(body, actor.id);
   }
 
   // Delete a pharmacy (blocked while it still has users).
   @Delete(':id')
   remove(
     @Param('id', new ZodValidationPipe(idSchema)) id: string,
+    @CurrentUser() actor: User,
   ): Promise<PharmacyAdminListResponse> {
-    return this.pharmaciesService.remove(id);
+    return this.pharmaciesService.remove(id, actor.id);
   }
 
   // Add a branch; returns the refreshed pharmacy detail.
@@ -79,8 +82,9 @@ export class PharmaciesController {
     @Param('id', new ZodValidationPipe(idSchema)) id: string,
     @Body(new ZodValidationPipe(branchCreateRequestSchema))
     body: BranchCreateRequest,
+    @CurrentUser() actor: User,
   ): Promise<PharmacyDetailResponse> {
-    return this.pharmaciesService.addBranch(id, body);
+    return this.pharmaciesService.addBranch(id, body, actor.id);
   }
 
   // Edit a branch; returns the refreshed pharmacy detail.
@@ -90,8 +94,9 @@ export class PharmaciesController {
     @Param('branchId', new ZodValidationPipe(idSchema)) branchId: string,
     @Body(new ZodValidationPipe(branchUpdateRequestSchema))
     body: BranchUpdateRequest,
+    @CurrentUser() actor: User,
   ): Promise<PharmacyDetailResponse> {
-    return this.pharmaciesService.updateBranch(id, branchId, body);
+    return this.pharmaciesService.updateBranch(id, branchId, body, actor.id);
   }
 
   // Delete a branch (blocked while it still has users).
@@ -99,8 +104,9 @@ export class PharmaciesController {
   removeBranch(
     @Param('id', new ZodValidationPipe(idSchema)) id: string,
     @Param('branchId', new ZodValidationPipe(idSchema)) branchId: string,
+    @CurrentUser() actor: User,
   ): Promise<PharmacyDetailResponse> {
-    return this.pharmaciesService.removeBranch(id, branchId);
+    return this.pharmaciesService.removeBranch(id, branchId, actor.id);
   }
 
   // Assign one of the pharmacy's users to a branch (or clear it with null).
@@ -110,7 +116,13 @@ export class PharmaciesController {
     @Param('userId', new ZodValidationPipe(idSchema)) userId: string,
     @Body(new ZodValidationPipe(pharmacyAssignBranchRequestSchema))
     body: PharmacyAssignBranchRequest,
+    @CurrentUser() actor: User,
   ): Promise<PharmacyDetailResponse> {
-    return this.pharmaciesService.assignUserBranch(id, userId, body.branchId);
+    return this.pharmaciesService.assignUserBranch(
+      id,
+      userId,
+      body.branchId,
+      actor.id,
+    );
   }
 }

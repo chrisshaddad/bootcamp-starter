@@ -47,8 +47,9 @@ export class UsersController {
   create(
     @Body(new ZodValidationPipe(userCreateRequestSchema))
     body: UserCreateRequest,
+    @CurrentUser() actor: User,
   ): Promise<UserResponse> {
-    return this.usersService.create(body);
+    return this.usersService.create(body, actor.id);
   }
 
   @Patch(':id')

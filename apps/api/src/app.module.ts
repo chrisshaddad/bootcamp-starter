@@ -9,6 +9,8 @@ import { UsersModule } from './users/users.module';
 import { PharmaciesModule } from './pharmacies/pharmacies.module';
 import { MedicinesModule } from './medicines/medicines.module';
 import { StatsModule } from './stats/stats.module';
+import { AuditModule } from './audit/audit.module';
+import { ProfileModule } from './profile/profile.module';
 import { DatabaseModule } from './database/database.module';
 
 @Module({
@@ -26,6 +28,8 @@ import { DatabaseModule } from './database/database.module';
     PharmaciesModule,
     MedicinesModule,
     StatsModule,
+    AuditModule,
+    ProfileModule,
   ],
   controllers: [AppController],
   providers: [AppService],

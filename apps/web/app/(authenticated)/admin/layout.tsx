@@ -69,5 +69,8 @@ export default function SuperAdminLayout({
     return <ForbiddenPage />;
   }
 
-  return <div className="space-y-6">{children}</div>;
+  // Full height so pages that fill the viewport (e.g. the audit console, which
+  // scrolls its table internally) have a definite height to stretch into. Pages
+  // that render normal flow content are unaffected — they stay top-aligned.
+  return <div className="h-full">{children}</div>;
 }

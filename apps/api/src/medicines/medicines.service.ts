@@ -17,6 +17,12 @@ import type {
   MedicineUpdateRequest,
 } from '@repo/contracts';
 import { PrismaService } from '../database/prisma.service';
+import { AuditService } from '../audit/audit.service';
+import {
+  AUDIT_ACTIONS,
+  AUDIT_ENTITIES,
+  type AuditChanges,
+} from '../audit/audit.constants';
 
 // Columns that make up a `MedicineResponse` on the wire. The free-text
 // `ingredients` column is parsed into a clean name array by `toResponse`.
@@ -128,7 +134,10 @@ function isRealIngredientName(name: string): boolean {
 export class MedicinesService {
   private readonly logger = new Logger(MedicinesService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+  ) {}
 
   // Map a row to the wire shape: convert Prisma's Decimal price to a number and
   // parse the free-text ingredients into a clean name array.
@@ -322,10 +331,17 @@ export class MedicinesService {
    * `MedicineIngredient` links, all in one transaction. Barcode uniqueness is
    * enforced by the database.
    */
-  async create(dto: MedicineCreateRequest): Promise<MedicineResponse> {
+  async create(
+    dto: MedicineCreateRequest,
+    actorId: string,
+  ): Promise<MedicineResponse> {
     const { ingredients, ...scalars } = dto;
+    // Only the transaction can raise a barcode conflict, so scope the mapper to
+    // it. (Audit recording below is best-effort and never throws, but keeping it
+    // out of the catch avoids coupling it to the conflict mapper.)
+    let medicine: MedicineRow;
     try {
-      const medicine = await this.prisma.$transaction(async (tx) => {
+      medicine = await this.prisma.$transaction(async (tx) => {
         const created = await tx.medicine.create({
           data: { ...scalars, ingredients: joinIngredients(ingredients) },
           select: MEDICINE_SELECT,
@@ -333,10 +349,24 @@ export class MedicinesService {
         await this.syncIngredients(tx, created.id, ingredients);
         return created;
       });
-      return this.toResponse(medicine);
     } catch (error) {
       throw this.mapBarcodeConflict(error);
     }
+
+    await this.audit.record({
+      userId: actorId,
+      action: AUDIT_ACTIONS.MEDICINE_CREATE,
+      entity: AUDIT_ENTITIES.MEDICINE,
+      entityId: medicine.id,
+      details: {
+        brandName: medicine.brandName,
+        barcode: medicine.barcode,
+        priceLbp:
+          medicine.priceLbp === null ? null : medicine.priceLbp.toNumber(),
+      },
+    });
+
+    return this.toResponse(medicine);
   }
 
   /**
@@ -347,18 +377,23 @@ export class MedicinesService {
   async update(
     id: string,
     dto: MedicineUpdateRequest,
+    actorId: string,
   ): Promise<MedicineResponse> {
+    // Load the full "before" row so the audit entry can show a real diff.
     const existing = await this.prisma.medicine.findUnique({
       where: { id },
-      select: { id: true },
+      select: MEDICINE_SELECT,
     });
     if (!existing) {
       throw new NotFoundException('Medicine not found.');
     }
 
     const { ingredients, ...scalars } = dto;
+    // Scope the barcode-conflict mapper to the transaction only; the diff +
+    // best-effort audit below run after it has committed.
+    let medicine: MedicineRow;
     try {
-      const medicine = await this.prisma.$transaction(async (tx) => {
+      medicine = await this.prisma.$transaction(async (tx) => {
         const updated = await tx.medicine.update({
           where: { id },
           data: {
@@ -374,17 +409,52 @@ export class MedicinesService {
         }
         return updated;
       });
-      return this.toResponse(medicine);
     } catch (error) {
       throw this.mapBarcodeConflict(error);
     }
+
+    // Diff the human-facing (parsed) before/after shapes, keeping only the
+    // fields that actually changed.
+    const before = this.toResponse(existing);
+    const after = this.toResponse(medicine);
+    const changes: AuditChanges = {};
+    const fields = [
+      'brandName',
+      'type',
+      'dosage',
+      'form',
+      'barcode',
+      'priceLbp',
+      'mophId',
+      'atcCode',
+      'ingredients',
+    ] as const;
+    for (const field of fields) {
+      const from = before[field];
+      const to = after[field];
+      const unchanged =
+        Array.isArray(from) || Array.isArray(to)
+          ? JSON.stringify(from) === JSON.stringify(to)
+          : from === to;
+      if (!unchanged) changes[field] = { from, to };
+    }
+
+    await this.audit.record({
+      userId: actorId,
+      action: AUDIT_ACTIONS.MEDICINE_UPDATE,
+      entity: AUDIT_ENTITIES.MEDICINE,
+      entityId: id,
+      details: { changes },
+    });
+
+    return after;
   }
 
   /**
    * Permanently delete a medicine. This cascades to its stock batches,
    * inquiries, and ingredient links (see the schema's `onDelete: Cascade`).
    */
-  async remove(id: string): Promise<MedicineResponse> {
+  async remove(id: string, actorId: string): Promise<MedicineResponse> {
     const existing = await this.prisma.medicine.findUnique({
       where: { id },
       select: MEDICINE_SELECT,
@@ -394,6 +464,15 @@ export class MedicinesService {
     }
 
     await this.prisma.medicine.delete({ where: { id } });
+
+    await this.audit.record({
+      userId: actorId,
+      action: AUDIT_ACTIONS.MEDICINE_DELETE,
+      entity: AUDIT_ENTITIES.MEDICINE,
+      entityId: id,
+      details: { brandName: existing.brandName, barcode: existing.barcode },
+    });
+
     return this.toResponse(existing);
   }
 

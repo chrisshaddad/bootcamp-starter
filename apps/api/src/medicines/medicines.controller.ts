@@ -23,8 +23,9 @@ import {
   type MedicineStatsResponse,
   type MedicineUpdateRequest,
 } from '@repo/contracts';
+import type { User } from '@repo/db';
 import { z } from 'zod';
-import { Roles } from '../auth/decorators';
+import { CurrentUser, Roles } from '../auth/decorators';
 import { ZodValidationPipe } from '../common/pipes';
 import { MedicinesService } from './medicines.service';
 
@@ -69,8 +70,9 @@ export class MedicinesController {
   create(
     @Body(new ZodValidationPipe(medicineCreateRequestSchema))
     body: MedicineCreateRequest,
+    @CurrentUser() actor: User,
   ): Promise<MedicineResponse> {
-    return this.medicinesService.create(body);
+    return this.medicinesService.create(body, actor.id);
   }
 
   @Patch(':id')
@@ -78,14 +80,16 @@ export class MedicinesController {
     @Param('id', new ZodValidationPipe(medicineIdSchema)) id: string,
     @Body(new ZodValidationPipe(medicineUpdateRequestSchema))
     body: MedicineUpdateRequest,
+    @CurrentUser() actor: User,
   ): Promise<MedicineResponse> {
-    return this.medicinesService.update(id, body);
+    return this.medicinesService.update(id, body, actor.id);
   }
 
   @Delete(':id')
   remove(
     @Param('id', new ZodValidationPipe(medicineIdSchema)) id: string,
+    @CurrentUser() actor: User,
   ): Promise<MedicineResponse> {
-    return this.medicinesService.remove(id);
+    return this.medicinesService.remove(id, actor.id);
   }
 }
