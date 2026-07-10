@@ -4,6 +4,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { Prisma } from '@repo/db';
 import type { User, UserRole } from '@repo/db';
@@ -163,12 +164,18 @@ export class UsersService {
           isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
         });
       } catch (error) {
-        if (
+        const isSerializationFailure =
           error instanceof Prisma.PrismaClientKnownRequestError &&
-          error.code === 'P2034' &&
-          attempt < 3
-        ) {
+          error.code === 'P2034';
+        if (isSerializationFailure && attempt < 3) {
           continue;
+        }
+        // Retries exhausted under sustained contention: surface a retryable 503
+        // rather than leaking the raw Prisma error as a generic 500.
+        if (isSerializationFailure) {
+          throw new ServiceUnavailableException(
+            'The server is busy. Please try again.',
+          );
         }
         throw error;
       }
