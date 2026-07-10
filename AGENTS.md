@@ -6,6 +6,8 @@ Instructions for AI coding assistants (Claude Code, Cursor, Codex, Aider, etc.) 
 
 A generic full-stack bootcamp starter on Turborepo. Multi-tenant auth (orgs + roles) is pre-wired; everything domain-specific is left for the student to build.
 
+**Note:** this branch has remodeled the domain from generic "Organizations" into "MediLink," a healthcare app built around Institutions/Patients/Assignments. Read [`docs/medilink-remodel.md`](docs/medilink-remodel.md) before touching `packages/database/prisma/schema.prisma`, `apps/api/src/institutions/`, or `apps/api/src/auth/` — it documents the schema decisions, a known migration-regeneration gotcha, and an unresolved cross-branch conflict with a teammate's in-progress feature.
+
 ## Stack
 
 - **`apps/api`** — NestJS 11 on port 3001

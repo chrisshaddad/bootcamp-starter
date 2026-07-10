@@ -64,6 +64,10 @@ npm run dev
 | `packages/eslint-config`     | Shared ESLint config                       |
 | `packages/typescript-config` | Shared TypeScript configs                  |
 
+## Documentation
+
+See [`docs/`](docs/) for write-ups on major changes to this codebase — start with [`docs/medilink-remodel.md`](docs/medilink-remodel.md) for the healthcare-domain remodel (Institutions/Patients/Assignments) and the reasoning behind its schema decisions.
+
 ## Working with AI assistants
 
 If you use Claude Code, Cursor, Codex, or another AI coding assistant: read [`AGENTS.md`](AGENTS.md) — it documents the conventions and rules every contributor (human or AI) should follow when working in this repo.
