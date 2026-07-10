@@ -31,7 +31,7 @@ import { ApiError } from '@/lib/api';
 import type { MeBookingResponse, BookingStatus } from '@repo/contracts';
 
 const STATUS_COLORS: Record<string, string> = {
-  BOOKED: 'bg-primary-100 text-primary-base border border-primary-200',
+  BOOKED: 'bg-success/10 text-success border border-success/20',
   CHECKED_IN: 'bg-green-100 text-green-700 border border-green-200',
   CANCELLED: 'bg-error-light text-error border border-error/20',
 };

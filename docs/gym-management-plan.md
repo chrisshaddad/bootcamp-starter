@@ -556,6 +556,141 @@ before feature work begins.
 5. Pre-flight gates (CI parity): `npx turbo run lint`,
    `npx turbo run check-types`, `npm run format:check`.
 
+## Feature D — Gym theme customization (ORG_ADMIN) · post-launch addition
+
+Added after Features A/B/C shipped (schema was no longer frozen at this point).
+Lets an `ORG_ADMIN` recolor their gym's brand accent from **Settings** — every
+primary button, active nav item, focus ring, and chart accent across **both**
+the admin dashboard and that gym's member portal repaints to the chosen color.
+Twelve gym-relevant presets plus a custom color picker; default (no selection)
+stays the site's current green. Build in order, contracts → API → web → QA.
+
+**Scope decisions (locked in before D0):**
+
+- **Theme reach:** whole gym — the `(authenticated)` admin/staff shell **and**
+  the `(member)` portal shell both re-theme. `SUPER_ADMIN` (platform-wide, no
+  single `gymId`) is never themed.
+- **Persistence:** database, per gym (`Gym.themeColor`) — not `localStorage`.
+  Consistent across every device/staff login and required so the member portal
+  can pick it up too. One additive migration; the schema-freeze rule was about
+  not blocking the parallel A/B/C build, which is long since merged.
+- **Recolored token group only:** `primary`, `primary-foreground`, the
+  `primary-{base,400,300,200,100}` ramp, `accent`, `accent-foreground`, `ring`,
+  and the `sidebar-{primary,accent,ring}*`/`chart-1` tokens. Semantic colors
+  (`success`, `warning`, `error`/`destructive`, `secondary`) are **never**
+  recolored — they carry meaning (delete = red) independent of brand color.
+- **Colors live in `globals.css`, not inline in components/TS.** The 12 presets
+  are defined as CSS custom properties in `globals.css` (single source of
+  truth); the picker UI reads their hex values via `getComputedStyle` rather
+  than hardcoding hex in a `.ts`/`.tsx` file. The one unavoidable exception:
+  an admin's **custom** color is by definition not predefinable in CSS, so it
+  and its derived tint ramp are computed at runtime (pure functions in
+  `lib/theme/color-utils.ts`) and applied through the **same** CSS variable
+  names `globals.css` already declares — components still only ever reference
+  `bg-primary`, `text-primary-foreground`, etc., never a literal hex.
+- **One resolved hex is stored**, whether it came from a preset swatch or the
+  custom picker (`Gym.themeColor`, nullable). Presets are just a curated
+  starting point, not a separate "preset id" column — so re-tuning a preset's
+  exact hex later never silently reflows a gym that already chose it.
+
+**The 12 presets** (gym/fitness-appropriate, defined as `--theme-preset-*` vars
+in `globals.css`): Green `#27a376` (current default), Blue `#2f78ee`, Purple
+`#8c62ff`, Orange `#fe964a`, Crimson `#e0384a`, Teal `#14b8a6`, Indigo
+`#4f46e5`, Pink `#ec4899`, Amber `#f59e0b`, Cyan `#06b6d4`, Lime `#84cc16`,
+Slate `#475569`.
+
+**Phase D0 — Schema.**
+
+- Add `Gym.themeColor String?` (nullable hex `#RRGGBB`; `null` = built-in
+  default, no override applied). `npx turbo run db:migrate -- --name
+add_gym_theme_color`. Update `docs/schema-overview.md`'s `Gym` entry.
+
+**Phase D1 — Contracts + API.**
+
+- _Contracts:_ extend the existing gym-settings shape (currently an inline
+  `{ maxCapacity }` type on the controller — fold it into a proper
+  `gyms/gym-settings-update.request.ts` while touching this endpoint, fixing
+  the AGENTS.md "no inline DTO" gap along the way):
+  `{ maxCapacity?: number | null, themeColor?: string | null }`, `themeColor`
+  regex-validated as `#RRGGBB`. Add `gymThemeColor: z.string().nullable().optional()`
+  to `userResponseSchema` so `/auth/me` carries it for both roles.
+- _API:_ extend `GymsController`'s `PATCH /gyms/settings` (`@Roles('ORG_ADMIN')`,
+  `ZodValidationPipe`) to accept `themeColor`; `GymsService.updateSettings`
+  writes only the fields present. Extend `auth.service.ts`'s `/auth/me` query
+  (already joins `gym` for `gymStatus`) to select + map `gym.themeColor` →
+  `gymThemeColor` for both `ORG_ADMIN`/staff and `MEMBER` responses. Full
+  Swagger decorators per AGENTS.md table.
+- _Test:_ `PATCH /gyms/settings` with a valid/invalid hex via `/docs`; confirm
+  `/auth/me` reflects the new value immediately; confirm `MEMBER`/other-gym
+  `ORG_ADMIN` gets 403/is scoped by `gymId`. **Green before D2.**
+
+**Phase D2 — Web: theme engine + Settings UI.**
+
+- `globals.css`: add the 12 `--theme-preset-*` vars.
+- `lib/theme/color-utils.ts`: hex validation, hex→HSL, tint/shade ramp
+  generator, WCAG-contrast-based foreground picker (pure, unit-testable).
+- `lib/theme/apply-theme.ts`: given a hex or `null`, injects/updates a single
+  `<style id="gym-theme-overrides">` tag with `:root{...}` + `.dark{...}`
+  blocks for the recolored token group (light/dark computed separately so
+  contrast holds in both schemes); removes the tag when `null` (falls back to
+  `globals.css` defaults).
+- `components/theme-provider.tsx` (`'use client'`): reads `user.gymThemeColor`
+  from `useUser()`, calls `applyTheme()` in a `useEffect`. Mounted inside
+  `(authenticated)/layout.tsx` **and** `(member)/layout.tsx`, after their
+  existing auth-loading gate — both already block rendering children until
+  user data resolves, so there's no flash of the wrong color.
+- `hooks/use-gym-theme.ts`: `updateTheme(hex | null)` → `apiPatch('/gyms/settings',
+...)`, then `mutate('/auth/me')` to refresh the cached user (re-renders
+  `ThemeProvider` + the picker everywhere it's mounted).
+- `components/theme-picker.tsx`: 12 preset swatches (hex read from the CSS
+  vars, not hardcoded) + a native `<input type="color">` custom picker with a
+  hex text field; selecting either gives a **client-only live preview**
+  (`applyTheme()` without saving); explicit **Save** commits via
+  `use-gym-theme`, **Reset to default** sends `themeColor: null`; disabled/
+  pending states on Save; on a failed save, toast the error and revert the
+  preview to the last-saved color.
+- `app/(authenticated)/settings/page.tsx`: add an "Appearance" `Card` with
+  `<ThemePicker />`, rendered only for `user.role === 'ORG_ADMIN'` (`SUPER_ADMIN`
+  sees Settings with no Appearance card — theming is per-gym, they have none).
+- Small bundled cleanup: swap the 3 remaining hardcoded `text-blue-600` action
+  links (`(authenticated)/layout.tsx`, `(member)/layout.tsx`,
+  `gyms/[id]/page.tsx` retry buttons) to `text-primary` so they theme too.
+
+**Phase D3 — Edge cases, accessibility & QA pass.**
+
+- Cross-tenant isolation: gym A's theme never bleeds into gym B or into
+  `SUPER_ADMIN` views.
+- A fresh gym with no `themeColor` renders pixel-identical to today's default
+  green (regression check against Feature C's dashboard/settings screenshots).
+- Dark mode × custom theme: verify contrast for both a light custom color
+  (e.g. pale yellow) and a dark one (e.g. navy) in both `prefers-color-scheme`
+  states.
+- Invalid hex rejected client-side (disabled Save) **and** server-side (400,
+  since the client is not trusted).
+- Reset-to-default clears the DB value and the UI reverts without a reload.
+- The `MEMBER` portal picks up the `ORG_ADMIN`'s saved theme on next
+  `/auth/me` fetch (login or revalidation); a `MEMBER` calling
+  `PATCH /gyms/settings` with `themeColor` gets 403.
+- No theme persisted to `localStorage` — a shared device (e.g. the QR kiosk
+  tablet) re-logging in as a different gym's staff must never flash the
+  previous gym's color; theme is derived fresh from `/auth/me` every load.
+- Public/pre-auth pages (`/login`, `/register`, `/suspended`,
+  `app/error.tsx`/`not-found.tsx`/`loading.tsx`) intentionally stay on the
+  site default — they render outside both themed layouts, before any gym is
+  known.
+- Preset swatches and the native color input are keyboard-navigable and
+  screen-reader labelled (`aria-label` per swatch + a selected-state
+  indicator, not color alone).
+- Pre-flight gates: `npx turbo run lint`, `npx turbo run check-types`,
+  `npm run format:check`.
+
+**Known, accepted limitations (not blocking):** components that still use raw
+Tailwind grays/blues instead of the semantic tokens (a handful of pre-existing
+pages) won't recolor — fixing every such spot is a much larger, unrelated
+refactor and out of scope here. A brand color picked very close to the fixed
+destructive red can visually resemble delete buttons — accepted trade-off of
+letting admins pick any custom color.
+
 ## Branding (optional)
 
 Update the sidebar logo text from "Bootcamp Starter" to the gym brand in

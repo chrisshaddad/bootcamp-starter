@@ -51,7 +51,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 type ActiveFilter = 'all' | 'active' | 'inactive';
 
 const STATUS_COLORS = {
-  active: 'bg-primary-100 text-primary-base',
+  active: 'bg-success/10 text-success',
   inactive: 'bg-gray-200 text-gray-700',
 } as const;
 

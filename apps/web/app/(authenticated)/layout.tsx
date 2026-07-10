@@ -4,6 +4,7 @@ import { useUser } from '@/hooks/use-auth';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/app-sidebar';
 import { TopNavbar } from '@/components/top-navbar';
+import { ThemeProvider } from '@/components/theme-provider';
 
 export default function DashboardLayout({
   children,
@@ -22,7 +23,7 @@ export default function DashboardLayout({
             Something went wrong. Please try again.
           </p>
           <button
-            className="text-sm text-blue-600 underline"
+            className="text-sm text-primary underline"
             onClick={() => window.location.reload()}
           >
             Retry
@@ -44,6 +45,7 @@ export default function DashboardLayout({
 
   return (
     <SidebarProvider>
+      <ThemeProvider />
       <AppSidebar />
       <SidebarInset>
         <TopNavbar />

@@ -47,7 +47,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 
 const STATUS_COLORS: Record<string, string> = {
-  ACTIVE: 'bg-primary-100 text-primary-base border-primary-200',
+  ACTIVE: 'bg-success/10 text-success border-success/20',
   INACTIVE: 'bg-gray-200 text-gray-700 border-gray-300',
 };
 

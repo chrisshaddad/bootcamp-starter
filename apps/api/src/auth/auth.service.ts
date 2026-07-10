@@ -217,7 +217,7 @@ export class AuthService {
     const user = await this.prisma.user.findUniqueOrThrow({
       where: { id: userId },
       include: {
-        gym: { select: { status: true, statusReason: true } },
+        gym: { select: { status: true, statusReason: true, themeColor: true } },
         member: { select: { status: true } },
       },
     });
@@ -232,6 +232,7 @@ export class AuthService {
       gymStatus: user.gym?.status ?? null,
       gymStatusReason: user.gym?.statusReason ?? null,
       memberStatus: user.member?.status ?? null,
+      gymThemeColor: user.gym?.themeColor ?? null,
     };
   }
 }

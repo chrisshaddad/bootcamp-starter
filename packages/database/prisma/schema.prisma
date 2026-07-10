@@ -142,6 +142,7 @@ model Gym {
   phone        String
   address      String    @db.Text
   maxCapacity  Int?
+  themeColor   String? // Brand accent hex (#RRGGBB) chosen by ORG_ADMIN; null = site default
   createdById  String    @unique // User can only create one gym
   approvedById String?
   statusReason String?   @db.Text // Reason for REJECTED or SUSPENDED status

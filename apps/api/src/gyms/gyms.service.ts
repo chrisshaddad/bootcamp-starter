@@ -16,6 +16,7 @@ import type {
   GymListResponse,
   GymDetailResponse,
   GymRegisterRequest,
+  GymSettingsUpdateRequest,
 } from '@repo/contracts';
 
 const GYM_DETAIL_SELECT = {
@@ -300,11 +301,11 @@ export class GymsService {
 
   async updateSettings(
     gymId: string,
-    maxCapacity: number | null,
+    settings: GymSettingsUpdateRequest,
   ): Promise<{ message: string }> {
     await this.prisma.gym.updateMany({
       where: { id: gymId },
-      data: { maxCapacity },
+      data: settings,
     });
     return { message: 'Settings updated successfully' };
   }

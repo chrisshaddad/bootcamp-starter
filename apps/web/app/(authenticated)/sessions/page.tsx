@@ -446,7 +446,7 @@ function AddSessionDialog({
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   SCHEDULED: {
     label: 'Scheduled',
-    className: 'bg-primary-100 text-primary-base border-primary-200',
+    className: 'bg-success/10 text-success border-success/20',
   },
   CANCELLED: {
     label: 'Cancelled',

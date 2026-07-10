@@ -30,16 +30,19 @@ import type {
   GymActionResponse,
   GymRegisterRequest,
   GymReasonRequest,
+  GymSettingsUpdateRequest,
 } from '@repo/contracts';
 import {
   gymRegisterRequestSchema,
   gymReasonRequestSchema,
+  gymSettingsUpdateRequestSchema,
 } from '@repo/contracts';
 import { ZodValidationPipe } from '../common/pipes';
 import {
   GYM_STATUS_ENUM,
   gymUserSchema,
   gymDetailSchema,
+  gymSettingsUpdateSchema,
 } from './gyms.swagger';
 
 @ApiTags('gyms')
@@ -319,22 +322,9 @@ export class GymsController {
   @ApiOperation({
     summary: 'Update gym settings',
     description:
-      "Updates the caller's own gym settings (currently maxCapacity). ORG_ADMIN only.",
+      "Updates the caller's own gym settings (maxCapacity, themeColor). Only the fields present in the body are changed. ORG_ADMIN only.",
   })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      required: ['maxCapacity'],
-      properties: {
-        maxCapacity: {
-          type: 'number',
-          nullable: true,
-          example: 50,
-          description: 'Maximum building capacity. Set null for no limit.',
-        },
-      },
-    },
-  })
+  @ApiBody({ schema: gymSettingsUpdateSchema })
   @ApiResponse({
     status: 200,
     description: 'Settings updated',
@@ -349,9 +339,10 @@ export class GymsController {
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   @ApiResponse({ status: 403, description: 'Insufficient role' })
   async updateSettings(
-    @Body() body: { maxCapacity: number | null },
+    @Body(new ZodValidationPipe(gymSettingsUpdateRequestSchema))
+    body: GymSettingsUpdateRequest,
     @CurrentUser() user: User,
   ): Promise<{ message: string }> {
-    return this.gymsService.updateSettings(user.gymId!, body.maxCapacity);
+    return this.gymsService.updateSettings(user.gymId!, body);
   }
 }

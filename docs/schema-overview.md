@@ -38,7 +38,7 @@ erDiagram
 ## Models
 
 **Gym**
-Represents a gym. This is the top-level tenant — all data below is scoped to it via `gymId`. It is the starter's `Organization` model **renamed to `Gym`** to be domain-specific; we add `maxCapacity` to track the gym's building limit.
+Represents a gym. This is the top-level tenant — all data below is scoped to it via `gymId`. It is the starter's `Organization` model **renamed to `Gym`** to be domain-specific; we add `maxCapacity` to track the gym's building limit and `themeColor` (nullable hex `#RRGGBB`) for the ORG_ADMIN's brand accent color — `null` means the site default.
 
 **User**
 A login account (magic-link auth). Roles: `SUPER_ADMIN` (platform), `ORG_ADMIN` (one gym's manager), and `MEMBER` (a gym customer's login). A `MEMBER` user is linked 1:1 to a `Member` record (see below).

@@ -1,7 +1,13 @@
+'use client';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Settings } from 'lucide-react';
+import { Settings, Palette } from 'lucide-react';
+import { useUser } from '@/hooks/use-auth';
+import { ThemePicker } from '@/components/theme-picker';
 
 export default function SettingsPage() {
+  const { user } = useUser({ redirectOnUnauthenticated: false });
+
   return (
     <div className="space-y-6">
       <div>
@@ -10,6 +16,20 @@ export default function SettingsPage() {
           Manage your account and organization settings
         </p>
       </div>
+
+      {user?.role === 'ORG_ADMIN' && (
+        <Card className="border-gray-200 bg-white shadow-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+              <Palette className="h-5 w-5 text-gray-500" />
+              Appearance
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ThemePicker />
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="border-gray-200 bg-white shadow-sm">
         <CardHeader>
