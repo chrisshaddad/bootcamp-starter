@@ -85,11 +85,7 @@ interface RentersPageProps {
 
 export function RentersPage({ canWrite, locale }: RentersPageProps) {
   const router = useRouter();
-  const {
-    data: renters,
-    isLoading,
-    isError,
-  } = useListRentersQuery();
+  const { data: renters, isLoading, isError } = useListRentersQuery();
   const [createRenter, { isLoading: creating }] = useCreateRenterMutation();
   const [updateRenter, { isLoading: updating }] = useUpdateRenterMutation();
   const [deleteRenter, { isLoading: deleting }] = useDeleteRenterMutation();
