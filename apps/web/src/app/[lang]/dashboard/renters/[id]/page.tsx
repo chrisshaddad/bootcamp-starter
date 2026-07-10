@@ -19,5 +19,5 @@ export default async function RenterDetailPageRoute({
     redirect(`/${locale}/dashboard`);
   }
 
-  return <RenterDetailPage renterId={id} />;
+  return <RenterDetailPage renterId={id} locale={locale} />;
 }
