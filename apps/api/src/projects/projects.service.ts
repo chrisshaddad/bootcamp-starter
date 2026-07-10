@@ -1,29 +1,282 @@
 import {
   Injectable,
+  Logger,
   ConflictException,
   NotFoundException,
   ForbiddenException,
+  ServiceUnavailableException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import {
   type CreateProjectRequest,
+  type ImportGithubProjectRequest,
+  type ImportGithubProjectResponse,
   type UpdateProjectRequest,
   type ProjectMediaUploadRequest,
   type ProjectMediaUpdateRequest,
 } from '@repo/contracts';
 import {
+  AccountType,
+  MediaType,
+  Prisma,
   ProjectStatus,
   ProjectRoleKey,
+  ProjectTechnologySource,
+  RepositoryVisibility,
+  TechnologyCategory,
   VerificationStatus,
-  AccountType,
-  User,
-  Prisma,
-  MediaType,
+  type User,
 } from '@repo/db';
+import { GithubRepositorySnapshotService } from '../repository-scanner/github-repository-snapshot.service';
+
+const GITHUB_API_UNAVAILABLE_MESSAGE =
+  'GitHub API is currently unavailable. Please try again later.';
+const REPOSITORY_PROJECT_CONFLICT_MESSAGE =
+  'This repository is already linked to a project.';
 
 @Injectable()
 export class ProjectsService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(ProjectsService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly githubRepositorySnapshotService: GithubRepositorySnapshotService,
+  ) {}
+
+  /**
+   * Imports a readable public repository as an unverified draft project.
+   *
+   * A successful scan confirms repository accessibility, not ownership or
+   * contribution. Verification remains pending for a separate review flow.
+   */
+  async importGithubProject(
+    userId: string,
+    data: ImportGithubProjectRequest,
+  ): Promise<ImportGithubProjectResponse> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Authenticated user not found');
+    }
+
+    const analysis =
+      await this.githubRepositorySnapshotService.previewRepositoryAnalysis(
+        data.repositoryUrl,
+      );
+    const githubRepoId = parseGithubRepositoryId(
+      analysis.repository.githubRepoId,
+    );
+    const lastPushedAt = parseNullableGithubDate(
+      analysis.repository.lastPushedAt,
+    );
+    const importedAt = new Date();
+    const title = data.title ?? analysis.repository.repoName;
+
+    this.logger.log(
+      `Importing GitHub repository ${analysis.repository.fullName} for user ${userId}`,
+    );
+
+    try {
+      const response = await this.prisma.$transaction(async (tx) => {
+        const repository = await tx.repository.upsert({
+          where: { githubRepoId },
+          create: {
+            githubRepoId,
+            fullName: analysis.repository.fullName,
+            ownerLogin: analysis.repository.ownerLogin,
+            repoName: analysis.repository.repoName,
+            htmlUrl: analysis.repository.htmlUrl,
+            defaultBranch: analysis.repository.defaultBranch,
+            visibility: RepositoryVisibility.PUBLIC,
+            lastPushedAt,
+            lastSyncedAt: importedAt,
+          },
+          update: {
+            fullName: analysis.repository.fullName,
+            ownerLogin: analysis.repository.ownerLogin,
+            repoName: analysis.repository.repoName,
+            htmlUrl: analysis.repository.htmlUrl,
+            defaultBranch: analysis.repository.defaultBranch,
+            visibility: RepositoryVisibility.PUBLIC,
+            lastPushedAt,
+            lastSyncedAt: importedAt,
+          },
+        });
+
+        const existingProject = await tx.project.findUnique({
+          where: { repositoryId: repository.id },
+          select: { id: true },
+        });
+
+        if (existingProject) {
+          throw new ConflictException(REPOSITORY_PROJECT_CONFLICT_MESSAGE);
+        }
+
+        const slug = await this.generateUniqueProjectSlug(tx, title);
+        const project = await tx.project.create({
+          data: {
+            repositoryId: repository.id,
+            createdByUserId: userId,
+            title,
+            slug,
+            shortDescription:
+              data.shortDescription === undefined
+                ? analysis.repository.description
+                : data.shortDescription,
+            fullDescription: data.fullDescription ?? null,
+            deploymentUrl: data.deploymentUrl ?? null,
+            status: ProjectStatus.DRAFT,
+            publishedAt: null,
+          },
+        });
+
+        await tx.projectMember.create({
+          data: {
+            projectId: project.id,
+            userId,
+            githubUsername: null,
+            role: ProjectRoleKey.OWNER,
+            verificationStatus: VerificationStatus.PENDING,
+            verificationSource: null,
+            verifiedAt: null,
+            addedByUserId: userId,
+          },
+        });
+
+        const technologies = await Promise.all(
+          analysis.detectedTechnologies.map(
+            async (detectedTechnology, sortOrder) => {
+              const technology = await tx.technology.upsert({
+                where: { slug: detectedTechnology.slug },
+                create: {
+                  name: detectedTechnology.name,
+                  slug: detectedTechnology.slug,
+                  category: TechnologyCategory[detectedTechnology.category],
+                },
+                update: {
+                  name: detectedTechnology.name,
+                  category: TechnologyCategory[detectedTechnology.category],
+                },
+              });
+              const evidence = joinEvidence(detectedTechnology.evidence);
+
+              await tx.projectTechnology.upsert({
+                where: {
+                  projectId_technologyId: {
+                    projectId: project.id,
+                    technologyId: technology.id,
+                  },
+                },
+                create: {
+                  projectId: project.id,
+                  technologyId: technology.id,
+                  source: ProjectTechnologySource.SCANNER,
+                  evidence,
+                  detectedAt: importedAt,
+                  addedByUserId: null,
+                  sortOrder,
+                },
+                update: {
+                  source: ProjectTechnologySource.SCANNER,
+                  evidence,
+                  detectedAt: importedAt,
+                  sortOrder,
+                },
+              });
+
+              return {
+                id: technology.id,
+                name: technology.name,
+                slug: technology.slug,
+                category: detectedTechnology.category,
+                source: 'SCANNER' as const,
+                evidence,
+                detectedAt: importedAt.toISOString(),
+              };
+            },
+          ),
+        );
+
+        return {
+          project: {
+            id: project.id,
+            title: project.title,
+            slug: project.slug,
+            status: 'DRAFT' as const,
+            shortDescription: project.shortDescription,
+            fullDescription: project.fullDescription,
+            deploymentUrl: project.deploymentUrl,
+            createdAt: project.createdAt.toISOString(),
+            updatedAt: project.updatedAt.toISOString(),
+            repository: {
+              id: repository.id,
+              githubRepoId: repository.githubRepoId.toString(),
+              fullName: repository.fullName,
+              ownerLogin: repository.ownerLogin,
+              repoName: repository.repoName,
+              htmlUrl: repository.htmlUrl,
+              defaultBranch: repository.defaultBranch,
+              visibility: 'PUBLIC' as const,
+              lastPushedAt: repository.lastPushedAt?.toISOString() ?? null,
+              lastSyncedAt: (
+                repository.lastSyncedAt ?? importedAt
+              ).toISOString(),
+            },
+            technologies,
+          },
+        };
+      });
+
+      this.logger.log(
+        `Imported GitHub repository ${analysis.repository.fullName} as project ${response.project.id}`,
+      );
+      return response;
+    } catch (error) {
+      if (error instanceof ConflictException) {
+        throw error;
+      }
+
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException(REPOSITORY_PROJECT_CONFLICT_MESSAGE);
+      }
+
+      throw error;
+    }
+  }
+
+  private async generateUniqueProjectSlug(
+    tx: Prisma.TransactionClient,
+    title: string,
+  ): Promise<string> {
+    const baseSlug = slugifyProjectTitle(title);
+    const existingProjects = await tx.project.findMany({
+      where: {
+        OR: [{ slug: baseSlug }, { slug: { startsWith: `${baseSlug}-` } }],
+      },
+      select: { slug: true },
+    });
+    const existingSlugs = new Set(
+      existingProjects.map((project) => project.slug),
+    );
+
+    if (!existingSlugs.has(baseSlug)) {
+      return baseSlug;
+    }
+
+    let suffix = 2;
+    while (existingSlugs.has(`${baseSlug}-${suffix}`)) {
+      suffix += 1;
+    }
+
+    return `${baseSlug}-${suffix}`;
+  }
 
   private mapStatus(
     status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED',
@@ -392,4 +645,43 @@ export class ProjectsService {
 
     return { storageKey: media.storageKey };
   }
+}
+
+function slugifyProjectTitle(title: string): string {
+  const slug = title
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  return slug || 'project';
+}
+
+function joinEvidence(evidence: string[]): string | null {
+  return evidence.length > 0 ? evidence.join('\n') : null;
+}
+
+function parseGithubRepositoryId(value: string): bigint {
+  try {
+    const githubRepoId = BigInt(value);
+    if (githubRepoId < 0n) {
+      throw new Error('GitHub repository ID cannot be negative');
+    }
+    return githubRepoId;
+  } catch {
+    throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+  }
+}
+
+function parseNullableGithubDate(value: string | Date | null): Date | null {
+  if (value === null) {
+    return null;
+  }
+
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+  }
+
+  return date;
 }
