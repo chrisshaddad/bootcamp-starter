@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useUser } from '@/hooks/use-auth';
 import {
   useInstitutions,
@@ -329,9 +330,13 @@ export default function InstitutionsPage() {
                     }
                   >
                     <TableCell>
-                      <div className="font-medium text-gray-900">
+                      <Link
+                        href={`/institutions/${institution.id}`}
+                        className="font-medium text-gray-900 hover:underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         {institution.name}
-                      </div>
+                      </Link>
                       {institution.address && (
                         <div className="text-sm text-gray-500">
                           {institution.address}

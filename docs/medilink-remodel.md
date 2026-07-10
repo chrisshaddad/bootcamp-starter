@@ -34,13 +34,15 @@ the reasoning behind each decision.
 
 Prisma's diff engine generates a broken `AlterEnum` block whenever this migration is regenerated from scratch: it tries to `ALTER TABLE "users"` (the new table name) before that table exists, because the old `User` table is being dropped and a new `users` table created later in the same migration, while the `UserRole` enum name is reused across both. The fix applied by hand each time: delete the generated `BEGIN; CREATE TYPE "UserRole_new" ...; COMMIT;` block, and instead add a plain `DROP TYPE "UserRole"` (after the old `User` table is dropped) and a plain `CREATE TYPE "UserRole"` with the final values (right before `CREATE TABLE "users"`). If this migration is ever regenerated via `prisma migrate dev --create-only`, check for this exact pattern before applying.
 
-The `Assignment` model also has a partial unique index (`assignment_active_unique`, enforcing one active professional per patient) that Prisma's schema DSL can't express — it has to be hand-added to any regenerated migration:
+The `Assignment` model also has a partial unique index (`assignment_active_unique`) that Prisma's schema DSL can't express — it has to be hand-added to any regenerated migration. It's keyed on `patientId, professionalId` and enforces **one active assignment per patient per professional** — a patient can still have several distinct professionals active at once (e.g. a cardiologist and a gynecologist), this just blocks a duplicate active row for the same pair:
 
 ```sql
 CREATE UNIQUE INDEX "assignment_active_unique"
 ON "public"."assignments"("patientId", "professionalId")
 WHERE "status" = 'ACTIVE';
 ```
+
+Both of these are permanent, intentional exceptions to the "never hand-edit migration SQL" rule — Prisma's schema DSL has no way to express a partial unique index or this specific enum-rename-across-table-rename sequence, so there is no schema-first path around either one. Any future migration touching `UserRole` or `assignments` must be checked against this section before being applied.
 
 ## Dev workflow
 
@@ -50,7 +52,7 @@ Same as the original README, with `apps/api/src/institutions` replacing `apps/ap
 npm run services:init        # docker compose up (postgres, redis, mailpit)
 npm install
 npx turbo run db:generate
-npx turbo run db:deploy       # or db:migrate for a fresh migration
+npx turbo run db:deploy       # or db:migrate -- --name <change> for a fresh migration
 npx turbo run db:seed
 npm run dev                   # web :3000, api :3001, mailpit :8025
 ```
@@ -65,12 +67,19 @@ A structured multi-agent code review was run against this diff. Fixed:
 4. `GET /institutions` query params (`status`/`page`/`limit`) are now validated via a proper `institutionListQuerySchema` + `ZodValidationPipe`, instead of unvalidated `parseInt`.
 5. `institutions.controller.spec.ts` / `institutions.service.spec.ts` now register mocked providers matching their constructors, so `TestingModule.compile()` doesn't throw `UnknownDependenciesException`.
 
+A second review pass (CodeRabbit) on the opened PR found:
+
+6. `InstitutionsService` now has a `Logger`, matching every sibling service.
+7. Institution rows in `institutions/page.tsx` are keyboard-accessible — the institution name is a `next/link` `<Link>` instead of a row-level `onClick`-only handler.
+8. `assignment_active_unique`'s comment incorrectly described the index as enforcing "one active professional per patient" — the actual (and correct) rule is one active assignment per patient _per professional_; a patient can have several distinct professionals active at once. Fixed the comment/doc, no schema change (index stays keyed on `patientId, professionalId`).
+9. `MedicalRecord.assignmentId` and `Notification.senderId` are nullable soft references that were on `onDelete: Restrict`; both changed to `SetNull` per the FK convention (cascade for owned children, `SetNull` for soft refs).
+10. `Notification` is mutated via `isRead` but had no `updatedAt`; added.
+
 **Deferred as non-blocking backlog** (found during review, not required for the app to run):
 
 - `StatusBadge`/`STATUS_LABELS` are duplicated (and have already diverged) between `institutions/page.tsx` and `institutions/[id]/page.tsx` — worth extracting into a shared component.
 - `institutions.service.ts`'s `approve`/`reject`/`create` do more DB round trips than necessary (e.g. `ensureExists` + `update` + `findOne` where one `update` with a P2025 catch would do).
 - `use-institutions.ts`'s `invalidateAll()` double-fetches the detail endpoint on every approve/reject (a broad `mutate()` prefix match also matches the specific detail key already revalidated).
-- `InstitutionsService` has no `Logger`, unlike every sibling service.
 - Creating an institution never sends an invitation email to the new admin — the pipeline exists (`MAIL_JOBS.SEND_INVITATION` in `mail.processor.ts`) but is unwired. Not a hard blocker: the admin can self-serve a magic link at `/login` once they know their email, but there's no automated onboarding signal.
 
 ## Known cross-branch conflict — not yet resolved

@@ -1,6 +1,7 @@
 import {
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
@@ -14,6 +15,8 @@ import type {
 
 @Injectable()
 export class InstitutionsService {
+  private readonly logger = new Logger(InstitutionsService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   private readonly detailSelect = {
@@ -123,6 +126,9 @@ export class InstitutionsService {
         error.code === 'P2002' &&
         (error.meta?.target as string[] | undefined)?.includes('email')
       ) {
+        this.logger.warn(
+          `Institution creation rejected: admin email ${data.admin.email} already in use`,
+        );
         throw new ConflictException(
           `A user with email ${data.admin.email} already exists`,
         );
@@ -130,6 +136,7 @@ export class InstitutionsService {
       throw error;
     }
 
+    this.logger.log(`Institution ${institution.id} created`);
     return this.findOne(institution.id);
   }
 
@@ -144,6 +151,7 @@ export class InstitutionsService {
       data: { status: 'ACTIVE' },
     });
 
+    this.logger.log(`Institution ${id} approved`);
     return this.findOne(id);
   }
 
@@ -158,6 +166,7 @@ export class InstitutionsService {
       data: { status: 'REJECTED' },
     });
 
+    this.logger.log(`Institution ${id} rejected`);
     return this.findOne(id);
   }
 

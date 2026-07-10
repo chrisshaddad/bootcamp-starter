@@ -265,6 +265,9 @@ model Assignment {
   medicalRecords MedicalRecord[]
   // ⚠️  Manual migration required — partial unique index not expressible in Prisma DSL.
   //     After running `prisma migrate dev`, add this to the generated migration SQL:
+  //     (keyed on patientId + professionalId — enforces one active assignment per
+  //     patient per professional; a patient CAN have multiple distinct professionals
+  //     active at once, e.g. a cardiologist and a gynecologist)
   //
   //     CREATE UNIQUE INDEX "assignment_active_unique"
   //     ON "public"."assignments"("patientId", "professionalId")
@@ -301,7 +304,7 @@ model MedicalRecord {
   // Relations
   patient            Patient             @relation(fields: [patientId], references: [id], onDelete: Restrict)
   uploadedBy         User                @relation("RecordUploadedBy", fields: [uploadedById], references: [id], onDelete: Restrict)
-  assignment         Assignment?         @relation(fields: [assignmentId], references: [id], onDelete: Restrict)
+  assignment         Assignment?         @relation(fields: [assignmentId], references: [id], onDelete: SetNull)
   institution        Institution         @relation(fields: [institutionId], references: [id], onDelete: Restrict)
   files              RecordFile[]
   labResultDetail    LabResultDetail?
@@ -484,10 +487,11 @@ model Notification {
   linkedEntityType LinkedEntityType?
   linkedEntityId   String?
   createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 
   // Relations
   recipient User  @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
-  sender    User? @relation("NotificationSender", fields: [senderId], references: [id], onDelete: Restrict)
+  sender    User? @relation("NotificationSender", fields: [senderId], references: [id], onDelete: SetNull)
 
   @@index([recipientId, isRead])
   @@index([recipientId, createdAt])

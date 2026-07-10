@@ -291,6 +291,7 @@ CREATE TABLE "notifications" (
     "linkedEntityType" "LinkedEntityType",
     "linkedEntityId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "notifications_pkey" PRIMARY KEY ("id")
 );
@@ -362,6 +363,12 @@ CREATE INDEX "assignments_assignedById_idx" ON "assignments"("assignedById");
 -- CreateIndex
 CREATE INDEX "assignments_institutionId_idx" ON "assignments"("institutionId");
 
+-- CreateIndex (partial unique index — not expressible in Prisma's schema DSL,
+-- see docs/medilink-remodel.md "Known migration gotcha")
+CREATE UNIQUE INDEX "assignment_active_unique"
+ON "public"."assignments"("patientId", "professionalId")
+WHERE "status" = 'ACTIVE';
+
 -- CreateIndex
 CREATE INDEX "medical_records_patientId_idx" ON "medical_records"("patientId");
 
@@ -422,10 +429,6 @@ CREATE INDEX "magic_links_token_idx" ON "private"."magic_links"("token");
 -- CreateIndex
 CREATE INDEX "magic_links_userId_idx" ON "private"."magic_links"("userId");
 
--- CreateIndex
-CREATE UNIQUE INDEX "assignment_active_unique" ON "public"."assignments"("patientId", "professionalId")
-WHERE "status" = 'ACTIVE';
-
 -- AddForeignKey
 ALTER TABLE "users" ADD CONSTRAINT "users_institutionId_fkey" FOREIGN KEY ("institutionId") REFERENCES "institutions"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
@@ -460,7 +463,7 @@ ALTER TABLE "medical_records" ADD CONSTRAINT "medical_records_patientId_fkey" FO
 ALTER TABLE "medical_records" ADD CONSTRAINT "medical_records_uploadedById_fkey" FOREIGN KEY ("uploadedById") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "medical_records" ADD CONSTRAINT "medical_records_assignmentId_fkey" FOREIGN KEY ("assignmentId") REFERENCES "assignments"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "medical_records" ADD CONSTRAINT "medical_records_assignmentId_fkey" FOREIGN KEY ("assignmentId") REFERENCES "assignments"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "medical_records" ADD CONSTRAINT "medical_records_institutionId_fkey" FOREIGN KEY ("institutionId") REFERENCES "institutions"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -490,7 +493,7 @@ ALTER TABLE "prescription_items" ADD CONSTRAINT "prescription_items_prescription
 ALTER TABLE "notifications" ADD CONSTRAINT "notifications_recipientId_fkey" FOREIGN KEY ("recipientId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "notifications" ADD CONSTRAINT "notifications_senderId_fkey" FOREIGN KEY ("senderId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "notifications" ADD CONSTRAINT "notifications_senderId_fkey" FOREIGN KEY ("senderId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "private"."sessions" ADD CONSTRAINT "sessions_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
