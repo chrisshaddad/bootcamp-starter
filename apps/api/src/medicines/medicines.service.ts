@@ -336,8 +336,12 @@ export class MedicinesService {
     actorId: string,
   ): Promise<MedicineResponse> {
     const { ingredients, ...scalars } = dto;
+    // Only the transaction can raise a barcode conflict, so scope the mapper to
+    // it. (Audit recording below is best-effort and never throws, but keeping it
+    // out of the catch avoids coupling it to the conflict mapper.)
+    let medicine: MedicineRow;
     try {
-      const medicine = await this.prisma.$transaction(async (tx) => {
+      medicine = await this.prisma.$transaction(async (tx) => {
         const created = await tx.medicine.create({
           data: { ...scalars, ingredients: joinIngredients(ingredients) },
           select: MEDICINE_SELECT,
@@ -345,24 +349,24 @@ export class MedicinesService {
         await this.syncIngredients(tx, created.id, ingredients);
         return created;
       });
-
-      await this.audit.record({
-        userId: actorId,
-        action: AUDIT_ACTIONS.MEDICINE_CREATE,
-        entity: AUDIT_ENTITIES.MEDICINE,
-        entityId: medicine.id,
-        details: {
-          brandName: medicine.brandName,
-          barcode: medicine.barcode,
-          priceLbp:
-            medicine.priceLbp === null ? null : medicine.priceLbp.toNumber(),
-        },
-      });
-
-      return this.toResponse(medicine);
     } catch (error) {
       throw this.mapBarcodeConflict(error);
     }
+
+    await this.audit.record({
+      userId: actorId,
+      action: AUDIT_ACTIONS.MEDICINE_CREATE,
+      entity: AUDIT_ENTITIES.MEDICINE,
+      entityId: medicine.id,
+      details: {
+        brandName: medicine.brandName,
+        barcode: medicine.barcode,
+        priceLbp:
+          medicine.priceLbp === null ? null : medicine.priceLbp.toNumber(),
+      },
+    });
+
+    return this.toResponse(medicine);
   }
 
   /**
@@ -385,8 +389,11 @@ export class MedicinesService {
     }
 
     const { ingredients, ...scalars } = dto;
+    // Scope the barcode-conflict mapper to the transaction only; the diff +
+    // best-effort audit below run after it has committed.
+    let medicine: MedicineRow;
     try {
-      const medicine = await this.prisma.$transaction(async (tx) => {
+      medicine = await this.prisma.$transaction(async (tx) => {
         const updated = await tx.medicine.update({
           where: { id },
           data: {
@@ -402,45 +409,45 @@ export class MedicinesService {
         }
         return updated;
       });
-
-      // Diff the human-facing (parsed) before/after shapes, keeping only the
-      // fields that actually changed.
-      const before = this.toResponse(existing);
-      const after = this.toResponse(medicine);
-      const changes: AuditChanges = {};
-      const fields = [
-        'brandName',
-        'type',
-        'dosage',
-        'form',
-        'barcode',
-        'priceLbp',
-        'mophId',
-        'atcCode',
-        'ingredients',
-      ] as const;
-      for (const field of fields) {
-        const from = before[field];
-        const to = after[field];
-        const unchanged =
-          Array.isArray(from) || Array.isArray(to)
-            ? JSON.stringify(from) === JSON.stringify(to)
-            : from === to;
-        if (!unchanged) changes[field] = { from, to };
-      }
-
-      await this.audit.record({
-        userId: actorId,
-        action: AUDIT_ACTIONS.MEDICINE_UPDATE,
-        entity: AUDIT_ENTITIES.MEDICINE,
-        entityId: id,
-        details: { changes },
-      });
-
-      return this.toResponse(medicine);
     } catch (error) {
       throw this.mapBarcodeConflict(error);
     }
+
+    // Diff the human-facing (parsed) before/after shapes, keeping only the
+    // fields that actually changed.
+    const before = this.toResponse(existing);
+    const after = this.toResponse(medicine);
+    const changes: AuditChanges = {};
+    const fields = [
+      'brandName',
+      'type',
+      'dosage',
+      'form',
+      'barcode',
+      'priceLbp',
+      'mophId',
+      'atcCode',
+      'ingredients',
+    ] as const;
+    for (const field of fields) {
+      const from = before[field];
+      const to = after[field];
+      const unchanged =
+        Array.isArray(from) || Array.isArray(to)
+          ? JSON.stringify(from) === JSON.stringify(to)
+          : from === to;
+      if (!unchanged) changes[field] = { from, to };
+    }
+
+    await this.audit.record({
+      userId: actorId,
+      action: AUDIT_ACTIONS.MEDICINE_UPDATE,
+      entity: AUDIT_ENTITIES.MEDICINE,
+      entityId: id,
+      details: { changes },
+    });
+
+    return after;
   }
 
   /**

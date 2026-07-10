@@ -234,10 +234,12 @@ export class UsersService {
         : existing.pharmacyId;
     if (finalPharmacyId !== existing.pharmacyId) {
       // Resolve to names so the diff reads "Acme → Globex", not raw UUIDs.
-      changes.pharmacy = {
-        from: await this.pharmacyName(existing.pharmacyId),
-        to: await this.pharmacyName(finalPharmacyId),
-      };
+      // The two lookups are independent, so run them concurrently.
+      const [fromName, toName] = await Promise.all([
+        this.pharmacyName(existing.pharmacyId),
+        this.pharmacyName(finalPharmacyId),
+      ]);
+      changes.pharmacy = { from: fromName, to: toName };
     }
 
     await this.audit.record({

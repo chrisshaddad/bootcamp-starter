@@ -3,6 +3,13 @@ import { Prisma } from '@repo/db';
 import type { AuditListQuery, AuditListResponse } from '@repo/contracts';
 import { PrismaService } from '../database/prisma.service';
 
+// The audit log grows without bound (every write + every login is recorded), so
+// the console reads only the most recent slice. `total` still reports the full
+// count so the UI can tell the reader older activity exists. Bumping this to
+// true server-side pagination/search is a follow-up if deep-history search is
+// needed.
+const AUDIT_LIST_LIMIT = 500;
+
 @Injectable()
 export class AuditService {
   private readonly logger = new Logger(AuditService.name);
@@ -62,26 +69,33 @@ export class AuditService {
       ],
     };
 
-    const logs = await this.prisma.auditLog.findMany({
-      where,
-      // `id` is a deterministic tie-breaker so rows keep a stable order when
-      // several entries share a createdAt timestamp.
-      orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
-      select: {
-        id: true,
-        action: true,
-        entity: true,
-        entityId: true,
-        details: true,
-        createdAt: true,
-        userId: true,
-        // `userId` is a soft ref (onDelete: SetNull), so the actor may be gone.
-        user: { select: { firstName: true, lastName: true, email: true } },
-      },
-    });
+    // Count the full match set but only fetch the most recent page-worth, so the
+    // payload (and the client's per-keystroke filtering) stays bounded as the
+    // table grows.
+    const [total, logs] = await this.prisma.$transaction([
+      this.prisma.auditLog.count({ where }),
+      this.prisma.auditLog.findMany({
+        where,
+        // `id` is a deterministic tie-breaker so rows keep a stable order when
+        // several entries share a createdAt timestamp.
+        orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+        take: AUDIT_LIST_LIMIT,
+        select: {
+          id: true,
+          action: true,
+          entity: true,
+          entityId: true,
+          details: true,
+          createdAt: true,
+          userId: true,
+          // `userId` is a soft ref (onDelete: SetNull), so the actor may be gone.
+          user: { select: { firstName: true, lastName: true, email: true } },
+        },
+      }),
+    ]);
 
     return {
-      total: logs.length,
+      total,
       logs: logs.map(({ user, ...log }) => ({
         ...log,
         userName: user ? `${user.firstName} ${user.lastName}` : null,

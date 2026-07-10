@@ -177,6 +177,8 @@ export function PhoneInput({
           type="button"
           onClick={() => setOpen((current) => !current)}
           aria-label="Select country calling code"
+          aria-haspopup="listbox"
+          aria-expanded={open}
           className="flex shrink-0 items-center gap-1.5 border-r border-gray-200 px-2.5 text-sm text-gray-700 outline-none hover:bg-gray-50"
         >
           <FlagIcon

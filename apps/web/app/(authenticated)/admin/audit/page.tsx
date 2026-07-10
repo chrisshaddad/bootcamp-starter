@@ -572,7 +572,7 @@ export default function AuditPage() {
   // Fetch the whole feed once and filter in the client — category is derived
   // from the event key, and search spans both the human text and the raw
   // identifiers so engineers can still find a specific event.
-  const { logs, isLoading, error, mutate } = useAuditLogs();
+  const { logs, total, isLoading, error, mutate } = useAuditLogs();
 
   const rows = useMemo(() => {
     if (!logs) return logs;
@@ -635,6 +635,14 @@ export default function AuditPage() {
           labelFor={(value) => CATEGORY_META[value as Category].label}
         />
       </div>
+
+      {total !== undefined && logs !== undefined && total > logs.length ? (
+        <p className="-mt-3 text-xs text-gray-500">
+          Showing the {logs.length.toLocaleString()} most recent of{' '}
+          {total.toLocaleString()} recorded events. Search and filters apply to
+          this window.
+        </p>
+      ) : null}
 
       {/* Table */}
       <Card

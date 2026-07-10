@@ -103,15 +103,21 @@ function toPayload(data: ProfileFormValues): ProfileUpdateRequest {
 function Field({
   label,
   error,
+  id,
   children,
 }: {
   label: string;
   error?: string;
+  // Ties the label to its control so screen readers associate them and clicking
+  // the label focuses the input. Must match the wrapped control's id.
+  id?: string;
   children: React.ReactNode;
 }) {
   return (
     <div className="space-y-1.5">
-      <label className="text-sm font-medium text-gray-700">{label}</label>
+      <label htmlFor={id} className="text-sm font-medium text-gray-700">
+        {label}
+      </label>
       {children}
       {error ? <p className="text-xs text-error">{error}</p> : null}
     </div>
@@ -203,16 +209,36 @@ function ProfileForm({ profile }: { profile: ProfileResponse }) {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="First name" error={errors.firstName?.message}>
-              <Input {...register('firstName')} placeholder="Jane" />
+            <Field
+              label="First name"
+              error={errors.firstName?.message}
+              id="firstName"
+            >
+              <Input
+                id="firstName"
+                {...register('firstName')}
+                placeholder="Jane"
+              />
             </Field>
-            <Field label="Last name" error={errors.lastName?.message}>
-              <Input {...register('lastName')} placeholder="Doe" />
+            <Field
+              label="Last name"
+              error={errors.lastName?.message}
+              id="lastName"
+            >
+              <Input
+                id="lastName"
+                {...register('lastName')}
+                placeholder="Doe"
+              />
             </Field>
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Phone number" error={errors.phoneNumber?.message}>
+            <Field
+              label="Phone number"
+              error={errors.phoneNumber?.message}
+              id="phoneNumber"
+            >
               <Controller
                 control={control}
                 name="phoneNumber"
@@ -227,7 +253,11 @@ function ProfileForm({ profile }: { profile: ProfileResponse }) {
                 )}
               />
             </Field>
-            <Field label="Date of birth" error={errors.dateOfBirth?.message}>
+            <Field
+              label="Date of birth"
+              error={errors.dateOfBirth?.message}
+              id="dateOfBirth"
+            >
               <Controller
                 control={control}
                 name="dateOfBirth"
@@ -244,15 +274,24 @@ function ProfileForm({ profile }: { profile: ProfileResponse }) {
             </Field>
           </div>
 
-          <Field label="Address" error={errors.address?.message}>
-            <Input {...register('address')} placeholder="123 Main St, City" />
+          <Field label="Address" error={errors.address?.message} id="address">
+            <Input
+              id="address"
+              {...register('address')}
+              placeholder="123 Main St, City"
+            />
           </Field>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Latitude" error={errors.latitude?.message}>
+            <Field
+              label="Latitude"
+              error={errors.latitude?.message}
+              id="latitude"
+            >
               <div className="relative">
                 <MapPin className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
                 <Input
+                  id="latitude"
                   {...register('latitude')}
                   inputMode="decimal"
                   placeholder="33.8938"
@@ -260,8 +299,13 @@ function ProfileForm({ profile }: { profile: ProfileResponse }) {
                 />
               </div>
             </Field>
-            <Field label="Longitude" error={errors.longitude?.message}>
+            <Field
+              label="Longitude"
+              error={errors.longitude?.message}
+              id="longitude"
+            >
               <Input
+                id="longitude"
                 {...register('longitude')}
                 inputMode="decimal"
                 placeholder="35.5018"
