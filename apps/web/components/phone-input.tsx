@@ -217,7 +217,7 @@ export function PhoneInput({
               />
             </div>
           </div>
-          <ul className="max-h-64 overflow-y-auto p-1">
+          <ul className="thin-scroll max-h-64 overflow-y-auto p-1">
             {shown.map((item) => (
               <li key={item.code}>
                 <button

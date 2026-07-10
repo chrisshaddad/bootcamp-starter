@@ -148,7 +148,7 @@ export function PasswordFieldsForm({
           <p className="text-sm text-error">{errors.password.message}</p>
         ) : (
           <p className="text-[11.5px] font-medium text-gray-500">
-            Use 8+ characters with upper- and lowercase letters and a number.
+            Use 8+ characters with upper and lowercase letters and a number.
           </p>
         )}
       </div>

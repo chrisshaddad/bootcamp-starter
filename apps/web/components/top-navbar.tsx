@@ -5,6 +5,7 @@ import { Settings, LogOut, ChevronDown } from 'lucide-react';
 import { useAuth, useUser } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { NotificationBell } from '@/components/notification-bell';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,8 +45,11 @@ export function TopNavbar() {
         <SidebarTrigger className="-ml-1 h-9 w-9 text-gray-500 hover:bg-gray-100 hover:text-gray-900" />
       </div>
 
-      {/* Right Section - User */}
+      {/* Right Section - Notifications + User */}
       <div className="flex items-center gap-3">
+        {/* Platform activity notifications (super admin only; self-hides otherwise) */}
+        <NotificationBell />
+
         {/* User Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

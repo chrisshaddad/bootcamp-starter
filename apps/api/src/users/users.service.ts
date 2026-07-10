@@ -116,12 +116,47 @@ export class UsersService {
   }
 
   /**
+   * Guard against locking the whole platform out of the super-admin console.
+   *
+   * Only an `ACTIVE` `SUPER_ADMIN` can sign in and manage the platform, so we
+   * refuse any operation that would remove the last one — demoting their role,
+   * pushing them to a non-active status, or deleting them. Self-mutations are
+   * already blocked separately; this covers the cross-admin case where one super
+   * admin demotes/deletes another.
+   */
+  private async assertNotLastActiveSuperAdmin(
+    target: Pick<User, 'id' | 'role' | 'status'>,
+  ): Promise<void> {
+    if (target.role !== 'SUPER_ADMIN' || target.status !== 'ACTIVE') {
+      return;
+    }
+    const otherActive = await this.prisma.user.count({
+      where: {
+        id: { not: target.id },
+        role: 'SUPER_ADMIN',
+        status: 'ACTIVE',
+      },
+    });
+    if (otherActive === 0) {
+      throw new BadRequestException(
+        'You cannot remove the last active super admin.',
+      );
+    }
+  }
+
+  /**
    * Create a user. The account has no password — the user completes onboarding
    * through the magic-link / set-password flow, same as seeded accounts.
    */
   async create(dto: UserCreateRequest, actorId: string): Promise<UserResponse> {
+    // Normalize the email exactly like the auth (`auth.service.ts`) and pharmacy
+    // admin (`pharmacies.service.ts`) creation paths do. The DB unique index is
+    // case-sensitive and every login lookup lowercases first, so storing an
+    // email verbatim (e.g. `Foo@x.com`) would lock the user out permanently.
+    const email = dto.email.toLowerCase().trim();
+
     const existing = await this.prisma.user.findUnique({
-      where: { email: dto.email },
+      where: { email },
     });
     if (existing) {
       throw new ConflictException('A user with this email already exists.');
@@ -134,7 +169,7 @@ export class UsersService {
 
     try {
       const created = await this.prisma.user.create({
-        data: { ...dto, pharmacyId, branchId: null, password: null },
+        data: { ...dto, email, pharmacyId, branchId: null, password: null },
         select: USER_SELECT,
       });
 
@@ -194,6 +229,14 @@ export class UsersService {
     const existing = await this.prisma.user.findFirst({ where: { id } });
     if (!existing) {
       throw new NotFoundException('User not found.');
+    }
+
+    // Block demoting or deactivating the last active super admin (self-changes
+    // are already rejected above, so this only bites the cross-admin case).
+    const demotesRole = dto.role !== undefined && dto.role !== 'SUPER_ADMIN';
+    const deactivates = dto.status !== undefined && dto.status !== 'ACTIVE';
+    if (demotesRole || deactivates) {
+      await this.assertNotLastActiveSuperAdmin(existing);
     }
 
     const data: Prisma.UserUncheckedUpdateInput = {};
@@ -276,6 +319,9 @@ export class UsersService {
     if (!existing) {
       throw new NotFoundException('User not found.');
     }
+
+    // Refuse to delete the last active super admin (would orphan the console).
+    await this.assertNotLastActiveSuperAdmin(existing);
 
     await this.prisma.user.delete({ where: { id } });
 

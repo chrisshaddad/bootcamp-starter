@@ -1,15 +1,18 @@
 'use client';
 
 import Link from 'next/link';
+import { mutate as globalMutate } from 'swr';
 import { useUser } from '@/hooks/use-auth';
 import { useMedicines } from '@/hooks/use-medicines';
 import { useUsers } from '@/hooks/use-users';
 import { usePharmacies } from '@/hooks/use-pharmacies';
 import { usePlatformStats } from '@/hooks/use-platform-stats';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatusBadge } from '@/components/status-badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
+  AlertTriangle,
   ArrowRight,
   ArrowUpRight,
   Boxes,
@@ -131,22 +134,68 @@ function formatCount(value?: number | null) {
   return value.toLocaleString();
 }
 
+function DashboardError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-20">
+      <AlertTriangle className="mb-4 h-16 w-16 text-error" />
+      <h1 className="mb-2 text-2xl font-bold text-gray-900">
+        Couldn&apos;t load the dashboard
+      </h1>
+      <p className="max-w-md text-center text-gray-500">
+        Something went wrong fetching your platform data. Please try again.
+      </p>
+      <Button type="button" onClick={onRetry} className="mt-4">
+        Try again
+      </Button>
+    </div>
+  );
+}
+
 export function DashboardContent() {
   const { user, isLoading: isUserLoading } = useUser();
-  const { users, isLoading: isUsersLoading } = useUsers();
-  const { stats: platformStats, isLoading: isStatsLoading } =
-    usePlatformStats();
-  const { medicines, isLoading: isMedicinesLoading } = useMedicines({
-    pageSize: 25,
-  });
-  const { pharmacies, isLoading: isPharmaciesLoading } = usePharmacies();
+  const { users, isLoading: isUsersLoading, error: usersError } = useUsers();
+  const {
+    stats: platformStats,
+    isLoading: isStatsLoading,
+    error: statsError,
+  } = usePlatformStats();
+  // Watchlist source: the medicines actually missing catalog data, filtered
+  // server-side. Sampling the first page instead could read "all good" while
+  // later pages still have gaps. A medicine missing both fields shows up in
+  // each list, so we dedupe below.
+  const {
+    medicines: missingPrice,
+    isLoading: isMissingPriceLoading,
+    error: missingPriceError,
+  } = useMedicines({ hasPrice: 'false', pageSize: 4 });
+  const {
+    medicines: missingBarcode,
+    isLoading: isMissingBarcodeLoading,
+    error: missingBarcodeError,
+  } = useMedicines({ hasBarcode: 'false', pageSize: 4 });
+  const {
+    pharmacies,
+    isLoading: isPharmaciesLoading,
+    error: pharmaciesError,
+  } = usePharmacies();
 
   const isLoading =
     isUserLoading ||
     isUsersLoading ||
     isStatsLoading ||
-    isMedicinesLoading ||
+    isMissingPriceLoading ||
+    isMissingBarcodeLoading ||
     isPharmaciesLoading;
+
+  // Surface a retryable error instead of silently rendering zeros when a data
+  // source fails: SWR clears isLoading on error, so without this the page would
+  // show an all-zero dashboard with no sign anything went wrong.
+  const loadError =
+    statsError ||
+    usersError ||
+    pharmaciesError ||
+    missingPriceError ||
+    missingBarcodeError;
 
   // The dashboard KPIs come from one authoritative source (`/stats/platform`):
   // real, unscoped totals plus genuine trailing-7-day growth deltas.
@@ -173,8 +222,13 @@ export function DashboardContent() {
       ? Math.round((pricedMedicines / totalMedicines) * 100)
       : 0;
 
-  const stockAlerts = (medicines ?? [])
-    .filter((medicine) => !medicine.priceLbp || !medicine.barcode)
+  const seenAlertIds = new Set<string>();
+  const stockAlerts = [...(missingPrice ?? []), ...(missingBarcode ?? [])]
+    .filter((medicine) => {
+      if (seenAlertIds.has(medicine.id)) return false;
+      seenAlertIds.add(medicine.id);
+      return true;
+    })
     .slice(0, 4)
     .map((medicine) => {
       const missingFields: string[] = [];
@@ -216,6 +270,10 @@ export function DashboardContent() {
         </div>
       </div>
     );
+  }
+
+  if (loadError) {
+    return <DashboardError onRetry={() => void globalMutate(() => true)} />;
   }
 
   const overviewStats = [

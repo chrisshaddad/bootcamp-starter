@@ -222,6 +222,8 @@ function BranchFormDialog({
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<BranchFormValues>({
     resolver: zodResolver(branchFormSchema),
@@ -274,6 +276,18 @@ function BranchFormDialog({
                 address: errors.address?.message,
                 latitude: errors.latitude?.message,
                 longitude: errors.longitude?.message,
+              }}
+              latitude={watch('latitude') ?? ''}
+              longitude={watch('longitude') ?? ''}
+              onLocationChange={(lat, lng) => {
+                setValue('latitude', lat, {
+                  shouldValidate: true,
+                  shouldDirty: true,
+                });
+                setValue('longitude', lng, {
+                  shouldValidate: true,
+                  shouldDirty: true,
+                });
               }}
             />
           </div>

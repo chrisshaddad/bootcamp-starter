@@ -3,6 +3,7 @@
 import type { UseFormRegisterReturn } from 'react-hook-form';
 import { MapPin } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { LocationPicker } from '@/components/location-picker';
 
 // The logical fields of a branch form. Each host form maps these to its own
 // react-hook-form field names via the `register` adapter, so the same inputs
@@ -41,15 +42,22 @@ function Field({
   );
 }
 
-// Shared branch form inputs: name, phone (optional), address, and manual
-// latitude / longitude entry. Coordinates are plain text inputs (validated and
-// coerced by the host form's schema) so there's no external map dependency.
+// Shared branch form inputs: name, phone (optional), address, and location. The
+// location is set on a map (search a place, or click / drag the pin); the
+// latitude / longitude inputs stay below as a synced, precise fallback and are
+// validated + coerced by the host form's schema.
 export function BranchFields({
   register,
   errors,
+  latitude,
+  longitude,
+  onLocationChange,
 }: {
   register: (field: BranchFieldKey) => UseFormRegisterReturn;
   errors: BranchFieldErrors;
+  latitude: string;
+  longitude: string;
+  onLocationChange: (latitude: string, longitude: string) => void;
 }) {
   return (
     <>
@@ -61,6 +69,13 @@ export function BranchFields({
       </Field>
       <Field label="Address" error={errors.address}>
         <Input {...register('address')} placeholder="123 Main St, City" />
+      </Field>
+      <Field label="Location">
+        <LocationPicker
+          latitude={latitude}
+          longitude={longitude}
+          onChange={onLocationChange}
+        />
       </Field>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Latitude" error={errors.latitude}>
@@ -75,11 +90,15 @@ export function BranchFields({
           </div>
         </Field>
         <Field label="Longitude" error={errors.longitude}>
-          <Input
-            {...register('longitude')}
-            inputMode="decimal"
-            placeholder="35.5018"
-          />
+          <div className="relative">
+            <MapPin className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Input
+              {...register('longitude')}
+              inputMode="decimal"
+              placeholder="35.5018"
+              className="pl-9"
+            />
+          </div>
         </Field>
       </div>
     </>

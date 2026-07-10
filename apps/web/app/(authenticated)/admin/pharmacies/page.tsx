@@ -371,7 +371,7 @@ function CreatePharmacyDialog({ onClose }: { onClose: () => void }) {
 
   return (
     <Dialog open onOpenChange={(open) => !open && !isSubmitting && onClose()}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto">
+      <DialogContent className="thin-scroll max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleSubmit(onSubmit)}>
           <DialogHeader>
             <DialogTitle>New pharmacy</DialogTitle>
@@ -441,6 +441,18 @@ function CreatePharmacyDialog({ onClose }: { onClose: () => void }) {
                       address: errors.branchAddress?.message,
                       latitude: errors.branchLatitude?.message,
                       longitude: errors.branchLongitude?.message,
+                    }}
+                    latitude={watch('branchLatitude') ?? ''}
+                    longitude={watch('branchLongitude') ?? ''}
+                    onLocationChange={(lat, lng) => {
+                      setValue('branchLatitude', lat, {
+                        shouldValidate: true,
+                        shouldDirty: true,
+                      });
+                      setValue('branchLongitude', lng, {
+                        shouldValidate: true,
+                        shouldDirty: true,
+                      });
                     }}
                   />
                 </div>
