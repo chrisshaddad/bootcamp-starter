@@ -128,7 +128,7 @@ export class RentersService {
       action: 'renter.updated',
       targetType: 'Renter',
       targetId: renterId,
-      metadata: { changes: dto },
+      metadata: { changes: Object.keys(dto) },
     });
 
     return { data: this.formatRenter(renter) };

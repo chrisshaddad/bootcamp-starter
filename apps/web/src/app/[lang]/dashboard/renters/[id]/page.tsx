@@ -1,6 +1,6 @@
 import { requireSession } from '@/auth/guards';
 import { normalizeRole } from '@/auth/roles';
-import { canAccess, canWrite } from '@/auth/permissions';
+import { canAccess } from '@/auth/permissions';
 import { redirect } from 'next/navigation';
 import { isLocale } from '@/i18n/config';
 import { RenterDetailPage } from '@/components/dashboard/renter-detail-page';
@@ -19,9 +19,5 @@ export default async function RenterDetailPageRoute({
     redirect(`/${locale}/dashboard`);
   }
 
-  const writeAccess = canWrite(role, 'buildings');
-
-  return (
-    <RenterDetailPage renterId={id} canWrite={writeAccess} locale={locale} />
-  );
+  return <RenterDetailPage renterId={id} />;
 }

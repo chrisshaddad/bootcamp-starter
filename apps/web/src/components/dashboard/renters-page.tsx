@@ -85,7 +85,11 @@ interface RentersPageProps {
 
 export function RentersPage({ canWrite, locale }: RentersPageProps) {
   const router = useRouter();
-  const { data: renters, isLoading } = useListRentersQuery();
+  const {
+    data: renters,
+    isLoading,
+    isError,
+  } = useListRentersQuery();
   const [createRenter, { isLoading: creating }] = useCreateRenterMutation();
   const [updateRenter, { isLoading: updating }] = useUpdateRenterMutation();
   const [deleteRenter, { isLoading: deleting }] = useDeleteRenterMutation();
@@ -244,6 +248,15 @@ export function RentersPage({ canWrite, locale }: RentersPageProps) {
                   </TableRow>
                 ))}
               </>
+            ) : isError ? (
+              <TableRow>
+                <TableCell
+                  colSpan={canWrite ? 5 : 4}
+                  className="text-center py-10 text-muted-foreground"
+                >
+                  Failed to load renters. Please try again.
+                </TableCell>
+              </TableRow>
             ) : renters?.length === 0 ? (
               <TableRow>
                 <TableCell

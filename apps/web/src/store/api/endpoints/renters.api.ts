@@ -71,6 +71,9 @@ export const rentersApi = baseApi.injectEndpoints({
         url: `/renters/${encodeURIComponent(id)}`,
         method: 'DELETE',
       }),
+      transformResponse: (
+        response: { id: string } | ApiEnvelope<{ id: string }>,
+      ) => unwrap(response),
       invalidatesTags: (_result, _error, id) => [
         { type: 'Renter', id },
         { type: 'Renter', id: 'LIST' },
