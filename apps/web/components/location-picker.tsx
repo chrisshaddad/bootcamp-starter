@@ -36,8 +36,6 @@ function fmt(value: number): string {
   return value.toFixed(6);
 }
 
-const NOMINATIM = 'https://nominatim.openstreetmap.org';
-
 /**
  * Map-based location picker (Leaflet + OpenStreetMap, no API key). Everything
  * stays in sync in both directions:
@@ -59,6 +57,10 @@ export function LocationPicker({
   const [results, setResults] = useState<GeocodeResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [open, setOpen] = useState(false);
+  // Set when a forward/reverse geocode genuinely fails (network down or the
+  // proxy/Nominatim erroring) so we can tell the admin the lookup is unavailable
+  // instead of silently doing nothing. Aborted requests don't count.
+  const [geocodeError, setGeocodeError] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
 
   // Only fetch predictions / open the dropdown while the user is actively
@@ -85,27 +87,27 @@ export function LocationPicker({
     const controller = new AbortController();
     setSearching(true);
     const timer = setTimeout(() => {
-      const url =
-        `${NOMINATIM}/search?format=jsonv2` +
-        // Lebanon only, English names.
-        '&countrycodes=lb&accept-language=en&addressdetails=0&limit=6&q=' +
-        encodeURIComponent(q);
-      fetch(url, { signal: controller.signal })
-        .then((res) => (res.ok ? res.json() : []))
-        .then(
-          (data: Array<{ lat: string; lon: string; display_name: string }>) => {
-            setResults(
-              data.map((item) => ({
-                label: item.display_name,
-                lat: Number(item.lat),
-                lng: Number(item.lon),
-              })),
-            );
-            setOpen(true);
-          },
-        )
-        .catch(() => {
-          /* aborted or network error — leave results as-is */
+      // Server-side proxy (see app/api/geocode) — the browser must never hit
+      // Nominatim directly. Debouncing here still limits upstream load.
+      fetch(`/api/geocode/search?q=${encodeURIComponent(q)}`, {
+        signal: controller.signal,
+      })
+        .then((res) => {
+          // A non-ok response is a real service failure (proxy/Nominatim down),
+          // not an empty result set — surface it rather than showing "no matches".
+          if (!res.ok) throw new Error('Geocode search failed');
+          return res.json();
+        })
+        .then((data: GeocodeResult[]) => {
+          setResults(data);
+          setOpen(true);
+          setGeocodeError(false);
+        })
+        .catch((err: unknown) => {
+          // A newer keystroke / unmount aborted this request — expected, ignore.
+          if ((err as { name?: string })?.name === 'AbortError') return;
+          setResults([]);
+          setGeocodeError(true);
         })
         .finally(() => setSearching(false));
     }, 450);
@@ -132,22 +134,28 @@ export function LocationPicker({
 
     const controller = new AbortController();
     const timer = setTimeout(() => {
-      const url =
-        `${NOMINATIM}/reverse?format=jsonv2` +
-        `&accept-language=en&zoom=16&lat=${lat}&lon=${lng}`;
-      fetch(url, { signal: controller.signal })
-        .then((res) => (res.ok ? res.json() : null))
-        .then((data: { display_name?: string } | null) => {
-          if (data?.display_name) {
+      // Server-side proxy (see app/api/geocode) — no direct browser → Nominatim.
+      fetch(`/api/geocode/reverse?lat=${lat}&lng=${lng}`, {
+        signal: controller.signal,
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error('Reverse geocode failed');
+          return res.json();
+        })
+        .then((data: { label?: string } | null) => {
+          if (data?.label) {
             typingRef.current = false;
             lastReverseKeyRef.current = key;
-            setQuery(data.display_name);
+            setQuery(data.label);
             setResults([]);
             setOpen(false);
           }
+          setGeocodeError(false);
         })
-        .catch(() => {
-          /* aborted or network error — leave the box as-is */
+        .catch((err: unknown) => {
+          // Aborted by a newer coordinate change / unmount — expected, ignore.
+          if ((err as { name?: string })?.name === 'AbortError') return;
+          setGeocodeError(true);
         });
     }, 400);
 
@@ -223,6 +231,13 @@ export function LocationPicker({
           </ul>
         ) : null}
       </div>
+
+      {geocodeError ? (
+        <p className="text-xs text-error">
+          Location lookup is unavailable right now. You can still set the
+          location by clicking the map or entering coordinates manually below.
+        </p>
+      ) : null}
 
       <LocationMap lat={lat} lng={lng} onPick={pickFromMap} />
 

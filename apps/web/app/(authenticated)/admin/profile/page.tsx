@@ -17,17 +17,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { PhoneInput } from '@/components/phone-input';
 import { DatePicker } from '@/components/date-picker';
 import { LocationPicker } from '@/components/location-picker';
-
-// Shared entrance animation, matched to the other admin consoles: sections fade
-// + rise in, staggered via an inline animationDelay.
-const ENTER = 'animate-in fade-in-0 slide-in-from-bottom-4 duration-500';
-
-function enterStyle(delayMs: number) {
-  return {
-    animationDelay: `${delayMs}ms`,
-    animationFillMode: 'backwards' as const,
-  };
-}
+import { ENTER, enterStyle } from '@/lib/enter-animation';
 
 // Turn an enum member like SUPER_ADMIN into "Super Admin".
 function humanize(value: string): string {

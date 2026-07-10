@@ -56,7 +56,7 @@ a {
 
 /* The location picker's custom SVG map pin: strip Leaflet's default white box
    and border around div icons so only the pin shows. */
-.leaflet-div-icon.location-pin {
+.location-pin {
   background: transparent;
   border: none;
 }
@@ -201,7 +201,8 @@ html {
   --color-hover-tint: #ecf9f2;
 
   /* Subtle card shadow token. */
-  --shadow-card: 0 1px 2px 0 rgb(16 24 40 / 0.04), 0 1px 3px 0 rgb(16 24 40 / 0.06);
+  --shadow-card:
+    0 1px 2px 0 rgb(16 24 40 / 0.04), 0 1px 3px 0 rgb(16 24 40 / 0.06);
 
   /* Typography - Font Sizes */
   --font-size-xs: 0.625rem; /* 10px */

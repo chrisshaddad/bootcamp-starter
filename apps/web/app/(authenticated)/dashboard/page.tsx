@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatusBadge } from '@/components/status-badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ENTER, enterStyle } from '@/lib/enter-animation';
 import {
   AlertTriangle,
   ArrowRight,
@@ -112,22 +113,12 @@ const BAR_GRADIENTS: Record<string, string> = {
   'Unpriced entries': 'bg-gradient-to-r from-warn-accent to-warn',
 };
 
-// Shared entrance animation; callers stagger via an inline animationDelay.
-const ENTER = 'animate-in fade-in-0 slide-in-from-bottom-4 duration-500';
-
 // Row grids: CSS Grid, auto-fit + minmax so columns are equal and stretch to
 // the same height. 12px gap between cards; rows are spaced 16px by the parent.
 const STAT_GRID =
   'grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] items-stretch gap-3';
 const DUO_GRID =
   'grid grid-cols-[repeat(auto-fit,minmax(340px,1fr))] items-stretch gap-3';
-
-function enterStyle(delayMs: number) {
-  return {
-    animationDelay: `${delayMs}ms`,
-    animationFillMode: 'backwards' as const,
-  };
-}
 
 function formatCount(value?: number | null) {
   if (value == null) return '—';
@@ -188,14 +179,17 @@ export function DashboardContent() {
     isPharmaciesLoading;
 
   // Surface a retryable error instead of silently rendering zeros when a data
-  // source fails: SWR clears isLoading on error, so without this the page would
-  // show an all-zero dashboard with no sign anything went wrong.
+  // source fails on initial load: SWR clears isLoading on error, so without this
+  // the page would show an all-zero dashboard with no sign anything went wrong.
+  // Each error is gated on the absence of its cached data — SWR keeps the last
+  // good value on a background refetch failure, so a transient blip should keep
+  // the existing dashboard on screen rather than replacing it with the error UI.
   const loadError =
-    statsError ||
-    usersError ||
-    pharmaciesError ||
-    missingPriceError ||
-    missingBarcodeError;
+    (statsError && !platformStats) ||
+    (usersError && !users) ||
+    (pharmaciesError && !pharmacies) ||
+    (missingPriceError && !missingPrice) ||
+    (missingBarcodeError && !missingBarcode);
 
   // The dashboard KPIs come from one authoritative source (`/stats/platform`):
   // real, unscoped totals plus genuine trailing-7-day growth deltas.

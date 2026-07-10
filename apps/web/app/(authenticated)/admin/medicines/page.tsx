@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { ENTER, enterStyle } from '@/lib/enter-animation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
@@ -61,18 +62,6 @@ const PAGE_SIZE = 20;
 // A clean, light scrollbar (white track, soft grey thumb) for scroll areas.
 const WHITE_SCROLLBAR =
   '[&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-white [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-200 hover:[&::-webkit-scrollbar-thumb]:bg-gray-300';
-
-// Shared entrance animation, matched to the dashboard: sections fade + rise in,
-// staggered via an inline animationDelay so they arrive one after another
-// instead of all at once.
-const ENTER = 'animate-in fade-in-0 slide-in-from-bottom-4 duration-500';
-
-function enterStyle(delayMs: number) {
-  return {
-    animationDelay: `${delayMs}ms`,
-    animationFillMode: 'backwards' as const,
-  };
-}
 
 function formatPrice(value: number | null): string {
   if (value === null) return '—';

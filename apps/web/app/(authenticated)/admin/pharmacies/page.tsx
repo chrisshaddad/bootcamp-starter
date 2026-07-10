@@ -53,17 +53,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-
-// Shared entrance animation, matched to the dashboard: sections fade + rise in,
-// staggered via an inline animationDelay so they arrive one after another.
-const ENTER = 'animate-in fade-in-0 slide-in-from-bottom-4 duration-500';
-
-function enterStyle(delayMs: number) {
-  return {
-    animationDelay: `${delayMs}ms`,
-    animationFillMode: 'backwards' as const,
-  };
-}
+import { ENTER, enterStyle } from '@/lib/enter-animation';
 
 // Full colored "at a glance" stat tiles — same palette family as the dashboard.
 const STAT_STYLES = [

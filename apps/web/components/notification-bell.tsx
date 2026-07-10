@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { Bell, Check } from 'lucide-react';
+import { AlertTriangle, Bell, Check } from 'lucide-react';
 import type { AuditLogItem } from '@repo/contracts';
 import {
   useNotifications,
@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
@@ -51,8 +52,16 @@ function actorName(item: AuditLogItem): string {
 }
 
 export function NotificationBell() {
-  const { notifications, unreadCount, isRead, markRead, markAllRead, enabled } =
-    useNotifications();
+  const {
+    notifications,
+    unreadCount,
+    isRead,
+    markRead,
+    markAllRead,
+    isLoading,
+    error,
+    enabled,
+  } = useNotifications();
   const [open, setOpen] = useState(false);
 
   // Only the super admin has access to the platform audit feed.
@@ -96,65 +105,96 @@ export function NotificationBell() {
         </div>
 
         <div className="thin-scroll max-h-96 overflow-y-auto">
-          {items.length === 0 ? (
+          {isLoading && items.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-2 px-4 py-10 text-center">
+              <Bell className="h-8 w-8 animate-pulse text-gray-300" />
+              <p className="text-sm text-gray-500">Loading activity…</p>
+            </div>
+          ) : error && items.length === 0 ? (
+            // Initial fetch failed and there's nothing cached to fall back to.
+            <div className="flex flex-col items-center justify-center gap-2 px-4 py-10 text-center">
+              <AlertTriangle className="h-8 w-8 text-error" />
+              <p className="text-sm text-gray-500">
+                Couldn&apos;t load notifications.
+              </p>
+            </div>
+          ) : items.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-2 px-4 py-10 text-center">
               <Bell className="h-8 w-8 text-gray-300" />
               <p className="text-sm text-gray-500">No activity yet</p>
             </div>
           ) : (
-            items.map((item) => {
-              const meta = actionMeta(item.action);
-              const unread = !isRead(item.id);
-              return (
+            <>
+              {error ? (
+                // A background poll failed but we still have cached events — keep
+                // showing them, but flag that the feed may be stale rather than
+                // letting it read as "nothing new happened".
                 <div
-                  key={item.id}
-                  className={`group flex items-start gap-2 border-b border-gray-50 transition-colors last:border-0 hover:bg-gray-50 ${
-                    unread ? 'bg-primary-100/40' : ''
-                  }`}
+                  role="alert"
+                  className="flex items-center gap-2 border-b border-gray-100 bg-error/5 px-4 py-2 text-xs text-error"
                 >
-                  <Link
-                    href={notificationHref(item)}
-                    onClick={() => {
-                      markRead(item.id);
-                      setOpen(false);
-                    }}
-                    className="flex min-w-0 flex-1 gap-3 py-3 pl-4"
-                  >
-                    <span
-                      className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
-                        unread ? CATEGORY_DOT[meta.category] : 'bg-gray-300'
-                      }`}
-                      aria-hidden
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p
-                        className={`truncate text-sm ${
-                          unread
-                            ? 'font-semibold text-gray-900'
-                            : 'font-medium text-gray-600'
-                        }`}
-                      >
-                        {meta.label}
-                      </p>
-                      <p className="mt-0.5 truncate text-xs text-gray-500">
-                        {actorName(item)} · {timeAgo(item.createdAt)}
-                      </p>
-                    </div>
-                  </Link>
-                  {unread ? (
-                    <button
-                      type="button"
-                      title="Mark as read"
-                      aria-label="Mark as read"
-                      onClick={() => markRead(item.id)}
-                      className="mt-2.5 mr-3 shrink-0 rounded-md p-1 text-gray-400 opacity-0 transition hover:bg-gray-200 hover:text-gray-700 focus:opacity-100 group-hover:opacity-100"
-                    >
-                      <Check className="h-4 w-4" />
-                    </button>
-                  ) : null}
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                  Couldn&apos;t refresh — showing older activity.
                 </div>
-              );
-            })
+              ) : null}
+              {items.map((item) => {
+                const meta = actionMeta(item.action);
+                const unread = !isRead(item.id);
+                return (
+                  <div
+                    key={item.id}
+                    className={`group flex items-start gap-2 border-b border-gray-50 transition-colors last:border-0 hover:bg-gray-50 ${
+                      unread ? 'bg-primary-100/40' : ''
+                    }`}
+                  >
+                    <DropdownMenuItem
+                      asChild
+                      className="flex min-w-0 flex-1 items-start gap-3 rounded-none py-3 pr-3 pl-4 focus:bg-gray-50"
+                    >
+                      <Link
+                        href={notificationHref(item)}
+                        onClick={() => {
+                          markRead(item.id);
+                          setOpen(false);
+                        }}
+                      >
+                        <span
+                          className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
+                            unread ? CATEGORY_DOT[meta.category] : 'bg-gray-300'
+                          }`}
+                          aria-hidden
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p
+                            className={`truncate text-sm ${
+                              unread
+                                ? 'font-semibold text-gray-900'
+                                : 'font-medium text-gray-600'
+                            }`}
+                          >
+                            {meta.label}
+                          </p>
+                          <p className="mt-0.5 truncate text-xs text-gray-500">
+                            {actorName(item)} · {timeAgo(item.createdAt)}
+                          </p>
+                        </div>
+                      </Link>
+                    </DropdownMenuItem>
+                    {unread ? (
+                      <button
+                        type="button"
+                        title="Mark as read"
+                        aria-label="Mark as read"
+                        onClick={() => markRead(item.id)}
+                        className="mt-2.5 mr-3 shrink-0 rounded-md p-1 text-gray-400 opacity-0 transition hover:bg-gray-200 hover:text-gray-700 focus:opacity-100 group-hover:opacity-100"
+                      >
+                        <Check className="h-4 w-4" />
+                      </button>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </>
           )}
         </div>
 

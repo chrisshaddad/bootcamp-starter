@@ -1,15 +1,5 @@
 import { ChangePasswordCard } from '@/components/change-password-card';
-
-// Shared entrance animation, matched to the other admin consoles: sections fade
-// + rise in, staggered via an inline animationDelay.
-const ENTER = 'animate-in fade-in-0 slide-in-from-bottom-4 duration-500';
-
-function enterStyle(delayMs: number) {
-  return {
-    animationDelay: `${delayMs}ms`,
-    animationFillMode: 'backwards' as const,
-  };
-}
+import { ENTER, enterStyle } from '@/lib/enter-animation';
 
 export default function SettingsPage() {
   return (
