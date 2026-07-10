@@ -14,7 +14,6 @@ datasource db {
 enum UserRole {
   SUPER_ADMIN // Manages all organizations (can also accept org registrations)
   ORG_ADMIN // Manages a single organization (can also invite members to their org)
-  RECEPTIONIST // Associated with a single organization, can only create new users
   MEMBER
 
   @@schema("public")

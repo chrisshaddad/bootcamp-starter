@@ -8,7 +8,6 @@ interface OrganizationSeed {
   createdAt: Date;
   approvedAt?: Date;
   adminEmail: string; // Email of the org admin who created this org
-  receptionist?: { email: string; name: string }; // Optional receptionist for this org
 }
 
 // Sample organizations with varied statuses
@@ -22,10 +21,6 @@ const ORGANIZATIONS: OrganizationSeed[] = [
     createdAt: new Date('2025-10-15'),
     approvedAt: new Date('2025-10-18'),
     adminEmail: 'admin@techcorp.example.com',
-    receptionist: {
-      email: 'receptionist@techcorp.example.com',
-      name: 'Olivia Reyes',
-    },
   },
   {
     name: 'Green Energy Partners',
@@ -124,19 +119,6 @@ export async function seedOrganizations(prisma: PrismaClient) {
       where: { id: orgAdmin.id },
       data: { organizationId: createdOrg.id },
     });
-
-    // Create a receptionist for this organization, if configured
-    if (org.receptionist) {
-      await prisma.user.create({
-        data: {
-          email: org.receptionist.email,
-          name: org.receptionist.name,
-          role: 'RECEPTIONIST',
-          isConfirmed: true,
-          organizationId: createdOrg.id,
-        },
-      });
-    }
 
     console.log(
       `  Created organization: ${org.name} (${org.status}) - Admin: ${orgAdmin.email}`,
