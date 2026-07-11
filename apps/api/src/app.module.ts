@@ -7,6 +7,8 @@ import { AuthModule } from './auth/auth.module';
 import { MailModule } from './mail/mail.module';
 import { OrganizationsModule } from './organizations/organizations.module';
 import { LibraryMembersModule } from './library-members/library-members.module';
+import { CirculationModule } from './circulation/circulation.module';
+import { CatalogModule } from './catalog/catalog.module';
 import { DatabaseModule } from './database/database.module';
 
 @Module({
@@ -22,6 +24,8 @@ import { DatabaseModule } from './database/database.module';
     MailModule,
     OrganizationsModule,
     LibraryMembersModule,
+    CirculationModule,
+    CatalogModule,
   ],
   controllers: [AppController],
   providers: [AppService],
