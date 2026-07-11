@@ -20,6 +20,7 @@ import type {
   EmployeeRole,
   EmployeeUpdateRequest,
 } from '@repo/contracts';
+import { employeeRoleSchema } from '@repo/contracts';
 import { PrismaService } from '../database/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import {
@@ -29,14 +30,10 @@ import {
 } from '../audit/audit.constants';
 import { MAIL_QUEUE, MAIL_JOBS } from '../mail/mail.constants';
 
-// The roles a pharmacy admin manages. Mirrors employeeRoleSchema in
-// @repo/contracts — the admin themselves (PHARMACY_ADMIN) is never in this list.
-const EMPLOYEE_ROLES = [
-  'PHARMACY_MANAGER',
-  'PHARMACY_EMPLOYEE',
-  'STOCK_MANAGER',
-  'INQUIRY_OFFICER',
-] as const;
+// The roles a pharmacy admin manages — derived from the contract enum so it can
+// never drift out of sync. The admin themselves (PHARMACY_ADMIN) is not in this
+// subset, so they never appear in the employees list or become an update target.
+const EMPLOYEE_ROLES = employeeRoleSchema.options;
 
 // Invite links live longer than sign-in links: new staff may not act right away.
 const INVITE_EXPIRY_DAYS = 7;
@@ -188,7 +185,19 @@ export class EmployeesService {
       throw error;
     }
 
-    await this.sendInvite(created, actor, pharmacyId);
+    // The account is already committed. A queue/Redis failure here must not
+    // bubble up as a 500 that leaves an orphaned PENDING user the admin believes
+    // failed — log it so the failure is visible, and let the create succeed (the
+    // admin can re-issue the invite). The SEND_INVITATION job is consumed by
+    // MailProcessor.handleSendInvitation.
+    try {
+      await this.sendInvite(created, actor, pharmacyId);
+    } catch (error) {
+      this.logger.error(
+        `Employee ${created.id} (${created.email}) was created but the invite email could not be queued.`,
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
 
     await this.audit.record({
       userId: actor.id,
@@ -227,7 +236,17 @@ export class EmployeesService {
 
     const data: Prisma.UserUncheckedUpdateInput = {};
     if (dto.role) data.role = dto.role;
-    if (dto.status) data.status = dto.status;
+    if (dto.status) {
+      // PENDING is set only by the invite flow (onboarding not yet complete).
+      // Re-assert that server-side so a direct API call can't revert an active
+      // employee back to PENDING — the web UI already excludes it as a choice.
+      if (dto.status === 'PENDING') {
+        throw new BadRequestException(
+          'PENDING is managed by the invite flow and cannot be set manually.',
+        );
+      }
+      data.status = dto.status;
+    }
 
     if (dto.branchId !== undefined) {
       const branch = await this.prisma.pharmacyBranch.findFirst({
@@ -261,8 +280,8 @@ export class EmployeesService {
     if (dto.branchId !== undefined && dto.branchId !== existing.branchId) {
       // Resolve to names so the diff reads "Downtown → Airport", not UUIDs.
       const [fromName, toName] = await Promise.all([
-        this.branchName(existing.branchId),
-        this.branchName(updated.branchId),
+        this.branchName(existing.branchId, pharmacyId),
+        this.branchName(updated.branchId, pharmacyId),
       ]);
       changes.branch = { from: fromName, to: toName };
     }
@@ -317,11 +336,18 @@ export class EmployeesService {
     });
   }
 
-  /** Resolve a branch's name for human-readable audit diffs. */
-  private async branchName(id: string | null): Promise<string | null> {
+  /**
+   * Resolve a branch's name for human-readable audit diffs. Scoped by
+   * pharmacyId — like every other query in this file — so the helper upholds
+   * tenant isolation and stays safe if reused for a caller-supplied id.
+   */
+  private async branchName(
+    id: string | null,
+    pharmacyId: string,
+  ): Promise<string | null> {
     if (!id) return null;
-    const branch = await this.prisma.pharmacyBranch.findUnique({
-      where: { id },
+    const branch = await this.prisma.pharmacyBranch.findFirst({
+      where: { id, pharmacyId },
       select: { name: true },
     });
     return branch?.name ?? id;

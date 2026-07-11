@@ -7,8 +7,8 @@ Everything below is a **vertical slice** — one owner takes it end to end. Copy
 
 ## The 4-step build order (every slice)
 
-1. **Contracts** — Zod schemas in `packages/contracts/src/<area>/`, then `npx tsc -p packages/contracts`.
-2. **API** — `apps/api/src/<area>/` module. Controller with `@Roles(...)` + `ZodValidationPipe`; service scopes every query by `@CurrentUser()` (`actor.pharmacyId` / `actor.branchId`) and writes an audit entry on mutations. Register in `app.module.ts`.
+1. **Contracts** — one Zod schema per file in `packages/contracts/src/<area>/`. Export each from the area's `index.ts` **and** add the area to the root `packages/contracts/src/index.ts` barrel, then run `npx tsc -p packages/contracts` so both `apps/api` and `apps/web` can import the new wire types. (Skipping either barrel means the type won't resolve on import.)
+2. **API** — `apps/api/src/<area>/` module. **Every** controller handler must validate its request body and query params with `ZodValidationPipe`, using the schema imported from `@repo/contracts` — never an inline or hand-rolled DTO. Apply `@Roles(...)` on the controller and pass `@CurrentUser()` into the service. The service scopes every query by the session user (`actor.pharmacyId` / `actor.branchId`) and writes an audit entry on mutations. Register the module in `app.module.ts`.
 3. **Hook** — `apps/web/hooks/use-<area>.ts` (SWR read hook + actions hook).
 4. **Pages** — under the already-guarded area folder. Enable the sidebar item (drop `disabled: true`).
 
@@ -21,10 +21,10 @@ Everything below is a **vertical slice** — one owner takes it end to end. Copy
 - **Route / role:** `/pharmacy/branches` — `PHARMACY_ADMIN`
 - **Main functions:**
   - List branches (name, phone, address, lat/long, staff count).
-  - Create branch, edit branch, delete branch (warn if it still has staff).
+  - Create branch, edit branch, delete branch (the UI warns when staff are still assigned — see the API rule below).
   - Use the existing **map location picker** for latitude/longitude (already in the codebase — reuse it).
 - **Contracts:** `branches/` already has `branch.response`, `branch-create.request`, `branch-update.request`. Add a pharmacy-scoped `branch-list.response` if needed.
-- **API:** `apps/api/src/branches/` — `@Roles('PHARMACY_ADMIN')`, scoped to `actor.pharmacyId`. (The super-admin path lives under `/pharmacies/:id/branches`; this is the admin's own `/branches`.) Audit: reuse `BRANCH_CREATE/UPDATE/DELETE`.
+- **API:** `apps/api/src/branches/` — `@Roles('PHARMACY_ADMIN')`, scoped to `actor.pharmacyId`. (The super-admin path lives under `/pharmacies/:id/branches`; this is the admin's own `/branches`.) **Delete must be API-enforced, not just a UI warning:** re-check for users still assigned to the branch within `actor.pharmacyId` and reject with a `ConflictException` if any remain (mirror the existing `pharmacies.service` staff/branch guards). Preserve the `BRANCH_DELETE` audit entry on successful deletes. Audit: reuse `BRANCH_CREATE/UPDATE/DELETE`.
 - **Hook:** `use-branches.ts`.
 - **Priority:** do this **first** — employees and dashboards both reference branches.
 
@@ -35,9 +35,9 @@ Everything below is a **vertical slice** — one owner takes it end to end. Copy
   - `/stock`: list medicines grouped with **total quantity, batch count, nearest expiry**; visual flags for low quantity / near-expiry; search by name/barcode; **scan barcode** → found = use existing medicine, not found = create medicine; **add batch** (medicine, batch number, quantity, expiry).
   - `/stock/[medicineId]`: all batches for one medicine; edit quantity/expiry; delete batch (confirm); total recalculated from batches.
   - **Every write produces an audit log entry.**
-- **Data model:** `StockBatch` (exists) is scoped by `branchId` only — stock manager filters by their `branchId`; admin joins through `branch → pharmacyId`. Reuses the **global Medicine catalog** (already built).
+- **Data model:** `StockBatch` (exists) is scoped by `branchId` only — stock manager reads by their `branchId`; admin joins through `branch → pharmacyId`. Reuses the **global Medicine catalog** (already built).
 - **Contracts:** new `stock/` (batch list/create/update, medicine-stock summary). Reuse medicine contracts for the create-if-not-found path.
-- **API:** `apps/api/src/stock/`. New audit constants: `STOCK_BATCH_CREATE/UPDATE/DELETE` + entity `StockBatch`.
+- **API:** `apps/api/src/stock/`. **Tenant scope on mutations, not just reads:** because `StockBatch` carries no `pharmacyId`, the target branch must come from the session actor, never the request body. For a `PHARMACY_ADMIN` write, first verify the target branch belongs to `actor.pharmacyId`; for a `STOCK_MANAGER`, derive the branch from `actor.branchId`. Apply that same tenant predicate to the actual create/update/delete mutation (e.g. `updateMany`/`deleteMany` filtered by the resolved `branchId`) as well as the pre-check — never trust a request-supplied `branchId`. New audit constants: `STOCK_BATCH_CREATE/UPDATE/DELETE` + entity `StockBatch`.
 - **Hook:** `use-stock.ts`.
 
 ## Package C — Inquiries (owner: \_\_\_)
@@ -48,7 +48,7 @@ Everything below is a **vertical slice** — one owner takes it end to end. Copy
   - `/inquiries/[id]`: conversation thread (client vs employee styling); **reply box** → adds employee message + auto-moves status to In progress; status selector (+ audit); **context panel** with client info and **live stock lookup** for that medicine at this branch.
 - **Data model:** `Inquiry` carries both `pharmacyId` + `branchId` (scope directly). `InquiryMessage` scopes via its parent inquiry. Statuses: `PENDING, IN_PROGRESS, ANSWERED, CLOSED`.
 - **Contracts:** new `inquiries/` (list, thread/messages, reply, status-update).
-- **API:** `apps/api/src/inquiries/`. New audit constants: `INQUIRY_REPLY`, `INQUIRY_STATUS_CHANGE` + entity `Inquiry`.
+- **API:** `apps/api/src/inquiries/`. **The reply flow is one transaction:** creating the `InquiryMessage`, auto-moving the inquiry to `IN_PROGRESS`, and writing the `INQUIRY_REPLY` audit entry must run inside a single Prisma `$transaction` so a partial failure can never leave a saved reply without the status change or audit record. (If any step is intentionally moved outside the transaction, document the recovery/idempotency policy for that path.) New audit constants: `INQUIRY_REPLY`, `INQUIRY_STATUS_CHANGE` + entity `Inquiry`.
 - **Hook:** `use-inquiries.ts`.
 - **Note:** the client-side of inquiries (consumer asks a question, `/my/inquiries`) is a separate CLIENT-app task; this package is the **staff/officer** side only.
 
