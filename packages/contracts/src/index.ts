@@ -4,3 +4,8 @@ export * from './users';
 export * from './organizations';
 export * from './rentals';
 export * from './reservations';
+export * from './authors';
+export * from './categories';
+export * from './publishers';
+export * from './books';
+export * from './book-copies';
