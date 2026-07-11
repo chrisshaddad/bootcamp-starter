@@ -69,18 +69,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-
-// Shared entrance animation, matched to the dashboard: sections fade + rise in,
-// staggered via an inline animationDelay so they arrive one after another
-// instead of all at once.
-const ENTER = 'animate-in fade-in-0 slide-in-from-bottom-4 duration-500';
-
-function enterStyle(delayMs: number) {
-  return {
-    animationDelay: `${delayMs}ms`,
-    animationFillMode: 'backwards' as const,
-  };
-}
+import { ENTER, enterStyle } from '@/lib/enter-animation';
 
 // Every role is selectable — super admins are managed from this console too.
 // The only user hidden from the list is the signed-in admin (done server-side).

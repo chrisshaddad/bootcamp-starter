@@ -4,6 +4,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { Prisma } from '@repo/db';
 import type { User, UserRole } from '@repo/db';
@@ -116,12 +117,84 @@ export class UsersService {
   }
 
   /**
+   * Guard against locking the whole platform out of the super-admin console.
+   *
+   * Only an `ACTIVE` `SUPER_ADMIN` can sign in and manage the platform, so we
+   * refuse any operation that would remove the last one — demoting their role,
+   * pushing them to a non-active status, or deleting them. Self-mutations are
+   * already blocked separately; this covers the cross-admin case where one super
+   * admin demotes/deletes another.
+   */
+  private async assertNotLastActiveSuperAdmin(
+    tx: Prisma.TransactionClient,
+    target: Pick<User, 'id' | 'role' | 'status'>,
+  ): Promise<void> {
+    if (target.role !== 'SUPER_ADMIN' || target.status !== 'ACTIVE') {
+      return;
+    }
+    const otherActive = await tx.user.count({
+      where: {
+        id: { not: target.id },
+        role: 'SUPER_ADMIN',
+        status: 'ACTIVE',
+      },
+    });
+    if (otherActive === 0) {
+      throw new BadRequestException(
+        'You cannot remove the last active super admin.',
+      );
+    }
+  }
+
+  /**
+   * Run `fn` inside a serializable transaction so the last-super-admin guard and
+   * its destructive write commit atomically: the `count` in
+   * `assertNotLastActiveSuperAdmin` and the update/delete must see a consistent
+   * snapshot, or two concurrent demotions could each read one other active super
+   * admin and both commit, leaving zero. Postgres aborts the loser of such a
+   * conflict with a serialization failure (P2034); we retry it so it re-reads
+   * the committed state and rejects the operation correctly.
+   */
+  private async runSerializable<T>(
+    fn: (tx: Prisma.TransactionClient) => Promise<T>,
+  ): Promise<T> {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await this.prisma.$transaction(fn, {
+          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        });
+      } catch (error) {
+        const isSerializationFailure =
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2034';
+        if (isSerializationFailure && attempt < 3) {
+          continue;
+        }
+        // Retries exhausted under sustained contention: surface a retryable 503
+        // rather than leaking the raw Prisma error as a generic 500.
+        if (isSerializationFailure) {
+          throw new ServiceUnavailableException(
+            'The server is busy. Please try again.',
+          );
+        }
+        throw error;
+      }
+    }
+  }
+
+  /**
    * Create a user. The account has no password — the user completes onboarding
    * through the magic-link / set-password flow, same as seeded accounts.
    */
   async create(dto: UserCreateRequest, actorId: string): Promise<UserResponse> {
+    // Normalize the email exactly like the auth (`auth.service.ts`) and pharmacy
+    // admin (`pharmacies.service.ts`) creation paths do. The DB unique index is
+    // case-sensitive and every login lookup lowercases first, so storing an
+    // email verbatim (e.g. `Foo@x.com`) would lock the user out permanently.
+    const email = dto.email.toLowerCase().trim();
+
     const existing = await this.prisma.user.findUnique({
-      where: { email: dto.email },
+      where: { email },
     });
     if (existing) {
       throw new ConflictException('A user with this email already exists.');
@@ -134,7 +207,7 @@ export class UsersService {
 
     try {
       const created = await this.prisma.user.create({
-        data: { ...dto, pharmacyId, branchId: null, password: null },
+        data: { ...dto, email, pharmacyId, branchId: null, password: null },
         select: USER_SELECT,
       });
 
@@ -196,6 +269,12 @@ export class UsersService {
       throw new NotFoundException('User not found.');
     }
 
+    // Block demoting or deactivating the last active super admin (self-changes
+    // are already rejected above, so this only bites the cross-admin case). The
+    // guard and the write run together in `runSerializable` below.
+    const demotesRole = dto.role !== undefined && dto.role !== 'SUPER_ADMIN';
+    const deactivates = dto.status !== undefined && dto.status !== 'ACTIVE';
+
     const data: Prisma.UserUncheckedUpdateInput = {};
     if (dto.status) data.status = dto.status;
     if (dto.role) data.role = dto.role;
@@ -214,10 +293,11 @@ export class UsersService {
       data.branchId = null;
     }
 
-    const updated = await this.prisma.user.update({
-      where: { id },
-      data,
-      select: USER_SELECT,
+    const updated = await this.runSerializable(async (tx) => {
+      if (demotesRole || deactivates) {
+        await this.assertNotLastActiveSuperAdmin(tx, existing);
+      }
+      return tx.user.update({ where: { id }, data, select: USER_SELECT });
     });
 
     // Build a before → after diff of only the fields that actually changed.
@@ -277,7 +357,12 @@ export class UsersService {
       throw new NotFoundException('User not found.');
     }
 
-    await this.prisma.user.delete({ where: { id } });
+    // Refuse to delete the last active super admin (would orphan the console).
+    // Guard + delete commit together so concurrent removals can't both pass.
+    await this.runSerializable(async (tx) => {
+      await this.assertNotLastActiveSuperAdmin(tx, existing);
+      await tx.user.delete({ where: { id } });
+    });
 
     await this.audit.record({
       userId: actor.id,

@@ -10,6 +10,13 @@ import {
 } from 'lucide-react';
 import type { AuditLogItem } from '@repo/contracts';
 import { useAuditLogs } from '@/hooks/use-audit';
+import {
+  actionMeta,
+  humanize,
+  CATEGORY_META,
+  CATEGORY_ORDER,
+  type Category,
+} from '@/lib/audit-format';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -36,31 +43,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-
-// Shared entrance animation, matched to the other admin consoles: sections fade
-// + rise in, staggered via an inline animationDelay.
-const ENTER = 'animate-in fade-in-0 slide-in-from-bottom-4 duration-500';
-
-function enterStyle(delayMs: number) {
-  return {
-    animationDelay: `${delayMs}ms`,
-    animationFillMode: 'backwards' as const,
-  };
-}
-
-// Turn any identifier into Title Case words. Handles camelCase / PascalCase
-// (phoneNumber, PharmacyBranch), snake_case, and dot.case (auth.set_password),
-// plus ALL_CAPS enums (PHARMACY_ADMIN) — so nothing raw leaks into the UI.
-function humanize(value: string): string {
-  return value
-    .replace(/([a-z0-9])([A-Z])/g, '$1 $2') // camelCase → camel Case
-    .replace(/[_.]+/g, ' ') // snake_case / dot.case → spaces
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(' ');
-}
+import { ENTER, enterStyle } from '@/lib/enter-animation';
 
 function formatDateTime(value: AuditLogItem['createdAt']): string {
   return new Date(value).toLocaleString(undefined, {
@@ -88,87 +71,6 @@ function formatValue(value: unknown): string {
     return value;
   }
   return String(value);
-}
-
-// ---------------------------------------------------------------------------
-// Event → human language
-//
-// Raw event keys (`user.create`, `auth.magic_link_requested`) are system
-// identifiers. Everything a reader sees is derived here: a category (which
-// drives color + filtering) and a plain-language label. The raw key is kept
-// only in the row tooltip and the detail dialog for engineers.
-
-type Category = 'create' | 'update' | 'delete' | 'login' | 'security';
-
-// Category is the scan axis: color + filter both key off it, so a reader can
-// spot destructive events (red) without reading every row.
-const CATEGORY_META: Record<Category, { label: string; pill: string }> = {
-  create: { label: 'Create', pill: 'bg-success/10 text-success-dark' },
-  update: { label: 'Update', pill: 'bg-warning/15 text-warning-dark' },
-  delete: { label: 'Delete', pill: 'bg-error/10 text-error' },
-  login: { label: 'Login', pill: 'bg-primary-100 text-primary-hover' },
-  security: { label: 'Security', pill: 'bg-secondary-200 text-warning-dark' },
-};
-
-const CATEGORY_ORDER: Category[] = [
-  'create',
-  'update',
-  'delete',
-  'login',
-  'security',
-];
-
-interface ActionMeta {
-  category: Category;
-  label: string;
-}
-
-// The canonical map from raw event key to how a person reads it.
-const ACTION_META: Record<string, ActionMeta> = {
-  'user.create': { category: 'create', label: 'Created a new user' },
-  'user.update': { category: 'update', label: 'Updated a user' },
-  'user.delete': { category: 'delete', label: 'Deleted a user' },
-  'user.assign_branch': {
-    category: 'update',
-    label: 'Assigned a user to a branch',
-  },
-  'profile.update': { category: 'update', label: 'Updated their profile' },
-  'medicine.create': { category: 'create', label: 'Created a medicine' },
-  'medicine.update': { category: 'update', label: 'Updated a medicine' },
-  'medicine.delete': { category: 'delete', label: 'Deleted a medicine' },
-  'pharmacy.create': { category: 'create', label: 'Created a pharmacy' },
-  'pharmacy.delete': { category: 'delete', label: 'Deleted a pharmacy' },
-  'branch.create': { category: 'create', label: 'Created a branch' },
-  'branch.update': { category: 'update', label: 'Updated a branch' },
-  'branch.delete': { category: 'delete', label: 'Deleted a branch' },
-  'auth.login': { category: 'login', label: 'Logged in' },
-  'auth.logout': { category: 'login', label: 'Logged out' },
-  'auth.signup': { category: 'create', label: 'Signed up (new account)' },
-  'auth.magic_link_requested': {
-    category: 'security',
-    label: 'Requested a magic link',
-  },
-  'auth.set_password': { category: 'security', label: 'Set a password' },
-};
-
-// Fallback for any event key not in the map above — keyword-classify so a new
-// action still lands in a sensible category and reads in plain-ish language.
-function keywordCategory(action: string): Category {
-  const value = action.toLowerCase();
-  if (/(delete|remove|revoke|suspend|ban)/.test(value)) return 'delete';
-  if (/(create|add|invite|register|signup)/.test(value)) return 'create';
-  if (/(login|logout|access|view|session)/.test(value)) return 'login';
-  if (/(password|magic|token|security|mfa|2fa)/.test(value)) return 'security';
-  return 'update';
-}
-
-function actionMeta(action: string): ActionMeta {
-  return (
-    ACTION_META[action] ?? {
-      category: keywordCategory(action),
-      label: humanize(action),
-    }
-  );
 }
 
 // --- details readers (details is `unknown` on the wire) --------------------

@@ -63,16 +63,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { BranchFields, type BranchFieldKey } from '../branch-fields';
-
-// Shared entrance animation, matched to the dashboard.
-const ENTER = 'animate-in fade-in-0 slide-in-from-bottom-4 duration-500';
-
-function enterStyle(delayMs: number) {
-  return {
-    animationDelay: `${delayMs}ms`,
-    animationFillMode: 'backwards' as const,
-  };
-}
+import { ENTER, enterStyle } from '@/lib/enter-animation';
 
 function humanize(value: string): string {
   return value
@@ -222,6 +213,8 @@ function BranchFormDialog({
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<BranchFormValues>({
     resolver: zodResolver(branchFormSchema),
@@ -274,6 +267,18 @@ function BranchFormDialog({
                 address: errors.address?.message,
                 latitude: errors.latitude?.message,
                 longitude: errors.longitude?.message,
+              }}
+              latitude={watch('latitude') ?? ''}
+              longitude={watch('longitude') ?? ''}
+              onLocationChange={(lat, lng) => {
+                setValue('latitude', lat, {
+                  shouldValidate: true,
+                  shouldDirty: true,
+                });
+                setValue('longitude', lng, {
+                  shouldValidate: true,
+                  shouldDirty: true,
+                });
               }}
             />
           </div>

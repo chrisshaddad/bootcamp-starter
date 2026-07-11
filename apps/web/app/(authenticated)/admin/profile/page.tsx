@@ -16,6 +16,8 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PhoneInput } from '@/components/phone-input';
 import { DatePicker } from '@/components/date-picker';
+import { LocationPicker } from '@/components/location-picker';
+import { ENTER, enterStyle } from '@/lib/enter-animation';
 
 // Turn an enum member like SUPER_ADMIN into "Super Admin".
 function humanize(value: string): string {
@@ -152,6 +154,8 @@ function ProfileForm({ profile }: { profile: ProfileResponse }) {
     control,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors, isSubmitting, isDirty },
   } = useForm<ProfileFormValues>({
     resolver: zodResolver(formSchema),
@@ -178,7 +182,10 @@ function ProfileForm({ profile }: { profile: ProfileResponse }) {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       {/* Read-only account identity */}
-      <Card className="border-gray-200 bg-white shadow-sm">
+      <Card
+        className={`border-gray-200 bg-white shadow-sm ${ENTER}`}
+        style={enterStyle(70)}
+      >
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg font-semibold text-gray-900">
             <Lock className="h-5 w-5 text-gray-500" />
@@ -201,7 +208,10 @@ function ProfileForm({ profile }: { profile: ProfileResponse }) {
       </Card>
 
       {/* Editable personal details */}
-      <Card className="border-gray-200 bg-white shadow-sm">
+      <Card
+        className={`border-gray-200 bg-white shadow-sm ${ENTER}`}
+        style={enterStyle(140)}
+      >
         <CardHeader>
           <CardTitle className="text-lg font-semibold text-gray-900">
             Personal information
@@ -282,6 +292,26 @@ function ProfileForm({ profile }: { profile: ProfileResponse }) {
             />
           </Field>
 
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-gray-700">
+              Location
+            </label>
+            <LocationPicker
+              latitude={watch('latitude') ?? ''}
+              longitude={watch('longitude') ?? ''}
+              onChange={(lat, lng) => {
+                setValue('latitude', lat, {
+                  shouldValidate: true,
+                  shouldDirty: true,
+                });
+                setValue('longitude', lng, {
+                  shouldValidate: true,
+                  shouldDirty: true,
+                });
+              }}
+            />
+          </div>
+
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field
               label="Latitude"
@@ -337,7 +367,7 @@ export default function AdminProfilePage() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className={ENTER} style={enterStyle(0)}>
         <h1 className="text-2xl font-bold text-gray-900">Profile</h1>
         <p className="mt-1 text-sm text-gray-500">
           Manage your personal details. Your email, role, and status are managed

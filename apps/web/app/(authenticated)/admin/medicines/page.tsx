@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { ENTER, enterStyle } from '@/lib/enter-animation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
@@ -61,18 +62,6 @@ const PAGE_SIZE = 20;
 // A clean, light scrollbar (white track, soft grey thumb) for scroll areas.
 const WHITE_SCROLLBAR =
   '[&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-white [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-200 hover:[&::-webkit-scrollbar-thumb]:bg-gray-300';
-
-// Shared entrance animation, matched to the dashboard: sections fade + rise in,
-// staggered via an inline animationDelay so they arrive one after another
-// instead of all at once.
-const ENTER = 'animate-in fade-in-0 slide-in-from-bottom-4 duration-500';
-
-function enterStyle(delayMs: number) {
-  return {
-    animationDelay: `${delayMs}ms`,
-    animationFillMode: 'backwards' as const,
-  };
-}
 
 function formatPrice(value: number | null): string {
   if (value === null) return '—';
@@ -560,13 +549,15 @@ function MultiCombobox({
 }
 
 // ---------------------------------------------------------------------------
-// Barcode reader field
+// Barcode field
 //
-// Barcodes are captured from a hardware reader, never hand-typed. A USB/BT
-// scanner behaves like a keyboard: it emits the code as a rapid keystroke burst
-// terminated by Enter. While "scanning", we listen on the window, buffer those
-// keystrokes, and commit on Enter. The 120ms gap guard drops slow (human)
-// keystrokes, so the field can only be filled by an actual scan.
+// Two ways to fill it, both landing on the same value:
+//   1. Type it in directly (the field is a normal text input).
+//   2. Press "Scan" for hands-free capture from a USB/BT reader. A scanner
+//      behaves like a keyboard — a rapid keystroke burst terminated by Enter —
+//      so while scanning we listen on the window, buffer those keystrokes, and
+//      commit on Enter. The 120ms gap guard drops slow (human) keystrokes so a
+//      stray keypress during a scan can't corrupt the code.
 
 function BarcodeScanField({
   value,
@@ -618,22 +609,29 @@ function BarcodeScanField({
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
           <ScanLine className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <div
+          <Input
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+            // A hardware scanner ends its burst with Enter; swallow it so a scan
+            // into the focused field can't accidentally submit the whole form.
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') event.preventDefault();
+            }}
+            placeholder={
+              scanning
+                ? 'Listening for scanner… press Esc to cancel'
+                : 'Scan or type a barcode'
+            }
+            // While hands-free scanning, keystrokes are captured on the window;
+            // disable the input so they don't also land here.
+            disabled={scanning}
+            inputMode="numeric"
+            autoComplete="off"
             className={cn(
-              'flex h-14 w-full items-center rounded-[10px] border border-gray-300 pr-3 pl-9 text-sm transition-[color,box-shadow]',
+              'h-14 pl-9 font-mono',
               scanning && 'border-success ring-[3px] ring-success/20',
             )}
-          >
-            {scanning ? (
-              <span className="text-gray-500">
-                Listening for scanner… press Esc to cancel
-              </span>
-            ) : value ? (
-              <span className="font-mono text-gray-900">{value}</span>
-            ) : (
-              <span className="text-gray-400">No barcode — scan to add</span>
-            )}
-          </div>
+          />
         </div>
         {value && !scanning ? (
           <Button
@@ -658,8 +656,8 @@ function BarcodeScanField({
         </Button>
       </div>
       <p className="text-xs text-gray-500">
-        Use a USB or Bluetooth barcode reader — keystrokes are captured
-        automatically while scanning.
+        Type the barcode, or press Scan to capture it hands-free from a USB or
+        Bluetooth reader.
       </p>
     </div>
   );

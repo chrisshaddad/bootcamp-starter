@@ -6,7 +6,13 @@
       "dependsOn": ["^build", "^db:generate", "^db:build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "outputs": [".next/**", "!.next/cache/**", "dist/**"],
-      "env": ["DATABASE_URL", "REDIS_URL", "NODE_ENV", "NEXT_PUBLIC_API_URL"]
+      "env": [
+        "DATABASE_URL",
+        "REDIS_URL",
+        "NODE_ENV",
+        "NEXT_PUBLIC_API_URL",
+        "GEOCODING_CONTACT"
+      ]
     },
     "lint": {
       "dependsOn": ["^lint", "^build", "^db:generate", "^db:build"]
@@ -24,7 +30,8 @@
         "NODE_ENV",
         "MAILPIT_URL",
         "APP_URL",
-        "NEXT_PUBLIC_API_URL"
+        "NEXT_PUBLIC_API_URL",
+        "GEOCODING_CONTACT"
       ]
     },
     "db:generate": {

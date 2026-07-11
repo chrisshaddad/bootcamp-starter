@@ -53,17 +53,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-
-// Shared entrance animation, matched to the dashboard: sections fade + rise in,
-// staggered via an inline animationDelay so they arrive one after another.
-const ENTER = 'animate-in fade-in-0 slide-in-from-bottom-4 duration-500';
-
-function enterStyle(delayMs: number) {
-  return {
-    animationDelay: `${delayMs}ms`,
-    animationFillMode: 'backwards' as const,
-  };
-}
+import { ENTER, enterStyle } from '@/lib/enter-animation';
 
 // Full colored "at a glance" stat tiles — same palette family as the dashboard.
 const STAT_STYLES = [
@@ -371,7 +361,7 @@ function CreatePharmacyDialog({ onClose }: { onClose: () => void }) {
 
   return (
     <Dialog open onOpenChange={(open) => !open && !isSubmitting && onClose()}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto">
+      <DialogContent className="thin-scroll max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleSubmit(onSubmit)}>
           <DialogHeader>
             <DialogTitle>New pharmacy</DialogTitle>
@@ -441,6 +431,18 @@ function CreatePharmacyDialog({ onClose }: { onClose: () => void }) {
                       address: errors.branchAddress?.message,
                       latitude: errors.branchLatitude?.message,
                       longitude: errors.branchLongitude?.message,
+                    }}
+                    latitude={watch('branchLatitude') ?? ''}
+                    longitude={watch('branchLongitude') ?? ''}
+                    onLocationChange={(lat, lng) => {
+                      setValue('branchLatitude', lat, {
+                        shouldValidate: true,
+                        shouldDirty: true,
+                      });
+                      setValue('branchLongitude', lng, {
+                        shouldValidate: true,
+                        shouldDirty: true,
+                      });
                     }}
                   />
                 </div>
