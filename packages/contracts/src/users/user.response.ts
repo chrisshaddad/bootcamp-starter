@@ -24,5 +24,6 @@ export const userResponseSchema = z.object({
   gymStatus: gymStatusSchema.nullable().optional(),
   gymStatusReason: z.string().nullable().optional(),
   memberStatus: memberStatusSchema.nullable().optional(),
+  gymThemeColor: z.string().nullable().optional(),
 });
 export type UserResponse = z.infer<typeof userResponseSchema>;

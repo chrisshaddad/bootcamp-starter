@@ -15,6 +15,25 @@ export const gymUserSchema = {
   },
 };
 
+export const gymSettingsUpdateSchema = {
+  type: 'object',
+  properties: {
+    maxCapacity: {
+      type: 'number',
+      nullable: true,
+      example: 50,
+      description: 'Maximum building capacity. Set null for no limit.',
+    },
+    themeColor: {
+      type: 'string',
+      nullable: true,
+      example: '#2F78EE',
+      description:
+        'Brand accent hex color (#RRGGBB) applied across the dashboard and member portal. Set null to reset to the site default.',
+    },
+  },
+};
+
 export const gymDetailSchema = {
   type: 'object',
   properties: {

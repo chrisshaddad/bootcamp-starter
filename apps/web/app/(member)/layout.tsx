@@ -6,6 +6,7 @@ import { useUser } from '@/hooks/use-auth';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { MemberSidebar } from '@/components/member-sidebar';
 import { TopNavbar } from '@/components/top-navbar';
+import { ThemeProvider } from '@/components/theme-provider';
 
 export default function MemberPortalLayout({
   children,
@@ -29,7 +30,7 @@ export default function MemberPortalLayout({
             Something went wrong. Please try again.
           </p>
           <button
-            className="text-sm text-blue-600 underline"
+            className="text-sm text-primary underline"
             onClick={() => window.location.reload()}
           >
             Retry
@@ -50,11 +51,17 @@ export default function MemberPortalLayout({
   // Deactivated members land on /portal/deactivated — render without sidebar
   // so the page is full-screen (matching the /suspended pattern).
   if (user?.memberStatus === 'INACTIVE') {
-    return <>{children}</>;
+    return (
+      <>
+        <ThemeProvider />
+        {children}
+      </>
+    );
   }
 
   return (
     <SidebarProvider>
+      <ThemeProvider />
       <MemberSidebar />
       <SidebarInset>
         <TopNavbar />

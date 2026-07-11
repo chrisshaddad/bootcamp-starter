@@ -4,3 +4,4 @@ export * from './gym-detail.response';
 export * from './gym-action.response';
 export * from './gym-register.request';
 export * from './gym-reason.request';
+export * from './gym-settings-update.request';

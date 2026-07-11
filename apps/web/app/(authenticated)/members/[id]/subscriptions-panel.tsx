@@ -70,7 +70,7 @@ function addDays(dateStr: string, days: number): string {
 }
 
 const STATUS_STYLES: Record<string, { bg: string; label: string }> = {
-  ACTIVE: { bg: 'bg-primary-100 text-primary-base', label: 'Active' },
+  ACTIVE: { bg: 'bg-success/10 text-success', label: 'Active' },
   EXPIRED: { bg: 'bg-gray-200 text-gray-600', label: 'Expired' },
   CANCELLED: { bg: 'bg-red-100 text-red-700', label: 'Cancelled' },
 };

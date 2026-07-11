@@ -55,9 +55,7 @@ function ActiveBadge({ isActive }: { isActive: boolean }) {
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-        isActive
-          ? 'bg-primary-100 text-primary-base'
-          : 'bg-gray-200 text-gray-700'
+        isActive ? 'bg-success/10 text-success' : 'bg-gray-200 text-gray-700'
       }`}
     >
       {isActive ? (
@@ -230,6 +228,7 @@ export function AddInstructorDialog({
             form="add-instructor-form"
             disabled={isSubmitting}
             id="submit-add-instructor"
+            className="gap-2 bg-primary-base hover:bg-primary-400 text-white"
           >
             {isSubmitting ? 'Adding…' : 'Add Instructor'}
           </Button>

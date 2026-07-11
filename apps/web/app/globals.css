@@ -77,12 +77,17 @@ a {
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  /* Primary Colors (Green) */
-  --color-primary-base: #27a376;
-  --color-primary-400: #55c790;
-  --color-primary-300: #86d7b0;
-  --color-primary-200: #ceefdf;
-  --color-primary-100: #e7f7ef;
+  /*
+   * Primary Colors (Humanline design-system ramp). Referenced through :root
+   * custom properties (below), never literal here — this is what lets
+   * Feature D's runtime theme override actually reach every bg-primary-base/
+   * text-primary-400/etc. utility. See the comment on --primary-base in :root.
+   */
+  --color-primary-base: var(--primary-base);
+  --color-primary-400: var(--primary-400);
+  --color-primary-300: var(--primary-300);
+  --color-primary-200: var(--primary-200);
+  --color-primary-100: var(--primary-100);
 
   /* Secondary Colors (Yellow) */
   --color-secondary-base: #ffd023;
@@ -179,6 +184,39 @@ a {
   --sidebar-accent-foreground: #27a376;
   --sidebar-border: #e9eaec;
   --sidebar-ring: #27a376;
+
+  /*
+   * Humanline design-system primary ramp (bg-primary-base, text-primary-400,
+   * etc. utilities). --primary-base aliases --primary so there's one source
+   * of truth for "the brand color"; the tints below are its lighter steps.
+   * Same values in light and dark mode (no .dark override exists for these,
+   * matching pre-Feature-D behavior) — Feature D's theme override replaces
+   * all five to match whatever hex the ORG_ADMIN picked.
+   */
+  --primary-base: var(--primary);
+  --primary-400: #55c790;
+  --primary-300: #86d7b0;
+  --primary-200: #ceefdf;
+  --primary-100: #e7f7ef;
+
+  /*
+   * Gym theme presets (Feature D). Seed hex values for the ORG_ADMIN theme
+   * picker — read at runtime via getComputedStyle, never hardcoded in TS/TSX.
+   * Same swatch in light and dark mode; the full light/dark ramp for whichever
+   * one is picked is derived at runtime in lib/theme/color-utils.ts.
+   */
+  --theme-preset-green: #27a376; /* default */
+  --theme-preset-blue: #2f78ee;
+  --theme-preset-purple: #8c62ff;
+  --theme-preset-orange: #fe964a;
+  --theme-preset-crimson: #e0384a;
+  --theme-preset-teal: #14b8a6;
+  --theme-preset-indigo: #4f46e5;
+  --theme-preset-pink: #ec4899;
+  --theme-preset-amber: #f59e0b;
+  --theme-preset-cyan: #06b6d4;
+  --theme-preset-lime: #84cc16;
+  --theme-preset-slate: #475569;
 }
 
 .dark {

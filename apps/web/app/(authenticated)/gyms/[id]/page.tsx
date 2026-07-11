@@ -350,7 +350,7 @@ export default function GymDetailPage() {
                     href={gym.website}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline"
+                    className="text-primary hover:underline"
                   >
                     {gym.website}
                   </a>

@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const STATUS_COLORS: Record<string, string> = {
-  ACTIVE: 'bg-primary-100 text-primary-base border border-primary-200',
+  ACTIVE: 'bg-success/10 text-success border border-success/20',
   INACTIVE: 'bg-gray-200 text-gray-700 border border-gray-300',
 };
 

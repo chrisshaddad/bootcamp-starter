@@ -20,7 +20,7 @@ updates in place).
 
 ## Overview
 
-Current overall state: **Phase 0 complete** — schema, migration, and all seeders done. Feature work (A/B/C) is now unblocked.
+Current overall state: **Phase 0 complete** — schema, migration, and all seeders done. Feature work (A/B/C) is now unblocked. **Feature D (gym theme customization) is complete.**
 
 | Area                                                                          | Owner       | Done  | Status | Details (edit here)                                                                        |
 | ----------------------------------------------------------------------------- | ----------- | ----- | ------ | ------------------------------------------------------------------------------------------ |
@@ -28,6 +28,7 @@ Current overall state: **Phase 0 complete** — schema, migration, and all seede
 | Feature A — Gym registration / Members / Plans / Subscriptions + portal shell | Claude      | 5 / 5 | ✅     | [`progress/PROGRESS-A.md`](progress/PROGRESS-A.md) — A0–A4 ✅ all merged — B3/C3 unblocked |
 | Feature B — Instructors / Sessions / Bookings + My-bookings                   | Antigravity | 4 / 4 | ✅     | [`progress/PROGRESS-B.md`](progress/PROGRESS-B.md) — B0-B3 ✅ all done                     |
 | Feature C — Check-ins / Dashboard + QR check-in                               | Antigravity | 3 / 3 | ✅     | [`progress/PROGRESS-C.md`](progress/PROGRESS-C.md) — C1–C3 ✅ all done                     |
+| Feature D — Gym theme customization (ORG_ADMIN, post-launch)                  | Claude      | 4 / 4 | ✅     | [`progress/PROGRESS-D.md`](progress/PROGRESS-D.md) — D0–D3 ✅ all done, user-verified      |
 
 ## How to use these files
 

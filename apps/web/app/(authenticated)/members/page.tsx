@@ -57,7 +57,7 @@ import { cn } from '@/lib/utils';
 type StatusFilter = 'all' | MemberStatus;
 
 const STATUS_COLORS: Record<string, string> = {
-  ACTIVE: 'bg-primary-100 text-primary-base',
+  ACTIVE: 'bg-success/10 text-success',
   INACTIVE: 'bg-gray-200 text-gray-700',
 };
 

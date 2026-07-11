@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { SubscriptionResponse } from '@repo/contracts';
 
 const STATUS_COLORS: Record<string, string> = {
-  ACTIVE: 'bg-primary-100 text-primary-base border border-primary-200',
+  ACTIVE: 'bg-success/10 text-success border border-success/20',
   EXPIRED: 'bg-gray-200 text-gray-600 border border-gray-300',
   CANCELLED: 'bg-error-light text-error border border-error/20',
 };
