@@ -194,7 +194,7 @@ export class EmployeesService {
       await this.sendInvite(created, actor, pharmacyId);
     } catch (error) {
       this.logger.error(
-        `Employee ${created.id} (${created.email}) was created but the invite email could not be queued.`,
+        `Employee ${created.id} was created but the invite email could not be queued.`,
         error instanceof Error ? error.stack : String(error),
       );
     }
