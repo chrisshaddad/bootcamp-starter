@@ -386,9 +386,9 @@ export class ApplicationsService {
       throw new NotFoundException(`Application with ID ${id} not found`);
     }
 
-    // Employees can only delete their own PENDING or WITHDRAWN applications
+    // Only allow deletion of PENDING or WITHDRAWN applications (except SUPER_ADMIN)
     if (
-      currentUser.role === 'EMPLOYEE' &&
+      currentUser.role !== 'SUPER_ADMIN' &&
       existing.status !== 'PENDING' &&
       existing.status !== 'WITHDRAWN'
     ) {

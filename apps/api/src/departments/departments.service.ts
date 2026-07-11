@@ -133,15 +133,15 @@ export class DepartmentsService {
   }
 
   async findOne(id: string, currentUser: User): Promise<DepartmentResponse> {
-    const where: Prisma.DepartmentWhereInput =
-      currentUser.role === 'SUPER_ADMIN'
-        ? { id }
-        : { id, organizationId: currentUser.organizationId as string };
-
     if (currentUser.role !== 'SUPER_ADMIN' && !currentUser.organizationId) {
       this.logger.warn(`User ${currentUser.id} has no organization`);
       throw new ForbiddenException('Organization membership is required');
     }
+
+    const where: Prisma.DepartmentWhereInput =
+      currentUser.role === 'SUPER_ADMIN'
+        ? { id }
+        : { id, organizationId: currentUser.organizationId as string };
 
     const department = await this.prisma.department.findFirst({
       where,

@@ -204,12 +204,12 @@ export class OpportunitiesService {
     data: OpportunityCreateRequest,
     currentUser: User,
   ): Promise<OpportunityResponse> {
-    if (currentUser.role !== 'SUPER_ADMIN' && !currentUser.organizationId) {
+    if (!currentUser.organizationId) {
       this.logger.warn(`User ${currentUser.id} has no organization`);
       throw new ForbiddenException('Organization membership is required');
     }
 
-    const organizationId = currentUser.organizationId!;
+    const organizationId = currentUser.organizationId;
 
     // Validate department belongs to org if provided
     if (data.departmentId) {

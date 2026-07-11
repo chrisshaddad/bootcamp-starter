@@ -22,15 +22,15 @@ export class EmployeesService {
   constructor(private readonly prisma: PrismaService) {}
 
   async findOne(id: string, currentUser: User): Promise<EmployeeResponse> {
-    const where =
-      currentUser.role === 'SUPER_ADMIN'
-        ? { id }
-        : { id, organizationId: currentUser.organizationId };
-
     if (currentUser.role !== 'SUPER_ADMIN' && !currentUser.organizationId) {
       this.logger.warn(`User ${currentUser.id} has no organization`);
       throw new ForbiddenException('Organization membership is required');
     }
+
+    const where =
+      currentUser.role === 'SUPER_ADMIN'
+        ? { id }
+        : { id, organizationId: currentUser.organizationId };
 
     const employee = await this.prisma.user.findFirst({
       where,
@@ -198,13 +198,19 @@ export class EmployeesService {
       throw new NotFoundException(`Employee with ID ${id} not found`);
     }
 
+    if (!employee.organizationId) {
+      throw new BadRequestException(
+        'Cannot update skills for an employee without an organization',
+      );
+    }
+
     // Validate all skills belong to user's organization
     if (data.skills.length > 0) {
       const skillIds = data.skills.map((s) => s.skillId);
       const skills = await this.prisma.skill.findMany({
         where: {
           id: { in: skillIds },
-          organizationId: employee.organizationId!,
+          organizationId: employee.organizationId,
         },
       });
 
