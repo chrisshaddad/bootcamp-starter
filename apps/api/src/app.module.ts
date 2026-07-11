@@ -28,6 +28,7 @@ import { ApartmentsModule } from '@/modules/apartments/apartments.module';
 import { RentersModule } from '@/modules/renters/renters.module';
 import { LeasesModule } from '@/modules/leases/leases.module';
 import { VendorsModule } from '@/modules/vendors/vendors.module';
+import { MaintenanceRequestsModule } from '@/modules/maintenance-requests/maintenance-requests.module';
 
 @Module({
   imports: [
@@ -70,6 +71,7 @@ import { VendorsModule } from '@/modules/vendors/vendors.module';
     RentersModule,
     LeasesModule,
     VendorsModule,
+    MaintenanceRequestsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

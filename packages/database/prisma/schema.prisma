@@ -44,6 +44,20 @@ enum VendorServiceType {
   other
 }
 
+enum MaintenanceRequestStatus {
+  open
+  in_progress
+  resolved
+  closed
+}
+
+enum MaintenanceRequestPriority {
+  low
+  medium
+  high
+  urgent
+}
+
 model Organization {
   id               String        @id @default(cuid())
   name             String
@@ -145,21 +159,22 @@ model Floor {
 }
 
 model Apartment {
-  id         String          @id @default(cuid())
-  orgId      String
-  buildingId String
-  floorId    String
-  unitNumber String
-  bedrooms   Int
-  bathrooms  Decimal         @db.Decimal(3, 1)
-  sqft       Int?
-  status     ApartmentStatus @default(vacant)
-  notes      String?
-  createdAt  DateTime        @default(now())
-  updatedAt  DateTime        @updatedAt
-  building   Building        @relation(fields: [buildingId], references: [id], onDelete: Cascade)
-  floor      Floor           @relation(fields: [floorId], references: [id], onDelete: Cascade)
-  leases     Lease[]
+  id                  String               @id @default(cuid())
+  orgId               String
+  buildingId          String
+  floorId             String
+  unitNumber          String
+  bedrooms            Int
+  bathrooms           Decimal              @db.Decimal(3, 1)
+  sqft                Int?
+  status              ApartmentStatus      @default(vacant)
+  notes               String?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  building            Building             @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  floor               Floor                @relation(fields: [floorId], references: [id], onDelete: Cascade)
+  leases              Lease[]
+  maintenanceRequests MaintenanceRequest[]
 
   @@unique([buildingId, unitNumber])
   @@index([floorId])
@@ -168,7 +183,7 @@ model Apartment {
 }
 
 model Renter {
-  id                    String   @id @default(cuid())
+  id                    String               @id @default(cuid())
   orgId                 String
   fullName              String
   email                 String?
@@ -176,9 +191,10 @@ model Renter {
   emergencyContactName  String?
   emergencyContactPhone String?
   notes                 String?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
   leases                Lease[]
+  maintenanceRequests   MaintenanceRequest[]
 
   @@index([orgId])
 }
@@ -221,5 +237,27 @@ model Vendor {
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
 
+  @@index([orgId])
+}
+
+model MaintenanceRequest {
+  id          String                     @id @default(cuid())
+  orgId       String
+  buildingId  String
+  apartmentId String
+  renterId    String
+  title       String
+  description String?
+  status      MaintenanceRequestStatus   @default(open)
+  priority    MaintenanceRequestPriority @default(medium)
+  notes       String?
+  createdAt   DateTime                   @default(now())
+  updatedAt   DateTime                   @updatedAt
+  apartment   Apartment                  @relation(fields: [apartmentId], references: [id], onDelete: Restrict)
+  renter      Renter                     @relation(fields: [renterId], references: [id], onDelete: Restrict)
+
+  @@index([apartmentId])
+  @@index([renterId])
+  @@index([buildingId])
   @@index([orgId])
 }

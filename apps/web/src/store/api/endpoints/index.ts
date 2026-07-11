@@ -10,3 +10,4 @@ import './apartments.api';
 import './renters.api';
 import './leases.api';
 import './vendors.api';
+import './maintenance-requests.api';

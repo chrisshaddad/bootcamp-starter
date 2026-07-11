@@ -475,3 +475,44 @@ export type PatchVendorBody = {
   servicesOffered?: VendorServiceType[];
   notes?: string;
 };
+
+// ── Maintenance Requests ─────────────────────────────────────────────────────
+
+export const maintenanceRequestStatusSchema = z.enum([
+  'open',
+  'in_progress',
+  'resolved',
+  'closed',
+]);
+export type MaintenanceRequestStatus = z.infer<
+  typeof maintenanceRequestStatusSchema
+>;
+
+export const maintenanceRequestPrioritySchema = z.enum([
+  'low',
+  'medium',
+  'high',
+  'urgent',
+]);
+export type MaintenanceRequestPriority = z.infer<
+  typeof maintenanceRequestPrioritySchema
+>;
+
+export type MaintenanceRequestResponse = {
+  id: string;
+  orgId: string;
+  buildingId: string;
+  apartmentId: string;
+  renterId: string;
+  title: string;
+  description?: string | null;
+  status: MaintenanceRequestStatus;
+  priority: MaintenanceRequestPriority;
+  notes?: string | null;
+  /** Joined server-side for list-table display; not a stored column. */
+  apartmentUnitNumber: string;
+  /** Joined server-side for list-table display; not a stored column. */
+  renterName: string;
+  createdAt: string;
+  updatedAt: string;
+};
