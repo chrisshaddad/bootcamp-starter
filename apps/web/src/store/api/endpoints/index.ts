@@ -12,3 +12,4 @@ import './leases.api';
 import './vendors.api';
 import './maintenance-requests.api';
 import './work-orders.api';
+import './expenses.api';

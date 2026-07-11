@@ -592,3 +592,29 @@ export type PatchWorkOrderBody = {
   resolutionNotes?: string | null;
   completedAt?: string | null;
 };
+
+// ── Expenses ─────────────────────────────────────────────────────────────────
+
+export const expenseCategorySchema = z.enum([
+  'repairs',
+  'vendor_payment',
+  'utilities',
+  'taxes',
+  'insurance',
+  'other',
+]);
+export type ExpenseCategory = z.infer<typeof expenseCategorySchema>;
+
+export type ExpenseResponse = {
+  id: string;
+  orgId: string;
+  buildingId?: string | null;
+  vendorId?: string | null;
+  workOrderId?: string | null;
+  category: ExpenseCategory;
+  amount: string; // Decimal(12,2) serialized as string
+  incurredAt: string;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};

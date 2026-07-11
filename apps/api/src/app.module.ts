@@ -30,6 +30,7 @@ import { LeasesModule } from '@/modules/leases/leases.module';
 import { VendorsModule } from '@/modules/vendors/vendors.module';
 import { MaintenanceRequestsModule } from '@/modules/maintenance-requests/maintenance-requests.module';
 import { WorkOrdersModule } from '@/modules/work-orders/work-orders.module';
+import { ExpensesModule } from '@/modules/expenses/expenses.module';
 
 @Module({
   imports: [
@@ -74,6 +75,7 @@ import { WorkOrdersModule } from '@/modules/work-orders/work-orders.module';
     VendorsModule,
     MaintenanceRequestsModule,
     WorkOrdersModule,
+    ExpensesModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

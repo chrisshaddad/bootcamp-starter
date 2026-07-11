@@ -18,6 +18,7 @@ import {
   Wrench,
   Contact,
   HardHat,
+  Receipt,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -115,6 +116,13 @@ function buildNavItems(
       icon: Wrench,
       href: `/${locale}/dashboard/tasks`,
       areaKey: 'tasks',
+    },
+    {
+      key: 'expenses',
+      label: dict.nav.expenses,
+      icon: Receipt,
+      href: `/${locale}/dashboard/expenses`,
+      areaKey: 'expenses',
     },
     {
       key: 'billing',
