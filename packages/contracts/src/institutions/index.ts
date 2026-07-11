@@ -1,0 +1,7 @@
+export * from './institution-status.schema';
+export * from './institution-type.schema';
+export * from './institution-list.request';
+export * from './institution-list.response';
+export * from './institution-detail.response';
+export * from './institution-create.request';
+export * from './institution-action.response';
