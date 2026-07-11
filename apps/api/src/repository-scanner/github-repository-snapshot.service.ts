@@ -1,6 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { GithubRepositoryAnalysisPreviewResponse } from '@repo/contracts';
-import { GithubService } from '../github/github.service';
+import {
+  GithubRequestTimeoutException,
+  GithubService,
+} from '../github/github.service';
 import type { ParsedGithubRepository } from '../github/github.types';
 import { parseGithubRepositoryUrl } from '../github/github-url.parser';
 import { analyzeRepositorySnapshot } from './repository-analyzer';
@@ -25,6 +28,7 @@ const GITHUB_ANALYSIS_FILE_PATHS = [
   'go.mod',
   'Cargo.toml',
 ] as const;
+const MAX_CONCURRENT_FILE_REQUESTS = 4;
 
 @Injectable()
 export class GithubRepositorySnapshotService {
@@ -76,16 +80,24 @@ export class GithubRepositorySnapshotService {
     repository: ParsedGithubRepository,
     ref: string | null,
   ): Promise<RepositorySnapshotFile[]> {
-    const fetchedFiles = await Promise.all(
-      GITHUB_ANALYSIS_FILE_PATHS.map(async (path) => ({
-        path,
-        content: await this.githubService.fetchRepositoryFileText(
-          repository,
-          path,
-          ref,
+    const fetchedFiles: Array<{ path: string; content: string | null }> = [];
+
+    for (
+      let index = 0;
+      index < GITHUB_ANALYSIS_FILE_PATHS.length;
+      index += MAX_CONCURRENT_FILE_REQUESTS
+    ) {
+      const batch = GITHUB_ANALYSIS_FILE_PATHS.slice(
+        index,
+        index + MAX_CONCURRENT_FILE_REQUESTS,
+      );
+      const batchFiles = await Promise.all(
+        batch.map((path) =>
+          this.fetchOptionalSnapshotFile(repository, path, ref),
         ),
-      })),
-    );
+      );
+      fetchedFiles.push(...batchFiles);
+    }
 
     return fetchedFiles.flatMap((file) =>
       file.content === null
@@ -97,5 +109,29 @@ export class GithubRepositorySnapshotService {
             },
           ],
     );
+  }
+
+  private async fetchOptionalSnapshotFile(
+    repository: ParsedGithubRepository,
+    path: string,
+    ref: string | null,
+  ): Promise<{ path: string; content: string | null }> {
+    try {
+      const content = await this.githubService.fetchRepositoryFileText(
+        repository,
+        path,
+        ref,
+      );
+      return { path, content };
+    } catch (error) {
+      if (error instanceof GithubRequestTimeoutException) {
+        this.logger.warn(
+          `Skipping optional GitHub file ${path} after request timeout`,
+        );
+        return { path, content: null };
+      }
+
+      throw error;
+    }
   }
 }

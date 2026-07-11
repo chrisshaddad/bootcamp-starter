@@ -1,4 +1,8 @@
-import { GithubService } from '../github/github.service';
+import { Logger, ServiceUnavailableException } from '@nestjs/common';
+import {
+  GithubRequestTimeoutException,
+  GithubService,
+} from '../github/github.service';
 import { GithubRepositorySnapshotService } from './github-repository-snapshot.service';
 
 describe('GithubRepositorySnapshotService', () => {
@@ -14,6 +18,10 @@ describe('GithubRepositorySnapshotService', () => {
     service = new GithubRepositorySnapshotService(
       mockGithubService as unknown as GithubService,
     );
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   it('builds an analysis preview from fetched repository files', async () => {
@@ -89,6 +97,67 @@ describe('GithubRepositorySnapshotService', () => {
     );
 
     expect(JSON.stringify(preview)).not.toContain('analysis-preview-secret');
+  });
+
+  it('limits concurrent optional file requests', async () => {
+    mockGithubService.fetchRepositoryPreview.mockResolvedValue(
+      createRepositoryPreview(),
+    );
+    let activeRequests = 0;
+    let maximumActiveRequests = 0;
+    mockGithubService.fetchRepositoryFileText.mockImplementation(async () => {
+      activeRequests += 1;
+      maximumActiveRequests = Math.max(maximumActiveRequests, activeRequests);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      activeRequests -= 1;
+      return null;
+    });
+
+    await service.previewRepositoryAnalysis('https://github.com/owner/repo');
+
+    expect(maximumActiveRequests).toBe(4);
+    expect(mockGithubService.fetchRepositoryFileText).toHaveBeenCalledTimes(17);
+  });
+
+  it('skips a timed-out optional file and completes the preview', async () => {
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+    mockGithubService.fetchRepositoryPreview.mockResolvedValue(
+      createRepositoryPreview(),
+    );
+    mockGithubService.fetchRepositoryFileText.mockImplementation(
+      (_repository: unknown, path: string) =>
+        path === 'Dockerfile'
+          ? Promise.reject(new GithubRequestTimeoutException())
+          : Promise.resolve(null),
+    );
+
+    const preview = await service.previewRepositoryAnalysis(
+      'https://github.com/owner/repo',
+    );
+
+    expect(preview.inspectedFiles).toEqual([]);
+    expect(preview.missingOptionalFiles).toContain('Dockerfile');
+    expect(warn).toHaveBeenCalledWith(
+      'Skipping optional GitHub file Dockerfile after request timeout',
+    );
+  });
+
+  it('keeps non-timeout GitHub failures fatal', async () => {
+    mockGithubService.fetchRepositoryPreview.mockResolvedValue(
+      createRepositoryPreview(),
+    );
+    mockGithubService.fetchRepositoryFileText.mockImplementation(
+      (_repository: unknown, path: string) =>
+        path === 'Dockerfile'
+          ? Promise.reject(
+              new ServiceUnavailableException('GitHub rate limit exceeded'),
+            )
+          : Promise.resolve(null),
+    );
+
+    await expect(
+      service.previewRepositoryAnalysis('https://github.com/owner/repo'),
+    ).rejects.toThrow(ServiceUnavailableException);
   });
 });
 

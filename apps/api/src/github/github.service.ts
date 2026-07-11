@@ -23,6 +23,12 @@ const GITHUB_RATE_LIMIT_MESSAGE =
   'GitHub API rate limit exceeded. Please try again later.';
 const MAX_REPOSITORY_FILE_BYTES = 200_000;
 
+export class GithubRequestTimeoutException extends ServiceUnavailableException {
+  constructor() {
+    super(GITHUB_API_UNAVAILABLE_MESSAGE);
+  }
+}
+
 @Injectable()
 export class GithubService {
   private readonly logger = new Logger(GithubService.name);
@@ -114,7 +120,10 @@ export class GithubService {
       );
     } catch (error) {
       if (error instanceof DOMException && error.name === 'TimeoutError') {
-        throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+        this.logger.warn(
+          `GitHub file request timed out for ${repository.owner}/${repository.repo}/${path}`,
+        );
+        throw new GithubRequestTimeoutException();
       }
       this.logger.warn(
         `GitHub file request failed before response: ${getErrorMessage(error)}`,
@@ -154,7 +163,8 @@ export class GithubService {
       });
     } catch (error) {
       if (error instanceof DOMException && error.name === 'TimeoutError') {
-        throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+        this.logger.warn(`GitHub API request timed out: ${path}`);
+        throw new GithubRequestTimeoutException();
       }
       this.logger.warn(
         `GitHub API request failed before response: ${getErrorMessage(error)}`,

@@ -1,5 +1,9 @@
-import { NotFoundException, ServiceUnavailableException } from '@nestjs/common';
-import { GithubService } from './github.service';
+import {
+  Logger,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
+import { GithubRequestTimeoutException, GithubService } from './github.service';
 
 const originalFetch = global.fetch;
 
@@ -16,6 +20,10 @@ describe('GithubService', () => {
 
   afterAll(() => {
     global.fetch = originalFetch;
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   it('normalizes repository metadata and language byte counts', async () => {
@@ -159,6 +167,40 @@ describe('GithubService', () => {
         'main',
       ),
     ).resolves.toBeNull();
+  });
+
+  it('logs repository file timeouts with request context', async () => {
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+    fetchMock.mockRejectedValueOnce(
+      new DOMException('Request timed out', 'TimeoutError'),
+    );
+
+    await expect(
+      service.fetchRepositoryFileText(
+        { owner: 'owner', repo: 'repo' },
+        'package.json',
+        'main',
+      ),
+    ).rejects.toThrow(GithubRequestTimeoutException);
+    expect(warn).toHaveBeenCalledWith(
+      'GitHub file request timed out for owner/repo/package.json',
+    );
+  });
+
+  it('logs repository metadata timeouts', async () => {
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+    fetchMock
+      .mockRejectedValueOnce(
+        new DOMException('Request timed out', 'TimeoutError'),
+      )
+      .mockResolvedValueOnce(jsonResponse({}));
+
+    await expect(
+      service.previewRepository('https://github.com/owner/repo'),
+    ).rejects.toThrow(GithubRequestTimeoutException);
+    expect(warn).toHaveBeenCalledWith(
+      'GitHub API request timed out: /repos/owner/repo',
+    );
   });
 
   it('rejects oversized repository file responses', async () => {
