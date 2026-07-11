@@ -455,3 +455,23 @@ export type VendorResponse = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type CreateVendorBody = {
+  companyName: string;
+  contactName?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  servicesOffered?: VendorServiceType[];
+  notes?: string;
+};
+
+export type PatchVendorBody = {
+  companyName?: string;
+  contactName?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  servicesOffered?: VendorServiceType[];
+  notes?: string;
+};
