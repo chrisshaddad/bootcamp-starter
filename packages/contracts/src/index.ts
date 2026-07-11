@@ -2,6 +2,8 @@ export * from './common';
 export * from './auth';
 export * from './users';
 export * from './organizations';
+export * from './rentals';
+export * from './reservations';
 export * from './authors';
 export * from './categories';
 export * from './publishers';
