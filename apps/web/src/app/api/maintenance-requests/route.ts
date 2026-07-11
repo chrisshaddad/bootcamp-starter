@@ -3,3 +3,4 @@ import { forwardRoute } from '@/lib/api/forward';
 export const runtime = 'nodejs';
 
 export const GET = forwardRoute('/maintenance-requests');
+export const POST = forwardRoute('/maintenance-requests');

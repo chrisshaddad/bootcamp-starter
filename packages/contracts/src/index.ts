@@ -516,3 +516,27 @@ export type MaintenanceRequestResponse = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type CreateMaintenanceRequestBody = {
+  buildingId: string;
+  apartmentId: string;
+  renterId: string;
+  title: string;
+  description?: string;
+  /** Defaults to 'open' when omitted. */
+  status?: MaintenanceRequestStatus;
+  /** Defaults to 'medium' when omitted. */
+  priority?: MaintenanceRequestPriority;
+  notes?: string;
+};
+
+export type PatchMaintenanceRequestBody = {
+  buildingId?: string;
+  apartmentId?: string;
+  renterId?: string;
+  title?: string;
+  description?: string;
+  status?: MaintenanceRequestStatus;
+  priority?: MaintenanceRequestPriority;
+  notes?: string;
+};

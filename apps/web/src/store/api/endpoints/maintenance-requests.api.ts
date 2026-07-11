@@ -1,5 +1,10 @@
 import { baseApi } from '@/store/api/base-api';
-import type { ApiEnvelope, MaintenanceRequestResponse } from '@/types/api';
+import type {
+  ApiEnvelope,
+  CreateMaintenanceRequestBody,
+  MaintenanceRequestResponse,
+  PatchMaintenanceRequestBody,
+} from '@/types/api';
 
 function unwrap<TData>(response: TData | ApiEnvelope<TData>): TData {
   return response && typeof response === 'object' && 'data' in response
@@ -27,7 +32,63 @@ export const maintenanceRequestsApi = baseApi.injectEndpoints({
             ]
           : [{ type: 'MaintenanceRequest', id: 'LIST' }],
     }),
+
+    createMaintenanceRequest: build.mutation<
+      MaintenanceRequestResponse,
+      CreateMaintenanceRequestBody
+    >({
+      query: (body) => ({
+        url: '/maintenance-requests',
+        method: 'POST',
+        body,
+      }),
+      transformResponse: (
+        response:
+          MaintenanceRequestResponse | ApiEnvelope<MaintenanceRequestResponse>,
+      ) => unwrap(response),
+      invalidatesTags: [{ type: 'MaintenanceRequest', id: 'LIST' }, 'Timeline'],
+    }),
+
+    updateMaintenanceRequest: build.mutation<
+      MaintenanceRequestResponse,
+      { id: string; body: PatchMaintenanceRequestBody }
+    >({
+      query: ({ id, body }) => ({
+        url: `/maintenance-requests/${encodeURIComponent(id)}`,
+        method: 'PATCH',
+        body,
+      }),
+      transformResponse: (
+        response:
+          MaintenanceRequestResponse | ApiEnvelope<MaintenanceRequestResponse>,
+      ) => unwrap(response),
+      invalidatesTags: (_result, _error, { id }) => [
+        { type: 'MaintenanceRequest', id },
+        { type: 'MaintenanceRequest', id: 'LIST' },
+        'Timeline',
+      ],
+    }),
+
+    deleteMaintenanceRequest: build.mutation<{ id: string }, string>({
+      query: (id) => ({
+        url: `/maintenance-requests/${encodeURIComponent(id)}`,
+        method: 'DELETE',
+      }),
+      transformResponse: (
+        response: { id: string } | ApiEnvelope<{ id: string }>,
+      ) => unwrap(response),
+      invalidatesTags: (_result, _error, id) => [
+        { type: 'MaintenanceRequest', id },
+        { type: 'MaintenanceRequest', id: 'LIST' },
+        'Timeline',
+      ],
+    }),
   }),
 });
 
-export const { useListMaintenanceRequestsQuery } = maintenanceRequestsApi;
+export const {
+  useListMaintenanceRequestsQuery,
+  useCreateMaintenanceRequestMutation,
+  useUpdateMaintenanceRequestMutation,
+  useDeleteMaintenanceRequestMutation,
+} = maintenanceRequestsApi;
