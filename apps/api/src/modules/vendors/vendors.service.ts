@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '@/infrastructure/prisma/prisma.service';
 import { TimelineService } from '@/modules/timeline/timeline.service';
 import { VendorResponse, VendorServiceType } from '@repo/contracts';
@@ -144,6 +148,15 @@ export class VendorsService {
       where: { id: vendorId, orgId },
     });
     if (!existing) throw new NotFoundException('Vendor not found.');
+
+    const workOrderCount = await this.prisma.workOrder.count({
+      where: { vendorId },
+    });
+    if (workOrderCount > 0) {
+      throw new ConflictException(
+        'Cannot delete a vendor that is referenced by a work order.',
+      );
+    }
 
     await this.prisma.vendor.delete({ where: { id: vendorId } });
 

@@ -19,5 +19,16 @@ export default async function MaintenanceRequestDetailPageRoute({
     redirect(`/${locale}/dashboard`);
   }
 
-  return <MaintenanceRequestDetailPage id={id} locale={locale} />;
+  // Work Order create/reassign/delete is org_admin only; maintenance may
+  // only update status/resolutionNotes on a Work Order assigned to them
+  // (enforced in WorkOrdersService) — neither is the plain 'tasks'
+  // canWrite() value, which is 'full' for maintenance at the page level.
+  return (
+    <MaintenanceRequestDetailPage
+      id={id}
+      locale={locale}
+      canWrite={role === 'org_admin'}
+      isMaintenanceCaller={role === 'maintenance'}
+    />
+  );
 }

@@ -569,3 +569,26 @@ export type WorkOrderResponse = {
 export type MaintenanceRequestDetailResponse = MaintenanceRequestResponse & {
   workOrders: WorkOrderResponse[];
 };
+
+/**
+ * maintenanceRequestId is implicit from the nested route (not part of the
+ * body), matching the CreateLeaseBody precedent for apartmentId/floorId/
+ * buildingId. Exactly one of vendorId/assignedUserId is required — enforced
+ * in WorkOrdersService, not here.
+ */
+export type CreateWorkOrderBody = {
+  vendorId?: string;
+  assignedUserId?: string;
+  status?: WorkOrderStatus;
+  cost?: number;
+  resolutionNotes?: string;
+};
+
+export type PatchWorkOrderBody = {
+  vendorId?: string | null;
+  assignedUserId?: string | null;
+  status?: WorkOrderStatus;
+  cost?: number | null;
+  resolutionNotes?: string | null;
+  completedAt?: string | null;
+};
