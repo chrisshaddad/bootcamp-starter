@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { useProjects } from '@/hooks/use-projects';
+import { ApiError } from '@/lib/api';
 import {
   PROJECT_STATUS_COLORS,
   PROJECT_STATUS_LABELS,
@@ -28,7 +29,7 @@ function LoadingSkeleton() {
 }
 
 export default function ProjectsPage() {
-  const { projects, isLoading } = useProjects();
+  const { projects, isLoading, error } = useProjects();
 
   return (
     <div className="space-y-6">
@@ -47,7 +48,16 @@ export default function ProjectsPage() {
         </Button>
       </div>
 
-      {isLoading ? (
+      {error ? (
+        <Card className="flex flex-col items-center gap-2 border-dashed py-16 text-center">
+          <p className="font-medium">Unable to load projects</p>
+          <p className="text-muted-foreground max-w-xs text-sm">
+            {error instanceof ApiError
+              ? error.message
+              : 'Something went wrong.'}
+          </p>
+        </Card>
+      ) : isLoading ? (
         <LoadingSkeleton />
       ) : projects.length === 0 ? (
         <Card className="flex flex-col items-center gap-2 border-dashed py-16 text-center">

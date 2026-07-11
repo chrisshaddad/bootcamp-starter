@@ -112,10 +112,16 @@ export default function ProjectShowcasePage() {
                       <h2 className="mb-3 text-sm font-bold">
                         About this project
                       </h2>
-                      {project.fullDescription && (
+                      {project.fullDescription ? (
                         <p className="text-sm leading-relaxed text-muted-foreground">
                           {project.fullDescription}
                         </p>
+                      ) : (
+                        project.shortDescription && (
+                          <p className="text-sm leading-relaxed text-muted-foreground">
+                            {project.shortDescription}
+                          </p>
+                        )
                       )}
                     </section>
                   )}
