@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -273,6 +274,15 @@ export class WorkOrdersService {
     });
     if (!existing) {
       throw new NotFoundException('Work order not found.');
+    }
+
+    const expenseCount = await this.prisma.expense.count({
+      where: { workOrderId },
+    });
+    if (expenseCount > 0) {
+      throw new ConflictException(
+        'Cannot delete a work order that is referenced by an expense.',
+      );
     }
 
     await this.prisma.workOrder.delete({ where: { id: workOrderId } });

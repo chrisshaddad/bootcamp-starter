@@ -1,5 +1,10 @@
 import { baseApi } from '@/store/api/base-api';
-import type { ApiEnvelope, ExpenseResponse } from '@/types/api';
+import type {
+  ApiEnvelope,
+  CreateExpenseBody,
+  ExpenseResponse,
+  PatchExpenseBody,
+} from '@/types/api';
 
 function unwrap<TData>(response: TData | ApiEnvelope<TData>): TData {
   return response && typeof response === 'object' && 'data' in response
@@ -22,7 +27,54 @@ export const expensesApi = baseApi.injectEndpoints({
             ]
           : [{ type: 'Expense', id: 'LIST' }],
     }),
+
+    createExpense: build.mutation<ExpenseResponse, CreateExpenseBody>({
+      query: (body) => ({ url: '/expenses', method: 'POST', body }),
+      transformResponse: (
+        response: ExpenseResponse | ApiEnvelope<ExpenseResponse>,
+      ) => unwrap(response),
+      invalidatesTags: [{ type: 'Expense', id: 'LIST' }, 'Timeline'],
+    }),
+
+    updateExpense: build.mutation<
+      ExpenseResponse,
+      { id: string; body: PatchExpenseBody }
+    >({
+      query: ({ id, body }) => ({
+        url: `/expenses/${encodeURIComponent(id)}`,
+        method: 'PATCH',
+        body,
+      }),
+      transformResponse: (
+        response: ExpenseResponse | ApiEnvelope<ExpenseResponse>,
+      ) => unwrap(response),
+      invalidatesTags: (_result, _error, { id }) => [
+        { type: 'Expense', id },
+        { type: 'Expense', id: 'LIST' },
+        'Timeline',
+      ],
+    }),
+
+    deleteExpense: build.mutation<{ id: string }, string>({
+      query: (id) => ({
+        url: `/expenses/${encodeURIComponent(id)}`,
+        method: 'DELETE',
+      }),
+      transformResponse: (
+        response: { id: string } | ApiEnvelope<{ id: string }>,
+      ) => unwrap(response),
+      invalidatesTags: (_result, _error, id) => [
+        { type: 'Expense', id },
+        { type: 'Expense', id: 'LIST' },
+        'Timeline',
+      ],
+    }),
   }),
 });
 
-export const { useListExpensesQuery } = expensesApi;
+export const {
+  useListExpensesQuery,
+  useCreateExpenseMutation,
+  useUpdateExpenseMutation,
+  useDeleteExpenseMutation,
+} = expensesApi;

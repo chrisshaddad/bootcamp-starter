@@ -618,3 +618,28 @@ export type ExpenseResponse = {
   createdAt: string;
   updatedAt: string;
 };
+
+/**
+ * buildingId/vendorId/workOrderId/notes are optional. If workOrderId is
+ * provided and vendorId is omitted, vendorId is auto-filled from that Work
+ * Order's own vendorId — enforced in ExpensesService, not here.
+ */
+export type CreateExpenseBody = {
+  category: ExpenseCategory;
+  amount: number;
+  incurredAt: string;
+  buildingId?: string;
+  vendorId?: string;
+  workOrderId?: string;
+  notes?: string;
+};
+
+export type PatchExpenseBody = {
+  category?: ExpenseCategory;
+  amount?: number;
+  incurredAt?: string;
+  buildingId?: string | null;
+  vendorId?: string | null;
+  workOrderId?: string | null;
+  notes?: string | null;
+};

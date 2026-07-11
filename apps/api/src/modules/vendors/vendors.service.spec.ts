@@ -10,6 +10,7 @@ describe('VendorsService', () => {
     overrides: {
       vendor?: Partial<Record<string, jest.Mock>>;
       workOrder?: Partial<Record<string, jest.Mock>>;
+      expense?: Partial<Record<string, jest.Mock>>;
     } = {},
   ) {
     const prisma = {
@@ -24,6 +25,10 @@ describe('VendorsService', () => {
       workOrder: {
         count: jest.fn().mockResolvedValue(0),
         ...overrides.workOrder,
+      },
+      expense: {
+        count: jest.fn().mockResolvedValue(0),
+        ...overrides.expense,
       },
     };
     const timeline = { emit: jest.fn().mockResolvedValue(undefined) };
@@ -239,6 +244,18 @@ describe('VendorsService', () => {
       await expect(
         service.remove(orgId, actorId, 'missing'),
       ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('throws ConflictException when an expense references the vendor', async () => {
+      const { service, prisma } = makeService({
+        vendor: { findFirst: jest.fn().mockResolvedValue(vendorRow()) },
+        expense: { count: jest.fn().mockResolvedValue(1) },
+      });
+
+      await expect(
+        service.remove(orgId, actorId, 'vendor-1'),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(prisma.vendor.delete).not.toHaveBeenCalled();
     });
   });
 });
