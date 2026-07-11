@@ -2,6 +2,7 @@ export * from './common';
 export * from './auth';
 export * from './users';
 export * from './organizations';
+export * from './library-members';
 export * from './rentals';
 export * from './reservations';
 export * from './authors';
