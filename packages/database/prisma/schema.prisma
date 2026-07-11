@@ -34,6 +34,16 @@ enum LeaseStatus {
   terminated
 }
 
+enum VendorServiceType {
+  plumbing
+  electrical
+  cleaning
+  landscaping
+  hvac
+  general_maintenance
+  other
+}
+
 model Organization {
   id               String        @id @default(cuid())
   name             String
@@ -195,5 +205,21 @@ model Lease {
   @@index([apartmentId])
   @@index([renterId])
   @@index([buildingId])
+  @@index([orgId])
+}
+
+model Vendor {
+  id              String              @id @default(cuid())
+  orgId           String
+  companyName     String
+  contactName     String?
+  email           String?
+  phone           String?
+  address         String?
+  servicesOffered VendorServiceType[]
+  notes           String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
   @@index([orgId])
 }

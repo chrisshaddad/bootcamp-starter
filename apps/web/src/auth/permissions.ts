@@ -14,6 +14,8 @@
  *   "billing"     → /dashboard/billing
  *   "timeline"    → /dashboard/timeline
  *   "tasks"       → /dashboard/tasks
+ *   "vendors"     → /dashboard/vendors (not building-scoped, unlike
+ *                   "buildings" — Vendor carries no buildingId)
  */
 
 import type { Role } from '@/auth/roles';
@@ -26,7 +28,8 @@ export type DashboardArea =
   | 'reports'
   | 'billing'
   | 'timeline'
-  | 'tasks';
+  | 'tasks'
+  | 'vendors';
 
 /**
  * Per-role access level for an area.
@@ -48,6 +51,7 @@ export const PERMISSION_MATRIX: PermissionMatrix = {
     billing: 'full',
     timeline: 'full',
     tasks: 'full',
+    vendors: 'full',
   },
   supervisor: {
     dashboard: 'readonly',
@@ -58,6 +62,7 @@ export const PERMISSION_MATRIX: PermissionMatrix = {
     billing: 'none',
     timeline: 'readonly',
     tasks: 'none',
+    vendors: 'readonly',
   },
   finance: {
     dashboard: 'readonly',
@@ -68,6 +73,7 @@ export const PERMISSION_MATRIX: PermissionMatrix = {
     billing: 'none',
     timeline: 'readonly',
     tasks: 'none',
+    vendors: 'readonly',
   },
   maintenance: {
     dashboard: 'readonly',
@@ -78,6 +84,7 @@ export const PERMISSION_MATRIX: PermissionMatrix = {
     billing: 'none',
     timeline: 'readonly',
     tasks: 'full',
+    vendors: 'readonly',
   },
   tenant: {
     dashboard: 'readonly',
@@ -88,6 +95,7 @@ export const PERMISSION_MATRIX: PermissionMatrix = {
     billing: 'none',
     timeline: 'readonly',
     tasks: 'none',
+    vendors: 'none',
   },
 };
 

@@ -10,6 +10,7 @@ export const TAG_TYPES = [
   'Apartment',
   'Renter',
   'Lease',
+  'Vendor',
 ] as const;
 
 export type TagType = (typeof TAG_TYPES)[number];

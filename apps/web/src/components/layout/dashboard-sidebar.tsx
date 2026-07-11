@@ -17,6 +17,7 @@ import {
   BarChart3,
   Wrench,
   Contact,
+  HardHat,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -79,6 +80,13 @@ function buildNavItems(
       icon: Contact,
       href: `/${locale}/dashboard/renters`,
       areaKey: 'buildings',
+    },
+    {
+      key: 'vendors',
+      label: dict.nav.vendors,
+      icon: HardHat,
+      href: `/${locale}/dashboard/vendors`,
+      areaKey: 'vendors',
     },
     {
       key: 'users',

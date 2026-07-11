@@ -428,3 +428,30 @@ export type RenewLeaseBody = {
   renewalTerms?: string;
   notes?: string;
 };
+
+// ── Vendors ──────────────────────────────────────────────────────────────────
+
+export const vendorServiceTypeSchema = z.enum([
+  'plumbing',
+  'electrical',
+  'cleaning',
+  'landscaping',
+  'hvac',
+  'general_maintenance',
+  'other',
+]);
+export type VendorServiceType = z.infer<typeof vendorServiceTypeSchema>;
+
+export type VendorResponse = {
+  id: string;
+  orgId: string;
+  companyName: string;
+  contactName?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  servicesOffered: VendorServiceType[];
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};

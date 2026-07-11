@@ -9,3 +9,4 @@ import './floors.api';
 import './apartments.api';
 import './renters.api';
 import './leases.api';
+import './vendors.api';
