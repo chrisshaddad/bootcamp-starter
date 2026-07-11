@@ -1,16 +1,40 @@
-import { Controller, Get, Param, Patch, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { OrganizationsService } from './organizations.service';
-import { Roles, CurrentUser } from '../auth/decorators';
+import { Roles, CurrentUser, Public } from '../auth/decorators';
+import { ZodValidationPipe } from '../common/pipes';
 import type { User, OrganizationStatus } from '@repo/db';
-import type {
-  OrganizationListResponse,
-  OrganizationDetailResponse,
-  OrganizationActionResponse,
+import {
+  createOrganizationRequestSchema,
+  type CreateOrganizationRequest,
+  type OrganizationListResponse,
+  type OrganizationDetailResponse,
+  type OrganizationActionResponse,
+  type OrganizationRegisterResponse,
 } from '@repo/contracts';
 
 @Controller('organizations')
 export class OrganizationsController {
   constructor(private readonly organizationsService: OrganizationsService) {}
+
+  @Public()
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  async register(
+    @Body(new ZodValidationPipe(createOrganizationRequestSchema))
+    body: CreateOrganizationRequest,
+  ): Promise<OrganizationRegisterResponse> {
+    return this.organizationsService.register(body);
+  }
 
   @Get()
   @Roles('SUPER_ADMIN')
