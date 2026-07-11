@@ -15,6 +15,7 @@ describe('MaintenanceRequestsService', () => {
   function makeService(
     overrides: {
       maintenanceRequest?: Partial<Record<string, jest.Mock>>;
+      workOrder?: Partial<Record<string, jest.Mock>>;
       buildingAccess?: Partial<Record<string, jest.Mock>>;
     } = {},
   ) {
@@ -26,6 +27,10 @@ describe('MaintenanceRequestsService', () => {
         update: jest.fn(),
         delete: jest.fn(),
         ...overrides.maintenanceRequest,
+      },
+      workOrder: {
+        findMany: jest.fn().mockResolvedValue([]),
+        ...overrides.workOrder,
       },
     };
     const buildingAccess = {
@@ -133,10 +138,26 @@ describe('MaintenanceRequestsService', () => {
   });
 
   describe('findOne', () => {
-    it('returns the request when it belongs to the caller org and building', async () => {
+    it('returns the request plus its work order history when it belongs to the caller org and building', async () => {
+      const workOrderRow = {
+        id: 'wo-1',
+        orgId,
+        maintenanceRequestId: 'mr-1',
+        vendorId: 'vendor-1',
+        assignedUserId: null,
+        status: 'scheduled',
+        cost: null,
+        resolutionNotes: null,
+        completedAt: null,
+        createdAt: new Date('2026-01-02T00:00:00.000Z'),
+        updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+      };
       const { service, prisma, buildingAccess } = makeService({
         maintenanceRequest: {
           findFirst: jest.fn().mockResolvedValue(requestRow()),
+        },
+        workOrder: {
+          findMany: jest.fn().mockResolvedValue([workOrderRow]),
         },
       });
 
@@ -154,6 +175,10 @@ describe('MaintenanceRequestsService', () => {
           renter: { select: { fullName: true } },
         },
       });
+      expect(prisma.workOrder.findMany).toHaveBeenCalledWith({
+        where: { maintenanceRequestId: 'mr-1', orgId },
+        orderBy: { createdAt: 'desc' },
+      });
       expect(buildingAccess.assertBuildingAccess).toHaveBeenCalledWith(
         orgId,
         callerId,
@@ -163,6 +188,9 @@ describe('MaintenanceRequestsService', () => {
       expect(result.data).toEqual(
         expect.objectContaining({ id: 'mr-1', renterName: 'Jane Doe' }),
       );
+      expect(result.data.workOrders).toEqual([
+        expect.objectContaining({ id: 'wo-1', vendorId: 'vendor-1' }),
+      ]);
     });
 
     it('throws NotFoundException for a request in a different org', async () => {

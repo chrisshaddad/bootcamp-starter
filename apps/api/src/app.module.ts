@@ -29,6 +29,7 @@ import { RentersModule } from '@/modules/renters/renters.module';
 import { LeasesModule } from '@/modules/leases/leases.module';
 import { VendorsModule } from '@/modules/vendors/vendors.module';
 import { MaintenanceRequestsModule } from '@/modules/maintenance-requests/maintenance-requests.module';
+import { WorkOrdersModule } from '@/modules/work-orders/work-orders.module';
 
 @Module({
   imports: [
@@ -72,6 +73,7 @@ import { MaintenanceRequestsModule } from '@/modules/maintenance-requests/mainte
     LeasesModule,
     VendorsModule,
     MaintenanceRequestsModule,
+    WorkOrdersModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

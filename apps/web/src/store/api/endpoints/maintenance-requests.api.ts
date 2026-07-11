@@ -2,6 +2,7 @@ import { baseApi } from '@/store/api/base-api';
 import type {
   ApiEnvelope,
   CreateMaintenanceRequestBody,
+  MaintenanceRequestDetailResponse,
   MaintenanceRequestResponse,
   PatchMaintenanceRequestBody,
 } from '@/types/api';
@@ -31,6 +32,24 @@ export const maintenanceRequestsApi = baseApi.injectEndpoints({
               { type: 'MaintenanceRequest', id: 'LIST' },
             ]
           : [{ type: 'MaintenanceRequest', id: 'LIST' }],
+    }),
+
+    getMaintenanceRequest: build.query<
+      MaintenanceRequestDetailResponse,
+      string
+    >({
+      query: (id) => ({
+        url: `/maintenance-requests/${encodeURIComponent(id)}`,
+        method: 'GET',
+      }),
+      transformResponse: (
+        response:
+          | MaintenanceRequestDetailResponse
+          | ApiEnvelope<MaintenanceRequestDetailResponse>,
+      ) => unwrap(response),
+      providesTags: (_result, _error, id) => [
+        { type: 'MaintenanceRequest', id },
+      ],
     }),
 
     createMaintenanceRequest: build.mutation<
@@ -88,6 +107,7 @@ export const maintenanceRequestsApi = baseApi.injectEndpoints({
 
 export const {
   useListMaintenanceRequestsQuery,
+  useGetMaintenanceRequestQuery,
   useCreateMaintenanceRequestMutation,
   useUpdateMaintenanceRequestMutation,
   useDeleteMaintenanceRequestMutation,

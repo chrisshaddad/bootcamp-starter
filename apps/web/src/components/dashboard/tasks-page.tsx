@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -181,9 +182,11 @@ type EditFormValues = z.infer<typeof editSchema>;
 interface TasksPageProps {
   /** When false (non-admin), hide all write actions. */
   canWrite: boolean;
+  locale: string;
 }
 
-export function TasksPage({ canWrite }: TasksPageProps) {
+export function TasksPage({ canWrite, locale }: TasksPageProps) {
+  const router = useRouter();
   const {
     data: requests,
     isLoading,
@@ -300,6 +303,10 @@ export function TasksPage({ canWrite }: TasksPageProps) {
     }
   }
 
+  function goToRequest(requestId: string) {
+    router.push(`/${locale}/dashboard/tasks/${requestId}`);
+  }
+
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
@@ -391,7 +398,19 @@ export function TasksPage({ canWrite }: TasksPageProps) {
               </TableRow>
             ) : (
               requests?.map((request) => (
-                <TableRow key={request.id}>
+                <TableRow
+                  key={request.id}
+                  className="cursor-pointer hover:bg-muted/40"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => goToRequest(request.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      goToRequest(request.id);
+                    }
+                  }}
+                >
                   <TableCell>
                     <span className="font-medium text-sm">{request.title}</span>
                   </TableCell>
@@ -408,7 +427,7 @@ export function TasksPage({ canWrite }: TasksPageProps) {
                     <MaintenancePriorityBadge priority={request.priority} />
                   </TableCell>
                   {canWrite && (
-                    <TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger
                           render={
@@ -422,6 +441,12 @@ export function TasksPage({ canWrite }: TasksPageProps) {
                           }
                         />
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => goToRequest(request.id)}
+                          >
+                            <EyeIcon className="size-3.5 mr-1.5" />
+                            View
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => openEdit(request)}>
                             <PencilIcon className="size-3.5 mr-1.5" />
                             Edit

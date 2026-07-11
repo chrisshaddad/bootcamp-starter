@@ -540,3 +540,32 @@ export type PatchMaintenanceRequestBody = {
   priority?: MaintenanceRequestPriority;
   notes?: string;
 };
+
+// ── Work Orders ──────────────────────────────────────────────────────────────
+
+export const workOrderStatusSchema = z.enum([
+  'scheduled',
+  'in_progress',
+  'completed',
+  'canceled',
+]);
+export type WorkOrderStatus = z.infer<typeof workOrderStatusSchema>;
+
+export type WorkOrderResponse = {
+  id: string;
+  orgId: string;
+  maintenanceRequestId: string;
+  vendorId?: string | null;
+  assignedUserId?: string | null;
+  status: WorkOrderStatus;
+  cost?: string | null; // Decimal(12,2) serialized as string
+  resolutionNotes?: string | null;
+  completedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** GET /maintenance-requests/:id response — MaintenanceRequestResponse plus its full Work Order history. */
+export type MaintenanceRequestDetailResponse = MaintenanceRequestResponse & {
+  workOrders: WorkOrderResponse[];
+};

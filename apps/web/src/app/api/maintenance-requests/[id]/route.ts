@@ -2,6 +2,9 @@ import { forwardRoute } from '@/lib/api/forward';
 
 export const runtime = 'nodejs';
 
+export const GET = forwardRoute(
+  (params) => `/maintenance-requests/${params.id}`,
+);
 export const PATCH = forwardRoute(
   (params) => `/maintenance-requests/${params.id}`,
 );

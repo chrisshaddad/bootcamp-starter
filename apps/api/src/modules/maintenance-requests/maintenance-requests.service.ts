@@ -9,12 +9,14 @@ import { BuildingAccessService } from '@/common/building-access/building-access.
 import { TimelineService } from '@/modules/timeline/timeline.service';
 import { Role } from '@/common/enums';
 import {
+  MaintenanceRequestDetailResponse,
   MaintenanceRequestPriority,
   MaintenanceRequestResponse,
   MaintenanceRequestStatus,
 } from '@repo/contracts';
 import { CreateMaintenanceRequestDto } from './dto/create-maintenance-request.dto';
 import { UpdateMaintenanceRequestDto } from './dto/update-maintenance-request.dto';
+import { formatWorkOrder } from '@/modules/work-orders/work-order-formatter';
 
 const INCLUDE = {
   apartment: { select: { unitNumber: true } },
@@ -107,7 +109,7 @@ export class MaintenanceRequestsService {
     callerId: string,
     callerRole: Role,
     requestId: string,
-  ): Promise<{ data: MaintenanceRequestResponse }> {
+  ): Promise<{ data: MaintenanceRequestDetailResponse }> {
     const request = await this.prisma.maintenanceRequest.findFirst({
       where: { id: requestId, orgId },
       include: INCLUDE,
@@ -123,7 +125,17 @@ export class MaintenanceRequestsService {
       request.buildingId,
     );
 
-    return { data: this.formatMaintenanceRequest(request) };
+    const workOrders = await this.prisma.workOrder.findMany({
+      where: { maintenanceRequestId: requestId, orgId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return {
+      data: {
+        ...this.formatMaintenanceRequest(request),
+        workOrders: workOrders.map((w) => formatWorkOrder(w)),
+      },
+    };
   }
 
   // ── CRUD (write) ──────────────────────────────────────────────────────────
