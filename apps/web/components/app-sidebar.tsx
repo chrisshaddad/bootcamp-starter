@@ -12,8 +12,12 @@ import {
   Pill,
   ScrollText,
   UserCircle2,
+  Package,
+  MessageSquare,
 } from 'lucide-react';
+import type { UserRole } from '@repo/contracts';
 import { useAuth, useUser } from '@/hooks/use-auth';
+import { homePathForRole } from '@/lib/role-routes';
 import { cn } from '@/lib/utils';
 import { Logo } from '@/components/brand/logo';
 import {
@@ -34,78 +38,94 @@ interface NavItem {
   title: string;
   url: string;
   icon: LucideIcon;
+  // Not-yet-built pages render as a disabled "Soon" item instead of a dead link.
+  // The area's owner flips this off when they ship the page.
   disabled?: boolean;
 }
 
-// Navigation items for ORG_ADMIN and MEMBER roles
-const orgNavItems: NavItem[] = [
-  {
-    title: 'Dashboard',
-    url: '/dashboard',
-    icon: LayoutDashboard,
-  },
+// SUPER_ADMIN — platform-wide console.
+const superAdminNavItems: NavItem[] = [
+  { title: 'Dashboard', url: '/admin', icon: LayoutDashboard },
+  { title: 'Pharmacies', url: '/admin/pharmacies', icon: Building2 },
+  { title: 'Users', url: '/admin/users', icon: Users },
+  { title: 'Medicines', url: '/admin/medicines', icon: Pill },
+  { title: 'Audit Logs', url: '/admin/audit', icon: ScrollText },
+  { title: 'Profile', url: '/admin/profile', icon: UserCircle2 },
 ];
 
-// Navigation items for SUPER_ADMIN role
-const superAdminNavItems: NavItem[] = [
+// PHARMACY_ADMIN — manages one pharmacy across all its branches.
+const pharmacyAdminNavItems: NavItem[] = [
+  { title: 'Dashboard', url: '/pharmacy', icon: LayoutDashboard },
   {
-    title: 'Dashboard',
-    url: '/admin',
-    icon: LayoutDashboard,
-  },
-  {
-    title: 'Pharmacies',
-    url: '/admin/pharmacies',
+    title: 'Branches',
+    url: '/pharmacy/branches',
     icon: Building2,
+    disabled: true,
   },
-  {
-    title: 'Users',
-    url: '/admin/users',
-    icon: Users,
-  },
-  {
-    title: 'Medicines',
-    url: '/admin/medicines',
-    icon: Pill,
-  },
+  { title: 'Employees', url: '/pharmacy/employees', icon: Users },
   {
     title: 'Audit Logs',
-    url: '/admin/audit',
+    url: '/pharmacy/audit',
     icon: ScrollText,
-  },
-  {
-    title: 'Profile',
-    url: '/admin/profile',
-    icon: UserCircle2,
+    disabled: true,
   },
 ];
 
-const orgSecondaryNavItems: NavItem[] = [
-  {
-    title: 'Settings',
-    url: '/settings',
-    icon: Settings,
-  },
+// PHARMACY_MANAGER / PHARMACY_EMPLOYEE — one branch.
+const branchNavItems: NavItem[] = [
+  { title: 'Dashboard', url: '/branch', icon: LayoutDashboard },
 ];
 
-const superAdminSecondaryNavItems: NavItem[] = [
-  {
-    title: 'Settings',
-    url: '/settings',
-    icon: Settings,
-  },
+// STOCK_MANAGER — branch inventory.
+const stockNavItems: NavItem[] = [
+  { title: 'Inventory', url: '/stock', icon: Package },
 ];
+
+// INQUIRY_OFFICER — branch inquiries queue.
+const inquiryNavItems: NavItem[] = [
+  { title: 'Inquiries', url: '/inquiries', icon: MessageSquare },
+];
+
+// Fallback (e.g. CLIENT) — neutral landing until the consumer app lands.
+const orgNavItems: NavItem[] = [
+  { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
+];
+
+// Settings is shared by every authenticated role.
+const secondaryNavItems: NavItem[] = [
+  { title: 'Settings', url: '/settings', icon: Settings },
+];
+
+// Pick the nav panel + group label for a role. Mirrors the role→home map in
+// lib/role-routes.ts — keep the two in sync when adding a panel.
+function panelForRole(role: UserRole | undefined): {
+  items: NavItem[];
+  label: string;
+} {
+  switch (role) {
+    case 'SUPER_ADMIN':
+      return { items: superAdminNavItems, label: 'Administration' };
+    case 'PHARMACY_ADMIN':
+      return { items: pharmacyAdminNavItems, label: 'Pharmacy' };
+    case 'PHARMACY_MANAGER':
+    case 'PHARMACY_EMPLOYEE':
+      return { items: branchNavItems, label: 'Branch' };
+    case 'STOCK_MANAGER':
+      return { items: stockNavItems, label: 'Inventory' };
+    case 'INQUIRY_OFFICER':
+      return { items: inquiryNavItems, label: 'Inquiries' };
+    default:
+      return { items: orgNavItems, label: 'Main' };
+  }
+}
 
 export function AppSidebar() {
   const pathname = usePathname();
   const { logout } = useAuth();
   const { user } = useUser({ redirectOnUnauthenticated: false });
 
-  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
-  const mainNavItems = isSuperAdmin ? superAdminNavItems : orgNavItems;
-  const secondaryNavItems = isSuperAdmin
-    ? superAdminSecondaryNavItems
-    : orgSecondaryNavItems;
+  const { items: mainNavItems, label: mainNavLabel } = panelForRole(user?.role);
+  const homeHref = homePathForRole(user?.role);
 
   // Determine the single most specific matching nav item for the current
   // pathname. Using plain `startsWith` per item breaks when one item's url
@@ -128,10 +148,7 @@ export function AppSidebar() {
     <Sidebar className="border-r border-gray-200 bg-white">
       <SidebarHeader className="px-5 py-6">
         {/* Logo */}
-        <Link
-          href={isSuperAdmin ? '/admin' : '/dashboard'}
-          aria-label="MedFind Lebanon home"
-        >
+        <Link href={homeHref} aria-label="MedFind Lebanon home">
           <Logo />
         </Link>
       </SidebarHeader>
@@ -140,7 +157,7 @@ export function AppSidebar() {
         {/* Main Navigation */}
         <SidebarGroup>
           <SidebarGroupLabel className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-gray-500">
-            {isSuperAdmin ? 'Administration' : 'Main'}
+            {mainNavLabel}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>

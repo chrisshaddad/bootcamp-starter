@@ -1,8 +1,11 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { mutate as globalMutate } from 'swr';
 import { useUser } from '@/hooks/use-auth';
+import { homePathForRole } from '@/lib/role-routes';
 import { useMedicines } from '@/hooks/use-medicines';
 import { useUsers } from '@/hooks/use-users';
 import { usePharmacies } from '@/hooks/use-pharmacies';
@@ -629,6 +632,35 @@ export function DashboardContent() {
   );
 }
 
+// Role dispatcher. Every authenticated entry point (middleware, login, magic
+// link) funnels here because none of them can read the user's role. Once the
+// user loads, send them to their role's home; roles without a dedicated panel
+// (CLIENT / unknown) stay here on the neutral landing.
 export default function DashboardPage() {
+  const { user, isLoading } = useUser();
+  const router = useRouter();
+  const home = homePathForRole(user?.role);
+
+  useEffect(() => {
+    if (!isLoading && user && home !== '/dashboard') {
+      router.replace(home);
+    }
+  }, [isLoading, user, home, router]);
+
+  // While loading, or while the redirect to a role home is in flight, show a
+  // neutral skeleton instead of flashing the dashboard content.
+  if (isLoading || (user && home !== '/dashboard')) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-8 w-72" />
+        <div className={STAT_GRID}>
+          {[...Array(4)].map((_, index) => (
+            <Skeleton key={index} className="h-36 rounded-2xl" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return <DashboardContent />;
 }

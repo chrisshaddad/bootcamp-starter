@@ -2,10 +2,10 @@
 
 import { RoleGuard } from '@/components/auth/role-guard';
 
-export default function SuperAdminLayout({
+export default function StockLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return <RoleGuard allow={['SUPER_ADMIN']}>{children}</RoleGuard>;
+  return <RoleGuard allow={['STOCK_MANAGER']}>{children}</RoleGuard>;
 }
