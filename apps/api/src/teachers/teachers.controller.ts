@@ -1,9 +1,12 @@
-import { Controller, Get, Param, ParseUUIDPipe } from '@nestjs/common';
+import { Controller, Get, Param } from '@nestjs/common';
 import type {
+  TeacherOrganizationParams,
   TeacherOrganizationsResponse,
   TeachersByOrganizationResponse,
 } from '@repo/contracts';
+import { TeacherOrganizationParamsSchema } from '@repo/contracts';
 import { Roles } from '../auth/decorators';
+import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { TeachersService } from './teachers.service';
 
 @Controller('teachers')
@@ -19,9 +22,11 @@ export class TeachersController {
   @Get('organizations/:organizationId')
   @Roles('SUPER_ADMIN')
   async findTeachersByOrganization(
-    @Param('organizationId', new ParseUUIDPipe({ version: '4' }))
-    organizationId: string,
+    @Param(new ZodValidationPipe(TeacherOrganizationParamsSchema))
+    params: TeacherOrganizationParams,
   ): Promise<TeachersByOrganizationResponse> {
-    return this.teachersService.findTeachersByOrganization(organizationId);
+    return this.teachersService.findTeachersByOrganization(
+      params.organizationId,
+    );
   }
 }
