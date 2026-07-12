@@ -38,8 +38,12 @@ function invalidateUsersList() {
 
 export function useUsers(options: UseUsersOptions = {}) {
   const { enabled = true } = options;
-  const { data, error, isLoading, mutate: swrMutate } =
-    useSWR<UserListResponse>(enabled ? buildUsersKey(options) : null);
+  const {
+    data,
+    error,
+    isLoading,
+    mutate: swrMutate,
+  } = useSWR<UserListResponse>(enabled ? buildUsersKey(options) : null);
 
   return {
     users: data?.users,

@@ -31,8 +31,20 @@ const RECORD_TYPE_LABELS: Record<RecordType, string> = {
   VACCINATION: 'Vaccination',
 };
 
-const MODALITY_TYPES: ModalityType[] = ['XRAY', 'MRI', 'CT', 'ULTRASOUND', 'OTHER'];
-const ROUTES: PrescriptionRoute[] = ['ORAL', 'IV', 'TOPICAL', 'INHALATION', 'OTHER'];
+const MODALITY_TYPES: ModalityType[] = [
+  'XRAY',
+  'MRI',
+  'CT',
+  'ULTRASOUND',
+  'OTHER',
+];
+const ROUTES: PrescriptionRoute[] = [
+  'ORAL',
+  'IV',
+  'TOPICAL',
+  'INHALATION',
+  'OTHER',
+];
 
 const opt = (v: string) => (v.trim() ? v.trim() : undefined);
 
@@ -111,7 +123,12 @@ export function AddRecordDialog({ createRecord }: Props) {
       plan: '',
       followUpDate: '',
     });
-    setScan({ modalityType: 'XRAY', bodyPart: '', radiologistName: '', findings: '' });
+    setScan({
+      modalityType: 'XRAY',
+      bodyPart: '',
+      radiologistName: '',
+      findings: '',
+    });
     setVacc({
       vaccineName: '',
       doseNumber: '',
@@ -276,7 +293,9 @@ export function AddRecordDialog({ createRecord }: Props) {
                   <Input
                     id="lab-testName"
                     value={lab.testName}
-                    onChange={(e) => setLab({ ...lab, testName: e.target.value })}
+                    onChange={(e) =>
+                      setLab({ ...lab, testName: e.target.value })
+                    }
                     required
                   />
                 </div>
@@ -286,7 +305,9 @@ export function AddRecordDialog({ createRecord }: Props) {
                     id="lab-testDate"
                     type="date"
                     value={lab.testDate}
-                    onChange={(e) => setLab({ ...lab, testDate: e.target.value })}
+                    onChange={(e) =>
+                      setLab({ ...lab, testDate: e.target.value })
+                    }
                     required
                   />
                 </div>
@@ -389,7 +410,9 @@ export function AddRecordDialog({ createRecord }: Props) {
                   <Input
                     id="scan-bodyPart"
                     value={scan.bodyPart}
-                    onChange={(e) => setScan({ ...scan, bodyPart: e.target.value })}
+                    onChange={(e) =>
+                      setScan({ ...scan, bodyPart: e.target.value })
+                    }
                     required
                   />
                 </div>
@@ -409,7 +432,9 @@ export function AddRecordDialog({ createRecord }: Props) {
                 <Input
                   id="scan-findings"
                   value={scan.findings}
-                  onChange={(e) => setScan({ ...scan, findings: e.target.value })}
+                  onChange={(e) =>
+                    setScan({ ...scan, findings: e.target.value })
+                  }
                 />
               </div>
             </div>

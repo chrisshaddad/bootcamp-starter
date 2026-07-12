@@ -103,7 +103,12 @@ export function ClinicalSection({ patient, canEdit, onSave }: Props) {
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-lg">Clinical Summary</CardTitle>
         {canEdit && (
-          <Button variant="outline" size="sm" className="gap-2" onClick={openDialog}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={openDialog}
+          >
             <Pencil className="h-4 w-4" />
             Edit
           </Button>
@@ -163,7 +168,9 @@ export function ClinicalSection({ patient, canEdit, onSave }: Props) {
               </select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="clin-allergies">Allergies (comma-separated)</Label>
+              <Label htmlFor="clin-allergies">
+                Allergies (comma-separated)
+              </Label>
               <Input
                 id="clin-allergies"
                 value={allergies}

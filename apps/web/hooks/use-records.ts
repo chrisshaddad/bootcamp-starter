@@ -47,7 +47,10 @@ export function useRecords(
 }
 
 /** A single record with its typed detail + attachments. */
-export function useRecord(id: string | null, options: { enabled?: boolean } = {}) {
+export function useRecord(
+  id: string | null,
+  options: { enabled?: boolean } = {},
+) {
   const { enabled = true } = options;
   const { data, error, isLoading, mutate } = useSWR<RecordDetailResponse>(
     enabled && id ? `/records/${id}` : null,
@@ -78,6 +81,9 @@ export function useRecord(id: string | null, options: { enabled?: boolean } = {}
 }
 
 /** Absolute URL for downloading a record attachment (opened in a new tab). */
-export function recordFileDownloadUrl(recordId: string, fileId: string): string {
+export function recordFileDownloadUrl(
+  recordId: string,
+  fileId: string,
+): string {
   return `${API_URL}/records/${recordId}/files/${fileId}/download`;
 }

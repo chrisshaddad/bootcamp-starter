@@ -41,7 +41,11 @@ function AssignDialog({
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { users } = useUsers({ role: 'PROFESSIONAL', isActive: true, enabled: open });
+  const { users } = useUsers({
+    role: 'PROFESSIONAL',
+    isActive: true,
+    enabled: open,
+  });
   const { assignProfessional } = useAssignments(patientId, {
     enabled: false,
     onChange,

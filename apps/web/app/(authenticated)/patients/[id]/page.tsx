@@ -13,12 +13,7 @@ import { ClinicalSection } from '@/components/patients/clinical-section';
 import { CareTeamSection } from '@/components/patients/care-team-section';
 import { RecordsSection } from '@/components/patients/records-section';
 
-const ALLOWED_ROLES = [
-  'INSTITUTION_ADMIN',
-  'STAFF',
-  'PROFESSIONAL',
-  'PATIENT',
-];
+const ALLOWED_ROLES = ['INSTITUTION_ADMIN', 'STAFF', 'PROFESSIONAL', 'PATIENT'];
 
 export default function PatientDetailPage() {
   const params = useParams();
@@ -29,14 +24,8 @@ export default function PatientDetailPage() {
   const role = user?.role;
   const canAccess = role ? ALLOWED_ROLES.includes(role) : false;
 
-  const {
-    patient,
-    isLoading,
-    error,
-    updateAdmin,
-    updateClinical,
-    mutate,
-  } = usePatient(patientId, { enabled: canAccess });
+  const { patient, isLoading, error, updateAdmin, updateClinical, mutate } =
+    usePatient(patientId, { enabled: canAccess });
 
   if (userLoading || (canAccess && isLoading)) {
     return (
@@ -48,7 +37,9 @@ export default function PatientDetailPage() {
   }
 
   if (!canAccess) {
-    return <ForbiddenPage message="You don't have permission to view patients." />;
+    return (
+      <ForbiddenPage message="You don't have permission to view patients." />
+    );
   }
 
   if (error || !patient) {

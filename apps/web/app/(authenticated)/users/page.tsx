@@ -282,9 +282,7 @@ function UserRowActions({ user }: { user: UserListItem }) {
   const toggleStatus = async () => {
     try {
       await setUserStatus(user.id, !user.isActive);
-      toast.success(
-        user.isActive ? 'User deactivated' : 'User reactivated',
-      );
+      toast.success(user.isActive ? 'User deactivated' : 'User reactivated');
     } catch (error) {
       toast.error(
         error instanceof ApiError ? error.message : 'Failed to update status',
@@ -323,12 +321,7 @@ export default function UsersPage() {
 
   const isAdmin = user?.role === 'INSTITUTION_ADMIN';
 
-  const {
-    users,
-    total,
-    isLoading,
-    error,
-  } = useUsers({
+  const { users, total, isLoading, error } = useUsers({
     role: roleFilter === 'all' ? undefined : roleFilter,
     enabled: isAdmin,
   });
@@ -421,12 +414,12 @@ export default function UsersPage() {
                       {ROLE_LABELS[u.role] || u.role}
                     </TableCell>
                     <TableCell className="text-gray-600">
-                      {u.specialty || (
-                        <span className="text-gray-400">—</span>
-                      )}
+                      {u.specialty || <span className="text-gray-400">—</span>}
                     </TableCell>
                     <TableCell>
-                      <StatusBadge status={u.isActive ? 'ACTIVE' : 'INACTIVE'} />
+                      <StatusBadge
+                        status={u.isActive ? 'ACTIVE' : 'INACTIVE'}
+                      />
                     </TableCell>
                     <TableCell>
                       <UserRowActions user={u} />

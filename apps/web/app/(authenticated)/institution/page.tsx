@@ -42,9 +42,11 @@ export default function InstitutionPage() {
   const { user, isLoading: userLoading } = useUser();
   const isAdmin = user?.role === 'INSTITUTION_ADMIN';
 
-  const { institution, isLoading, error, updateInstitution } = useMyInstitution({
-    enabled: isAdmin,
-  });
+  const { institution, isLoading, error, updateInstitution } = useMyInstitution(
+    {
+      enabled: isAdmin,
+    },
+  );
 
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -113,7 +115,12 @@ export default function InstitutionPage() {
             {institution.name}
             <StatusBadge status={institution.status} />
           </CardTitle>
-          <Button variant="outline" size="sm" className="gap-2" onClick={openDialog}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={openDialog}
+          >
             <Pencil className="h-4 w-4" />
             Edit
           </Button>

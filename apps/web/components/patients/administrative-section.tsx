@@ -53,11 +53,7 @@ export function AdministrativeSection({ patient, canEdit, onSave }: Props) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-  } = useForm<PatientAdminUpdateRequest>({
+  const { register, handleSubmit, reset } = useForm<PatientAdminUpdateRequest>({
     resolver: zodResolver(patientAdminUpdateRequestSchema),
   });
 
@@ -97,7 +93,12 @@ export function AdministrativeSection({ patient, canEdit, onSave }: Props) {
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-lg">Administrative</CardTitle>
         {canEdit && (
-          <Button variant="outline" size="sm" className="gap-2" onClick={openDialog}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={openDialog}
+          >
             <Pencil className="h-4 w-4" />
             Edit
           </Button>
@@ -108,7 +109,10 @@ export function AdministrativeSection({ patient, canEdit, onSave }: Props) {
           <Field label="Full Name" value={patient.fullName} />
           <Field label="Email" value={patient.email} />
           <Field label="Phone" value={patient.phone} />
-          <Field label="Date of Birth" value={formatDate(patient.dateOfBirth)} />
+          <Field
+            label="Date of Birth"
+            value={formatDate(patient.dateOfBirth)}
+          />
           <Field label="Gender" value={patient.gender} />
           <Field label="National ID" value={patient.nationalId} />
           <Field label="Address" value={patient.address} />
@@ -148,7 +152,11 @@ export function AdministrativeSection({ patient, canEdit, onSave }: Props) {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="admin-dob">Date of Birth</Label>
-                <Input id="admin-dob" type="date" {...register('dateOfBirth')} />
+                <Input
+                  id="admin-dob"
+                  type="date"
+                  {...register('dateOfBirth')}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="admin-gender">Gender</Label>
@@ -175,11 +183,17 @@ export function AdministrativeSection({ patient, canEdit, onSave }: Props) {
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="admin-ecName">Emergency Name</Label>
-                <Input id="admin-ecName" {...register('emergencyContactName')} />
+                <Input
+                  id="admin-ecName"
+                  {...register('emergencyContactName')}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="admin-ecPhone">Emergency Phone</Label>
-                <Input id="admin-ecPhone" {...register('emergencyContactPhone')} />
+                <Input
+                  id="admin-ecPhone"
+                  {...register('emergencyContactPhone')}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="admin-ecRel">Relationship</Label>

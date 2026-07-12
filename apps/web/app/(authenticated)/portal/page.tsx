@@ -51,7 +51,11 @@ export default function PortalPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <AdministrativeSection patient={patient} canEdit={false} onSave={noop} />
+        <AdministrativeSection
+          patient={patient}
+          canEdit={false}
+          onSave={noop}
+        />
         <ClinicalSection patient={patient} canEdit={false} onSave={noop} />
         <CareTeamSection patient={patient} canManage={false} onChange={noop} />
         <RecordsSection patientId={patient.id} canAdd={false} />

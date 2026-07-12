@@ -11,8 +11,9 @@ import type {
 /** The caller's own institution (Institution Admin / Staff / Professional). */
 export function useMyInstitution(options: { enabled?: boolean } = {}) {
   const { enabled = true } = options;
-  const { data, error, isLoading, mutate } =
-    useSWR<InstitutionDetailResponse>(enabled ? '/institutions/me' : null);
+  const { data, error, isLoading, mutate } = useSWR<InstitutionDetailResponse>(
+    enabled ? '/institutions/me' : null,
+  );
 
   const updateInstitution = useCallback(
     async (payload: InstitutionUpdateRequest) => {

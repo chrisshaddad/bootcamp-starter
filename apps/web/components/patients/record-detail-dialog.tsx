@@ -17,7 +17,13 @@ function fmt(value: string | Date | null | undefined): string {
   return value ? new Date(value).toLocaleDateString() : '—';
 }
 
-function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
+function DetailRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: React.ReactNode;
+}) {
   if (value === null || value === undefined || value === '') return null;
   return (
     <div className="flex justify-between gap-4 py-1.5 text-sm">
@@ -75,7 +81,10 @@ export function RecordDetailDialog({
         ) : (
           <div className="space-y-4">
             <div className="divide-y divide-gray-100">
-              <DetailRow label="Type" value={record.recordType.replace(/_/g, ' ')} />
+              <DetailRow
+                label="Type"
+                value={record.recordType.replace(/_/g, ' ')}
+              />
               <DetailRow label="Record Date" value={fmt(record.recordDate)} />
               <DetailRow label="Uploaded By" value={record.uploadedByName} />
               <DetailRow
@@ -87,9 +96,18 @@ export function RecordDetailDialog({
 
               {record.labResult && (
                 <>
-                  <DetailRow label="Test Name" value={record.labResult.testName} />
-                  <DetailRow label="Test Date" value={fmt(record.labResult.testDate)} />
-                  <DetailRow label="Lab Name" value={record.labResult.labName} />
+                  <DetailRow
+                    label="Test Name"
+                    value={record.labResult.testName}
+                  />
+                  <DetailRow
+                    label="Test Date"
+                    value={fmt(record.labResult.testDate)}
+                  />
+                  <DetailRow
+                    label="Lab Name"
+                    value={record.labResult.labName}
+                  />
                 </>
               )}
 
@@ -99,8 +117,14 @@ export function RecordDetailDialog({
                     label="Chief Complaint"
                     value={record.consultation.chiefComplaint}
                   />
-                  <DetailRow label="Findings" value={record.consultation.findings} />
-                  <DetailRow label="Diagnosis" value={record.consultation.diagnosis} />
+                  <DetailRow
+                    label="Findings"
+                    value={record.consultation.findings}
+                  />
+                  <DetailRow
+                    label="Diagnosis"
+                    value={record.consultation.diagnosis}
+                  />
                   <DetailRow label="Plan" value={record.consultation.plan} />
                   <DetailRow
                     label="Follow-up"
@@ -111,7 +135,10 @@ export function RecordDetailDialog({
 
               {record.scan && (
                 <>
-                  <DetailRow label="Modality" value={record.scan.modalityType} />
+                  <DetailRow
+                    label="Modality"
+                    value={record.scan.modalityType}
+                  />
                   <DetailRow label="Body Part" value={record.scan.bodyPart} />
                   <DetailRow
                     label="Radiologist"
@@ -139,7 +166,10 @@ export function RecordDetailDialog({
                     label="Next Dose"
                     value={fmt(record.vaccination.nextDoseDate)}
                   />
-                  <DetailRow label="Batch" value={record.vaccination.batchNumber} />
+                  <DetailRow
+                    label="Batch"
+                    value={record.vaccination.batchNumber}
+                  />
                   <DetailRow
                     label="Administered By"
                     value={record.vaccination.administeredBy}

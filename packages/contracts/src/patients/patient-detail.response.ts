@@ -46,6 +46,4 @@ export const patientDetailResponseSchema = z.object({
   createdAt: dateSchema,
   updatedAt: dateSchema,
 });
-export type PatientDetailResponse = z.infer<
-  typeof patientDetailResponseSchema
->;
+export type PatientDetailResponse = z.infer<typeof patientDetailResponseSchema>;

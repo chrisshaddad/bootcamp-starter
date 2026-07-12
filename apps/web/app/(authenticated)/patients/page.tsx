@@ -118,7 +118,11 @@ function CreatePatientDialog() {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="dateOfBirth">Date of Birth</Label>
-              <Input id="dateOfBirth" type="date" {...register('dateOfBirth')} />
+              <Input
+                id="dateOfBirth"
+                type="date"
+                {...register('dateOfBirth')}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="gender">Gender</Label>
@@ -255,7 +259,9 @@ export default function PatientsPage() {
                       {formatDate(p.dateOfBirth)}
                     </TableCell>
                     <TableCell>
-                      <StatusBadge status={p.isActive ? 'ACTIVE' : 'INACTIVE'} />
+                      <StatusBadge
+                        status={p.isActive ? 'ACTIVE' : 'INACTIVE'}
+                      />
                     </TableCell>
                   </TableRow>
                 ))}

@@ -33,8 +33,12 @@ function invalidatePatientsList() {
 
 export function usePatients(options: UsePatientsOptions = {}) {
   const { enabled = true } = options;
-  const { data, error, isLoading, mutate: swrMutate } =
-    useSWR<PatientListResponse>(enabled ? buildPatientsKey(options) : null);
+  const {
+    data,
+    error,
+    isLoading,
+    mutate: swrMutate,
+  } = useSWR<PatientListResponse>(enabled ? buildPatientsKey(options) : null);
 
   return {
     patients: data?.patients,
@@ -57,8 +61,12 @@ export function useCreatePatient() {
 
 export function usePatient(id: string, options: { enabled?: boolean } = {}) {
   const { enabled = true } = options;
-  const { data, error, isLoading, mutate: swrMutate } =
-    useSWR<PatientDetailResponse>(enabled ? `/patients/${id}` : null);
+  const {
+    data,
+    error,
+    isLoading,
+    mutate: swrMutate,
+  } = useSWR<PatientDetailResponse>(enabled ? `/patients/${id}` : null);
 
   const updateAdmin = useCallback(
     async (payload: PatientAdminUpdateRequest) => {
@@ -98,8 +106,12 @@ export function usePatient(id: string, options: { enabled?: boolean } = {}) {
 /** Patient portal — the logged-in patient's own record. */
 export function usePatientMe(options: { enabled?: boolean } = {}) {
   const { enabled = true } = options;
-  const { data, error, isLoading, mutate: swrMutate } =
-    useSWR<PatientDetailResponse>(enabled ? '/patients/me' : null);
+  const {
+    data,
+    error,
+    isLoading,
+    mutate: swrMutate,
+  } = useSWR<PatientDetailResponse>(enabled ? '/patients/me' : null);
 
   return {
     patient: data,
