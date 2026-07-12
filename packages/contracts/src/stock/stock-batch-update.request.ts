@@ -1,13 +1,11 @@
 import { z } from 'zod';
 
+// z.iso.date() enforces a real YYYY-MM-DD: a plain Date.parse() accepts
+// impossible dates like 2025-02-30 and silently normalizes them to another day.
 const calendarDateField = z
   .string()
   .trim()
-  .refine(
-    (value) =>
-      /^\d{4}-\d{2}-\d{2}/.test(value) && !Number.isNaN(Date.parse(value)),
-    'Enter a valid date',
-  );
+  .pipe(z.iso.date('Enter a valid date'));
 
 const optionalBatchNumber = z
   .string()
@@ -22,12 +20,22 @@ const optionalBatchNumber = z
 export const stockBatchUpdateRequestSchema = z
   .object({
     batchNumber: optionalBatchNumber.optional(),
-    quantity: z.coerce
-      .number('Enter a quantity')
-      .int('Quantity must be a whole number')
-      .min(0, 'Quantity cannot be negative')
-      .max(1_000_000, 'Quantity is too large')
-      .optional(),
+    // Map blank/null to undefined before coercion: z.coerce.number() turns ''
+    // and null into 0, so a blank PATCH would overwrite the stored quantity with
+    // 0 instead of leaving it unchanged. Genuinely omitted quantities stay
+    // optional (no update).
+    quantity: z.preprocess(
+      (value) =>
+        value === null || (typeof value === 'string' && value.trim() === '')
+          ? undefined
+          : value,
+      z.coerce
+        .number('Enter a quantity')
+        .int('Quantity must be a whole number')
+        .min(0, 'Quantity cannot be negative')
+        .max(1_000_000, 'Quantity is too large')
+        .optional(),
+    ),
     expiryDate: calendarDateField.optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {

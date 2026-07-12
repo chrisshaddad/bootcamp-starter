@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -30,8 +30,8 @@ import {
 } from '@/lib/stock';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { CreatableCombobox, MultiCombobox } from '@/components/ui/combobox';
-import { BarcodeScanField } from '@/components/ui/barcode-scan-field';
+import { CreatableCombobox, MultiCombobox } from '@/components/stock/combobox';
+import { BarcodeScanField } from '@/components/barcode-scan-field';
 import {
   Dialog,
   DialogContent,
@@ -44,7 +44,7 @@ import {
 // Batch fields only — medicineId + branchId are supplied by the dialog, not the
 // form. The server re-validates the full shape via stockBatchCreateRequestSchema.
 const batchFormSchema = z.object({
-  batchNumber: z.string().trim().max(100).optional(),
+  batchNumber: z.string().trim().max(100, 'Batch number is too long').optional(),
   quantity: z
     .number('Enter a quantity')
     .int('Whole numbers only')
@@ -57,10 +57,14 @@ type BatchForm = z.infer<typeof batchFormSchema>;
 // New-medicine fields for the barcode-not-found path.
 const newMedicineSchema = z.object({
   brandName: z.string().trim().min(1, 'Brand name is required').max(200),
-  type: z.string().trim().max(20).optional(),
-  form: z.string().trim().max(50).optional(),
-  dosage: z.string().trim().max(100).optional(),
-  barcode: z.string().trim().max(100).optional(),
+  type: z.string().trim().max(20, 'Keep type under 20 characters').optional(),
+  form: z.string().trim().max(50, 'Keep form under 50 characters').optional(),
+  dosage: z
+    .string()
+    .trim()
+    .max(100, 'Keep dosage under 100 characters')
+    .optional(),
+  barcode: z.string().trim().max(100, 'Barcode is too long').optional(),
   ingredients: z.array(z.string()),
 });
 type NewMedicineForm = z.infer<typeof newMedicineSchema>;
@@ -99,6 +103,10 @@ function MedicineSearch({
   useEffect(() => {
     const query = term.trim();
     if (query.length < 2) {
+      // Clear a pending "Searching…" here: a debounce/request started for a
+      // longer term is abandoned (active=false) when the term drops below two
+      // chars, so its finally can no longer reset loading.
+      setLoading(false);
       setResults([]);
       return;
     }
@@ -172,6 +180,10 @@ function BarcodeLookup({
   // null = not looked up yet; false = looked up, nothing found (offer create).
   const [notFound, setNotFound] = useState(false);
   const [creating, setCreating] = useState(false);
+  // Sequence id so an out-of-order/stale barcode response can't select a
+  // medicine for a barcode the user has since changed. Only the latest lookup
+  // may apply its result or clear the loading state.
+  const lookupSeq = useRef(0);
 
   const {
     register,
@@ -195,10 +207,14 @@ function BarcodeLookup({
   async function lookup() {
     const code = barcode.trim();
     if (!code) return;
+    const requestId = ++lookupSeq.current;
     setLooking(true);
     setNotFound(false);
     try {
       const { medicines } = await searchStockCatalog({ barcode: code });
+      // A newer lookup superseded this one — discard its result so we never
+      // select a medicine for a barcode that's no longer shown.
+      if (requestId !== lookupSeq.current) return;
       if (medicines[0]) {
         onSelect(medicines[0]);
       } else {
@@ -213,9 +229,12 @@ function BarcodeLookup({
         });
       }
     } catch {
+      if (requestId !== lookupSeq.current) return;
       toast.error('Barcode lookup failed.');
     } finally {
-      setLooking(false);
+      // Only the latest lookup owns the loading state; a stale one clearing it
+      // would hide a newer request still in flight.
+      if (requestId === lookupSeq.current) setLooking(false);
     }
   }
 
@@ -269,6 +288,9 @@ function BarcodeLookup({
               options={attributes?.dosages ?? []}
               placeholder="Pick or type…"
             />
+            {errors.dosage ? (
+              <p className="text-xs text-error">{errors.dosage.message}</p>
+            ) : null}
           </div>
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-gray-700">Form</label>
@@ -280,6 +302,9 @@ function BarcodeLookup({
               options={attributes?.forms ?? []}
               placeholder="Pick or type…"
             />
+            {errors.form ? (
+              <p className="text-xs text-error">{errors.form.message}</p>
+            ) : null}
           </div>
         </div>
         <div className="space-y-1.5">
@@ -295,6 +320,9 @@ function BarcodeLookup({
             options={[...new Set((attributes?.types ?? []).map(typeLabel))]}
             placeholder="Pick or type…"
           />
+          {errors.type ? (
+            <p className="text-xs text-error">{errors.type.message}</p>
+          ) : null}
         </div>
         <div className="space-y-1.5">
           <label className="text-sm font-medium text-gray-700">
@@ -317,6 +345,9 @@ function BarcodeLookup({
               setValue('barcode', next, { shouldValidate: true })
             }
           />
+          {errors.barcode ? (
+            <p className="text-xs text-error">{errors.barcode.message}</p>
+          ) : null}
         </div>
         <Button type="submit" className="w-full" disabled={isSubmitting}>
           {isSubmitting ? 'Adding…' : 'Add medicine & continue'}
@@ -547,6 +578,11 @@ export function AddBatchDialog({
                   {...register('batchNumber')}
                   placeholder="e.g. BATCH-4K2P9XQ1"
                 />
+                {errors.batchNumber ? (
+                  <p className="text-xs text-error">
+                    {errors.batchNumber.message}
+                  </p>
+                ) : null}
               </div>
             </form>
           )}

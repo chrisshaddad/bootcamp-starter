@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
+import type { z } from 'zod';
 import { toast } from 'sonner';
 import {
   AlertTriangle,
@@ -17,7 +17,11 @@ import {
   Plus,
   Trash2,
 } from 'lucide-react';
-import type { StockBatchResponse } from '@repo/contracts';
+import {
+  stockBatchUpdateRequestSchema,
+  type StockBatchResponse,
+  type StockBatchUpdateRequest,
+} from '@repo/contracts';
 import { useStockMedicineDetail, useStockActions } from '@/hooks/use-stock';
 import { AddBatchDialog } from '@/components/stock/add-batch-dialog';
 import { QuantityPill } from '@/components/stock/quantity-pill';
@@ -51,17 +55,6 @@ import {
 } from '@/components/ui/table';
 import { ENTER, enterStyle } from '@/lib/enter-animation';
 
-const editBatchSchema = z.object({
-  batchNumber: z.string().trim().max(100).optional(),
-  quantity: z
-    .number('Enter a quantity')
-    .int('Whole numbers only')
-    .min(0, 'Cannot be negative')
-    .max(1_000_000, 'Too large'),
-  expiryDate: z.string().min(1, 'Select an expiry date'),
-});
-type EditBatchForm = z.infer<typeof editBatchSchema>;
-
 function ExpiryBadge({ value }: { value: string | Date }) {
   const status = expiryStatus(value);
   if (status === 'ok') return null;
@@ -92,8 +85,12 @@ function EditBatchDialog({
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<EditBatchForm>({
-    resolver: zodResolver(editBatchSchema),
+  } = useForm<
+    z.input<typeof stockBatchUpdateRequestSchema>,
+    unknown,
+    StockBatchUpdateRequest
+  >({
+    resolver: zodResolver(stockBatchUpdateRequestSchema),
     defaultValues: {
       batchNumber: batch.batchNumber ?? '',
       quantity: batch.quantity,
@@ -101,13 +98,9 @@ function EditBatchDialog({
     },
   });
 
-  async function onSubmit(data: EditBatchForm) {
+  async function onSubmit(data: StockBatchUpdateRequest) {
     try {
-      await updateBatch(batch.id, {
-        batchNumber: data.batchNumber || null,
-        quantity: data.quantity,
-        expiryDate: data.expiryDate,
-      });
+      await updateBatch(batch.id, data);
       toast.success('Batch updated.');
       onClose();
     } catch (error) {
@@ -176,6 +169,11 @@ function EditBatchDialog({
                 <span className="font-normal text-gray-400">(optional)</span>
               </label>
               <Input {...register('batchNumber')} placeholder="e.g. LOT-2291" />
+              {errors.batchNumber ? (
+                <p className="text-xs text-error">
+                  {errors.batchNumber.message}
+                </p>
+              ) : null}
             </div>
           </div>
           <DialogFooter>

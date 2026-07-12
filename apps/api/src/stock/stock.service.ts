@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@repo/db';
@@ -68,6 +69,8 @@ function isRealIngredientName(name: string): boolean {
 
 @Injectable()
 export class StockService {
+  private readonly logger = new Logger(StockService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly medicines: MedicinesService,
@@ -489,9 +492,15 @@ export class StockService {
   async deleteBatch(id: string, actor: User): Promise<StockBatchResponse> {
     const batch = await this.loadAccessibleBatch(id, actor);
 
-    await this.prisma.stockBatch.deleteMany({
+    // Guard the write against a concurrent delete between the accessibility
+    // check and here: if the row is already gone, deleteMany reports count 0 —
+    // treat that as a miss rather than auditing a phantom delete.
+    const { count } = await this.prisma.stockBatch.deleteMany({
       where: { id, branchId: batch.branchId },
     });
+    if (count !== 1) {
+      throw new NotFoundException('Stock batch not found.');
+    }
 
     await this.audit.record({
       userId: actor.id,
@@ -519,23 +528,29 @@ export class StockService {
     id: string,
     actor: User,
   ): Promise<BatchRow> {
-    const batch = await this.prisma.stockBatch.findUnique({
-      where: { id },
-      select: { ...BATCH_SELECT, branch: { select: { pharmacyId: true } } },
+    // Carry the tenant boundary in the query itself. Guard the id/branch fields
+    // first: a null pharmacyId/branchId must fail closed, not collapse to an
+    // unscoped filter (Prisma drops `undefined` conditions).
+    const where: Prisma.StockBatchWhereInput = { id };
+    if (this.isAdmin(actor)) {
+      if (!actor.pharmacyId) {
+        throw new NotFoundException('Stock batch not found.');
+      }
+      where.branch = { pharmacyId: actor.pharmacyId };
+    } else {
+      if (!actor.branchId) {
+        throw new NotFoundException('Stock batch not found.');
+      }
+      where.branchId = actor.branchId;
+    }
+
+    const batch = await this.prisma.stockBatch.findFirst({
+      where,
+      select: BATCH_SELECT,
     });
     if (!batch) {
       throw new NotFoundException('Stock batch not found.');
     }
-
-    if (this.isAdmin(actor)) {
-      if (!actor.pharmacyId || batch.branch.pharmacyId !== actor.pharmacyId) {
-        throw new NotFoundException('Stock batch not found.');
-      }
-    } else if (!actor.branchId || batch.branchId !== actor.branchId) {
-      throw new NotFoundException('Stock batch not found.');
-    }
-
-    const { branch: _branch, ...row } = batch;
-    return row;
+    return batch;
   }
 }

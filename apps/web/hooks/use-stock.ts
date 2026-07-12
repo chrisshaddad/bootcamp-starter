@@ -65,9 +65,9 @@ export function useStockAttributes() {
 
 /** Branches the caller may view/manage stock for (for the branch picker). */
 export function useStockBranches() {
-  const { data, error, isLoading } =
+  const { data, error, isLoading, mutate } =
     useSWR<StockBranchOptionsResponse>('/stock/branches');
-  return { branches: data, isLoading, error };
+  return { branches: data, isLoading, error, mutate };
 }
 
 /** Every batch of one medicine at the resolved branch, with the running total. */

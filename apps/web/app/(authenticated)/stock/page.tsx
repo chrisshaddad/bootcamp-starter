@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   AlertTriangle,
   ArrowUpDown,
@@ -177,15 +177,23 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: 'expiry', label: 'Expiry (soonest)' },
 ];
 
-export default function StockPage() {
+function StockPageContent() {
   const router = useRouter();
-  const [branchId, setBranchId] = useState<string | undefined>(undefined);
+  const searchParams = useSearchParams();
+  // Keep the selected branch in the URL so a reload or back-navigation from the
+  // detail page (which links to /stock?branchId=…) restores it instead of
+  // silently falling back to the default branch.
+  const branchId = searchParams.get('branchId') ?? undefined;
   const [search, setSearch] = useState('');
   const [flagFilter, setFlagFilter] = useState<FlagFilter>('all');
   const [sort, setSort] = useState<SortKey>('name');
   const [addOpen, setAddOpen] = useState(false);
 
-  const { branches } = useStockBranches();
+  const {
+    branches,
+    error: branchesError,
+    mutate: mutateBranches,
+  } = useStockBranches();
   const {
     medicines,
     branchId: resolvedBranchId,
@@ -374,7 +382,11 @@ export default function StockPage() {
             </span>
             <Select
               value={activeBranchId}
-              onValueChange={(value) => setBranchId(value)}
+              onValueChange={(value) => {
+                const params = new URLSearchParams(searchParams.toString());
+                params.set('branchId', value);
+                router.replace(`/stock?${params.toString()}`);
+              }}
             >
               <SelectTrigger className="h-8 w-52 border-0 bg-white font-semibold text-gray-900 shadow-sm">
                 <SelectValue placeholder="Select a branch" />
@@ -395,17 +407,24 @@ export default function StockPage() {
         className={`gap-0 overflow-hidden py-0 ${ENTER}`}
         style={enterStyle(420)}
       >
-        {error ? (
+        {error || branchesError ? (
           <div className="flex flex-col items-center justify-center py-16">
             <AlertTriangle className="mb-4 h-12 w-12 text-error" />
             <h3 className="mb-1 text-lg font-semibold text-gray-900">
               Couldn&apos;t load stock
             </h3>
             <p className="mb-4 max-w-md text-center text-sm text-gray-500">
-              Something went wrong while fetching your inventory. Please try
-              again.
+              {branchesError && !error
+                ? 'Something went wrong while loading your branches. Please try again.'
+                : 'Something went wrong while fetching your inventory. Please try again.'}
             </p>
-            <Button type="button" onClick={() => mutate()}>
+            <Button
+              type="button"
+              onClick={() => {
+                mutate();
+                mutateBranches();
+              }}
+            >
               Try again
             </Button>
           </div>
@@ -467,5 +486,22 @@ export default function StockPage() {
         />
       ) : null}
     </div>
+  );
+}
+
+// useSearchParams() must sit under a Suspense boundary so the route can be
+// prerendered without bailing (mirrors the detail page).
+export default function StockPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="space-y-6">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-64 w-full" />
+        </div>
+      }
+    >
+      <StockPageContent />
+    </Suspense>
   );
 }

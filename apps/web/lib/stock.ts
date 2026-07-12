@@ -11,13 +11,32 @@ export const NEAR_EXPIRY_DAYS = 90;
 
 export type ExpiryStatus = 'expired' | 'near' | 'ok';
 
+// A batch expiry is a pure calendar date stored at UTC midnight (`@db.Date`, and
+// serialized to the client as an ISO string). Take its YYYY-MM-DD directly —
+// never reinterpret it through the local timezone, which would shift US users to
+// the day before.
+function toDateKey(value: string | Date): string {
+  return typeof value === 'string'
+    ? value.slice(0, 10)
+    : value.toISOString().slice(0, 10);
+}
+
+// Parse a YYYY-MM-DD key into a *local* midnight Date, so day math and formatting
+// operate on the calendar day the user means rather than a UTC instant.
+function localDateFromKey(key: string): Date {
+  const [year = 0, month = 1, day = 1] = key.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
 // Classify a batch/medicine expiry date relative to today. `null` (a medicine
 // with no dated batches) is treated as "ok" — there's nothing to warn about.
 export function expiryStatus(value: string | Date | null): ExpiryStatus {
   if (!value) return 'ok';
-  const expiry = new Date(value);
+  const expiry = localDateFromKey(toDateKey(value));
   const now = new Date();
-  const days = Math.floor((expiry.getTime() - now.getTime()) / 86_400_000);
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  // Both are local midnights; round so a DST boundary can't skew the day count.
+  const days = Math.round((expiry.getTime() - today.getTime()) / 86_400_000);
   if (days < 0) return 'expired';
   if (days <= NEAR_EXPIRY_DAYS) return 'near';
   return 'ok';
@@ -39,7 +58,7 @@ export function isLowQuantity(quantity: number): boolean {
 
 // "12 Aug 2026" — the human-facing expiry/date format used across stock.
 export function formatDate(value: string | Date): string {
-  return new Date(value).toLocaleDateString(undefined, {
+  return localDateFromKey(toDateKey(value)).toLocaleDateString(undefined, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -56,7 +75,7 @@ export function medicineSubtitle(
 
 // An <input type="date"> value ("YYYY-MM-DD") for a given date.
 export function toDateInputValue(value: string | Date): string {
-  return new Date(value).toISOString().slice(0, 10);
+  return toDateKey(value);
 }
 
 // The medicine `type` column is seeded from the MOPH workbook's "B/G" column, so

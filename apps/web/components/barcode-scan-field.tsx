@@ -99,7 +99,14 @@ export function BarcodeScanField({
           variant={scanning ? 'secondary' : 'outline'}
           size="lg"
           className="h-12"
-          onClick={() => setScanning((current) => !current)}
+          onClick={() => {
+            // Discard any partially buffered burst on every toggle so a
+            // restarted scan can't prepend stale keys (Cancel doesn't otherwise
+            // clear it, and the 120ms guard won't reset a fast next key).
+            bufferRef.current = '';
+            lastKeyRef.current = 0;
+            setScanning((current) => !current);
+          }}
         >
           <ScanLine className="h-4 w-4" />
           {scanning ? 'Cancel' : value ? 'Rescan' : 'Scan'}
