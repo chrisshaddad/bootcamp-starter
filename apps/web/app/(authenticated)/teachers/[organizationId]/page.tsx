@@ -158,7 +158,7 @@ export default function TeachersOrganizationPage({
                       </td>
 
                       <td className="px-5 py-4">
-                        <span className="rounded-full bg-green-50 px-2.5 py-1 text-xs font-medium text-green-700">
+                        <span className="rounded-full bg-success/10 px-2.5 py-1 text-xs font-medium text-success">
                           {teacher.status}
                         </span>
                       </td>
@@ -182,7 +182,7 @@ export default function TeachersOrganizationPage({
                         <button
                           type="button"
                           onClick={() => handleDeleteTeacher(teacher.id)}
-                          className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+                          className="inline-flex items-center gap-2 rounded-lg border border-error/20 px-3 py-1.5 text-xs font-medium text-error hover:bg-error/10"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                           Delete

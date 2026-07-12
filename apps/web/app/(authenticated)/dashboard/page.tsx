@@ -38,7 +38,10 @@ export default function DashboardPage() {
 
       {isSuperAdmin && (
         <div className="grid gap-5 md:grid-cols-2">
-          <Link href="/students" className="block">
+          <Link
+            href="/students"
+            className="block rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2"
+          >
             <Card className="h-full cursor-pointer border-gray-200 bg-white shadow-sm transition hover:border-gray-300 hover:shadow-md">
               <CardHeader>
                 <div className="flex items-center gap-3">
@@ -68,7 +71,10 @@ export default function DashboardPage() {
             </Card>
           </Link>
 
-          <Link href="/teachers" className="block">
+          <Link
+            href="/teachers"
+            className="block rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2"
+          >
             <Card className="h-full cursor-pointer border-gray-200 bg-white shadow-sm transition hover:border-gray-300 hover:shadow-md">
               <CardHeader>
                 <div className="flex items-center gap-3">

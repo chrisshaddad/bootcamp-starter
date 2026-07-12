@@ -1,6 +1,3 @@
-'use client';
-
-import { use } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, GraduationCap } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -38,10 +35,10 @@ interface StudentsOrganizationPageProps {
   }>;
 }
 
-export default function StudentsOrganizationPage({
+export default async function StudentsOrganizationPage({
   params,
 }: StudentsOrganizationPageProps) {
-  const { organizationId } = use(params);
+  const { organizationId } = await params;
 
   const organizationName = organizationNames[organizationId] || 'Organization';
 
@@ -71,7 +68,7 @@ export default function StudentsOrganizationPage({
           <Link
             key={grade.id}
             href={`/students/${organizationId}/grades/${grade.id}`}
-            className="block"
+            className="block rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2"
           >
             <Card className="h-full cursor-pointer border-gray-200 bg-white shadow-sm transition hover:border-gray-300 hover:shadow-md">
               <CardHeader>
