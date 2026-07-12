@@ -69,24 +69,15 @@ export function ProjectShowcase({ project, onSave }: ProjectShowcaseProps) {
         </div>
       </div>
 
-      {project.media[0] ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={project.media[0].publicUrl}
-          alt={project.media[0].caption ?? project.title}
-          className="mb-8 h-48 w-full rounded-xl object-cover"
-        />
-      ) : (
-        <div
-          className="mb-8 flex h-48 items-center justify-center rounded-xl"
-          style={{
-            background:
-              'linear-gradient(135deg, var(--color-primary-base), var(--color-purple))',
-          }}
-        >
-          <ImageIcon className="h-10 w-10 text-white/40" />
-        </div>
-      )}
+      <div
+        className="mb-8 flex h-48 items-center justify-center rounded-xl"
+        style={{
+          background:
+            'linear-gradient(135deg, var(--color-primary-base), var(--color-purple))',
+        }}
+      >
+        <ImageIcon className="h-10 w-10 text-white/40" />
+      </div>
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_260px]">
         <div className="space-y-8">
