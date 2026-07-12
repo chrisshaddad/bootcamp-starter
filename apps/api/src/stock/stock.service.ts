@@ -31,14 +31,25 @@ import {
   type AuditChanges,
 } from '../audit/audit.constants';
 
-// Enough of the global catalog to identify a medicine in the stock views.
+// Enough of the global catalog to identify a medicine in the stock views, plus
+// its price so the inventory list/detail can show it.
 const CATALOG_SELECT = {
   id: true,
   brandName: true,
   form: true,
   dosage: true,
   barcode: true,
+  priceLbp: true,
 } satisfies Prisma.MedicineSelect;
+
+type CatalogRow = Prisma.MedicineGetPayload<{ select: typeof CATALOG_SELECT }>;
+
+// Map a catalog row to the wire shape: Prisma's Decimal price becomes a plain
+// number (null stays null) so the client never parses a string.
+function toCatalogItem(row: CatalogRow): StockCatalogItem {
+  const { priceLbp, ...rest } = row;
+  return { ...rest, priceLbp: priceLbp === null ? null : priceLbp.toNumber() };
+}
 
 // Columns that make up a `StockBatchResponse`.
 const BATCH_SELECT = {
@@ -245,6 +256,8 @@ export class StockService {
           form: medicine.form,
           dosage: medicine.dosage,
           barcode: medicine.barcode,
+          priceLbp:
+            medicine.priceLbp === null ? null : medicine.priceLbp.toNumber(),
           totalQuantity: group._sum.quantity ?? 0,
           batchCount: group._count._all,
           nearestExpiry: group._min.expiryDate ?? null,
@@ -288,7 +301,7 @@ export class StockService {
     return {
       branchId: branch.id,
       branchName: branch.name,
-      medicine,
+      medicine: toCatalogItem(medicine),
       totalQuantity: batches.reduce((sum, batch) => sum + batch.quantity, 0),
       batches,
     };
@@ -305,7 +318,7 @@ export class StockService {
         where: { barcode: query.barcode },
         select: CATALOG_SELECT,
       });
-      return { medicines: medicine ? [medicine] : [] };
+      return { medicines: medicine ? [toCatalogItem(medicine)] : [] };
     }
 
     const search = query.search?.trim();
@@ -323,7 +336,7 @@ export class StockService {
       take: 20,
       select: CATALOG_SELECT,
     });
-    return { medicines };
+    return { medicines: medicines.map(toCatalogItem) };
   }
 
   /**
@@ -385,6 +398,7 @@ export class StockService {
       form: created.form,
       dosage: created.dosage,
       barcode: created.barcode,
+      priceLbp: created.priceLbp,
     };
   }
 

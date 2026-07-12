@@ -20,6 +20,7 @@ import { QuantityPill } from '@/components/stock/quantity-pill';
 import {
   expiryStatus,
   formatDate,
+  formatPrice,
   isLowQuantity,
   medicineSubtitle,
 } from '@/lib/stock';
@@ -120,6 +121,11 @@ function StockRow({
             </p>
           </div>
         </div>
+      </TableCell>
+      <TableCell>
+        <span className="text-sm font-medium text-gray-900">
+          {formatPrice(medicine.priceLbp)}
+        </span>
       </TableCell>
       <TableCell>
         <QuantityPill quantity={medicine.totalQuantity} />
@@ -454,6 +460,7 @@ function StockPageContent() {
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 <TableHead>Medicine</TableHead>
+                <TableHead className="w-36">Price</TableHead>
                 <TableHead className="w-40">Total quantity</TableHead>
                 <TableHead className="w-24">Batches</TableHead>
                 <TableHead className="w-52">Nearest expiry</TableHead>

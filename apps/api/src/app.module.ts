@@ -10,6 +10,7 @@ import { EmployeesModule } from './employees/employees.module';
 import { PharmaciesModule } from './pharmacies/pharmacies.module';
 import { MedicinesModule } from './medicines/medicines.module';
 import { StockModule } from './stock/stock.module';
+import { InquiriesModule } from './inquiries/inquiries.module';
 import { StatsModule } from './stats/stats.module';
 import { AuditModule } from './audit/audit.module';
 import { ProfileModule } from './profile/profile.module';
@@ -31,6 +32,7 @@ import { DatabaseModule } from './database/database.module';
     PharmaciesModule,
     MedicinesModule,
     StockModule,
+    InquiriesModule,
     StatsModule,
     AuditModule,
     ProfileModule,
