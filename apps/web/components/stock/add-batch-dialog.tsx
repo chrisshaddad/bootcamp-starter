@@ -58,7 +58,9 @@ const batchFormSchema = z.object({
 });
 type BatchForm = z.infer<typeof batchFormSchema>;
 
-// New-medicine fields for the barcode-not-found path.
+// New-medicine fields for the barcode-not-found path. Price is kept as a
+// validated string here (the whole form is string-based) and converted to a
+// number on submit; the server re-validates via medicineCreateRequestSchema.
 const newMedicineSchema = z.object({
   brandName: z.string().trim().min(1, 'Brand name is required').max(200),
   type: z.string().trim().max(20, 'Keep type under 20 characters').optional(),
@@ -69,6 +71,15 @@ const newMedicineSchema = z.object({
     .max(100, 'Keep dosage under 100 characters')
     .optional(),
   barcode: z.string().trim().max(100, 'Barcode is too long').optional(),
+  priceLbp: z
+    .string()
+    .trim()
+    .min(1, 'Price is required')
+    .refine((value) => {
+      const parsed = Number(value);
+      return !Number.isNaN(parsed) && parsed >= 0;
+    }, 'Enter a valid price')
+    .refine((value) => Number(value) <= 9_999_999_999, 'Price is too large'),
   ingredients: z.array(z.string()),
 });
 type NewMedicineForm = z.infer<typeof newMedicineSchema>;
@@ -204,6 +215,7 @@ function BarcodeLookup({
       form: '',
       dosage: '',
       barcode: '',
+      priceLbp: '',
       ingredients: [],
     },
   });
@@ -229,6 +241,7 @@ function BarcodeLookup({
           form: '',
           dosage: '',
           barcode: code,
+          priceLbp: '',
           ingredients: [],
         });
       }
@@ -253,7 +266,7 @@ function BarcodeLookup({
         form: data.form || null,
         ingredients: data.ingredients,
         barcode: data.barcode || null,
-        priceLbp: null,
+        priceLbp: Number(data.priceLbp),
       });
       toast.success(`Added ${medicine.brandName} to the catalog.`);
       onSelect(medicine);
@@ -351,6 +364,22 @@ function BarcodeLookup({
           />
           {errors.barcode ? (
             <p className="text-xs text-error">{errors.barcode.message}</p>
+          ) : null}
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-gray-700">
+            Price <span className="font-normal text-gray-400">(LBP)</span>
+          </label>
+          <Input
+            type="number"
+            min={0}
+            step="any"
+            inputMode="numeric"
+            {...register('priceLbp')}
+            placeholder="e.g. 150000"
+          />
+          {errors.priceLbp ? (
+            <p className="text-xs text-error">{errors.priceLbp.message}</p>
           ) : null}
         </div>
         <Button type="submit" className="w-full" disabled={isSubmitting}>
@@ -453,6 +482,13 @@ export function AddBatchDialog({
   return (
     <Dialog open onOpenChange={(open) => !open && !isSubmitting && onClose()}>
       <DialogContent
+        // When a medicine is preset we open straight to the batch form; don't
+        // auto-focus its first field (Quantity), which selects the value and
+        // invites an accidental overwrite. The search/barcode steps keep their
+        // own autoFocus.
+        onOpenAutoFocus={
+          presetMedicine ? (event) => event.preventDefault() : undefined
+        }
         // The medicine picker and the "create new medicine" form differ a lot in
         // height; cap at the viewport and scroll so the taller form never spills
         // off-screen (mirrors the super-admin medicines dialog).

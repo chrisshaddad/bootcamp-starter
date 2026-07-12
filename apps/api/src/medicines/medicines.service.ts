@@ -150,6 +150,20 @@ export class MedicinesService {
     };
   }
 
+  /**
+   * The full catalog record for one medicine (every displayable field), or null
+   * if it no longer exists. Reused by other slices (e.g. inquiries) that want to
+   * show complete, canonical medicine details without duplicating the Decimal /
+   * ingredient mapping. The catalog is global, so there is no tenant scope.
+   */
+  async getById(id: string): Promise<MedicineResponse | null> {
+    const medicine = await this.prisma.medicine.findUnique({
+      where: { id },
+      select: MEDICINE_SELECT,
+    });
+    return medicine ? this.toResponse(medicine) : null;
+  }
+
   // Build the Prisma filter from the shared catalog filters. `ignore` drops one
   // dimension so faceting can compute "what other values are available if this
   // one weren't selected" — the basis for the cascading dropdowns.

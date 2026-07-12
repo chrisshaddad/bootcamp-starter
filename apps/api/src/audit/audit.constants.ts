@@ -34,6 +34,9 @@ export const AUDIT_ACTIONS = {
   STOCK_BATCH_UPDATE: 'stock_batch.update',
   STOCK_BATCH_DELETE: 'stock_batch.delete',
 
+  INQUIRY_REPLY: 'inquiry.reply',
+  INQUIRY_STATUS_CHANGE: 'inquiry.status_change',
+
   PROFILE_UPDATE: 'profile.update',
 
   AUTH_MAGIC_LINK_REQUESTED: 'auth.magic_link_requested',
@@ -49,4 +52,5 @@ export const AUDIT_ENTITIES = {
   PHARMACY: 'Pharmacy',
   PHARMACY_BRANCH: 'PharmacyBranch',
   STOCK_BATCH: 'StockBatch',
+  INQUIRY: 'Inquiry',
 } as const;

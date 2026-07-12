@@ -56,6 +56,11 @@ export function isLowQuantity(quantity: number): boolean {
   return quantityLevel(quantity) === 'low';
 }
 
+// "12,000 LBP" — the human-facing medicine price, or "—" when unset.
+export function formatPrice(value: number | null | undefined): string {
+  return value == null ? '—' : `${value.toLocaleString()} LBP`;
+}
+
 // "12 Aug 2026" — the human-facing expiry/date format used across stock.
 export function formatDate(value: string | Date): string {
   return localDateFromKey(toDateKey(value)).toLocaleDateString(undefined, {

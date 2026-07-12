@@ -7,5 +7,9 @@ export default function InquiriesLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <RoleGuard allow={['INQUIRY_OFFICER']}>{children}</RoleGuard>;
+  return (
+    <RoleGuard allow={['INQUIRY_OFFICER', 'PHARMACY_ADMIN']}>
+      {children}
+    </RoleGuard>
+  );
 }

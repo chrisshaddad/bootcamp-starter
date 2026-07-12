@@ -11,6 +11,9 @@ export const stockMedicineSummarySchema = z.object({
   form: z.string().nullable(),
   dosage: z.string().nullable(),
   barcode: z.string().nullable(),
+  // The medicine's catalog price in LBP (a plain number; the API converts
+  // Prisma's Decimal). Null when no price is set.
+  priceLbp: z.number().nullable(),
   totalQuantity: z.number().int().nonnegative(),
   batchCount: z.number().int().nonnegative(),
   nearestExpiry: dateSchema.nullable(),

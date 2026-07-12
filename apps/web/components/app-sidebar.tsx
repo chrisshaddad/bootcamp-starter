@@ -66,6 +66,10 @@ const pharmacyAdminNavItems: NavItem[] = [
   // primary admin task, so it leads before staff management.
   { title: 'Stock', url: '/stock', icon: Package },
   { title: 'Employees', url: '/pharmacy/employees', icon: Users },
+  // Inquiries is cross-branch oversight for the admin; the officer sees the same
+  // area scoped to their own branch. (Role→page wiring is finalized later — the
+  // admin can reach it here for now.)
+  { title: 'Inquiries', url: '/inquiries', icon: MessageSquare },
   {
     title: 'Audit Logs',
     url: '/pharmacy/audit',

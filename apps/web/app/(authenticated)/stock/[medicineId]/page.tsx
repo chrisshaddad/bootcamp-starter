@@ -29,6 +29,7 @@ import { ApiError } from '@/lib/api';
 import {
   expiryStatus,
   formatDate,
+  formatPrice,
   isLowQuantity,
   medicineSubtitle,
   toDateInputValue,
@@ -112,7 +113,9 @@ function EditBatchDialog({
 
   return (
     <Dialog open onOpenChange={(open) => !open && !isSubmitting && onClose()}>
-      <DialogContent>
+      {/* Don't auto-focus the first field (Quantity) on open — it selects the
+          value and invites an accidental overwrite. */}
+      <DialogContent onOpenAutoFocus={(event) => event.preventDefault()}>
         <form onSubmit={handleSubmit(onSubmit)}>
           <DialogHeader>
             <DialogTitle>Edit batch</DialogTitle>
@@ -339,6 +342,11 @@ function StockMedicineDetailContent() {
                       .join('  ·  ');
                     return meta ? <span>{meta}</span> : null;
                   })()}
+                  {detail.medicine.priceLbp !== null && (
+                    <span className="inline-flex items-center gap-1 rounded-md bg-success/10 px-2 py-0.5 font-semibold text-success">
+                      {formatPrice(detail.medicine.priceLbp)}
+                    </span>
+                  )}
                   <span className="inline-flex items-center gap-1 rounded-md bg-primary-100 px-2 py-0.5 font-semibold text-primary-hover">
                     <Building2 className="h-3.5 w-3.5" />
                     {detail.branchName}
