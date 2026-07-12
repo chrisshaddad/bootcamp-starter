@@ -1,4 +1,4 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Param, ParseUUIDPipe } from '@nestjs/common';
 import type {
   StudentOrganizationGradesResponse,
   StudentOrganizationsResponse,
@@ -20,7 +20,8 @@ export class StudentsController {
   @Get('organizations/:organizationId/grades')
   @Roles('SUPER_ADMIN')
   async findGradesByOrganization(
-    @Param('organizationId') organizationId: string,
+    @Param('organizationId', new ParseUUIDPipe({ version: '4' }))
+    organizationId: string,
   ): Promise<StudentOrganizationGradesResponse> {
     return this.studentsService.findGradesByOrganization(organizationId);
   }
@@ -28,8 +29,10 @@ export class StudentsController {
   @Get('organizations/:organizationId/grades/:gradeId')
   @Roles('SUPER_ADMIN')
   async findStudentsByOrganizationAndGrade(
-    @Param('organizationId') organizationId: string,
-    @Param('gradeId') gradeId: string,
+    @Param('organizationId', new ParseUUIDPipe({ version: '4' }))
+    organizationId: string,
+    @Param('gradeId', new ParseUUIDPipe({ version: '4' }))
+    gradeId: string,
   ): Promise<StudentsByGradeResponse> {
     return this.studentsService.findStudentsByOrganizationAndGrade(
       organizationId,

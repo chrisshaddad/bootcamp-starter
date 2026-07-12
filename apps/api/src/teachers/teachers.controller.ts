@@ -1,4 +1,4 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Param, ParseUUIDPipe } from '@nestjs/common';
 import type {
   TeacherOrganizationsResponse,
   TeachersByOrganizationResponse,
@@ -19,7 +19,8 @@ export class TeachersController {
   @Get('organizations/:organizationId')
   @Roles('SUPER_ADMIN')
   async findTeachersByOrganization(
-    @Param('organizationId') organizationId: string,
+    @Param('organizationId', new ParseUUIDPipe({ version: '4' }))
+    organizationId: string,
   ): Promise<TeachersByOrganizationResponse> {
     return this.teachersService.findTeachersByOrganization(organizationId);
   }
