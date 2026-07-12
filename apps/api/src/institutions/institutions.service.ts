@@ -11,6 +11,7 @@ import type {
   InstitutionListResponse,
   InstitutionDetailResponse,
   InstitutionCreateRequest,
+  InstitutionUpdateRequest,
 } from '@repo/contracts';
 
 @Injectable()
@@ -87,6 +88,49 @@ export class InstitutionsService {
     }
 
     return institution;
+  }
+
+  /**
+   * Get the caller's own institution (Institution Admin / Staff / Professional).
+   * Unlike findOne, there is no platform-institution exclusion because the
+   * caller's institutionId is always a real tenant.
+   */
+  async findMine(institutionId: string): Promise<InstitutionDetailResponse> {
+    const institution = await this.prisma.institution.findUnique({
+      where: { id: institutionId },
+      select: this.detailSelect,
+    });
+
+    if (!institution) {
+      throw new NotFoundException('Institution not found');
+    }
+
+    return institution;
+  }
+
+  /**
+   * Update the caller's own institution profile (Institution Admin only).
+   */
+  async updateMine(
+    institutionId: string,
+    data: InstitutionUpdateRequest,
+  ): Promise<InstitutionDetailResponse> {
+    await this.prisma.institution.update({
+      where: { id: institutionId },
+      data: {
+        ...(data.name !== undefined ? { name: data.name } : {}),
+        ...(data.type !== undefined ? { type: data.type } : {}),
+        ...(data.address !== undefined ? { address: data.address } : {}),
+        ...(data.phone !== undefined ? { phone: data.phone } : {}),
+        ...(data.logoUrl !== undefined ? { logoUrl: data.logoUrl } : {}),
+        ...(data.emailNotifications !== undefined
+          ? { emailNotifications: data.emailNotifications }
+          : {}),
+      },
+    });
+
+    this.logger.log(`Institution ${institutionId} profile updated`);
+    return this.findMine(institutionId);
   }
 
   /**

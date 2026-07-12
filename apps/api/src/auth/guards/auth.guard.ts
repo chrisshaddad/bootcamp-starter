@@ -48,6 +48,11 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException('Invalid or expired session');
     }
 
+    // Deactivated accounts are never deleted, but must not be able to act.
+    if (!user.isActive) {
+      throw new UnauthorizedException('Account is deactivated');
+    }
+
     // Attach user and session ID to request for later use
     (request as AuthenticatedRequest).user = user;
     (request as AuthenticatedRequest).sessionId = sessionId;

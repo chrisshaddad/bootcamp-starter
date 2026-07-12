@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Search, Settings, LogOut, ChevronDown } from 'lucide-react';
+import { Search, Settings, LogOut, ChevronDown, Bell } from 'lucide-react';
 import { useAuth, useUser } from '@/hooks/use-auth';
+import { useNotifications } from '@/hooks/use-notifications';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -19,6 +20,7 @@ import { SidebarTrigger } from '@/components/ui/sidebar';
 export function TopNavbar() {
   const { user } = useUser({ redirectOnUnauthenticated: false });
   const { logout } = useAuth();
+  const { unreadCount } = useNotifications({ enabled: !!user });
   const [searchQuery, setSearchQuery] = useState('');
 
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
@@ -60,6 +62,23 @@ export function TopNavbar() {
 
       {/* Right Section - User */}
       <div className="flex items-center gap-3">
+        {/* Notifications bell */}
+        <Button
+          asChild
+          variant="ghost"
+          size="icon"
+          className="relative h-10 w-10 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+        >
+          <Link href="/notifications" aria-label="Notifications">
+            <Bell className="h-5 w-5" />
+            {unreadCount > 0 && (
+              <span className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 text-[10px] font-semibold leading-none text-white">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </Link>
+        </Button>
+
         {/* User Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

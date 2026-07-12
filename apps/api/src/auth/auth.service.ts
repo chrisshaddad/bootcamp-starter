@@ -39,6 +39,39 @@ export class AuthService {
   ) {}
 
   /**
+   * Mint a fresh magic-link token for a user, invalidating any outstanding
+   * ones. Returns the token so callers can build the URL they need
+   * (sign-in vs. invitation). Shared by requestMagicLink and sendInvitation
+   * so the token/expiry logic lives in one place.
+   */
+  private async createMagicLinkToken(userId: string): Promise<string> {
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(
+      Date.now() + MAGIC_LINK_EXPIRY_MINUTES * 60 * 1000,
+    );
+
+    // Invalidate any existing magic links for this user
+    await this.prisma.magicLink.updateMany({
+      where: {
+        userId,
+        usedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+      data: { usedAt: new Date() }, // Mark as used to invalidate
+    });
+
+    await this.prisma.magicLink.create({
+      data: {
+        userId,
+        token,
+        expiresAt,
+      },
+    });
+
+    return token;
+  }
+
+  /**
    * Request a magic link for the given email
    * Creates a magic link token and queues an email to be sent
    */
@@ -54,30 +87,7 @@ export class AuthService {
       return { success: true };
     }
 
-    // Generate secure token
-    const token = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(
-      Date.now() + MAGIC_LINK_EXPIRY_MINUTES * 60 * 1000,
-    );
-
-    // Invalidate any existing magic links for this user
-    await this.prisma.magicLink.updateMany({
-      where: {
-        userId: user.id,
-        usedAt: null,
-        expiresAt: { gt: new Date() },
-      },
-      data: { usedAt: new Date() }, // Mark as used to invalidate
-    });
-
-    // Create new magic link
-    await this.prisma.magicLink.create({
-      data: {
-        userId: user.id,
-        token,
-        expiresAt,
-      },
-    });
+    const token = await this.createMagicLinkToken(user.id);
 
     // Build magic link URL
     const appUrl = process.env.APP_URL;
@@ -92,6 +102,30 @@ export class AuthService {
 
     this.logger.log(`Magic link queued for user ${user.id}`);
     return { success: true };
+  }
+
+  /**
+   * Send an onboarding invitation to a freshly-created user. Mints a magic
+   * link (so the invitee can log in immediately) and queues the invitation
+   * email. Used by Users/Patients modules right after account creation.
+   */
+  async sendInvitation(
+    user: Pick<User, 'id' | 'email'>,
+    inviterName: string,
+    institutionName: string,
+  ): Promise<void> {
+    const token = await this.createMagicLinkToken(user.id);
+    const appUrl = process.env.APP_URL;
+    const invitationLink = `${appUrl}/auth/verify?token=${token}`;
+
+    await this.mailQueue.add(MAIL_JOBS.SEND_INVITATION, {
+      email: user.email,
+      inviterName,
+      institutionName,
+      invitationLink,
+    });
+
+    this.logger.log(`Invitation queued for user ${user.id}`);
   }
 
   /**
