@@ -1,11 +1,12 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { AuthService } from '../auth/auth.service';
-import type { OrganizationStatus } from '@repo/db';
+import type { OrganizationStatus, Prisma } from '@repo/db';
 import type {
   CreateOrganizationRequest,
   OrganizationListResponse,
@@ -97,13 +98,20 @@ export class OrganizationsService {
    */
   async findAll(options: {
     status?: OrganizationStatus;
+    search?: string;
     page?: number;
     limit?: number;
   }): Promise<OrganizationListResponse> {
-    const { status, page = 1, limit = 20 } = options;
+    const { status, search, page = 1, limit = 20 } = options;
     const skip = (page - 1) * limit;
 
-    const where = status ? { status } : {};
+    const trimmedSearch = search?.trim();
+    const where: Prisma.OrganizationWhereInput = {
+      ...(status ? { status } : {}),
+      ...(trimmedSearch
+        ? { name: { contains: trimmedSearch, mode: 'insensitive' } }
+        : {}),
+    };
 
     const [organizations, total] = await Promise.all([
       this.prisma.organization.findMany({
@@ -128,7 +136,7 @@ export class OrganizationsService {
           },
           _count: {
             select: {
-              users: true,
+              members: true,
             },
           },
         },
@@ -172,7 +180,7 @@ export class OrganizationsService {
         },
         _count: {
           select: {
-            users: true,
+            members: true,
           },
         },
       },
@@ -235,7 +243,7 @@ export class OrganizationsService {
         },
         _count: {
           select: {
-            users: true,
+            members: true,
           },
         },
       },
@@ -289,12 +297,125 @@ export class OrganizationsService {
         },
         _count: {
           select: {
-            users: true,
+            members: true,
           },
         },
       },
     });
 
     return organization;
+  }
+
+  /**
+   * Deactivate an approved library (ACTIVE -> SUSPENDED).
+   * Only valid for a currently-ACTIVE org; PENDING/REJECTED use approve/reject.
+   */
+  async deactivate(id: string): Promise<OrganizationDetailResponse> {
+    const existing = await this.prisma.organization.findUnique({
+      where: { id },
+      select: { status: true },
+    });
+
+    if (!existing) {
+      throw new NotFoundException(`Organization with ID ${id} not found`);
+    }
+
+    if (existing.status !== 'ACTIVE') {
+      throw new BadRequestException(
+        `Only an ACTIVE library can be deactivated (current status: ${existing.status}).`,
+      );
+    }
+
+    return this.prisma.organization.update({
+      where: { id },
+      data: { status: 'SUSPENDED' },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        status: true,
+        description: true,
+        website: true,
+        logoUrl: true,
+        createdAt: true,
+        updatedAt: true,
+        approvedAt: true,
+        createdBy: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+          },
+        },
+        approvedBy: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+          },
+        },
+        _count: {
+          select: {
+            members: true,
+          },
+        },
+      },
+    });
+  }
+
+  /**
+   * Reactivate a deactivated library (SUSPENDED/INACTIVE -> ACTIVE).
+   */
+  async activate(id: string): Promise<OrganizationDetailResponse> {
+    const existing = await this.prisma.organization.findUnique({
+      where: { id },
+      select: { status: true },
+    });
+
+    if (!existing) {
+      throw new NotFoundException(`Organization with ID ${id} not found`);
+    }
+
+    if (existing.status !== 'SUSPENDED' && existing.status !== 'INACTIVE') {
+      throw new BadRequestException(
+        `Only a SUSPENDED or INACTIVE library can be activated (current status: ${existing.status}).`,
+      );
+    }
+
+    return this.prisma.organization.update({
+      where: { id },
+      data: { status: 'ACTIVE' },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        status: true,
+        description: true,
+        website: true,
+        logoUrl: true,
+        createdAt: true,
+        updatedAt: true,
+        approvedAt: true,
+        createdBy: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+          },
+        },
+        approvedBy: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+          },
+        },
+        _count: {
+          select: {
+            members: true,
+          },
+        },
+      },
+    });
   }
 }

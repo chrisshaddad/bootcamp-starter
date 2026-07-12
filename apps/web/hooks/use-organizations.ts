@@ -13,6 +13,7 @@ import type {
 
 interface UseOrganizationsOptions {
   status?: OrganizationStatus;
+  search?: string;
   enabled?: boolean;
 }
 
@@ -30,11 +31,14 @@ interface UseOrganizationsReturn {
 export function useOrganizations(
   options: UseOrganizationsOptions = {},
 ): UseOrganizationsReturn {
-  const { status, enabled = true } = options;
+  const { status, search, enabled = true } = options;
 
-  const endpoint = status
-    ? `/organizations?status=${status}`
-    : '/organizations';
+  const params = new URLSearchParams();
+  if (status) params.set('status', status);
+  const trimmedSearch = search?.trim();
+  if (trimmedSearch) params.set('search', trimmedSearch);
+  const query = params.toString();
+  const endpoint = query ? `/organizations?${query}` : '/organizations';
 
   const {
     data,
@@ -62,6 +66,8 @@ interface UseOrganizationReturn {
   error: Error | undefined;
   approve: () => Promise<OrganizationActionResponse>;
   reject: () => Promise<OrganizationActionResponse>;
+  activate: () => Promise<OrganizationActionResponse>;
+  deactivate: () => Promise<OrganizationActionResponse>;
   mutate: () => void;
 }
 
@@ -105,12 +111,30 @@ export function useOrganization(
     return result;
   }, [id, invalidateAll]);
 
+  const deactivate = useCallback(async () => {
+    const result = await apiPatch<OrganizationActionResponse>(
+      `/organizations/${id}/deactivate`,
+    );
+    invalidateAll();
+    return result;
+  }, [id, invalidateAll]);
+
+  const activate = useCallback(async () => {
+    const result = await apiPatch<OrganizationActionResponse>(
+      `/organizations/${id}/activate`,
+    );
+    invalidateAll();
+    return result;
+  }, [id, invalidateAll]);
+
   return {
     organization: data,
     isLoading,
     error,
     approve,
     reject,
+    activate,
+    deactivate,
     mutate: swrMutate,
   };
 }
