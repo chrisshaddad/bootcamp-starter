@@ -10,6 +10,7 @@ import type {
   ProjectByIdResponse,
   ProjectBySlugResponse,
   ProjectMediaUpdateRequest,
+  ProjectMediaUploadRequest,
   ProjectMediaResponse,
 } from '@repo/contracts';
 
@@ -67,7 +68,7 @@ export function useUploadProjectMedia() {
     async (
       projectId: string,
       file: File,
-      options?: { caption?: string; sortOrder?: number },
+      options?: Pick<ProjectMediaUploadRequest, 'caption' | 'sortOrder'>,
     ) => {
       const formData = new FormData();
       formData.append('file', file);

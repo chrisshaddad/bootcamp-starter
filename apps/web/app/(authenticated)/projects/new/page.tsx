@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useForm, Controller } from 'react-hook-form';
@@ -50,6 +50,10 @@ export default function NewProjectPage() {
   const createProject = useCreateProject();
   const uploadMedia = useUploadProjectMedia();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Tracks every blob URL ever created for pendingMedia previews, so they
+  // can all be revoked on unmount (covers both the post-submit redirect and
+  // navigating away without submitting) — not just on manual removal.
+  const objectUrlsRef = useRef<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pendingMedia, setPendingMedia] = useState<PendingMedia[]>([]);
   // mock: no Technology/ProjectTechnology endpoint yet — selections here are
@@ -72,6 +76,16 @@ export default function NewProjectPage() {
     resolver: zodResolver(createProjectRequestSchema),
     defaultValues: { status: 'DRAFT' },
   });
+
+  useEffect(() => {
+    return () => {
+      // Not a DOM ref — it's a plain mutable array we push to as files are
+      // picked, so reading .current at cleanup time (not capturing it here)
+      // is exactly what we want: revoke whatever was accumulated by unmount.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      objectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, []);
 
   const title = watch('title');
 
@@ -183,10 +197,12 @@ export default function NewProjectPage() {
     e.target.value = '';
     if (files.length === 0) return;
 
-    setPendingMedia((prev) => [
-      ...prev,
-      ...files.map((file) => ({ file, previewUrl: URL.createObjectURL(file) })),
-    ]);
+    const newPending = files.map((file) => ({
+      file,
+      previewUrl: URL.createObjectURL(file),
+    }));
+    objectUrlsRef.current.push(...newPending.map((p) => p.previewUrl));
+    setPendingMedia((prev) => [...prev, ...newPending]);
   };
 
   const handleRemovePending = (index: number) => {
@@ -378,7 +394,7 @@ export default function NewProjectPage() {
                       type="button"
                       onClick={() => handleRemovePending(index)}
                       aria-label="Remove screenshot"
-                      className="bg-background/90 text-foreground absolute top-1 right-1 flex h-6 w-6 items-center justify-center rounded-full border opacity-0 transition-opacity group-hover:opacity-100"
+                      className="bg-background/90 text-foreground absolute top-1 right-1 flex h-6 w-6 items-center justify-center rounded-full border opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -394,18 +410,21 @@ export default function NewProjectPage() {
               onChange={handleFilesSelected}
               className="hidden"
             />
-            <Card
-              className="cursor-pointer border-dashed"
+            <button
+              type="button"
               onClick={() => fileInputRef.current?.click()}
+              className="w-full text-left"
             >
-              <CardContent className="flex flex-col items-center gap-1.5 py-6 text-center">
-                <ImageIcon className="h-5 w-5 text-muted-foreground" />
-                <p className="text-muted-foreground text-xs">
-                  Click to add screenshots (JPEG, PNG, WEBP, or GIF, up to 5MB
-                  each) — uploaded once you create the project
-                </p>
-              </CardContent>
-            </Card>
+              <Card className="cursor-pointer border-dashed">
+                <CardContent className="flex flex-col items-center gap-1.5 py-6 text-center">
+                  <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                  <p className="text-muted-foreground text-xs">
+                    Click to add screenshots (JPEG, PNG, WEBP, or GIF, up to 5MB
+                    each) — uploaded once you create the project
+                  </p>
+                </CardContent>
+              </Card>
+            </button>
           </div>
 
           <div className="space-y-2">

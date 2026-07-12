@@ -103,7 +103,7 @@ export default function EditProjectPage() {
   ) => {
     const file = e.target.files?.[0];
     e.target.value = '';
-    if (!file || !project) return;
+    if (!file || !project || isUploading) return;
 
     setIsUploading(true);
     try {
@@ -235,7 +235,7 @@ export default function EditProjectPage() {
                       onClick={() => handleDeleteMedia(media.id)}
                       disabled={deletingMediaId === media.id}
                       aria-label="Delete media"
-                      className="bg-background/90 text-foreground absolute top-1 right-1 flex h-6 w-6 items-center justify-center rounded-full border opacity-0 transition-opacity group-hover:opacity-100"
+                      className="bg-background/90 text-foreground absolute top-1 right-1 flex h-6 w-6 items-center justify-center rounded-full border opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
                     >
                       {deletingMediaId === media.id ? (
                         <Loader2 className="h-3 w-3 animate-spin" />
@@ -254,23 +254,27 @@ export default function EditProjectPage() {
               onChange={handleMediaSelected}
               className="hidden"
             />
-            <Card
-              className="cursor-pointer border-dashed"
+            <button
+              type="button"
+              disabled={isUploading}
               onClick={() => fileInputRef.current?.click()}
+              className="w-full text-left disabled:cursor-not-allowed disabled:opacity-70"
             >
-              <CardContent className="flex flex-col items-center gap-1.5 py-6 text-center">
-                {isUploading ? (
-                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                ) : (
-                  <ImageIcon className="h-5 w-5 text-muted-foreground" />
-                )}
-                <p className="text-muted-foreground text-xs">
-                  {isUploading
-                    ? 'Uploading...'
-                    : 'Click to upload a screenshot (JPEG, PNG, WEBP, or GIF, up to 5MB)'}
-                </p>
-              </CardContent>
-            </Card>
+              <Card className="cursor-pointer border-dashed">
+                <CardContent className="flex flex-col items-center gap-1.5 py-6 text-center">
+                  {isUploading ? (
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  ) : (
+                    <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                  )}
+                  <p className="text-muted-foreground text-xs">
+                    {isUploading
+                      ? 'Uploading...'
+                      : 'Click to upload a screenshot (JPEG, PNG, WEBP, or GIF, up to 5MB)'}
+                  </p>
+                </CardContent>
+              </Card>
+            </button>
           </div>
 
           <div className="space-y-2">
