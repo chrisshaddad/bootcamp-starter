@@ -29,6 +29,7 @@ export class StudentsService {
       by: ['organizationId'],
       where: {
         role: 'MEMBER',
+        isConfirmed: true,
         organizationId: {
           not: null,
         },
@@ -76,6 +77,7 @@ export class StudentsService {
         user: {
           organizationId,
           role: 'MEMBER',
+          isConfirmed: true,
         },
       },
       select: {
@@ -189,6 +191,7 @@ export class StudentsService {
           select: {
             name: true,
             email: true,
+            isConfirmed: true,
           },
         },
         section: {
@@ -211,7 +214,7 @@ export class StudentsService {
         dateOfBirth: studentProfile.dateOfBirth
           ? studentProfile.dateOfBirth.toISOString().slice(0, 10)
           : null,
-        status: 'Active',
+        status: studentProfile.user.isConfirmed ? 'Active' : 'Pending',
       })),
     };
   }
