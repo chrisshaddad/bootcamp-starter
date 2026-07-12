@@ -11,6 +11,7 @@ export * from './expenses';
 export * from './sales';
 export * from './imports';
 export * from './dashboard';
+export * from './reports';
 export * from './goals';
 export * from './alerts';
 export * from './ai-insights';

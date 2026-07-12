@@ -270,6 +270,90 @@ a {
   }
 }
 
+/* ---------------------------------------------------------------------------
+ * Print — used by the Reports page "Export PDF" flow. Hide all app chrome and
+ * render only the report document, forcing light colours so it prints cleanly
+ * regardless of the (dark-only) app theme.
+ * ------------------------------------------------------------------------- */
+@media print {
+  /* margin: 0 makes Chrome omit its own date/title/URL/page-number header and
+     footer and reclaims that vertical space. The document supplies its own
+     padding for visual margins (see #report-document below). */
+  @page {
+    margin: 0;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    overflow: visible !important;
+  }
+  .dark body {
+    background-image: none !important;
+  }
+
+  /* Remove the app chrome from the document flow entirely (display:none, not
+     visibility:hidden) so the report is the only in-flow content and can
+     paginate naturally from the top-left of the page. Hiding these with
+     visibility:hidden instead would leave the sidebar's width reserved, which
+     previously forced position:absolute on the report — and an absolutely
+     positioned element cannot fragment across pages, which was the cause of the
+     stray blank pages. The top navbar and the page's own controls are hidden
+     via `print:hidden` in their components. */
+  [data-slot='sidebar'],
+  [data-sonner-toaster] {
+    display: none !important;
+  }
+
+  /* Neutralise the app shell's flex layout and full-viewport min-height in
+     print. The `min-h-svh` + `flex-1` chain stretches the shell to at least one
+     page tall and, combined with rounding, spills a sliver onto a trailing
+     blank page. In print the document should be exactly as tall as its content. */
+  [data-slot='sidebar-wrapper'],
+  [data-slot='sidebar-inset'] {
+    display: block !important;
+    min-height: 0 !important;
+    height: auto !important;
+  }
+
+  /* #report-document is a real <table> (see report-document.tsx) so its
+     <thead> repeats on every printed page — Chrome only honours the repeating
+     -header print behaviour for genuine table markup, not CSS `display:table`
+     on a div. Table/row/cell display switching happens via Tailwind's
+     `print:table` / `print:table-row` / `print:table-cell` classes in the
+     component. */
+  #report-document,
+  #report-document * {
+    /* Print background fills and chart colours, not just text. */
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  #report-document {
+    box-shadow: none !important;
+    --tw-ring-shadow: 0 0 #0000;
+    /* The page wraps the report in a `space-y` stack; drop that inherited top
+       margin in print so page 1 doesn't lose slack and spill a row over. */
+    margin-top: 0 !important;
+  }
+  /* The body table has one <tr> per report section (see ReportRow in
+     report-document.tsx) — each stays whole by default so a section never
+     splits mid-way. The one exception is a row explicitly marked
+     `data-breakable` (a section that may legitimately be taller than a page,
+     e.g. AI Insights), which is allowed to span pages; its own children
+     (each insight card) still avoid splitting via their own
+     `break-inside-avoid` class. */
+  #report-document tr {
+    break-inside: avoid;
+  }
+  #report-document tr[data-breakable] {
+    break-inside: auto;
+  }
+  /* Headings stay attached to the content that follows them. */
+  #report-document h2 {
+    break-after: avoid;
+  }
+}
+
 /* Utility Classes for Typography */
 @layer utilities {
   /* Body XLarge */

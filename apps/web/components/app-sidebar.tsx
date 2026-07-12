@@ -14,6 +14,7 @@ import {
   Upload,
   Target,
   Sparkles,
+  FileText,
   Users,
 } from 'lucide-react';
 import { useUser } from '@/hooks/use-auth';
@@ -48,6 +49,7 @@ const orgNavItems: NavItem[] = [
   { title: 'Sales', url: '/sales', icon: TrendingUp },
   { title: 'Expenses', url: '/expenses', icon: Receipt },
   { title: 'Goals', url: '/goals', icon: Target },
+  { title: 'Reports', url: '/reports', icon: FileText },
   { title: 'Imports', url: '/imports', icon: Upload },
   { title: 'AI Insights', url: '/ai-insights', icon: Sparkles },
 ];

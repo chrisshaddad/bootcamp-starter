@@ -16,6 +16,7 @@ import { ExpenseCategoriesModule } from './expense-categories/expense-categories
 import { ExpensesModule } from './expenses/expenses.module';
 import { SalesModule } from './sales/sales.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { ReportsModule } from './reports/reports.module';
 import { ImportsModule } from './imports/imports.module';
 import { GoalsModule } from './goals/goals.module';
 import { AlertsModule } from './alerts/alerts.module';
@@ -41,6 +42,7 @@ import { AiInsightsModule } from './ai-insights/ai-insights.module';
     ExpensesModule,
     SalesModule,
     DashboardModule,
+    ReportsModule,
     ImportsModule,
     GoalsModule,
     AlertsModule,
