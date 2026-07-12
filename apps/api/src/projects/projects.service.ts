@@ -8,6 +8,8 @@ import { PrismaService } from '../database/prisma.service';
 import {
   type CreateProjectRequest,
   type UpdateProjectRequest,
+  type ProjectMediaUploadRequest,
+  type ProjectMediaUpdateRequest,
 } from '@repo/contracts';
 import {
   ProjectStatus,
@@ -16,6 +18,7 @@ import {
   AccountType,
   User,
   Prisma,
+  MediaType,
 } from '@repo/db';
 
 @Injectable()
@@ -45,6 +48,13 @@ export class ProjectsService {
   async getProjectById(user: User, projectId: string) {
     const project = await this.prisma.project.findUnique({
       where: { id: projectId },
+      include: {
+        media: {
+          orderBy: {
+            sortOrder: 'asc',
+          },
+        },
+      },
     });
 
     if (!project) {
@@ -255,6 +265,13 @@ export class ProjectsService {
   async getProjectBySlug(slug: string) {
     const project = await this.prisma.project.findUnique({
       where: { slug },
+      include: {
+        media: {
+          orderBy: {
+            sortOrder: 'asc',
+          },
+        },
+      },
     });
 
     if (!project || project.status !== ProjectStatus.PUBLISHED) {
@@ -262,5 +279,109 @@ export class ProjectsService {
     }
 
     return project;
+  }
+
+  // --- NEW MEDIA METHODS START HERE ---
+
+  async addMedia(
+    user: User,
+    projectId: string,
+    data: ProjectMediaUploadRequest & { storageKey: string; publicUrl: string },
+  ) {
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+    });
+
+    if (!project) throw new NotFoundException('Project not found');
+
+    const isAdmin = user.accountType === AccountType.SUPER_ADMIN;
+    const isCreator = project.createdByUserId === user.id;
+
+    if (!isAdmin && !isCreator) {
+      throw new ForbiddenException(
+        'You are not authorized to edit this project',
+      );
+    }
+
+    return this.prisma.projectMedia.create({
+      data: {
+        projectId: project.id,
+        uploadedByUserId: user.id,
+        mediaType: data.mediaType as MediaType,
+        storageKey: data.storageKey,
+        publicUrl: data.publicUrl,
+        caption: data.caption,
+        sortOrder: data.sortOrder,
+      },
+    });
+  }
+
+  async updateMedia(
+    user: User,
+    projectId: string,
+    mediaId: string,
+    data: ProjectMediaUpdateRequest,
+  ) {
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+    });
+
+    if (!project) throw new NotFoundException('Project not found');
+
+    const isAdmin = user.accountType === AccountType.SUPER_ADMIN;
+    const isCreator = project.createdByUserId === user.id;
+
+    if (!isAdmin && !isCreator) {
+      throw new ForbiddenException(
+        'You are not authorized to edit this project',
+      );
+    }
+
+    const media = await this.prisma.projectMedia.findUnique({
+      where: { id: mediaId },
+    });
+
+    if (!media || media.projectId !== projectId) {
+      throw new NotFoundException('Media not found');
+    }
+
+    return this.prisma.projectMedia.update({
+      where: { id: mediaId },
+      data: {
+        caption: data.caption !== undefined ? data.caption : undefined,
+        sortOrder: data.sortOrder !== undefined ? data.sortOrder : undefined,
+      },
+    });
+  }
+
+  async deleteMedia(user: User, projectId: string, mediaId: string) {
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+    });
+
+    if (!project) throw new NotFoundException('Project not found');
+
+    const isAdmin = user.accountType === AccountType.SUPER_ADMIN;
+    const isCreator = project.createdByUserId === user.id;
+
+    if (!isAdmin && !isCreator) {
+      throw new ForbiddenException(
+        'You are not authorized to edit this project',
+      );
+    }
+
+    const media = await this.prisma.projectMedia.findUnique({
+      where: { id: mediaId },
+    });
+
+    if (!media || media.projectId !== projectId) {
+      throw new NotFoundException('Media not found');
+    }
+
+    await this.prisma.projectMedia.delete({
+      where: { id: mediaId },
+    });
+
+    return { storageKey: media.storageKey };
   }
 }
