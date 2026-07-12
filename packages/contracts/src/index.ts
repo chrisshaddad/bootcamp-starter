@@ -1,6 +1,7 @@
 export * from './common';
 export * from './auth';
 export * from './users';
+export * from './employees';
 export * from './branches';
 export * from './pharmacies';
 export * from './medicines';
