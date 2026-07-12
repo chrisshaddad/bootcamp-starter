@@ -24,7 +24,8 @@ export const organizationDetailResponseSchema = z.object({
   createdBy: organizationUserSchema,
   approvedBy: organizationUserSchema.nullable(),
   _count: z.object({
-    users: z.number(),
+    // Patron count (LibraryMember), not staff (`users`).
+    members: z.number(),
   }),
 });
 export type OrganizationDetailResponse = z.infer<

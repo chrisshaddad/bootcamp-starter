@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { StatusBadge } from '@/components/status-badge';
 import {
   Dialog,
@@ -28,6 +29,8 @@ import {
   XCircle,
   ShieldX,
   Clock,
+  Power,
+  PowerOff,
 } from 'lucide-react';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -101,8 +104,12 @@ export default function OrganizationDetailPage() {
   const { user, isLoading: userLoading } = useUser();
   const [isApproving, setIsApproving] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
+  const [isDeactivating, setIsDeactivating] = useState(false);
+  const [isActivating, setIsActivating] = useState(false);
   const [showApproveDialog, setShowApproveDialog] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [showDeactivateDialog, setShowDeactivateDialog] = useState(false);
+  const [showActivateDialog, setShowActivateDialog] = useState(false);
 
   const orgId = params.id as string;
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
@@ -113,6 +120,8 @@ export default function OrganizationDetailPage() {
     error,
     approve,
     reject,
+    activate,
+    deactivate,
   } = useOrganization(orgId, { enabled: isSuperAdmin });
 
   const handleApprove = async () => {
@@ -140,6 +149,34 @@ export default function OrganizationDetailPage() {
       console.error(err);
     } finally {
       setIsRejecting(false);
+    }
+  };
+
+  const handleDeactivate = async () => {
+    setIsDeactivating(true);
+    try {
+      await deactivate();
+      toast.success('Library deactivated');
+      setShowDeactivateDialog(false);
+    } catch (err) {
+      toast.error('Failed to deactivate library');
+      console.error(err);
+    } finally {
+      setIsDeactivating(false);
+    }
+  };
+
+  const handleActivate = async () => {
+    setIsActivating(true);
+    try {
+      await activate();
+      toast.success('Library activated');
+      setShowActivateDialog(false);
+    } catch (err) {
+      toast.error('Failed to activate library');
+      console.error(err);
+    } finally {
+      setIsActivating(false);
     }
   };
 
@@ -175,6 +212,8 @@ export default function OrganizationDetailPage() {
   }
 
   const isPending = org.status === 'PENDING';
+  const isActive = org.status === 'ACTIVE';
+  const canActivate = org.status === 'SUSPENDED' || org.status === 'INACTIVE';
 
   return (
     <div className="space-y-6">
@@ -191,19 +230,30 @@ export default function OrganizationDetailPage() {
 
       {/* Header */}
       <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{org.name}</h1>
-          <div className="mt-2">
-            <StatusBadge
-              status={org.status}
-              labels={STATUS_LABELS}
-              colors={STATUS_COLORS}
-              className="border px-3 py-1 text-sm"
+        <div className="flex items-center gap-4">
+          <Avatar className="h-12 w-12 rounded-lg">
+            <AvatarImage
+              src={org.logoUrl ?? undefined}
+              alt={`${org.name} logo`}
             />
+            <AvatarFallback className="rounded-lg bg-library-primary-100 text-lg text-library-primary-900">
+              {org.name.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">{org.name}</h1>
+            <div className="mt-2">
+              <StatusBadge
+                status={org.status}
+                labels={STATUS_LABELS}
+                colors={STATUS_COLORS}
+                className="border px-3 py-1 text-sm"
+              />
+            </div>
           </div>
         </div>
 
-        {/* Action Buttons (only for PENDING organizations) */}
+        {/* Action Buttons — approve/reject for PENDING, activate/deactivate otherwise */}
         {isPending && (
           <div className="flex gap-3">
             <Button
@@ -222,6 +272,25 @@ export default function OrganizationDetailPage() {
               Approve
             </Button>
           </div>
+        )}
+        {isActive && (
+          <Button
+            variant="outline"
+            className="gap-2 text-error border-error/30 hover:bg-error-light"
+            onClick={() => setShowDeactivateDialog(true)}
+          >
+            <PowerOff className="h-4 w-4" />
+            Deactivate
+          </Button>
+        )}
+        {canActivate && (
+          <Button
+            className="gap-2 bg-success text-white hover:bg-success-dark"
+            onClick={() => setShowActivateDialog(true)}
+          >
+            <Power className="h-4 w-4" />
+            Activate
+          </Button>
         )}
       </div>
 
@@ -265,7 +334,7 @@ export default function OrganizationDetailPage() {
             <InfoRow
               icon={Users}
               label="Members"
-              value={`${org._count.users} user${org._count.users !== 1 ? 's' : ''}`}
+              value={`${org._count.members} member${org._count.members !== 1 ? 's' : ''}`}
             />
             <InfoRow
               icon={Calendar}
@@ -399,6 +468,67 @@ export default function OrganizationDetailPage() {
               disabled={isRejecting}
             >
               {isRejecting ? 'Rejecting...' : 'Reject'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Deactivate Confirmation Dialog */}
+      <Dialog
+        open={showDeactivateDialog}
+        onOpenChange={setShowDeactivateDialog}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Deactivate Library</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to deactivate <strong>{org.name}</strong>?
+              Its staff and members will lose access until it is reactivated.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowDeactivateDialog(false)}
+              disabled={isDeactivating}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeactivate}
+              disabled={isDeactivating}
+            >
+              {isDeactivating ? 'Deactivating...' : 'Deactivate'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Activate Confirmation Dialog */}
+      <Dialog open={showActivateDialog} onOpenChange={setShowActivateDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Activate Library</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to activate <strong>{org.name}</strong>? Its
+              staff and members will regain access to the platform.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowActivateDialog(false)}
+              disabled={isActivating}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="bg-success text-white hover:bg-success-dark"
+              onClick={handleActivate}
+              disabled={isActivating}
+            >
+              {isActivating ? 'Activating...' : 'Activate'}
             </Button>
           </DialogFooter>
         </DialogContent>

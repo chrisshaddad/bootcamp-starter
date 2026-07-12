@@ -40,11 +40,13 @@ export class OrganizationsController {
   @Roles('SUPER_ADMIN')
   async findAll(
     @Query('status') status?: OrganizationStatus,
+    @Query('search') search?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ): Promise<OrganizationListResponse> {
     return this.organizationsService.findAll({
       status,
+      search,
       page: page ? parseInt(page, 10) : 1,
       limit: limit ? parseInt(limit, 10) : 20,
     });
@@ -75,6 +77,28 @@ export class OrganizationsController {
     const organization = await this.organizationsService.reject(id);
     return {
       message: 'Organization rejected successfully',
+      organization,
+    };
+  }
+
+  @Patch(':id/deactivate')
+  @Roles('SUPER_ADMIN')
+  async deactivate(
+    @Param('id') id: string,
+  ): Promise<OrganizationActionResponse> {
+    const organization = await this.organizationsService.deactivate(id);
+    return {
+      message: 'Organization deactivated successfully',
+      organization,
+    };
+  }
+
+  @Patch(':id/activate')
+  @Roles('SUPER_ADMIN')
+  async activate(@Param('id') id: string): Promise<OrganizationActionResponse> {
+    const organization = await this.organizationsService.activate(id);
+    return {
+      message: 'Organization activated successfully',
       organization,
     };
   }

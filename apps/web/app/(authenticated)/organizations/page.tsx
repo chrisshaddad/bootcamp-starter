@@ -20,9 +20,12 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '@/components/ui/input';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { StatusBadge } from '@/components/status-badge';
-import { Building2, ShieldX } from 'lucide-react';
+import { Building2, Search, ShieldX } from 'lucide-react';
 import { useState } from 'react';
+import { useDebounce } from '@/hooks/use-debounce';
 import type { OrganizationStatus } from '@repo/contracts';
 
 type StatusFilter =
@@ -80,6 +83,8 @@ export default function OrganizationsPage() {
   const router = useRouter();
   const { user, isLoading: userLoading } = useUser();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
 
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
 
@@ -91,6 +96,7 @@ export default function OrganizationsPage() {
   } = useOrganizations({
     status:
       statusFilter === 'all' ? undefined : (statusFilter as OrganizationStatus),
+    search: debouncedSearch,
     enabled: isSuperAdmin,
   });
 
@@ -114,6 +120,17 @@ export default function OrganizationsPage() {
           </p>
         </div>
         <div className="flex items-center gap-4">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by name..."
+              className="w-64 pl-9"
+              aria-label="Search organizations by name"
+            />
+          </div>
           <Select
             value={statusFilter}
             onValueChange={(value) => setStatusFilter(value as StatusFilter)}
@@ -180,15 +197,26 @@ export default function OrganizationsPage() {
                     onClick={() => router.push(`/organizations/${org.id}`)}
                   >
                     <TableCell>
-                      <div>
-                        <div className="font-medium text-foreground">
-                          {org.name}
-                        </div>
-                        {org.website && (
-                          <div className="text-sm text-muted-foreground">
-                            {org.website}
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-9 w-9 rounded-md">
+                          <AvatarImage
+                            src={org.logoUrl ?? undefined}
+                            alt={`${org.name} logo`}
+                          />
+                          <AvatarFallback className="rounded-md bg-library-primary-100 text-library-primary-900">
+                            {org.name.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <div className="font-medium text-foreground">
+                            {org.name}
                           </div>
-                        )}
+                          {org.website && (
+                            <div className="text-sm text-muted-foreground">
+                              {org.website}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -209,7 +237,7 @@ export default function OrganizationsPage() {
                       </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {org._count.users}
+                      {org._count.members}
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">
                       {new Date(org.createdAt).toLocaleDateString()}

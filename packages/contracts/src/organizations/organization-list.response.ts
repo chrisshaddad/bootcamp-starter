@@ -20,7 +20,9 @@ const organizationListItemSchema = z.object({
   createdAt: dateSchema,
   createdBy: organizationCreatorSchema,
   _count: z.object({
-    users: z.number(),
+    // Patron count (LibraryMember). Staff live on the `users` relation, but the
+    // super-admin roster cares about library members.
+    members: z.number(),
   }),
 });
 export type OrganizationListItem = z.infer<typeof organizationListItemSchema>;
