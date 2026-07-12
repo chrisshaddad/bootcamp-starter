@@ -56,12 +56,7 @@ const superAdminNavItems: NavItem[] = [
 // PHARMACY_ADMIN — manages one pharmacy across all its branches.
 const pharmacyAdminNavItems: NavItem[] = [
   { title: 'Dashboard', url: '/pharmacy', icon: LayoutDashboard },
-  {
-    title: 'Branches',
-    url: '/pharmacy/branches',
-    icon: Building2,
-    disabled: true,
-  },
+  { title: 'Branches', url: '/pharmacy/branches', icon: Building2 },
   // Stock sits right after Branches — cross-branch inventory oversight is a
   // primary admin task, so it leads before staff management.
   { title: 'Stock', url: '/stock', icon: Package },

@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { MailModule } from './mail/mail.module';
 import { UsersModule } from './users/users.module';
 import { EmployeesModule } from './employees/employees.module';
+import { BranchesModule } from './branches/branches.module';
 import { PharmaciesModule } from './pharmacies/pharmacies.module';
 import { MedicinesModule } from './medicines/medicines.module';
 import { StockModule } from './stock/stock.module';
@@ -29,6 +30,7 @@ import { DatabaseModule } from './database/database.module';
     MailModule,
     UsersModule,
     EmployeesModule,
+    BranchesModule,
     PharmaciesModule,
     MedicinesModule,
     StockModule,
