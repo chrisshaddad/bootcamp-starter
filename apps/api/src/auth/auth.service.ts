@@ -82,8 +82,9 @@ export class AuthService {
     });
 
     if (!user) {
-      // Don't reveal if user exists - still return success
-      this.logger.warn(`Magic link requested for non-existent email: ${email}`);
+      // Don't reveal if user exists - still return success. Avoid logging the
+      // raw email (PII); the success path likewise logs only a non-sensitive id.
+      this.logger.warn('Magic link requested for a non-existent account');
       return { success: true };
     }
 

@@ -111,14 +111,23 @@ export class AssignmentsService {
       throw error;
     }
 
-    await this.notifications.create({
-      recipientId: data.professionalId,
-      senderId: actor.id,
-      title: 'New patient assigned',
-      body: `${actor.fullName} added you to a patient's care team.`,
-      linkedEntityType: 'ASSIGNMENT',
-      linkedEntityId: assignment.id,
-    });
+    // Best-effort: the assignment is already committed, so a notification
+    // failure must not fail the request.
+    try {
+      await this.notifications.create({
+        recipientId: data.professionalId,
+        senderId: actor.id,
+        title: 'New patient assigned',
+        body: `${actor.fullName} added you to a patient's care team.`,
+        linkedEntityType: 'ASSIGNMENT',
+        linkedEntityId: assignment.id,
+      });
+    } catch (error) {
+      this.logger.error(
+        `Failed to notify professional of assignment ${assignment.id}`,
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
 
     this.logger.log(
       `Assignment ${assignment.id} created (patient ${data.patientId} → professional ${data.professionalId})`,

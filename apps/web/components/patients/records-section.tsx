@@ -57,7 +57,7 @@ export function RecordsSection({ patientId, canAdd }: Props) {
             ))}
           </div>
         ) : error ? (
-          <div className="py-8 text-center text-red-500">
+          <div className="py-8 text-center text-error">
             Failed to load records
           </div>
         ) : !records?.length ? (

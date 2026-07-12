@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { mutate as globalMutate } from 'swr';
 import { toast } from 'sonner';
 import { Plus, Trash2 } from 'lucide-react';
 import type {
@@ -224,21 +225,39 @@ export function AddRecordDialog({ createRecord }: Props) {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+
+    let created: RecordDetailResponse;
     try {
-      const created = await createRecord(buildPayload());
-      if (file) {
-        const formData = new FormData();
-        formData.append('file', file);
-        await apiUpload(`/records/${created.id}/files`, formData);
-      }
-      toast.success('Record added');
-      reset();
-      setOpen(false);
+      created = await createRecord(buildPayload());
     } catch (error) {
       toast.error(
         error instanceof ApiError ? error.message : 'Failed to add record',
       );
+      setIsSubmitting(false);
+      return;
+    }
+
+    // The record is persisted now — never re-create it. Close the dialog and
+    // report any attachment-upload failure separately so a retry can't create a
+    // duplicate record.
+    try {
+      if (file) {
+        const formData = new FormData();
+        formData.append('file', file);
+        await apiUpload(`/records/${created.id}/files`, formData);
+        // Refresh the patient's records list so the new fileCount isn't stale.
+        globalMutate(
+          (key) =>
+            typeof key === 'string' &&
+            key.startsWith(`/patients/${created.patientId}/records`),
+        );
+      }
+      toast.success('Record added');
+    } catch {
+      toast.error('Record added, but the attachment failed to upload');
     } finally {
+      reset();
+      setOpen(false);
       setIsSubmitting(false);
     }
   };

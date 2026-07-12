@@ -156,14 +156,23 @@ export class MedicalRecordsService {
       return record.id;
     });
 
-    await this.notifications.create({
-      recipientId: patient.userId,
-      senderId: actor.id,
-      title: this.notificationTitle(data.recordType),
-      body: `A new ${this.readableType(data.recordType)} was added to your records.`,
-      linkedEntityType: 'MEDICAL_RECORD',
-      linkedEntityId: recordId,
-    });
+    // Best-effort: the record is already committed, so a notification failure
+    // must not fail the request.
+    try {
+      await this.notifications.create({
+        recipientId: patient.userId,
+        senderId: actor.id,
+        title: this.notificationTitle(data.recordType),
+        body: `A new ${this.readableType(data.recordType)} was added to your records.`,
+        linkedEntityType: 'MEDICAL_RECORD',
+        linkedEntityId: recordId,
+      });
+    } catch (error) {
+      this.logger.error(
+        `Failed to notify patient of record ${recordId}`,
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
 
     this.logger.log(`Record ${recordId} created for patient ${patientId}`);
     return this.buildDetail(recordId);
@@ -323,8 +332,11 @@ export class MedicalRecordsService {
         }
         return;
       case 'PROFESSIONAL':
+        // Cross-institution records must look non-existent, not forbidden.
+        if (record.institutionId !== actor.institutionId) {
+          throw new NotFoundException(`Record with ID ${record.id} not found`);
+        }
         if (
-          record.institutionId !== actor.institutionId ||
           !(await isProfessionalAssigned(
             this.prisma,
             actor.id,
@@ -358,8 +370,13 @@ export class MedicalRecordsService {
         }
         return;
       case 'PROFESSIONAL':
+        // Cross-institution patients must look non-existent, not forbidden.
+        if (patient.institutionId !== actor.institutionId) {
+          throw new NotFoundException(
+            `Patient with ID ${patient.id} not found`,
+          );
+        }
         if (
-          patient.institutionId !== actor.institutionId ||
           !(await isProfessionalAssigned(this.prisma, actor.id, patient.id))
         ) {
           throw new ForbiddenException('You are not assigned to this patient');

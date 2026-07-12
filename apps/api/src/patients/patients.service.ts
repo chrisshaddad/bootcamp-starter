@@ -72,9 +72,7 @@ export class PatientsService {
         error.code === 'P2002' &&
         (error.meta?.target as string[] | undefined)?.includes('email')
       ) {
-        this.logger.warn(
-          `Patient creation rejected: email ${data.email} already in use`,
-        );
+        this.logger.warn('Patient creation rejected: email already in use');
         throw new ConflictException(
           `A user with email ${data.email} already exists`,
         );
@@ -82,7 +80,17 @@ export class PatientsService {
       throw error;
     }
 
-    await this.sendInvitationFor(patientId, actor);
+    // Best-effort: the patient is already persisted, so a failure to queue the
+    // invitation email must not turn a successful creation into an API error.
+    try {
+      await this.sendInvitationFor(patientId, actor);
+    } catch (error) {
+      this.logger.error(
+        `Patient ${patientId} created but invitation failed to send`,
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
+
     this.logger.log(`Patient ${patientId} created by ${actor.id}`);
     return this.buildDetail(patientId);
   }
@@ -292,8 +300,13 @@ export class PatientsService {
         }
         return;
       case 'PROFESSIONAL':
+        // Cross-institution patients must look non-existent, not forbidden.
+        if (patient.institutionId !== actor.institutionId) {
+          throw new NotFoundException(
+            `Patient with ID ${patient.id} not found`,
+          );
+        }
         if (
-          patient.institutionId !== actor.institutionId ||
           !(await isProfessionalAssigned(this.prisma, actor.id, patient.id))
         ) {
           throw new ForbiddenException('You are not assigned to this patient');

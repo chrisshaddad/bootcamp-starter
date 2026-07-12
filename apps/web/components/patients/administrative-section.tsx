@@ -163,7 +163,11 @@ export function AdministrativeSection({ patient, canEdit, onSave }: Props) {
                 <select
                   id="admin-gender"
                   className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm"
-                  {...register('gender')}
+                  {...register('gender', {
+                    // The blank option must become null, not '', or the enum
+                    // (MALE | FEMALE | OTHER) validation rejects it.
+                    setValueAs: (v) => (v === '' ? null : v),
+                  })}
                 >
                   <option value="">—</option>
                   <option value="MALE">Male</option>

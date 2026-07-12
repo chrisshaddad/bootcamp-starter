@@ -156,9 +156,7 @@ export class UsersService {
         error.code === 'P2002' &&
         (error.meta?.target as string[] | undefined)?.includes('email')
       ) {
-        this.logger.warn(
-          `User creation rejected: email ${data.email} already in use`,
-        );
+        this.logger.warn('User creation rejected: email already in use');
         throw new ConflictException(
           `A user with email ${data.email} already exists`,
         );
@@ -166,7 +164,17 @@ export class UsersService {
       throw error;
     }
 
-    await this.sendInvitationFor(createdId, actor);
+    // Best-effort: the user is already persisted, so a failure to queue the
+    // invitation email must not turn a successful creation into an API error.
+    try {
+      await this.sendInvitationFor(createdId, actor);
+    } catch (error) {
+      this.logger.error(
+        `User ${createdId} created but invitation failed to send`,
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
+
     this.logger.log(`User ${createdId} created by ${actor.id}`);
     return this.findOne(createdId, actor.institutionId);
   }

@@ -8,6 +8,7 @@ import type {
   UserDetailResponse,
   UserCreateRequest,
   UserUpdateRequest,
+  UserStatusRequest,
   StaffRole,
 } from '@repo/contracts';
 
@@ -79,9 +80,11 @@ export function useUpdateUser() {
 
 export function useSetUserStatus() {
   const setUserStatus = useCallback(async (id: string, isActive: boolean) => {
-    const result = await apiPatch<UserDetailResponse>(`/users/${id}/status`, {
-      isActive,
-    });
+    const payload: UserStatusRequest = { isActive };
+    const result = await apiPatch<UserDetailResponse>(
+      `/users/${id}/status`,
+      payload,
+    );
     invalidateUsersList();
     return result;
   }, []);

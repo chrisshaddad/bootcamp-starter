@@ -1,6 +1,6 @@
 'use client';
 
-import useSWR from 'swr';
+import useSWR, { mutate as globalMutate } from 'swr';
 import { useCallback } from 'react';
 import { apiPost, apiUpload, API_URL } from '@/lib/api';
 import type {
@@ -66,9 +66,17 @@ export function useRecord(
         formData,
       );
       mutate();
+      // Also refresh the patient's records list so its fileCount isn't stale.
+      if (data?.patientId) {
+        globalMutate(
+          (key) =>
+            typeof key === 'string' &&
+            key.startsWith(`/patients/${data.patientId}/records`),
+        );
+      }
       return result;
     },
-    [id, mutate],
+    [id, mutate, data?.patientId],
   );
 
   return {

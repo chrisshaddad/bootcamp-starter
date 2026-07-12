@@ -35,7 +35,7 @@ export default function PortalPage() {
 
   if (error || !patient) {
     return (
-      <div className="py-10 text-center text-red-500">
+      <div className="py-10 text-center text-error">
         Failed to load your record
       </div>
     );

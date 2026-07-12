@@ -13,7 +13,7 @@ export function ForbiddenPage({
 }: ForbiddenPageProps) {
   return (
     <div className="flex flex-col items-center justify-center py-20">
-      <ShieldX className="h-16 w-16 text-red-400 mb-4" />
+      <ShieldX className="h-16 w-16 text-error mb-4" />
       <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
       <p className="text-gray-500 text-center max-w-md">{message}</p>
     </div>

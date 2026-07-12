@@ -203,7 +203,9 @@ function EditUserDialog({
     formState: { errors },
   } = useForm<UserUpdateRequest>({
     resolver: zodResolver(userUpdateRequestSchema),
-    defaultValues: {
+    // `values` (not `defaultValues`) so the form rehydrates when the row's
+    // user data changes or the dialog is reopened after an edit.
+    values: {
       fullName: user.fullName,
       phone: user.phone,
       specialty: user.specialty ?? undefined,

@@ -222,7 +222,7 @@ export default function PatientsPage() {
               ))}
             </div>
           ) : error ? (
-            <div className="py-10 text-center text-red-500">
+            <div className="py-10 text-center text-error">
               Failed to load patients
             </div>
           ) : !patients?.length ? (
