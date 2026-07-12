@@ -77,7 +77,10 @@ export default function NewProjectPage() {
       if (error instanceof ApiError && error.status === 404) {
         toast.error('Repository not found — check the repository ID');
       } else if (error instanceof ApiError && error.status === 403) {
-        toast.error('You do not own that repository');
+        // 403 covers two distinct causes (no GitHub account connected vs.
+        // not the repository owner) — show the server's actual message
+        // instead of a single hardcoded "you don't own it" string.
+        toast.error(error.message);
       } else if (error instanceof ApiError && error.status === 409) {
         toast.error(error.message);
       } else {

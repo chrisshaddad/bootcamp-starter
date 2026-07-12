@@ -73,6 +73,14 @@ export class ProjectsService {
       throw new NotFoundException('User not found');
     }
 
+    const repository = await this.prisma.repository.findUnique({
+      where: { id: data.repositoryId },
+    });
+
+    if (!repository) {
+      throw new NotFoundException('Repository not found');
+    }
+
     const githubUsername = user.developerProfile?.githubUsername;
     const isAdmin = user.accountType === AccountType.SUPER_ADMIN;
 
@@ -80,14 +88,6 @@ export class ProjectsService {
       throw new ForbiddenException(
         'A connected GitHub account is required to create a project.',
       );
-    }
-
-    const repository = await this.prisma.repository.findUnique({
-      where: { id: data.repositoryId },
-    });
-
-    if (!repository) {
-      throw new NotFoundException('Repository not found');
     }
 
     const isOwner =
