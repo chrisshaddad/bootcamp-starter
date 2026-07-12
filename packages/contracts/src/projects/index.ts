@@ -3,3 +3,5 @@ export * from './project-update.request';
 export * from './project.response';
 export * from './project-media-upload.request';
 export * from './project-media-update.request';
+export * from './project-by-id.response';
+export * from './project-by-slug.response';

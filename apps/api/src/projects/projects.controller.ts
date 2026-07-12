@@ -26,12 +26,7 @@ import { ProjectsService } from './projects.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Public } from '../auth/decorators';
-import {
-  AccountType,
-  type User,
-  type Project,
-  type ProjectMedia,
-} from '@repo/db';
+import { AccountType, type User } from '@repo/db';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { detectImageExtension } from '../auth/utils/detect-image-signature';
 import {
@@ -44,6 +39,8 @@ import {
   type ProjectResponse,
   type ProjectMediaUploadRequest,
   type ProjectMediaUpdateRequest,
+  type ProjectByIdResponse,
+  type ProjectBySlugResponse,
 } from '@repo/contracts';
 
 const PROJECT_MEDIA_MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
@@ -97,22 +94,20 @@ export class ProjectsController {
   async getProjectById(
     @CurrentUser() user: User,
     @Param('id') projectId: string,
-  ): Promise<unknown> {
-    const rawProject = await this.projectsService.getProjectById(
-      user,
-      projectId,
-    );
-    const project = rawProject as Project & { media?: ProjectMedia[] };
+  ): Promise<ProjectByIdResponse> {
+    const project = await this.projectsService.getProjectById(user, projectId);
 
     return {
       ...project,
       createdAt: project.createdAt.toISOString(),
       updatedAt: project.updatedAt.toISOString(),
       publishedAt: project.publishedAt?.toISOString() ?? null,
-      media: (project.media ?? []).map((m: ProjectMedia) => ({
+      media: (project.media ?? []).map((m) => ({
         id: m.id,
         projectId: m.projectId,
-        mediaType: m.mediaType,
+        uploadedByUserId: m.uploadedByUserId,
+        mediaType: m.mediaType as 'IMAGE' | 'GIF' | 'ARCHITECTURE_DIAGRAM',
+        storageKey: m.storageKey,
         publicUrl: m.publicUrl,
         caption: m.caption,
         sortOrder: m.sortOrder,
@@ -186,29 +181,26 @@ export class ProjectsController {
     status: 404,
     description: 'Project not found or is in DRAFT status.',
   })
-  async getProjectBySlug(@Param('slug') slug: string): Promise<unknown> {
-    const rawProject = await this.projectsService.getProjectBySlug(slug);
-    const project = rawProject as Project & {
-      media?: Omit<ProjectMedia, 'uploadedByUserId' | 'storageKey'>[];
-    };
+  async getProjectBySlug(
+    @Param('slug') slug: string,
+  ): Promise<ProjectBySlugResponse> {
+    const project = await this.projectsService.getProjectBySlug(slug);
 
     return {
       ...project,
       createdAt: project.createdAt.toISOString(),
       updatedAt: project.updatedAt.toISOString(),
       publishedAt: project.publishedAt?.toISOString() ?? null,
-      media: (project.media ?? []).map(
-        (m: Omit<ProjectMedia, 'uploadedByUserId' | 'storageKey'>) => ({
-          id: m.id,
-          projectId: m.projectId,
-          mediaType: m.mediaType,
-          publicUrl: m.publicUrl,
-          caption: m.caption,
-          sortOrder: m.sortOrder,
-          createdAt: m.createdAt.toISOString(),
-          updatedAt: m.updatedAt.toISOString(),
-        }),
-      ),
+      media: (project.media ?? []).map((m) => ({
+        id: m.id,
+        projectId: m.projectId,
+        mediaType: m.mediaType as 'IMAGE' | 'GIF' | 'ARCHITECTURE_DIAGRAM',
+        publicUrl: m.publicUrl,
+        caption: m.caption,
+        sortOrder: m.sortOrder,
+        createdAt: m.createdAt.toISOString(),
+        updatedAt: m.updatedAt.toISOString(),
+      })),
     };
   }
 
