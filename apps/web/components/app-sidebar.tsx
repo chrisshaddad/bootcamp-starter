@@ -9,6 +9,7 @@ import {
   Settings,
   Building2,
   UserCog,
+  FolderGit2,
 } from 'lucide-react';
 import { useUser } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
@@ -40,6 +41,11 @@ const orgNavItems: NavItem[] = [
     icon: LayoutDashboard,
   },
   {
+    title: 'Projects',
+    url: '/projects',
+    icon: FolderGit2,
+  },
+  {
     title: 'Profile',
     url: '/profile',
     icon: UserCog,
@@ -52,6 +58,11 @@ const superAdminNavItems: NavItem[] = [
     title: 'Organizations',
     url: '/organizations',
     icon: Building2,
+  },
+  {
+    title: 'Projects',
+    url: '/projects',
+    icon: FolderGit2,
   },
   {
     title: 'Users',

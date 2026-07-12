@@ -1,18 +1,61 @@
-import { Controller, Get, Post, Patch, Body, Param } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { join } from 'path';
+import { randomUUID } from 'crypto';
+import { existsSync, mkdirSync } from 'fs';
+import { readFile, unlink, rename } from 'fs/promises';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  ApiConsumes,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
+import { diskStorage } from 'multer';
 import { ProjectsService } from './projects.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Public } from '../auth/decorators';
 import { AccountType, type User } from '@repo/db';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { detectImageExtension } from '../auth/utils/detect-image-signature';
 import {
   createProjectRequestSchema,
   updateProjectRequestSchema,
+  projectMediaUploadSchema,
+  projectMediaUpdateSchema,
   type CreateProjectRequest,
   type UpdateProjectRequest,
   type ProjectResponse,
+  type ProjectMediaUploadRequest,
+  type ProjectMediaUpdateRequest,
+  type ProjectByIdResponse,
+  type ProjectBySlugResponse,
 } from '@repo/contracts';
+
+const PROJECT_MEDIA_MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
+const PROJECT_MEDIA_ALLOWED_MIME_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+];
+const PROJECT_MEDIA_DIR = join(process.cwd(), 'uploads', 'project-media');
+
+// Bootstrap check: synchronous directory creation is acceptable at startup
+if (!existsSync(PROJECT_MEDIA_DIR)) {
+  mkdirSync(PROJECT_MEDIA_DIR, { recursive: true });
+}
 
 @ApiTags('projects')
 @Controller('projects')
@@ -51,7 +94,7 @@ export class ProjectsController {
   async getProjectById(
     @CurrentUser() user: User,
     @Param('id') projectId: string,
-  ): Promise<ProjectResponse> {
+  ): Promise<ProjectByIdResponse> {
     const project = await this.projectsService.getProjectById(user, projectId);
 
     return {
@@ -59,6 +102,18 @@ export class ProjectsController {
       createdAt: project.createdAt.toISOString(),
       updatedAt: project.updatedAt.toISOString(),
       publishedAt: project.publishedAt?.toISOString() ?? null,
+      media: (project.media ?? []).map((m) => ({
+        id: m.id,
+        projectId: m.projectId,
+        uploadedByUserId: m.uploadedByUserId,
+        mediaType: m.mediaType as 'IMAGE' | 'GIF' | 'ARCHITECTURE_DIAGRAM',
+        storageKey: m.storageKey,
+        publicUrl: m.publicUrl,
+        caption: m.caption,
+        sortOrder: m.sortOrder,
+        createdAt: m.createdAt.toISOString(),
+        updatedAt: m.updatedAt.toISOString(),
+      })),
     };
   }
 
@@ -128,7 +183,7 @@ export class ProjectsController {
   })
   async getProjectBySlug(
     @Param('slug') slug: string,
-  ): Promise<ProjectResponse> {
+  ): Promise<ProjectBySlugResponse> {
     const project = await this.projectsService.getProjectBySlug(slug);
 
     return {
@@ -136,6 +191,146 @@ export class ProjectsController {
       createdAt: project.createdAt.toISOString(),
       updatedAt: project.updatedAt.toISOString(),
       publishedAt: project.publishedAt?.toISOString() ?? null,
+      media: (project.media ?? []).map((m) => ({
+        id: m.id,
+        projectId: m.projectId,
+        mediaType: m.mediaType as 'IMAGE' | 'GIF' | 'ARCHITECTURE_DIAGRAM',
+        publicUrl: m.publicUrl,
+        caption: m.caption,
+        sortOrder: m.sortOrder,
+        createdAt: m.createdAt.toISOString(),
+        updatedAt: m.updatedAt.toISOString(),
+      })),
     };
+  }
+
+  @Post(':id/media')
+  @Roles(AccountType.DEVELOPER, AccountType.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Upload media for a project' })
+  @ApiConsumes('multipart/form-data')
+  @ApiResponse({ status: 201, description: 'Media successfully uploaded.' })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: PROJECT_MEDIA_DIR,
+        filename: (_req, _file, callback) => callback(null, randomUUID()),
+      }),
+      limits: { fileSize: PROJECT_MEDIA_MAX_SIZE_BYTES },
+      fileFilter: (_req, file, callback) => {
+        if (!PROJECT_MEDIA_ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+          callback(
+            new BadRequestException(
+              'Only JPEG, PNG, WEBP, or GIF images are allowed',
+            ),
+            false,
+          );
+          return;
+        }
+        callback(null, true);
+      },
+    }),
+  )
+  async uploadProjectMedia(
+    @CurrentUser() user: User,
+    @Param('id') projectId: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body(new ZodValidationPipe(projectMediaUploadSchema))
+    body: ProjectMediaUploadRequest,
+  ) {
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+
+    let fileBuffer: Buffer;
+    try {
+      fileBuffer = await readFile(file.path);
+    } catch (_readError) {
+      throw new BadRequestException('Could not read the uploaded file');
+    }
+
+    const extension = detectImageExtension(fileBuffer);
+    if (!extension) {
+      try {
+        await unlink(file.path);
+      } catch (_unlinkError) {
+        // Ignored
+      }
+      throw new BadRequestException('The uploaded file is not a valid image');
+    }
+
+    const finalFilename = `${file.filename}${extension}`;
+    try {
+      await rename(file.path, join(PROJECT_MEDIA_DIR, finalFilename));
+    } catch (_renameError) {
+      try {
+        await unlink(file.path);
+      } catch (_unlinkError) {
+        // Ignored
+      }
+      throw new BadRequestException('Failed to process the uploaded file');
+    }
+
+    const apiUrl = process.env.API_URL ?? 'http://localhost:3001';
+    const publicUrl = `${apiUrl}/uploads/project-media/${finalFilename}`;
+
+    const media = await this.projectsService.addMedia(user, projectId, {
+      ...body,
+      storageKey: finalFilename,
+      publicUrl,
+    });
+
+    return {
+      ...media,
+      createdAt: media.createdAt.toISOString(),
+      updatedAt: media.updatedAt.toISOString(),
+    };
+  }
+
+  @Patch(':id/media/:mediaId')
+  @Roles(AccountType.DEVELOPER, AccountType.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Update media details (caption, order)' })
+  @ApiResponse({ status: 200, description: 'Media successfully updated.' })
+  async updateProjectMedia(
+    @CurrentUser() user: User,
+    @Param('id') projectId: string,
+    @Param('mediaId') mediaId: string,
+    @Body(new ZodValidationPipe(projectMediaUpdateSchema))
+    body: ProjectMediaUpdateRequest,
+  ) {
+    const media = await this.projectsService.updateMedia(
+      user,
+      projectId,
+      mediaId,
+      body,
+    );
+    return {
+      ...media,
+      createdAt: media.createdAt.toISOString(),
+      updatedAt: media.updatedAt.toISOString(),
+    };
+  }
+
+  @Delete(':id/media/:mediaId')
+  @Roles(AccountType.DEVELOPER, AccountType.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Delete media from a project' })
+  @ApiResponse({ status: 200, description: 'Media successfully deleted.' })
+  async deleteProjectMedia(
+    @CurrentUser() user: User,
+    @Param('id') projectId: string,
+    @Param('mediaId') mediaId: string,
+  ) {
+    const result = await this.projectsService.deleteMedia(
+      user,
+      projectId,
+      mediaId,
+    );
+
+    try {
+      await unlink(join(PROJECT_MEDIA_DIR, result.storageKey));
+    } catch (_e) {
+      // Ignore error if file is already missing from disk
+    }
+
+    return { success: true };
   }
 }
