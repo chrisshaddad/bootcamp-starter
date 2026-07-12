@@ -59,9 +59,16 @@ export function useProjectBySlug(slug: string | undefined) {
   return { project: data, error, isLoading };
 }
 
-export function useUploadProjectMedia(projectId: string) {
+// projectId is a call-time argument (not hook-time) so this can also be used
+// right after creating a project, in the same submit handler that obtains
+// the new id — before any component has rendered with that id yet.
+export function useUploadProjectMedia() {
   return useCallback(
-    async (file: File, options?: { caption?: string; sortOrder?: number }) => {
+    async (
+      projectId: string,
+      file: File,
+      options?: { caption?: string; sortOrder?: number },
+    ) => {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('mediaType', 'IMAGE');
@@ -77,13 +84,17 @@ export function useUploadProjectMedia(projectId: string) {
       await globalMutate(projectKey(projectId));
       return media;
     },
-    [projectId],
+    [],
   );
 }
 
-export function useUpdateProjectMedia(projectId: string) {
+export function useUpdateProjectMedia() {
   return useCallback(
-    async (mediaId: string, data: ProjectMediaUpdateRequest) => {
+    async (
+      projectId: string,
+      mediaId: string,
+      data: ProjectMediaUpdateRequest,
+    ) => {
       const media = await apiPatch<ProjectMediaResponse>(
         `/projects/${projectId}/media/${mediaId}`,
         data,
@@ -91,18 +102,15 @@ export function useUpdateProjectMedia(projectId: string) {
       await globalMutate(projectKey(projectId));
       return media;
     },
-    [projectId],
+    [],
   );
 }
 
-export function useDeleteProjectMedia(projectId: string) {
-  return useCallback(
-    async (mediaId: string) => {
-      await apiDelete<{ success: true }>(
-        `/projects/${projectId}/media/${mediaId}`,
-      );
-      await globalMutate(projectKey(projectId));
-    },
-    [projectId],
-  );
+export function useDeleteProjectMedia() {
+  return useCallback(async (projectId: string, mediaId: string) => {
+    await apiDelete<{ success: true }>(
+      `/projects/${projectId}/media/${mediaId}`,
+    );
+    await globalMutate(projectKey(projectId));
+  }, []);
 }

@@ -42,8 +42,8 @@ export default function EditProjectPage() {
   const router = useRouter();
   const { project, isLoading } = useProject(params.slug);
   const updateProject = useUpdateProject();
-  const uploadMedia = useUploadProjectMedia(project?.id ?? '');
-  const deleteMedia = useDeleteProjectMedia(project?.id ?? '');
+  const uploadMedia = useUploadProjectMedia();
+  const deleteMedia = useDeleteProjectMedia();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -107,7 +107,7 @@ export default function EditProjectPage() {
 
     setIsUploading(true);
     try {
-      await uploadMedia(file, { sortOrder: project.media.length });
+      await uploadMedia(project.id, file, { sortOrder: project.media.length });
     } catch (error) {
       toast.error(
         error instanceof ApiError ? error.message : 'Unable to upload media',
@@ -118,9 +118,11 @@ export default function EditProjectPage() {
   };
 
   const handleDeleteMedia = async (mediaId: string) => {
+    if (!project) return;
+
     setDeletingMediaId(mediaId);
     try {
-      await deleteMedia(mediaId);
+      await deleteMedia(project.id, mediaId);
     } catch (error) {
       toast.error(
         error instanceof ApiError ? error.message : 'Unable to delete media',

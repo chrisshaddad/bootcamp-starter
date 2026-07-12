@@ -1,18 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import { ArrowLeft, Github, ImageIcon, Loader2, Search } from 'lucide-react';
+import { ArrowLeft, Github, ImageIcon, Loader2, Search, X } from 'lucide-react';
 import {
   createProjectRequestSchema,
   type CreateProjectRequest,
   type GithubRepositoryPreviewResponse,
 } from '@repo/contracts';
-import { useCreateProject } from '@/hooks/use-projects';
+import { useCreateProject, useUploadProjectMedia } from '@/hooks/use-projects';
 import { apiPost, ApiError } from '@/lib/api';
 import {
   KNOWN_SEEDED_REPOSITORIES,
@@ -40,10 +40,18 @@ function slugify(value: string) {
     .replace(/(^-|-$)/g, '');
 }
 
+interface PendingMedia {
+  file: File;
+  previewUrl: string;
+}
+
 export default function NewProjectPage() {
   const router = useRouter();
   const createProject = useCreateProject();
+  const uploadMedia = useUploadProjectMedia();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pendingMedia, setPendingMedia] = useState<PendingMedia[]>([]);
   // mock: no Technology/ProjectTechnology endpoint yet — selections here are
   // local-only, not sent on submit.
   const [technologies, setTechnologies] = useState<MockTechnology[]>([]);
@@ -71,6 +79,23 @@ export default function NewProjectPage() {
     setIsSubmitting(true);
     try {
       const project = await createProject(data);
+
+      if (pendingMedia.length > 0) {
+        const results = await Promise.allSettled(
+          pendingMedia.map((pending, index) =>
+            uploadMedia(project.id, pending.file, { sortOrder: index }),
+          ),
+        );
+        const failedCount = results.filter(
+          (r) => r.status === 'rejected',
+        ).length;
+        if (failedCount > 0) {
+          toast.error(
+            `Project created, but ${failedCount} screenshot${failedCount > 1 ? 's' : ''} failed to upload — you can retry from the edit page.`,
+          );
+        }
+      }
+
       toast.success('Project created');
       router.push(`/projects/${project.id}/edit`);
     } catch (error) {
@@ -148,6 +173,28 @@ export default function NewProjectPage() {
     } finally {
       setIsFetchingPreview(false);
     }
+  };
+
+  // Screenshots can't upload until the project exists (POST /projects/:id/
+  // media needs an id), so files are staged locally and uploaded right
+  // after creation succeeds, in the same submit — see onSubmit above.
+  const handleFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = '';
+    if (files.length === 0) return;
+
+    setPendingMedia((prev) => [
+      ...prev,
+      ...files.map((file) => ({ file, previewUrl: URL.createObjectURL(file) })),
+    ]);
+  };
+
+  const handleRemovePending = (index: number) => {
+    setPendingMedia((prev) => {
+      const removed = prev[index];
+      if (removed) URL.revokeObjectURL(removed.previewUrl);
+      return prev.filter((_, i) => i !== index);
+    });
   };
 
   return (
@@ -317,12 +364,45 @@ export default function NewProjectPage() {
 
           <div className="space-y-2">
             <Label>Media</Label>
-            <Card className="border-dashed">
+            {pendingMedia.length > 0 && (
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                {pendingMedia.map((pending, index) => (
+                  <div key={pending.previewUrl} className="group relative">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={pending.previewUrl}
+                      alt={pending.file.name}
+                      className="aspect-video w-full rounded-lg border object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRemovePending(index)}
+                      aria-label="Remove screenshot"
+                      className="bg-background/90 text-foreground absolute top-1 right-1 flex h-6 w-6 items-center justify-center rounded-full border opacity-0 transition-opacity group-hover:opacity-100"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              multiple
+              onChange={handleFilesSelected}
+              className="hidden"
+            />
+            <Card
+              className="cursor-pointer border-dashed"
+              onClick={() => fileInputRef.current?.click()}
+            >
               <CardContent className="flex flex-col items-center gap-1.5 py-6 text-center">
                 <ImageIcon className="h-5 w-5 text-muted-foreground" />
                 <p className="text-muted-foreground text-xs">
-                  Screenshot/video upload isn&apos;t available yet —
-                  ProjectMedia has no endpoint.
+                  Click to add screenshots (JPEG, PNG, WEBP, or GIF, up to 5MB
+                  each) — uploaded once you create the project
                 </p>
               </CardContent>
             </Card>
