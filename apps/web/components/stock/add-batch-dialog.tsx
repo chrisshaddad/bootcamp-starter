@@ -44,7 +44,11 @@ import {
 // Batch fields only — medicineId + branchId are supplied by the dialog, not the
 // form. The server re-validates the full shape via stockBatchCreateRequestSchema.
 const batchFormSchema = z.object({
-  batchNumber: z.string().trim().max(100, 'Batch number is too long').optional(),
+  batchNumber: z
+    .string()
+    .trim()
+    .max(100, 'Batch number is too long')
+    .optional(),
   quantity: z
     .number('Enter a quantity')
     .int('Whole numbers only')
