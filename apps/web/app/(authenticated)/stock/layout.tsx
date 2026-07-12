@@ -7,5 +7,10 @@ export default function StockLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <RoleGuard allow={['STOCK_MANAGER']}>{children}</RoleGuard>;
+  // PHARMACY_ADMIN gets cross-branch oversight alongside the branch's stock manager.
+  return (
+    <RoleGuard allow={['STOCK_MANAGER', 'PHARMACY_ADMIN']}>
+      {children}
+    </RoleGuard>
+  );
 }

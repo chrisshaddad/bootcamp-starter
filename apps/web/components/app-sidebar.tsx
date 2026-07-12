@@ -62,6 +62,9 @@ const pharmacyAdminNavItems: NavItem[] = [
     icon: Building2,
     disabled: true,
   },
+  // Stock sits right after Branches — cross-branch inventory oversight is a
+  // primary admin task, so it leads before staff management.
+  { title: 'Stock', url: '/stock', icon: Package },
   { title: 'Employees', url: '/pharmacy/employees', icon: Users },
   {
     title: 'Audit Logs',

@@ -5,6 +5,7 @@ export * from './employees';
 export * from './branches';
 export * from './pharmacies';
 export * from './medicines';
+export * from './stock';
 export * from './stats';
 export * from './audit';
 export * from './profile';
