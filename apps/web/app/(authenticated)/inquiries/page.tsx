@@ -162,20 +162,8 @@ export default function InquiriesPage() {
   const router = useRouter();
   const [tab, setTab] = useState<TabKey>('ALL');
 
-  const { branchName, inquiries, isLoading, error, mutate } = useInquiries();
-
-  // Counts drive the tab badges. Derived from the full list so they stay stable
-  // no matter which tab is active (the API scopes the whole list to the branch).
-  const counts = useMemo(() => {
-    const base: Record<InquiryStatus, number> = {
-      PENDING: 0,
-      IN_PROGRESS: 0,
-      ANSWERED: 0,
-      CLOSED: 0,
-    };
-    for (const inquiry of inquiries ?? []) base[inquiry.status] += 1;
-    return base;
-  }, [inquiries]);
+  const { branchName, inquiries, counts, total, isLoading, error, mutate } =
+    useInquiries();
 
   const rows = useMemo(() => {
     if (!inquiries) return inquiries;
@@ -184,11 +172,11 @@ export default function InquiriesPage() {
   }, [inquiries, tab]);
 
   const tabs: { key: TabKey; label: string; count: number }[] = [
-    { key: 'ALL', label: 'All', count: inquiries?.length ?? 0 },
+    { key: 'ALL', label: 'All', count: total ?? 0 },
     ...INQUIRY_STATUSES.map((status) => ({
       key: status,
       label: INQUIRY_STATUS_META[status].label,
-      count: counts[status],
+      count: counts?.[status] ?? 0,
     })),
   ];
 

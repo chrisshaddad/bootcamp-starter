@@ -78,7 +78,8 @@ const newMedicineSchema = z.object({
     .refine((value) => {
       const parsed = Number(value);
       return !Number.isNaN(parsed) && parsed >= 0;
-    }, 'Enter a valid price'),
+    }, 'Enter a valid price')
+    .refine((value) => Number(value) <= 9_999_999_999, 'Price is too large'),
   ingredients: z.array(z.string()),
 });
 type NewMedicineForm = z.infer<typeof newMedicineSchema>;
@@ -481,6 +482,13 @@ export function AddBatchDialog({
   return (
     <Dialog open onOpenChange={(open) => !open && !isSubmitting && onClose()}>
       <DialogContent
+        // When a medicine is preset we open straight to the batch form; don't
+        // auto-focus its first field (Quantity), which selects the value and
+        // invites an accidental overwrite. The search/barcode steps keep their
+        // own autoFocus.
+        onOpenAutoFocus={
+          presetMedicine ? (event) => event.preventDefault() : undefined
+        }
         // The medicine picker and the "create new medicine" form differ a lot in
         // height; cap at the viewport and scroll so the taller form never spills
         // off-screen (mirrors the super-admin medicines dialog).

@@ -122,7 +122,7 @@ export default function InquiryDetailPage() {
   const messageCount = inquiry?.messages.length ?? 0;
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ block: 'end' });
-  }, [messageCount]);
+  }, [messageCount, id]);
 
   const handleReply = handleSubmit(async ({ message }) => {
     try {
@@ -198,7 +198,9 @@ export default function InquiryDetailPage() {
                 Conversation
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-500">Status</span>
+                <span id="status-label" className="text-sm text-gray-500">
+                  Status
+                </span>
                 <Select
                   value={inquiry.status}
                   onValueChange={(value) =>
@@ -206,7 +208,11 @@ export default function InquiryDetailPage() {
                   }
                   disabled={statusSaving}
                 >
-                  <SelectTrigger className="h-9 w-40">
+                  <SelectTrigger
+                    id="status-trigger"
+                    className="h-9 w-40"
+                    aria-labelledby="status-label status-trigger"
+                  >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -245,7 +251,8 @@ export default function InquiryDetailPage() {
                   if (
                     event.key === 'Enter' &&
                     !event.shiftKey &&
-                    !event.nativeEvent.isComposing
+                    !event.nativeEvent.isComposing &&
+                    !isSubmitting
                   ) {
                     event.preventDefault();
                     void handleReply();

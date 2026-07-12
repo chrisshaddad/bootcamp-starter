@@ -44,11 +44,16 @@ const CATALOG_SELECT = {
 
 type CatalogRow = Prisma.MedicineGetPayload<{ select: typeof CATALOG_SELECT }>;
 
-// Map a catalog row to the wire shape: Prisma's Decimal price becomes a plain
-// number (null stays null) so the client never parses a string.
+// Prisma's Decimal price becomes a plain number (null stays null) so the client
+// never parses a string.
+function toPriceNumber(priceLbp: Prisma.Decimal | null): number | null {
+  return priceLbp === null ? null : priceLbp.toNumber();
+}
+
+// Map a catalog row to the wire shape.
 function toCatalogItem(row: CatalogRow): StockCatalogItem {
   const { priceLbp, ...rest } = row;
-  return { ...rest, priceLbp: priceLbp === null ? null : priceLbp.toNumber() };
+  return { ...rest, priceLbp: toPriceNumber(priceLbp) };
 }
 
 // Columns that make up a `StockBatchResponse`.
@@ -256,8 +261,7 @@ export class StockService {
           form: medicine.form,
           dosage: medicine.dosage,
           barcode: medicine.barcode,
-          priceLbp:
-            medicine.priceLbp === null ? null : medicine.priceLbp.toNumber(),
+          priceLbp: toPriceNumber(medicine.priceLbp),
           totalQuantity: group._sum.quantity ?? 0,
           batchCount: group._count._all,
           nearestExpiry: group._min.expiryDate ?? null,
