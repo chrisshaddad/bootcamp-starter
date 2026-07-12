@@ -1,4 +1,5 @@
 export * from './project-create.request';
 export * from './project-update.request';
 export * from './project.response';
-export * from './project-media.request';
+export * from './project-media-upload.request';
+export * from './project-media-update.request';

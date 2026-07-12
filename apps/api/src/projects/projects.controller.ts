@@ -1,12 +1,7 @@
 import { join } from 'path';
 import { randomUUID } from 'crypto';
-import {
-  readFileSync,
-  unlinkSync,
-  renameSync,
-  existsSync,
-  mkdirSync,
-} from 'fs';
+import { existsSync, mkdirSync } from 'fs';
+import { readFile, unlink, rename } from 'fs/promises';
 import {
   Controller,
   Get,
@@ -31,7 +26,12 @@ import { ProjectsService } from './projects.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Public } from '../auth/decorators';
-import { AccountType, type User } from '@repo/db';
+import {
+  AccountType,
+  type User,
+  type Project,
+  type ProjectMedia,
+} from '@repo/db';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { detectImageExtension } from '../auth/utils/detect-image-signature';
 import {
@@ -55,7 +55,7 @@ const PROJECT_MEDIA_ALLOWED_MIME_TYPES = [
 ];
 const PROJECT_MEDIA_DIR = join(process.cwd(), 'uploads', 'project-media');
 
-// Ensure the directory exists
+// Bootstrap check: synchronous directory creation is acceptable at startup
 if (!existsSync(PROJECT_MEDIA_DIR)) {
   mkdirSync(PROJECT_MEDIA_DIR, { recursive: true });
 }
@@ -97,14 +97,28 @@ export class ProjectsController {
   async getProjectById(
     @CurrentUser() user: User,
     @Param('id') projectId: string,
-  ): Promise<ProjectResponse> {
-    const project = await this.projectsService.getProjectById(user, projectId);
+  ): Promise<unknown> {
+    const rawProject = await this.projectsService.getProjectById(
+      user,
+      projectId,
+    );
+    const project = rawProject as Project & { media?: ProjectMedia[] };
 
     return {
       ...project,
       createdAt: project.createdAt.toISOString(),
       updatedAt: project.updatedAt.toISOString(),
       publishedAt: project.publishedAt?.toISOString() ?? null,
+      media: (project.media ?? []).map((m: ProjectMedia) => ({
+        id: m.id,
+        projectId: m.projectId,
+        mediaType: m.mediaType,
+        publicUrl: m.publicUrl,
+        caption: m.caption,
+        sortOrder: m.sortOrder,
+        createdAt: m.createdAt.toISOString(),
+        updatedAt: m.updatedAt.toISOString(),
+      })),
     };
   }
 
@@ -172,16 +186,29 @@ export class ProjectsController {
     status: 404,
     description: 'Project not found or is in DRAFT status.',
   })
-  async getProjectBySlug(
-    @Param('slug') slug: string,
-  ): Promise<ProjectResponse> {
-    const project = await this.projectsService.getProjectBySlug(slug);
+  async getProjectBySlug(@Param('slug') slug: string): Promise<unknown> {
+    const rawProject = await this.projectsService.getProjectBySlug(slug);
+    const project = rawProject as Project & {
+      media?: Omit<ProjectMedia, 'uploadedByUserId' | 'storageKey'>[];
+    };
 
     return {
       ...project,
       createdAt: project.createdAt.toISOString(),
       updatedAt: project.updatedAt.toISOString(),
       publishedAt: project.publishedAt?.toISOString() ?? null,
+      media: (project.media ?? []).map(
+        (m: Omit<ProjectMedia, 'uploadedByUserId' | 'storageKey'>) => ({
+          id: m.id,
+          projectId: m.projectId,
+          mediaType: m.mediaType,
+          publicUrl: m.publicUrl,
+          caption: m.caption,
+          sortOrder: m.sortOrder,
+          createdAt: m.createdAt.toISOString(),
+          updatedAt: m.updatedAt.toISOString(),
+        }),
+      ),
     };
   }
 
@@ -222,14 +249,34 @@ export class ProjectsController {
       throw new BadRequestException('No file uploaded');
     }
 
-    const extension = detectImageExtension(readFileSync(file.path));
+    let fileBuffer: Buffer;
+    try {
+      fileBuffer = await readFile(file.path);
+    } catch (_readError) {
+      throw new BadRequestException('Could not read the uploaded file');
+    }
+
+    const extension = detectImageExtension(fileBuffer);
     if (!extension) {
-      unlinkSync(file.path);
+      try {
+        await unlink(file.path);
+      } catch (_unlinkError) {
+        // Ignored
+      }
       throw new BadRequestException('The uploaded file is not a valid image');
     }
 
     const finalFilename = `${file.filename}${extension}`;
-    renameSync(file.path, join(PROJECT_MEDIA_DIR, finalFilename));
+    try {
+      await rename(file.path, join(PROJECT_MEDIA_DIR, finalFilename));
+    } catch (_renameError) {
+      try {
+        await unlink(file.path);
+      } catch (_unlinkError) {
+        // Ignored
+      }
+      throw new BadRequestException('Failed to process the uploaded file');
+    }
 
     const apiUrl = process.env.API_URL ?? 'http://localhost:3001';
     const publicUrl = `${apiUrl}/uploads/project-media/${finalFilename}`;
@@ -287,9 +334,8 @@ export class ProjectsController {
     );
 
     try {
-      unlinkSync(join(PROJECT_MEDIA_DIR, result.storageKey));
+      await unlink(join(PROJECT_MEDIA_DIR, result.storageKey));
     } catch (_e) {
-      // <-- Change 'e' to '_e' here
       // Ignore error if file is already missing from disk
     }
 

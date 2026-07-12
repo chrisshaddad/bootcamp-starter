@@ -267,6 +267,16 @@ export class ProjectsService {
       where: { slug },
       include: {
         media: {
+          select: {
+            id: true,
+            projectId: true,
+            mediaType: true,
+            publicUrl: true,
+            caption: true,
+            sortOrder: true,
+            createdAt: true,
+            updatedAt: true,
+          },
           orderBy: {
             sortOrder: 'asc',
           },
@@ -280,8 +290,6 @@ export class ProjectsService {
 
     return project;
   }
-
-  // --- NEW MEDIA METHODS START HERE ---
 
   async addMedia(
     user: User,
