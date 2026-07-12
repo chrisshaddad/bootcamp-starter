@@ -62,7 +62,9 @@ export class AssignmentsService {
     });
 
     if (!patient || patient.institutionId !== actor.institutionId) {
-      throw new NotFoundException(`Patient with ID ${data.patientId} not found`);
+      throw new NotFoundException(
+        `Patient with ID ${data.patientId} not found`,
+      );
     }
 
     const professional = await this.prisma.user.findUnique({
@@ -75,7 +77,9 @@ export class AssignmentsService {
       professional.institutionId !== actor.institutionId ||
       professional.role !== 'PROFESSIONAL'
     ) {
-      throw new BadRequestException('Invalid professional for this institution');
+      throw new BadRequestException(
+        'Invalid professional for this institution',
+      );
     }
 
     if (!professional.isActive) {

@@ -53,10 +53,7 @@ export class UsersService {
     };
   }
 
-  async findAll(
-    query: UserListQuery,
-    actor: User,
-  ): Promise<UserListResponse> {
+  async findAll(query: UserListQuery, actor: User): Promise<UserListResponse> {
     const { role, isActive, search, page, limit } = query;
     const skip = (page - 1) * limit;
 
@@ -226,7 +223,11 @@ export class UsersService {
     }
 
     const existing = await this.prisma.user.findFirst({
-      where: { id, institutionId: actor.institutionId, role: { in: MANAGED_ROLES } },
+      where: {
+        id,
+        institutionId: actor.institutionId,
+        role: { in: MANAGED_ROLES },
+      },
     });
 
     if (!existing) {
@@ -250,6 +251,10 @@ export class UsersService {
       }),
     ]);
 
-    await this.authService.sendInvitation(user, actor.fullName, institution.name);
+    await this.authService.sendInvitation(
+      user,
+      actor.fullName,
+      institution.name,
+    );
   }
 }

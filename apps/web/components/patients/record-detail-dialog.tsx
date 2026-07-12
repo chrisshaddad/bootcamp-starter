@@ -5,7 +5,6 @@ import { toast } from 'sonner';
 import { Download, Paperclip, Upload } from 'lucide-react';
 import { useRecord, recordFileDownloadUrl } from '@/hooks/use-records';
 import { ApiError } from '@/lib/api';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog,

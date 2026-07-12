@@ -10,9 +10,7 @@ export class NotificationsController {
 
   // Any authenticated user can read their own inbox — no @Roles restriction.
   @Get()
-  async findAll(
-    @CurrentUser() user: User,
-  ): Promise<NotificationListResponse> {
+  async findAll(@CurrentUser() user: User): Promise<NotificationListResponse> {
     return this.notificationsService.findForUser(user.id);
   }
 

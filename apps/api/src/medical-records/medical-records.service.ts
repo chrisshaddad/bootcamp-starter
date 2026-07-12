@@ -352,7 +352,9 @@ export class MedicalRecordsService {
     switch (actor.role) {
       case 'INSTITUTION_ADMIN':
         if (patient.institutionId !== actor.institutionId) {
-          throw new NotFoundException(`Patient with ID ${patient.id} not found`);
+          throw new NotFoundException(
+            `Patient with ID ${patient.id} not found`,
+          );
         }
         return;
       case 'PROFESSIONAL':
@@ -406,9 +408,7 @@ export class MedicalRecordsService {
   }
 
   private notificationTitle(type: RecordType): string {
-    return type === 'LAB_RESULT'
-      ? 'New lab result'
-      : 'New medical record';
+    return type === 'LAB_RESULT' ? 'New lab result' : 'New medical record';
   }
 
   private async buildDetail(id: string): Promise<RecordDetailResponse> {

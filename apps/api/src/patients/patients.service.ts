@@ -98,7 +98,11 @@ export class PatientsService {
       institutionId: actor.institutionId,
       // Professionals only see patients they are actively assigned to.
       ...(actor.role === 'PROFESSIONAL'
-        ? { assignments: { some: { professionalId: actor.id, status: 'ACTIVE' } } }
+        ? {
+            assignments: {
+              some: { professionalId: actor.id, status: 'ACTIVE' },
+            },
+          }
         : {}),
       ...(search
         ? {
@@ -203,7 +207,11 @@ export class PatientsService {
         where: { id },
         data: {
           ...(data.dateOfBirth !== undefined
-            ? { dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null }
+            ? {
+                dateOfBirth: data.dateOfBirth
+                  ? new Date(data.dateOfBirth)
+                  : null,
+              }
             : {}),
           ...(data.gender !== undefined ? { gender: data.gender } : {}),
           ...(data.nationalId !== undefined
@@ -218,8 +226,7 @@ export class PatientsService {
             : {}),
           ...(data.emergencyContactRelationship !== undefined
             ? {
-                emergencyContactRelationship:
-                  data.emergencyContactRelationship,
+                emergencyContactRelationship: data.emergencyContactRelationship,
               }
             : {}),
         },
@@ -249,9 +256,7 @@ export class PatientsService {
       actor.role === 'PROFESSIONAL' &&
       !(await isProfessionalAssigned(this.prisma, actor.id, id))
     ) {
-      throw new ForbiddenException(
-        'You are not assigned to this patient',
-      );
+      throw new ForbiddenException('You are not assigned to this patient');
     }
 
     await this.prisma.patient.update({
