@@ -2,7 +2,6 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
-  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@repo/db';
@@ -44,8 +43,6 @@ type BranchRow = Prisma.PharmacyBranchGetPayload<{
 // the session, never the request.
 @Injectable()
 export class BranchesService {
-  private readonly logger = new Logger(BranchesService.name);
-
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
@@ -159,10 +156,17 @@ export class BranchesService {
       where: { id, pharmacyId },
       data,
     });
-    const updated = await this.prisma.pharmacyBranch.findFirstOrThrow({
+    // Re-read scoped by pharmacyId. Use findFirst + an explicit guard (not
+    // findFirstOrThrow) so a concurrent delete landing between the updateMany
+    // and here surfaces as a clean NotFoundException rather than a raw Prisma
+    // P2025 (which would leak as an uncaught 500).
+    const updated = await this.prisma.pharmacyBranch.findFirst({
       where: { id, pharmacyId },
       select: BRANCH_SELECT,
     });
+    if (!updated) {
+      throw new NotFoundException('Branch not found in your pharmacy.');
+    }
 
     // Before → after diff of only the fields that actually changed.
     const changes: AuditChanges = {};
@@ -228,9 +232,26 @@ export class BranchesService {
 
     // Scope the delete by pharmacyId too, keeping the tenant boundary on the
     // write itself (not just the findFirst check above).
-    await this.prisma.pharmacyBranch.deleteMany({
-      where: { id, pharmacyId },
-    });
+    try {
+      await this.prisma.pharmacyBranch.deleteMany({
+        where: { id, pharmacyId },
+      });
+    } catch (error) {
+      // Close the check-then-act gap: if a user is assigned to this branch
+      // between the _count check above and here, User → Branch is Restrict at
+      // the DB, so the delete raises a P2003 foreign-key error. Map it to the
+      // same 409 the pre-check throws, keeping the API contract (Nest
+      // exceptions only) intact instead of leaking a raw Prisma 500.
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2003'
+      ) {
+        throw new ConflictException(
+          'Reassign this branch’s staff before deleting it.',
+        );
+      }
+      throw error;
+    }
 
     await this.audit.record({
       userId: actor.id,
