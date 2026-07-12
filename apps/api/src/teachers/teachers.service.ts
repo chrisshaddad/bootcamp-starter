@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type {
   TeacherOrganizationsResponse,
   TeachersByOrganizationResponse,
@@ -7,6 +7,8 @@ import { PrismaService } from '../database/prisma.service';
 
 @Injectable()
 export class TeachersService {
+  private readonly logger = new Logger(TeachersService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   async findOrganizations(): Promise<TeacherOrganizationsResponse> {
@@ -41,6 +43,8 @@ export class TeachersService {
       teacherCounts.map((count) => [count.organizationId, count._count._all]),
     );
 
+    this.logger.log('Fetched teacher organization dashboard cards.');
+
     return {
       organizations: organizations.map((organization) => ({
         id: organization.id,
@@ -64,6 +68,7 @@ export class TeachersService {
     });
 
     if (!organization) {
+      this.logger.warn(`Organization not found: ${organizationId}`);
       throw new NotFoundException('Organization not found');
     }
 
@@ -84,6 +89,10 @@ export class TeachersService {
         createdAt: true,
       },
     });
+
+    this.logger.log(
+      `Fetched ${teachers.length} teachers for organization ${organizationId}.`,
+    );
 
     return {
       organizationId,
