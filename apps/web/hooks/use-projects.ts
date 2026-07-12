@@ -2,11 +2,15 @@
 
 import useSWR, { mutate as globalMutate } from 'swr';
 import { useCallback } from 'react';
-import { apiPost, apiPatch } from '@/lib/api';
+import { apiPost, apiPatch, apiDelete, apiUpload } from '@/lib/api';
 import type {
   CreateProjectRequest,
   UpdateProjectRequest,
   ProjectResponse,
+  ProjectByIdResponse,
+  ProjectBySlugResponse,
+  ProjectMediaUpdateRequest,
+  ProjectMediaResponse,
 } from '@repo/contracts';
 
 const PROJECTS_KEY = '/projects';
@@ -18,9 +22,9 @@ export function useProjects() {
   return { projects: data ?? [], error, isLoading };
 }
 
-// real: GET /projects/id/:id, for prefilling edit forms.
+// real: GET /projects/id/:id, for prefilling edit forms. Includes media.
 export function useProject(id: string | undefined) {
-  const { data, error, isLoading } = useSWR<ProjectResponse>(
+  const { data, error, isLoading } = useSWR<ProjectByIdResponse>(
     id ? projectKey(id) : null,
   );
   return { project: data, error, isLoading };
@@ -46,10 +50,59 @@ export function useUpdateProject() {
 }
 
 // real: GET /projects/slug/:slug, public, only returns PUBLISHED projects.
+// Includes media.
 export function useProjectBySlug(slug: string | undefined) {
-  const { data, error, isLoading } = useSWR<ProjectResponse>(
+  const { data, error, isLoading } = useSWR<ProjectBySlugResponse>(
     slug ? `/projects/slug/${slug}` : null,
   );
 
   return { project: data, error, isLoading };
+}
+
+export function useUploadProjectMedia(projectId: string) {
+  return useCallback(
+    async (file: File, options?: { caption?: string; sortOrder?: number }) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('mediaType', 'IMAGE');
+      if (options?.caption) formData.append('caption', options.caption);
+      if (options?.sortOrder !== undefined) {
+        formData.append('sortOrder', String(options.sortOrder));
+      }
+
+      const media = await apiUpload<ProjectMediaResponse>(
+        `/projects/${projectId}/media`,
+        formData,
+      );
+      await globalMutate(projectKey(projectId));
+      return media;
+    },
+    [projectId],
+  );
+}
+
+export function useUpdateProjectMedia(projectId: string) {
+  return useCallback(
+    async (mediaId: string, data: ProjectMediaUpdateRequest) => {
+      const media = await apiPatch<ProjectMediaResponse>(
+        `/projects/${projectId}/media/${mediaId}`,
+        data,
+      );
+      await globalMutate(projectKey(projectId));
+      return media;
+    },
+    [projectId],
+  );
+}
+
+export function useDeleteProjectMedia(projectId: string) {
+  return useCallback(
+    async (mediaId: string) => {
+      await apiDelete<{ success: true }>(
+        `/projects/${projectId}/media/${mediaId}`,
+      );
+      await globalMutate(projectKey(projectId));
+    },
+    [projectId],
+  );
 }

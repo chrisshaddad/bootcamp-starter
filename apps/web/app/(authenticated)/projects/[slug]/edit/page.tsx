@@ -1,17 +1,22 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import { ArrowLeft, ImageIcon, Loader2 } from 'lucide-react';
+import { ArrowLeft, ImageIcon, Loader2, X } from 'lucide-react';
 import {
   updateProjectRequestSchema,
   type UpdateProjectRequest,
 } from '@repo/contracts';
-import { useProject, useUpdateProject } from '@/hooks/use-projects';
+import {
+  useProject,
+  useUpdateProject,
+  useUploadProjectMedia,
+  useDeleteProjectMedia,
+} from '@/hooks/use-projects';
 import { ApiError } from '@/lib/api';
 import type { MockTechnology } from '@/lib/mock-projects';
 import { TechPicker } from '@/components/tech-picker';
@@ -37,7 +42,12 @@ export default function EditProjectPage() {
   const router = useRouter();
   const { project, isLoading } = useProject(params.slug);
   const updateProject = useUpdateProject();
+  const uploadMedia = useUploadProjectMedia(project?.id ?? '');
+  const deleteMedia = useDeleteProjectMedia(project?.id ?? '');
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [deletingMediaId, setDeletingMediaId] = useState<string | null>(null);
   const [technologies, setTechnologies] = useState<MockTechnology[]>([]);
 
   const {
@@ -85,6 +95,38 @@ export default function EditProjectPage() {
       }
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleMediaSelected = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !project) return;
+
+    setIsUploading(true);
+    try {
+      await uploadMedia(file, { sortOrder: project.media.length });
+    } catch (error) {
+      toast.error(
+        error instanceof ApiError ? error.message : 'Unable to upload media',
+      );
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDeleteMedia = async (mediaId: string) => {
+    setDeletingMediaId(mediaId);
+    try {
+      await deleteMedia(mediaId);
+    } catch (error) {
+      toast.error(
+        error instanceof ApiError ? error.message : 'Unable to delete media',
+      );
+    } finally {
+      setDeletingMediaId(null);
     }
   };
 
@@ -176,12 +218,54 @@ export default function EditProjectPage() {
 
           <div className="space-y-2">
             <Label>Media</Label>
-            <Card className="border-dashed">
+            {project.media.length > 0 && (
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                {project.media.map((media) => (
+                  <div key={media.id} className="group relative">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={media.publicUrl}
+                      alt={media.caption ?? project.title}
+                      className="aspect-video w-full rounded-lg border object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteMedia(media.id)}
+                      disabled={deletingMediaId === media.id}
+                      aria-label="Delete media"
+                      className="bg-background/90 text-foreground absolute top-1 right-1 flex h-6 w-6 items-center justify-center rounded-full border opacity-0 transition-opacity group-hover:opacity-100"
+                    >
+                      {deletingMediaId === media.id ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <X className="h-3 w-3" />
+                      )}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              onChange={handleMediaSelected}
+              className="hidden"
+            />
+            <Card
+              className="cursor-pointer border-dashed"
+              onClick={() => fileInputRef.current?.click()}
+            >
               <CardContent className="flex flex-col items-center gap-1.5 py-6 text-center">
-                <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                {isUploading ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                ) : (
+                  <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                )}
                 <p className="text-muted-foreground text-xs">
-                  Screenshot/video upload isn&apos;t available yet —
-                  ProjectMedia has no endpoint.
+                  {isUploading
+                    ? 'Uploading...'
+                    : 'Click to upload a screenshot (JPEG, PNG, WEBP, or GIF, up to 5MB)'}
                 </p>
               </CardContent>
             </Card>

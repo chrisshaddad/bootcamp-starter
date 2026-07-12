@@ -1,7 +1,10 @@
 import { Github, ExternalLink, Bookmark, ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import type { ProjectResponse } from '@repo/contracts';
+import type {
+  ProjectResponse,
+  PublicProjectMediaResponse,
+} from '@repo/contracts';
 import {
   MOCK_CONTRIBUTORS,
   MOCK_TECHNOLOGIES,
@@ -16,9 +19,10 @@ import {
 // Shared between the public showcase page (/projects/[slug]) and the
 // authenticated owner preview (/projects/[id]/preview) so both render
 // identically — the preview is only useful if it matches what recruiters
-// actually see.
+// actually see. Both routes' responses carry a superset of
+// PublicProjectMediaResponse, so that's the shape this component needs.
 interface ProjectShowcaseProps {
-  project: ProjectResponse;
+  project: ProjectResponse & { media: PublicProjectMediaResponse[] };
   onSave?: () => void;
 }
 
@@ -65,15 +69,24 @@ export function ProjectShowcase({ project, onSave }: ProjectShowcaseProps) {
         </div>
       </div>
 
-      <div
-        className="mb-8 flex h-48 items-center justify-center rounded-xl"
-        style={{
-          background:
-            'linear-gradient(135deg, var(--color-primary-base), var(--color-purple))',
-        }}
-      >
-        <ImageIcon className="h-10 w-10 text-white/40" />
-      </div>
+      {project.media[0] ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={project.media[0].publicUrl}
+          alt={project.media[0].caption ?? project.title}
+          className="mb-8 h-48 w-full rounded-xl object-cover"
+        />
+      ) : (
+        <div
+          className="mb-8 flex h-48 items-center justify-center rounded-xl"
+          style={{
+            background:
+              'linear-gradient(135deg, var(--color-primary-base), var(--color-purple))',
+          }}
+        >
+          <ImageIcon className="h-10 w-10 text-white/40" />
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_260px]">
         <div className="space-y-8">
@@ -96,14 +109,28 @@ export function ProjectShowcase({ project, onSave }: ProjectShowcaseProps) {
 
           <section>
             <h2 className="mb-3 text-sm font-bold">Screenshots</h2>
-            <Card className="border-dashed">
-              <CardContent className="flex flex-col items-center gap-1.5 py-8 text-center">
-                <ImageIcon className="h-5 w-5 text-muted-foreground" />
-                <p className="text-muted-foreground text-xs">
-                  No screenshots yet — ProjectMedia has no endpoint.
-                </p>
-              </CardContent>
-            </Card>
+            {project.media.length > 0 ? (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {project.media.map((media) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    key={media.id}
+                    src={media.publicUrl}
+                    alt={media.caption ?? project.title}
+                    className="aspect-video w-full rounded-lg border object-cover"
+                  />
+                ))}
+              </div>
+            ) : (
+              <Card className="border-dashed">
+                <CardContent className="flex flex-col items-center gap-1.5 py-8 text-center">
+                  <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                  <p className="text-muted-foreground text-xs">
+                    No screenshots yet.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
           </section>
         </div>
 
