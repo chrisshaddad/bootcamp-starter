@@ -31,7 +31,7 @@ export const ATTENTION_SERIES = [
 const STAFF_COLOR = 'var(--color-primary-base)';
 // Neutral track drawn behind every bar so a branch with 0 in a category still
 // reads as "present, just empty" rather than missing data.
-const TRACK_FILL = '#F1F5F4';
+const TRACK_FILL = 'var(--color-gray-200)';
 
 function truncate(value: string, max = 12): string {
   return value.length > max ? `${value.slice(0, max - 1)}…` : value;

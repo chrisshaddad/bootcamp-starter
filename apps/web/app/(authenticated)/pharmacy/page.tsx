@@ -36,12 +36,12 @@ const RECENT_ACTIVITY_COUNT = 7;
 // Softer, filled-in card surface shared across every card/panel on the page.
 const CARD_SURFACE = 'rounded-2xl border-transparent shadow-sm';
 
-// Pastel icon tints — the same family used across the platform dashboards, so
-// the chart panels speak the same visual language as the KPI tiles.
+// Semantic icon-chip tints (design tokens from globals.css), so the chart
+// panels speak the same visual language as the KPI tiles.
 const TINT = {
-  staff: { bg: '#EAF3DE', fg: '#3f7d1f' },
-  attention: { bg: '#FAEEDA', fg: '#854F0B' },
-  activity: { bg: '#EEEDFE', fg: '#5b48c9' },
+  staff: 'bg-emerald-soft text-emerald-accent',
+  attention: 'bg-warn-soft text-warn',
+  activity: 'bg-purple/10 text-purple',
 } as const;
 
 // Headline KPI tiles. Each links into the console that owns the metric — all
@@ -107,7 +107,7 @@ function PanelCard({
   title: string;
   subtitle?: string;
   icon: LucideIcon;
-  tint: { bg: string; fg: string };
+  tint: string;
   action?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
@@ -131,8 +131,10 @@ function PanelCard({
         <div className="mb-4 flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <div
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
-              style={{ backgroundColor: tint.bg, color: tint.fg }}
+              className={cn(
+                'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg',
+                tint,
+              )}
             >
               <Icon className="h-5 w-5" />
             </div>
@@ -370,7 +372,7 @@ export default function PharmacyDashboardPage() {
     stats ? stats[key] : 0;
 
   const summary = stats
-    ? `${stats.branches} branch${stats.branches === 1 ? '' : 'es'} · ${stats.employees} staff · ${attentionTotal} item${attentionTotal === 1 ? '' : 's'} need attention`
+    ? `${stats.branches} branch${stats.branches === 1 ? '' : 'es'} · ${stats.employees} staff · ${attentionTotal} item${attentionTotal === 1 ? ' needs' : 's need'} attention`
     : 'Loading your pharmacy overview…';
 
   return (
@@ -386,10 +388,12 @@ export default function PharmacyDashboardPage() {
           <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
           <p className="mt-1 text-sm text-gray-500">{summary}</p>
         </div>
-        <StatusBadge variant="success" className="mt-1">
-          <span className="h-1.5 w-1.5 rounded-full bg-success" />
-          Live data
-        </StatusBadge>
+        {stats && !error ? (
+          <StatusBadge variant="success" className="mt-1">
+            <span className="h-1.5 w-1.5 rounded-full bg-success" />
+            Live data
+          </StatusBadge>
+        ) : null}
       </div>
 
       {error ? (
