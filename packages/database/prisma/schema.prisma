@@ -199,7 +199,7 @@ model Department {
 // ─── Skills ──────────────────────────────────────────────
 
 model Skill {
-  id             String   @id @default(uuid())
+  id             String @id @default(uuid())
   name           String
   category       String
   organizationId String

@@ -11,6 +11,8 @@ import { EmployeesModule } from './employees/employees.module';
 import { OpportunitiesModule } from './opportunities/opportunities.module';
 import { ApplicationsModule } from './applications/applications.module';
 import { SkillGapsModule } from './skill-gaps/skill-gaps.module';
+import { SkillsModule } from './skills/skills.module';
+import { DepartmentsModule } from './departments/departments.module';
 
 @Module({
   imports: [
@@ -28,6 +30,8 @@ import { SkillGapsModule } from './skill-gaps/skill-gaps.module';
     OpportunitiesModule,
     ApplicationsModule,
     SkillGapsModule,
+    SkillsModule,
+    DepartmentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
