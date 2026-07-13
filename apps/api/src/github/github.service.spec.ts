@@ -155,6 +155,41 @@ describe('GithubService', () => {
     );
   });
 
+  it('lists file paths from a repository directory', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse([
+        { path: 'package.json', type: 'file' },
+        { path: 'Dockerfile', type: 'file' },
+        { path: 'prisma', type: 'dir' },
+      ]),
+    );
+
+    await expect(
+      service.fetchRepositoryDirectoryFilePaths(
+        { owner: 'owner', repo: 'repo' },
+        '.github/workflows',
+        'feature/test',
+      ),
+    ).resolves.toEqual(['package.json', 'Dockerfile']);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      'https://api.github.com/repos/owner/repo/contents/.github/workflows?ref=feature%2Ftest',
+    );
+  });
+
+  it('returns an empty root file list for repositories without contents', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ message: 'Not Found' }, 404),
+    );
+
+    await expect(
+      service.fetchRepositoryDirectoryFilePaths(
+        { owner: 'owner', repo: 'repo' },
+        '',
+        'main',
+      ),
+    ).resolves.toEqual([]);
+  });
+
   it('returns null for missing repository files', async () => {
     fetchMock.mockResolvedValueOnce(
       jsonResponse({ message: 'Not Found' }, 404),

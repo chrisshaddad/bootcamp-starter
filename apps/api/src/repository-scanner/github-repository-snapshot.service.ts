@@ -9,24 +9,39 @@ import { parseGithubRepositoryUrl } from '../github/github-url.parser';
 import { analyzeRepositorySnapshot } from './repository-analyzer';
 import type { RepositorySnapshotFile } from './repository-scanner.types';
 
-const GITHUB_ANALYSIS_FILE_PATHS = [
+const ROOT_ANALYSIS_FILE_PATHS = [
   'package.json',
   'Dockerfile',
   'docker-compose.yml',
   'compose.yml',
-  'prisma/schema.prisma',
-  '.github/workflows/ci.yml',
-  '.github/workflows/ci.yaml',
-  '.github/workflows/test.yml',
-  '.github/workflows/test.yaml',
-  '.github/workflows/build.yml',
-  '.github/workflows/build.yaml',
   'requirements.txt',
   'pyproject.toml',
   'pom.xml',
   'build.gradle',
   'go.mod',
   'Cargo.toml',
+] as const;
+const PRISMA_ANALYSIS_FILE_PATHS = ['prisma/schema.prisma'] as const;
+const WORKFLOW_ANALYSIS_FILE_PATHS = [
+  '.github/workflows/ci.yml',
+  '.github/workflows/ci.yaml',
+  '.github/workflows/test.yml',
+  '.github/workflows/test.yaml',
+  '.github/workflows/build.yml',
+  '.github/workflows/build.yaml',
+] as const;
+const ANALYSIS_DIRECTORY_PATHS = [
+  { directoryPath: '', filePaths: ROOT_ANALYSIS_FILE_PATHS },
+  { directoryPath: 'prisma', filePaths: PRISMA_ANALYSIS_FILE_PATHS },
+  {
+    directoryPath: '.github/workflows',
+    filePaths: WORKFLOW_ANALYSIS_FILE_PATHS,
+  },
+] as const;
+const GITHUB_ANALYSIS_FILE_PATHS = [
+  ...ROOT_ANALYSIS_FILE_PATHS,
+  ...PRISMA_ANALYSIS_FILE_PATHS,
+  ...WORKFLOW_ANALYSIS_FILE_PATHS,
 ] as const;
 const MAX_CONCURRENT_FILE_REQUESTS = 4;
 
@@ -80,14 +95,25 @@ export class GithubRepositorySnapshotService {
     repository: ParsedGithubRepository,
     ref: string | null,
   ): Promise<RepositorySnapshotFile[]> {
+    const pathsToFetch = (
+      await Promise.all(
+        ANALYSIS_DIRECTORY_PATHS.map(async ({ directoryPath, filePaths }) => {
+          const availableFilePaths = new Set(
+            await this.fetchDirectoryFilePaths(repository, directoryPath, ref),
+          );
+
+          return filePaths.filter((path) => availableFilePaths.has(path));
+        }),
+      )
+    ).flat();
     const fetchedFiles: Array<{ path: string; content: string | null }> = [];
 
     for (
       let index = 0;
-      index < GITHUB_ANALYSIS_FILE_PATHS.length;
+      index < pathsToFetch.length;
       index += MAX_CONCURRENT_FILE_REQUESTS
     ) {
-      const batch = GITHUB_ANALYSIS_FILE_PATHS.slice(
+      const batch = pathsToFetch.slice(
         index,
         index + MAX_CONCURRENT_FILE_REQUESTS,
       );
@@ -109,6 +135,29 @@ export class GithubRepositorySnapshotService {
             },
           ],
     );
+  }
+
+  private async fetchDirectoryFilePaths(
+    repository: ParsedGithubRepository,
+    directoryPath: string,
+    ref: string | null,
+  ): Promise<string[]> {
+    try {
+      return await this.githubService.fetchRepositoryDirectoryFilePaths(
+        repository,
+        directoryPath,
+        ref,
+      );
+    } catch (error) {
+      if (error instanceof GithubRequestTimeoutException) {
+        this.logger.warn(
+          `Skipping optional GitHub directory ${directoryPath || '/'} after request timeout`,
+        );
+        return [];
+      }
+
+      throw error;
+    }
   }
 
   private async fetchOptionalSnapshotFile(

@@ -10,11 +10,13 @@ describe('GithubRepositorySnapshotService', () => {
 
   const mockGithubService = {
     fetchRepositoryPreview: jest.fn(),
+    fetchRepositoryDirectoryFilePaths: jest.fn(),
     fetchRepositoryFileText: jest.fn(),
   };
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockGithubService.fetchRepositoryDirectoryFilePaths.mockResolvedValue([]);
     service = new GithubRepositorySnapshotService(
       mockGithubService as unknown as GithubService,
     );
@@ -27,6 +29,12 @@ describe('GithubRepositorySnapshotService', () => {
   it('builds an analysis preview from fetched repository files', async () => {
     mockGithubService.fetchRepositoryPreview.mockResolvedValue(
       createRepositoryPreview(),
+    );
+    mockGithubService.fetchRepositoryDirectoryFilePaths.mockImplementation(
+      (_repository: unknown, directoryPath: string) =>
+        Promise.resolve(
+          directoryPath === '' ? ['package.json', 'Dockerfile'] : [],
+        ),
     );
     mockGithubService.fetchRepositoryFileText.mockImplementation(
       (_repository: unknown, path: string) => {
@@ -52,6 +60,9 @@ describe('GithubRepositorySnapshotService', () => {
       owner: 'owner',
       repo: 'repo',
     });
+    expect(
+      mockGithubService.fetchRepositoryDirectoryFilePaths,
+    ).toHaveBeenCalledWith({ owner: 'owner', repo: 'repo' }, '', 'main');
     expect(mockGithubService.fetchRepositoryFileText).toHaveBeenCalledWith(
       { owner: 'owner', repo: 'repo' },
       'package.json',
@@ -83,6 +94,10 @@ describe('GithubRepositorySnapshotService', () => {
     mockGithubService.fetchRepositoryPreview.mockResolvedValue(
       createRepositoryPreview(),
     );
+    mockGithubService.fetchRepositoryDirectoryFilePaths.mockImplementation(
+      (_repository: unknown, directoryPath: string) =>
+        Promise.resolve(directoryPath === '' ? ['Dockerfile'] : []),
+    );
     mockGithubService.fetchRepositoryFileText.mockImplementation(
       (_repository: unknown, path: string) =>
         Promise.resolve(
@@ -103,6 +118,35 @@ describe('GithubRepositorySnapshotService', () => {
     mockGithubService.fetchRepositoryPreview.mockResolvedValue(
       createRepositoryPreview(),
     );
+    mockGithubService.fetchRepositoryDirectoryFilePaths.mockImplementation(
+      (_repository: unknown, directoryPath: string) => {
+        const filesByDirectory: Record<string, string[]> = {
+          '': [
+            'package.json',
+            'Dockerfile',
+            'docker-compose.yml',
+            'compose.yml',
+            'requirements.txt',
+            'pyproject.toml',
+            'pom.xml',
+            'build.gradle',
+            'go.mod',
+            'Cargo.toml',
+          ],
+          prisma: ['prisma/schema.prisma'],
+          '.github/workflows': [
+            '.github/workflows/ci.yml',
+            '.github/workflows/ci.yaml',
+            '.github/workflows/test.yml',
+            '.github/workflows/test.yaml',
+            '.github/workflows/build.yml',
+            '.github/workflows/build.yaml',
+          ],
+        };
+
+        return Promise.resolve(filesByDirectory[directoryPath] ?? []);
+      },
+    );
     let activeRequests = 0;
     let maximumActiveRequests = 0;
     mockGithubService.fetchRepositoryFileText.mockImplementation(async () => {
@@ -119,10 +163,46 @@ describe('GithubRepositorySnapshotService', () => {
     expect(mockGithubService.fetchRepositoryFileText).toHaveBeenCalledTimes(17);
   });
 
+  it('fetches only supported root files reported by GitHub', async () => {
+    mockGithubService.fetchRepositoryPreview.mockResolvedValue(
+      createRepositoryPreview(),
+    );
+    mockGithubService.fetchRepositoryDirectoryFilePaths.mockImplementation(
+      (_repository: unknown, directoryPath: string) =>
+        Promise.resolve(
+          directoryPath === '' ? ['package.json', 'README.md'] : [],
+        ),
+    );
+    mockGithubService.fetchRepositoryFileText.mockResolvedValue(null);
+
+    await service.previewRepositoryAnalysis('https://github.com/owner/repo');
+
+    expect(mockGithubService.fetchRepositoryFileText).toHaveBeenCalledWith(
+      { owner: 'owner', repo: 'repo' },
+      'package.json',
+      'main',
+    );
+    expect(mockGithubService.fetchRepositoryFileText).not.toHaveBeenCalledWith(
+      expect.anything(),
+      'Dockerfile',
+      expect.anything(),
+    );
+    expect(mockGithubService.fetchRepositoryFileText).not.toHaveBeenCalledWith(
+      expect.anything(),
+      'README.md',
+      expect.anything(),
+    );
+    expect(mockGithubService.fetchRepositoryFileText).toHaveBeenCalledTimes(1);
+  });
+
   it('skips a timed-out optional file and completes the preview', async () => {
     const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
     mockGithubService.fetchRepositoryPreview.mockResolvedValue(
       createRepositoryPreview(),
+    );
+    mockGithubService.fetchRepositoryDirectoryFilePaths.mockImplementation(
+      (_repository: unknown, directoryPath: string) =>
+        Promise.resolve(directoryPath === '' ? ['Dockerfile'] : []),
     );
     mockGithubService.fetchRepositoryFileText.mockImplementation(
       (_repository: unknown, path: string) =>
@@ -146,6 +226,10 @@ describe('GithubRepositorySnapshotService', () => {
     mockGithubService.fetchRepositoryPreview.mockResolvedValue(
       createRepositoryPreview(),
     );
+    mockGithubService.fetchRepositoryDirectoryFilePaths.mockImplementation(
+      (_repository: unknown, directoryPath: string) =>
+        Promise.resolve(directoryPath === '' ? ['Dockerfile'] : []),
+    );
     mockGithubService.fetchRepositoryFileText.mockImplementation(
       (_repository: unknown, path: string) =>
         path === 'Dockerfile'
@@ -158,6 +242,27 @@ describe('GithubRepositorySnapshotService', () => {
     await expect(
       service.previewRepositoryAnalysis('https://github.com/owner/repo'),
     ).rejects.toThrow(ServiceUnavailableException);
+  });
+
+  it('skips a directory when its listing request times out', async () => {
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+    mockGithubService.fetchRepositoryPreview.mockResolvedValue(
+      createRepositoryPreview(),
+    );
+    mockGithubService.fetchRepositoryDirectoryFilePaths.mockImplementation(
+      (_repository: unknown, directoryPath: string) =>
+        directoryPath === ''
+          ? Promise.reject(new GithubRequestTimeoutException())
+          : Promise.resolve([]),
+    );
+    mockGithubService.fetchRepositoryFileText.mockResolvedValue(null);
+
+    await expect(
+      service.previewRepositoryAnalysis('https://github.com/owner/repo'),
+    ).resolves.toMatchObject({ inspectedFiles: [] });
+    expect(warn).toHaveBeenCalledWith(
+      'Skipping optional GitHub directory / after request timeout',
+    );
   });
 });
 

@@ -98,6 +98,29 @@ export class GithubService {
     return this.normalizeLanguages(apiLanguages);
   }
 
+  /** Returns file paths reported by GitHub for a repository directory. */
+  async fetchRepositoryDirectoryFilePaths(
+    repository: ParsedGithubRepository,
+    directoryPath: string,
+    ref?: string | null,
+  ): Promise<string[]> {
+    const encodedDirectoryPath = directoryPath
+      .split('/')
+      .filter(Boolean)
+      .map(encodeURIComponent)
+      .join('/');
+    const pathSuffix = encodedDirectoryPath ? `/${encodedDirectoryPath}` : '';
+    const refQuery = ref ? `?ref=${encodeURIComponent(ref)}` : '';
+    const apiEntries = await this.fetchGithubJson<unknown>(
+      `/repos/${encodeURIComponent(repository.owner)}/${encodeURIComponent(
+        repository.repo,
+      )}/contents${pathSuffix}${refQuery}`,
+      [],
+    );
+
+    return this.normalizeDirectoryFilePaths(apiEntries);
+  }
+
   async fetchRepositoryFileText(
     repository: ParsedGithubRepository,
     path: string,
@@ -153,7 +176,10 @@ export class GithubService {
     return this.normalizeFileText(apiFile);
   }
 
-  private async fetchGithubJson<T>(path: string): Promise<T> {
+  private async fetchGithubJson<T>(
+    path: string,
+    notFoundValue?: T,
+  ): Promise<T> {
     let response: Response;
 
     try {
@@ -170,6 +196,10 @@ export class GithubService {
         `GitHub API request failed before response: ${getErrorMessage(error)}`,
       );
       throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+    }
+
+    if (response.status === 404 && notFoundValue !== undefined) {
+      return notFoundValue;
     }
 
     if (!response.ok) {
@@ -232,6 +262,26 @@ export class GithubService {
         (entry): entry is [string, number] => typeof entry[1] === 'number',
       )
       .map(([name, bytes]) => ({ name, bytes }));
+  }
+
+  private normalizeDirectoryFilePaths(apiEntries: unknown): string[] {
+    if (!Array.isArray(apiEntries)) {
+      throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+    }
+
+    return apiEntries.flatMap((entry) => {
+      if (!isRecord(entry)) {
+        throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+      }
+
+      const path = getOptionalString(entry.path);
+      const type = getOptionalString(entry.type);
+      if (!path || !type) {
+        throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+      }
+
+      return type === 'file' ? [path] : [];
+    });
   }
 
   private normalizeFileText(apiFile: unknown): string {
