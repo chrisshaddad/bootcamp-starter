@@ -283,10 +283,14 @@ export class ProjectsService {
       );
     }
 
-    return this.prisma.project.update({
+    const previousLogoUrl = project.logoUrl;
+
+    const updatedProject = await this.prisma.project.update({
       where: { id: projectId },
       data: { logoUrl },
     });
+
+    return { ...updatedProject, previousLogoUrl };
   }
 
   async getProjectBySlug(slug: string) {
@@ -328,18 +332,8 @@ export class ProjectsService {
         ? {
             OR: [
               { title: { contains: query.search, mode: 'insensitive' } },
-              {
-                shortDescription: {
-                  contains: query.search,
-                  mode: 'insensitive',
-                },
-              },
-              {
-                fullDescription: {
-                  contains: query.search,
-                  mode: 'insensitive',
-                },
-              },
+              { shortDescription: { contains: query.search, mode: 'insensitive' } },
+              { fullDescription: { contains: query.search, mode: 'insensitive' } },
               {
                 technologies: {
                   some: {
@@ -354,9 +348,7 @@ export class ProjectsService {
         : {}),
     };
 
-    let orderBy: Prisma.ProjectOrderByWithRelationInput = {
-      publishedAt: 'desc',
-    };
+    let orderBy: Prisma.ProjectOrderByWithRelationInput = { publishedAt: 'desc' };
     if (query.sort === 'oldest') {
       orderBy = { publishedAt: 'asc' };
     } else if (query.sort === 'alphabetical') {
@@ -508,6 +500,16 @@ export class ProjectsService {
 
     await this.prisma.project.delete({ where: { id: projectId } });
 
-    return { mediaStorageKeys: project.media.map((m) => m.storageKey) };
+    const mediaStorageKeys = project.media.map((m) => m.storageKey);
+
+    if (project.logoUrl) {
+      const parts = project.logoUrl.split('/');
+      const logoKey = parts[parts.length - 1];
+      if (logoKey) {
+        mediaStorageKeys.push(logoKey);
+      }
+    }
+
+    return { mediaStorageKeys };
   }
 }

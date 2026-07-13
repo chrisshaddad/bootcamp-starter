@@ -88,9 +88,7 @@ export class ProjectsController {
 
   @Get('explore')
   @Public()
-  @ApiOperation({
-    summary: 'Explore public published projects with search and pagination',
-  })
+  @ApiOperation({ summary: 'Explore public published projects with search and pagination' })
   @ApiResponse({
     status: 200,
     description: 'Paginated public projects list successfully retrieved.',
@@ -214,8 +212,7 @@ export class ProjectsController {
     FileInterceptor('file', {
       storage: diskStorage({
         destination: PROJECT_MEDIA_DIR,
-        filename: (_req, _file, callback) =>
-          callback(null, `logo-${randomUUID()}`),
+        filename: (_req, _file, callback) => callback(null, `logo-${randomUUID()}`),
       }),
       limits: { fileSize: PROJECT_MEDIA_MAX_SIZE_BYTES },
       fileFilter: (_req, file, callback) => {
@@ -245,6 +242,9 @@ export class ProjectsController {
     try {
       fileBuffer = await readFile(file.path);
     } catch (_readError) {
+      try {
+        await unlink(file.path);
+      } catch (_unlinkError) {}
       throw new BadRequestException('Could not read the uploaded file');
     }
 
@@ -252,9 +252,7 @@ export class ProjectsController {
     if (!extension) {
       try {
         await unlink(file.path);
-      } catch (_unlinkError) {
-        // Ignore cleanup errors.
-      }
+      } catch (_unlinkError) {}
       throw new BadRequestException('The uploaded file is not a valid image');
     }
 
@@ -264,27 +262,39 @@ export class ProjectsController {
     } catch (_renameError) {
       try {
         await unlink(file.path);
-      } catch (_unlinkError) {
-        // Ignore cleanup errors.
-      }
+      } catch (_unlinkError) {}
       throw new BadRequestException('Failed to process the uploaded file');
     }
 
     const apiUrl = process.env.API_URL ?? 'http://localhost:3001';
     const publicUrl = `${apiUrl}/uploads/project-media/${finalFilename}`;
 
-    const project = await this.projectsService.uploadLogo(
-      user,
-      projectId,
-      publicUrl,
-    );
+    try {
+      const result = await this.projectsService.uploadLogo(user, projectId, publicUrl);
+      const { previousLogoUrl, ...project } = result;
 
-    return {
-      ...project,
-      createdAt: project.createdAt.toISOString(),
-      updatedAt: project.updatedAt.toISOString(),
-      publishedAt: project.publishedAt?.toISOString() ?? null,
-    };
+      if (previousLogoUrl) {
+        const parts = previousLogoUrl.split('/');
+        const oldFilename = parts[parts.length - 1];
+        if (oldFilename) {
+          try {
+            await unlink(join(PROJECT_MEDIA_DIR, oldFilename));
+          } catch (_unlinkError) {}
+        }
+      }
+
+      return {
+        ...project,
+        createdAt: project.createdAt.toISOString(),
+        updatedAt: project.updatedAt.toISOString(),
+        publishedAt: project.publishedAt?.toISOString() ?? null,
+      };
+    } catch (error) {
+      try {
+        await unlink(join(PROJECT_MEDIA_DIR, finalFilename));
+      } catch (_unlinkError) {}
+      throw error;
+    }
   }
 
   @Delete(':id')
