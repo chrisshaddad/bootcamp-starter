@@ -151,7 +151,14 @@ export class ExpensesService {
     organizationId: string,
     query: ExpenseQuery,
   ): Promise<ExpenseListResponse> {
-    const { page = 1, limit = 10, categoryId, dateFrom, dateTo, search } = query;
+    const {
+      page = 1,
+      limit = 10,
+      categoryId,
+      dateFrom,
+      dateTo,
+      search,
+    } = query;
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = { organizationId };

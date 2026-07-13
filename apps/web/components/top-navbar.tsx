@@ -19,6 +19,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/expenses': 'Expenses',
   '/products': 'Products',
   '/goals': 'Goals',
+  '/reports': 'Reports',
   '/imports': 'Imports',
   '/ai-insights': 'AI Insights',
   '/settings': 'Settings',
@@ -46,7 +47,7 @@ export function TopNavbar() {
   const avatarUrl = user?.profile?.avatarUrl;
 
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-6">
+    <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-6 print:hidden">
       {/* Left */}
       <div className="flex items-center gap-3">
         <SidebarTrigger className="h-8 w-8 text-muted-foreground hover:bg-secondary hover:text-foreground" />
