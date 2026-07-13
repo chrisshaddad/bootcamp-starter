@@ -2,6 +2,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@repo/db';
@@ -43,6 +44,8 @@ type BranchRow = Prisma.PharmacyBranchGetPayload<{
 // the session, never the request.
 @Injectable()
 export class BranchesService {
+  private readonly logger = new Logger(BranchesService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
@@ -250,6 +253,12 @@ export class BranchesService {
           'Reassign this branch’s staff before deleting it.',
         );
       }
+      // Anything else is unexpected — surface it in the logs before re-throwing
+      // so the failure is observable, then let the global filter handle it.
+      this.logger.error(
+        `Failed to delete branch ${id}`,
+        error instanceof Error ? error.stack : String(error),
+      );
       throw error;
     }
 
