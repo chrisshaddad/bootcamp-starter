@@ -8,7 +8,7 @@ import {
   PackageX,
 } from 'lucide-react';
 import type { AuditLogItem } from '@repo/contracts';
-import { useBranchStats } from '@/hooks/use-pharmacy-stats';
+import { useBranchStats } from '@/hooks/use-branch-stats';
 import { actionMeta, CATEGORY_META } from '@/lib/audit-format';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
