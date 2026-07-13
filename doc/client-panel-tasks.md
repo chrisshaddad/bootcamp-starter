@@ -11,7 +11,7 @@ Everything below is a **vertical slice** — one owner takes it end to end. Copy
 3. **Hook** — `apps/web/hooks/use-<area>.ts` (SWR read hook + actions hook; bare-path keys, `apiPost/apiPatch`, revalidate by prefix).
 4. **Pages** — under the guarded client area folder. Enable the sidebar item once the pages exist.
 
-**Golden rules:** a client only ever sees their **own** private data — scope by `actor.id` (`clientId`), never a request-body id. The **Medicine catalog and pharmacy directory are global and read-only** for clients (reuse `MedicinesService`, don't fork it). List every allowed role explicitly in `@Roles(...)` and in the frontend `RoleGuard` — no role hierarchy. Any id a client *does* send (pharmacyId / branchId / medicineId) must be **validated for consistency server-side** (branch belongs to pharmacy; branch actually stocks the medicine) before it's trusted.
+**Golden rules:** a client only ever sees their **own** private data — scope by `actor.id` (`clientId`), never a request-body id. The **Medicine catalog and pharmacy directory are global and read-only** for clients (reuse `MedicinesService`, don't fork it). List every allowed role explicitly in `@Roles(...)` and in the frontend `RoleGuard` — no role hierarchy. Any id a client _does_ send (pharmacyId / branchId / medicineId) must be **validated for consistency server-side** (branch belongs to pharmacy; branch actually stocks the medicine) before it's trusted.
 
 ---
 
@@ -77,12 +77,12 @@ Everything below is a **vertical slice** — one owner takes it end to end. Copy
 
 ## Suggested distribution & order
 
-| Order        | Package                                        | Owner        | Depends on                                   |
-| ------------ | ---------------------------------------------- | ------------ | -------------------------------------------- |
-| 1 (first)    | **A1 — Client foundation** (+ location capture)| **Person A** | Staff foundation                             |
-| 2            | **A2 — Find: catalog, alternatives, nearest**  | **Person A** | A1                                           |
-| 2 (parallel) | **B1 — My inquiries** (create/track + close)   | **Person B** | A1 (guard/layout); links from A2             |
-| 3 (parallel) | **B2 — Pharmacy directory**                    | **Person B** | A1; optional reuse of A2's distance helper   |
+| Order        | Package                                         | Owner        | Depends on                                 |
+| ------------ | ----------------------------------------------- | ------------ | ------------------------------------------ |
+| 1 (first)    | **A1 — Client foundation** (+ location capture) | **Person A** | Staff foundation                           |
+| 2            | **A2 — Find: catalog, alternatives, nearest**   | **Person A** | A1                                         |
+| 2 (parallel) | **B1 — My inquiries** (create/track + close)    | **Person B** | A1 (guard/layout); links from A2           |
+| 3 (parallel) | **B2 — Pharmacy directory**                     | **Person B** | A1; optional reuse of A2's distance helper |
 
 A1 goes first — it lands the client layout, guard, nav, and saved-location so every other package has a home. Then **Person A** builds discovery (catalog + alternatives + the geospatial nearest-availability), while **Person B** builds the inquiry create/track flow and the pharmacy directory. The only cross-package touchpoints are plain hrefs (A2's "Ask this pharmacy" → B1's `/my/inquiries/new`; B2's branch pages → A2's medicine detail) — all **append-only**. B1 can build and test against **seeded** inquiry data before A2 is finished, and B2 is fully independent of A2.
 
