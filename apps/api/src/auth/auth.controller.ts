@@ -64,13 +64,17 @@ export class AuthController {
     return { user };
   }
 
+  @Public()
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   async logout(
     @Req() request: AuthenticatedRequest,
     @Res({ passthrough: true }) response: Response,
   ) {
-    const sessionId = request.sessionId;
+    // Public so an expired/invalid session can still be cleared client-side.
+    const sessionId = request.cookies?.[SESSION_COOKIE_NAME] as
+      | string
+      | undefined;
 
     if (sessionId) {
       await this.authService.logout(sessionId);
@@ -88,7 +92,9 @@ export class AuthController {
   }
 
   @Get('me')
-  getCurrentUser(@CurrentUser() user: User): UserResponse {
+  async getCurrentUser(@CurrentUser() user: User): Promise<UserResponse> {
+    const isManager = await this.authService.isManager(user.id);
+
     return {
       id: user.id,
       email: user.email,
@@ -96,6 +102,7 @@ export class AuthController {
       role: user.role,
       organizationId: user.organizationId,
       isConfirmed: user.isConfirmed,
+      isManager,
     };
   }
 }
