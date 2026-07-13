@@ -26,6 +26,7 @@ import {
   type InquiryStatus,
 } from '@repo/contracts';
 import { useInquiryDetail, useInquiryActions } from '@/hooks/use-inquiries';
+import { useReadOnlyStaff } from '@/hooks/use-auth';
 import { ApiError } from '@/lib/api';
 import {
   INQUIRY_STATUSES,
@@ -98,6 +99,9 @@ export default function InquiryDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { inquiry, isLoading, error, mutate } = useInquiryDetail(id);
   const { reply, updateStatus } = useInquiryActions();
+
+  // A PHARMACY_EMPLOYEE reads the thread but cannot reply or change its status.
+  const readOnly = useReadOnlyStaff();
 
   const [statusSaving, setStatusSaving] = useState(false);
 
@@ -201,28 +205,45 @@ export default function InquiryDetailPage() {
                 <span id="status-label" className="text-sm text-gray-500">
                   Status
                 </span>
-                <Select
-                  value={inquiry.status}
-                  onValueChange={(value) =>
-                    handleStatusChange(value as InquiryStatus)
-                  }
-                  disabled={statusSaving}
-                >
-                  <SelectTrigger
-                    id="status-trigger"
-                    className="h-9 w-40"
-                    aria-labelledby="status-label status-trigger"
+                {readOnly ? (
+                  <span
+                    className={cn(
+                      'inline-flex h-9 w-40 items-center gap-1.5 rounded-md px-3 text-sm font-medium',
+                      INQUIRY_STATUS_META[inquiry.status].badge,
+                    )}
                   >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {INQUIRY_STATUSES.map((status) => (
-                      <SelectItem key={status} value={status}>
-                        {INQUIRY_STATUS_META[status].label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                    <span
+                      className={cn(
+                        'h-2 w-2 rounded-full',
+                        INQUIRY_STATUS_META[inquiry.status].dot,
+                      )}
+                    />
+                    {INQUIRY_STATUS_META[inquiry.status].label}
+                  </span>
+                ) : (
+                  <Select
+                    value={inquiry.status}
+                    onValueChange={(value) =>
+                      handleStatusChange(value as InquiryStatus)
+                    }
+                    disabled={statusSaving}
+                  >
+                    <SelectTrigger
+                      id="status-trigger"
+                      className="h-9 w-40"
+                      aria-labelledby="status-label status-trigger"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {INQUIRY_STATUSES.map((status) => (
+                        <SelectItem key={status} value={status}>
+                          {INQUIRY_STATUS_META[status].label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             </div>
 
@@ -241,43 +262,54 @@ export default function InquiryDetailPage() {
               </CardContent>
             </Card>
 
-            {/* Reply box — always visible; Enter sends, Shift+Enter newlines. */}
-            <form onSubmit={handleReply} className="shrink-0 space-y-2">
-              <textarea
-                {...register('message')}
-                onKeyDown={(event) => {
-                  // Enter sends; Shift+Enter inserts a newline. Skip while an IME
-                  // composition is active so typing e.g. Arabic/CJK isn't cut off.
-                  if (
-                    event.key === 'Enter' &&
-                    !event.shiftKey &&
-                    !event.nativeEvent.isComposing &&
-                    !isSubmitting
-                  ) {
-                    event.preventDefault();
-                    void handleReply();
-                  }
-                }}
-                rows={2}
-                maxLength={4000}
-                placeholder="Write a reply…"
-                aria-invalid={!!errors.message}
-                className="w-full resize-none rounded-[10px] border border-gray-300 bg-transparent px-4 py-3 text-sm shadow-xs outline-none transition-[color,box-shadow] placeholder:text-gray-500 focus-visible:border-success focus-visible:ring-[3px] focus-visible:ring-success/20 disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={isSubmitting}
-              />
-              {errors.message && (
-                <p className="text-sm text-error">{errors.message.message}</p>
-              )}
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-400">
-                  Sending a reply moves this inquiry to In progress.
-                </span>
-                <Button type="submit" disabled={isSubmitting || !draft?.trim()}>
-                  <Send className="h-4 w-4" />
-                  {isSubmitting ? 'Sending…' : 'Send reply'}
-                </Button>
-              </div>
-            </form>
+            {/* Reply box — hidden for a read-only PHARMACY_EMPLOYEE, who can
+                read the thread but not respond. Enter sends, Shift+Enter
+                newlines. */}
+            {readOnly ? (
+              <p className="shrink-0 rounded-[10px] border border-dashed border-gray-200 px-4 py-3 text-center text-sm text-gray-500">
+                You have read-only access to inquiries — replying is disabled.
+              </p>
+            ) : (
+              <form onSubmit={handleReply} className="shrink-0 space-y-2">
+                <textarea
+                  {...register('message')}
+                  onKeyDown={(event) => {
+                    // Enter sends; Shift+Enter inserts a newline. Skip while an IME
+                    // composition is active so typing e.g. Arabic/CJK isn't cut off.
+                    if (
+                      event.key === 'Enter' &&
+                      !event.shiftKey &&
+                      !event.nativeEvent.isComposing &&
+                      !isSubmitting
+                    ) {
+                      event.preventDefault();
+                      void handleReply();
+                    }
+                  }}
+                  rows={2}
+                  maxLength={4000}
+                  placeholder="Write a reply…"
+                  aria-invalid={!!errors.message}
+                  className="w-full resize-none rounded-[10px] border border-gray-300 bg-transparent px-4 py-3 text-sm shadow-xs outline-none transition-[color,box-shadow] placeholder:text-gray-500 focus-visible:border-success focus-visible:ring-[3px] focus-visible:ring-success/20 disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={isSubmitting}
+                />
+                {errors.message && (
+                  <p className="text-sm text-error">{errors.message.message}</p>
+                )}
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-gray-400">
+                    Sending a reply moves this inquiry to In progress.
+                  </span>
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting || !draft?.trim()}
+                  >
+                    <Send className="h-4 w-4" />
+                    {isSubmitting ? 'Sending…' : 'Send reply'}
+                  </Button>
+                </div>
+              </form>
+            )}
           </div>
 
           {/* Context panel */}

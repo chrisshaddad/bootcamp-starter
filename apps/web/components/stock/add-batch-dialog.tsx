@@ -87,7 +87,10 @@ type NewMedicineForm = z.infer<typeof newMedicineSchema>;
 function MedicineChip({ medicine }: { medicine: StockCatalogItem }) {
   const subtitle = medicineSubtitle(medicine.form, medicine.dosage);
   return (
-    <div className="flex items-center gap-3">
+    // min-w-0 + flex-1 so the chip shrinks within its flex row (e.g. beside the
+    // "Change" button) and the long brand name truncates instead of forcing the
+    // whole dialog wider.
+    <div className="flex min-w-0 flex-1 items-center gap-3">
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-primary-hover">
         <Pill className="h-4 w-4" />
       </div>
@@ -512,7 +515,11 @@ export function AddBatchDialog({
           ) : null}
         </DialogHeader>
 
-        <div className="py-4">
+        {/* min-w-0: DialogContent is a CSS grid, whose children default to
+            min-width:auto and won't shrink below their content. Without this a
+            long, unbreakable medicine name blows the dialog wider than its
+            max-width instead of letting the inner text truncate. */}
+        <div className="min-w-0 py-4">
           {!selected ? (
             <div className="space-y-4">
               <div className="flex gap-1 rounded-lg bg-gray-100 p-1">
@@ -543,7 +550,7 @@ export function AddBatchDialog({
               onSubmit={handleSubmit(onSubmit)}
               className="space-y-4"
             >
-              <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
                 <MedicineChip medicine={selected} />
                 {!presetMedicine ? (
                   <button

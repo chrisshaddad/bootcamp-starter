@@ -183,9 +183,14 @@ export default function LoginPage() {
       topbarRight={
         <>
           Need help?{' '}
-          <Link href="/support" className="font-bold text-primary-base">
+          <a
+            href="https://wa.me/96181736619?text=Hi%2C%20I%27d%20like%20to%20share%20some%20feedback%20about%20MedFind."
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-bold text-primary-base"
+          >
             Contact support
-          </Link>
+          </a>
         </>
       }
     >

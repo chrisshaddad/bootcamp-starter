@@ -53,6 +53,15 @@ const superAdminNavItems: NavItem[] = [
   { title: 'Profile', url: '/admin/profile', icon: UserCircle2 },
 ];
 
+// Every pharmacy user (admin down to branch staff) manages a personal profile
+// at the shared, location-free /profile route. The super admin has its own
+// location-aware profile under /admin/profile instead.
+const profileNavItem: NavItem = {
+  title: 'Profile',
+  url: '/profile',
+  icon: UserCircle2,
+};
+
 // PHARMACY_ADMIN — manages one pharmacy across all its branches.
 const pharmacyAdminNavItems: NavItem[] = [
   { title: 'Dashboard', url: '/pharmacy', icon: LayoutDashboard },
@@ -66,21 +75,34 @@ const pharmacyAdminNavItems: NavItem[] = [
   // admin can reach it here for now.)
   { title: 'Inquiries', url: '/inquiries', icon: MessageSquare },
   { title: 'Audit Logs', url: '/pharmacy/audit', icon: ScrollText },
+  profileNavItem,
 ];
 
-// PHARMACY_MANAGER / PHARMACY_EMPLOYEE — one branch.
+// PHARMACY_MANAGER — one branch.
 const branchNavItems: NavItem[] = [
   { title: 'Dashboard', url: '/branch', icon: LayoutDashboard },
+  profileNavItem,
 ];
 
-// STOCK_MANAGER — branch inventory.
+// PHARMACY_EMPLOYEE — one branch, plus read-only visibility of that branch's
+// stock and inquiries (the pages hide every mutation control for this role).
+const employeeNavItems: NavItem[] = [
+  { title: 'Dashboard', url: '/branch', icon: LayoutDashboard },
+  { title: 'Stock', url: '/stock', icon: Package },
+  { title: 'Inquiries', url: '/inquiries', icon: MessageSquare },
+  profileNavItem,
+];
+
+// STOCK_MANAGER — branch inventory. Labelled "Stock" to match the page heading.
 const stockNavItems: NavItem[] = [
-  { title: 'Inventory', url: '/stock', icon: Package },
+  { title: 'Stock', url: '/stock', icon: Package },
+  profileNavItem,
 ];
 
 // INQUIRY_OFFICER — branch inquiries queue.
 const inquiryNavItems: NavItem[] = [
   { title: 'Inquiries', url: '/inquiries', icon: MessageSquare },
+  profileNavItem,
 ];
 
 // Fallback (e.g. CLIENT) — neutral landing until the consumer app lands.
@@ -105,10 +127,11 @@ function panelForRole(role: UserRole | undefined): {
     case 'PHARMACY_ADMIN':
       return { items: pharmacyAdminNavItems, label: 'Pharmacy' };
     case 'PHARMACY_MANAGER':
-    case 'PHARMACY_EMPLOYEE':
       return { items: branchNavItems, label: 'Branch' };
+    case 'PHARMACY_EMPLOYEE':
+      return { items: employeeNavItems, label: 'Branch' };
     case 'STOCK_MANAGER':
-      return { items: stockNavItems, label: 'Inventory' };
+      return { items: stockNavItems, label: 'Stock' };
     case 'INQUIRY_OFFICER':
       return { items: inquiryNavItems, label: 'Inquiries' };
     default:
