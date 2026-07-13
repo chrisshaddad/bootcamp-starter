@@ -140,6 +140,25 @@ export class AuthService {
   }
 
   /**
+   * A user is a manager if they have direct reports or head a department -
+   * there is no dedicated MANAGER role (see UserRole enum in schema.prisma).
+   * Scoped by organizationId since managerId alone isn't tenant-scoped.
+   */
+  async isManager(
+    userId: string,
+    organizationId: string | null,
+  ): Promise<boolean> {
+    const [directReports, departmentsHeaded] = await Promise.all([
+      this.prisma.user.count({ where: { managerId: userId, organizationId } }),
+      this.prisma.department.count({
+        where: { managerId: userId, organizationId: organizationId ?? '' },
+      }),
+    ]);
+
+    return directReports > 0 || departmentsHeaded > 0;
+  }
+
+  /**
    * Get the current user from session
    */
   async getCurrentUser(sessionId: string) {

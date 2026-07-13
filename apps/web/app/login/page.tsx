@@ -58,16 +58,14 @@ export default function LoginPage() {
           />
         </div>
 
-        {/* Content Section with green top border */}
+        {/* Content Section with brand-colored top border */}
         <div className="flex flex-col gap-6 border-t-[5px] border-primary-base bg-gray-900 px-12.5 pb-15 pt-10">
           {/* Logo */}
           <div className="flex items-center gap-2.5">
             <div className="flex h-6 w-6 items-center justify-center">
               <span className="text-2xl text-primary-base">✦</span>
             </div>
-            <span className="text-xl font-semibold text-white">
-              Bootcamp Starter
-            </span>
+            <span className="text-xl font-semibold text-white">PathWay</span>
           </div>
 
           {/* Headline */}

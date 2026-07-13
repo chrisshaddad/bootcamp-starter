@@ -1,268 +1,265 @@
 import { PrismaClient } from '../../src/generated/prisma/client';
 
+const TECHCORP_ORG_NAME = 'TechCorp Solutions';
+
 interface OpportunitySeed {
   title: string;
-  type: string;
+  type: 'ROLE' | 'PROJECT' | 'ROTATION';
+  department: string;
   description: string;
   status: 'DRAFT' | 'OPEN' | 'CLOSED' | 'FILLED';
-  deadlineDaysFromNow: number | null;
-  requiredLevel: number | null;
-  departmentName: string;
+  deadline: Date | null;
+  requiredLevel: number;
   hiringManagerEmail: string;
-  orgAdminEmail: string;
-  requiredSkills: { skillName: string; requiredLevel: number }[];
+  requiredSkills: { name: string; requiredLevel: number }[];
 }
 
-const TECHCORP_OPPORTUNITIES: OpportunitySeed[] = [
+const OPPORTUNITIES: OpportunitySeed[] = [
   {
-    title: 'Senior Full-Stack Engineer',
-    type: 'Role',
+    title: 'Engineering Manager – Growth',
+    type: 'ROLE',
+    department: 'Engineering',
     description:
-      'Join the platform team to build next-generation APIs and React interfaces for our enterprise clients. You will lead feature development end-to-end and mentor junior engineers.',
+      'Lead a team of 6-8 engineers focused on growth and monetization. Partner with product and data science to drive experiments and increase key metrics.',
     status: 'OPEN',
-    deadlineDaysFromNow: 30,
+    deadline: new Date('2026-08-15'),
     requiredLevel: 4,
-    departmentName: 'Engineering',
-    hiringManagerEmail: 'lisa.wang@techcorp.example.com',
-    orgAdminEmail: 'admin@techcorp.example.com',
+    hiringManagerEmail: 'priya.nair@techcorp.example.com',
     requiredSkills: [
-      { skillName: 'TypeScript', requiredLevel: 4 },
-      { skillName: 'React', requiredLevel: 4 },
-      { skillName: 'Node.js', requiredLevel: 3 },
-      { skillName: 'SQL', requiredLevel: 3 },
+      { name: 'People Management', requiredLevel: 4 },
+      { name: 'System Design', requiredLevel: 4 },
+      { name: 'JavaScript', requiredLevel: 3 },
+      { name: 'Stakeholder Communication', requiredLevel: 3 },
     ],
   },
   {
-    title: 'Cloud Migration Project',
-    type: 'Project',
+    title: 'AI/ML Platform Engineer',
+    type: 'PROJECT',
+    department: 'Data Science',
     description:
-      'A 3-month cross-functional project to migrate our on-premise data pipelines to AWS. Looking for engineers with strong cloud and containerization skills.',
+      '6-month project to build internal ML tooling and model serving infrastructure. Collaborate with data scientists to deploy production ML pipelines.',
     status: 'OPEN',
-    deadlineDaysFromNow: 14,
+    deadline: new Date('2026-08-01'),
     requiredLevel: 3,
-    departmentName: 'Engineering',
-    hiringManagerEmail: 'lisa.wang@techcorp.example.com',
-    orgAdminEmail: 'admin@techcorp.example.com',
+    hiringManagerEmail: 'dana.osei@techcorp.example.com',
     requiredSkills: [
-      { skillName: 'AWS', requiredLevel: 4 },
-      { skillName: 'Docker', requiredLevel: 3 },
-      { skillName: 'Python', requiredLevel: 3 },
+      { name: 'Python', requiredLevel: 4 },
+      { name: 'Machine Learning', requiredLevel: 4 },
+      { name: 'SQL', requiredLevel: 3 },
+      { name: 'AWS', requiredLevel: 2 },
     ],
   },
   {
-    title: 'Product Team Rotation',
-    type: 'Rotation',
+    title: 'Product Manager Rotation – Mobile',
+    type: 'ROTATION',
+    department: 'Product',
     description:
-      'A 6-month rotation into the Product team for engineers looking to explore product management. You will shadow a PM and own a small feature from ideation to launch.',
+      '3-month rotation on the mobile product team. Experience the full product lifecycle from discovery to launch for our mobile apps.',
     status: 'OPEN',
-    deadlineDaysFromNow: 45,
-    requiredLevel: 3,
-    departmentName: 'Product',
-    hiringManagerEmail: 'james.park@techcorp.example.com',
-    orgAdminEmail: 'admin@techcorp.example.com',
-    requiredSkills: [
-      { skillName: 'Communication', requiredLevel: 3 },
-      { skillName: 'Agile', requiredLevel: 2 },
-      { skillName: 'Data Analysis', requiredLevel: 2 },
-    ],
-  },
-  {
-    title: 'UX Research Lead',
-    type: 'Role',
-    description:
-      'Lead user research initiatives across the design team. Conduct usability studies, synthesize findings, and drive design decisions with data.',
-    status: 'DRAFT',
-    deadlineDaysFromNow: null,
+    deadline: new Date('2026-09-01'),
     requiredLevel: 4,
-    departmentName: 'Design',
-    hiringManagerEmail: 'james.park@techcorp.example.com',
-    orgAdminEmail: 'admin@techcorp.example.com',
+    hiringManagerEmail: 'morgan.diaz@techcorp.example.com',
     requiredSkills: [
-      { skillName: 'UX Design', requiredLevel: 4 },
-      { skillName: 'Data Analysis', requiredLevel: 3 },
-      { skillName: 'Communication', requiredLevel: 4 },
+      { name: 'Product Strategy', requiredLevel: 3 },
+      { name: 'Roadmapping', requiredLevel: 3 },
+      { name: 'User Research', requiredLevel: 3 },
+      { name: 'Stakeholder Communication', requiredLevel: 3 },
     ],
   },
   {
-    title: 'API Platform Engineer',
-    type: 'Role',
+    title: 'Senior Backend Engineer – Payments',
+    type: 'ROLE',
+    department: 'Engineering',
     description:
-      'Build and maintain our GraphQL API layer that powers all client-facing products. Strong backend skills required.',
+      'Own the payments processing service handling millions of transactions a day. Drive reliability, scalability, and correctness improvements.',
     status: 'OPEN',
-    deadlineDaysFromNow: 21,
-    requiredLevel: 3,
-    departmentName: 'Engineering',
-    hiringManagerEmail: 'lisa.wang@techcorp.example.com',
-    orgAdminEmail: 'admin@techcorp.example.com',
-    requiredSkills: [
-      { skillName: 'GraphQL', requiredLevel: 3 },
-      { skillName: 'Node.js', requiredLevel: 4 },
-      { skillName: 'TypeScript', requiredLevel: 3 },
-      { skillName: 'SQL', requiredLevel: 3 },
-    ],
-  },
-];
-
-const GREEN_ENERGY_OPPORTUNITIES: OpportunitySeed[] = [
-  {
-    title: 'Senior Solar Engineer',
-    type: 'Role',
-    description:
-      'Design and validate large-scale commercial solar installations. Requires hands-on experience with PV system design and electrical engineering fundamentals.',
-    status: 'OPEN',
-    deadlineDaysFromNow: 30,
+    deadline: new Date('2026-08-20'),
     requiredLevel: 4,
-    departmentName: 'R&D',
-    hiringManagerEmail: 'fatima.hassan@greenenergy.example.com',
-    orgAdminEmail: 'admin@greenenergy.example.com',
+    hiringManagerEmail: 'priya.nair@techcorp.example.com',
     requiredSkills: [
-      { skillName: 'Solar Engineering', requiredLevel: 4 },
-      { skillName: 'Electrical Engineering', requiredLevel: 3 },
-      { skillName: 'AutoCAD', requiredLevel: 3 },
+      { name: 'Node.js', requiredLevel: 4 },
+      { name: 'SQL', requiredLevel: 4 },
+      { name: 'System Design', requiredLevel: 4 },
+      { name: 'AWS', requiredLevel: 3 },
     ],
   },
   {
-    title: 'Wind Farm Site Assessment Project',
-    type: 'Project',
+    title: 'Staff Site Reliability Engineer',
+    type: 'ROLE',
+    department: 'Platform',
     description:
-      'A 4-month project to assess three potential wind farm sites in the Midwest. Involves GIS analysis, wind data modeling, and regulatory review.',
+      'Define and drive the reliability roadmap across our production Kubernetes fleet. Mentor engineers on operational excellence.',
     status: 'OPEN',
-    deadlineDaysFromNow: 20,
-    requiredLevel: 3,
-    departmentName: 'R&D',
-    hiringManagerEmail: 'fatima.hassan@greenenergy.example.com',
-    orgAdminEmail: 'admin@greenenergy.example.com',
+    deadline: new Date('2026-08-25'),
+    requiredLevel: 5,
+    hiringManagerEmail: 'taylor.brooks@techcorp.example.com',
     requiredSkills: [
-      { skillName: 'Wind Turbine Design', requiredLevel: 3 },
-      { skillName: 'GIS', requiredLevel: 3 },
-      { skillName: 'Data Analysis', requiredLevel: 3 },
-      { skillName: 'Regulatory Compliance', requiredLevel: 2 },
+      { name: 'Kubernetes', requiredLevel: 5 },
+      { name: 'AWS', requiredLevel: 4 },
+      { name: 'CI/CD', requiredLevel: 4 },
+      { name: 'System Design', requiredLevel: 4 },
     ],
   },
   {
-    title: 'Operations Team Rotation',
-    type: 'Rotation',
+    title: 'Frontend Engineering Rotation – Design Systems',
+    type: 'ROTATION',
+    department: 'Engineering',
     description:
-      'A 6-month rotation for R&D engineers to gain field experience in project operations, site logistics, and installation oversight.',
+      '3-month rotation building and extending our shared component library alongside the design team.',
     status: 'OPEN',
-    deadlineDaysFromNow: 60,
+    deadline: new Date('2026-09-10'),
     requiredLevel: 2,
-    departmentName: 'Operations',
-    hiringManagerEmail: 'david.oconnor@greenenergy.example.com',
-    orgAdminEmail: 'admin@greenenergy.example.com',
+    hiringManagerEmail: 'priya.nair@techcorp.example.com',
     requiredSkills: [
-      { skillName: 'Project Management', requiredLevel: 2 },
-      { skillName: 'Communication', requiredLevel: 3 },
+      { name: 'React', requiredLevel: 3 },
+      { name: 'TypeScript', requiredLevel: 3 },
+      { name: 'Design Systems', requiredLevel: 2 },
+      { name: 'UI Design', requiredLevel: 2 },
     ],
   },
   {
-    title: 'Sustainability Reporting Analyst',
-    type: 'Role',
+    title: 'Data Platform Migration',
+    type: 'PROJECT',
+    department: 'Data Science',
     description:
-      "Own the company's ESG reporting process, ensuring compliance with federal and state renewable energy regulations.",
-    status: 'OPEN',
-    deadlineDaysFromNow: 25,
-    requiredLevel: 3,
-    departmentName: 'Finance',
-    hiringManagerEmail: 'david.oconnor@greenenergy.example.com',
-    orgAdminEmail: 'admin@greenenergy.example.com',
-    requiredSkills: [
-      { skillName: 'Sustainability Reporting', requiredLevel: 3 },
-      { skillName: 'Regulatory Compliance', requiredLevel: 3 },
-      { skillName: 'Financial Modeling', requiredLevel: 2 },
-    ],
-  },
-  {
-    title: 'Energy Data Scientist',
-    type: 'Role',
-    description:
-      'Analyze production data from solar and wind installations to optimize output and predict maintenance needs.',
+      'Completed project to migrate the legacy analytics warehouse onto the new data platform.',
     status: 'CLOSED',
-    deadlineDaysFromNow: null,
+    deadline: new Date('2026-06-01'),
     requiredLevel: 3,
-    departmentName: 'R&D',
-    hiringManagerEmail: 'fatima.hassan@greenenergy.example.com',
-    orgAdminEmail: 'admin@greenenergy.example.com',
+    hiringManagerEmail: 'dana.osei@techcorp.example.com',
     requiredSkills: [
-      { skillName: 'Python', requiredLevel: 4 },
-      { skillName: 'Data Analysis', requiredLevel: 4 },
-      { skillName: 'GIS', requiredLevel: 2 },
+      { name: 'Python', requiredLevel: 3 },
+      { name: 'SQL', requiredLevel: 4 },
+      { name: 'AWS', requiredLevel: 3 },
+    ],
+  },
+  {
+    title: 'Mentorship Rotation – New Grad Program',
+    type: 'ROTATION',
+    department: 'Engineering',
+    description:
+      'A 2-month pairing rotation for new grads to ramp up on the codebase with a dedicated mentor. Position has been filled for this cohort.',
+    status: 'FILLED',
+    deadline: new Date('2026-05-15'),
+    requiredLevel: 1,
+    hiringManagerEmail: 'priya.nair@techcorp.example.com',
+    requiredSkills: [
+      { name: 'Mentorship', requiredLevel: 2 },
+      { name: 'JavaScript', requiredLevel: 1 },
     ],
   },
 ];
 
-async function seedOpportunitiesForOrg(
-  prisma: PrismaClient,
-  opportunities: OpportunitySeed[],
-) {
-  const orgAdminEmail = opportunities[0]!.orgAdminEmail;
-  const orgAdmin = await prisma.user.findUnique({
-    where: { email: orgAdminEmail },
+interface ApplicationSeed {
+  employeeEmail: string;
+  opportunityTitle: string;
+  status:
+    | 'PENDING'
+    | 'MANAGER_REVIEW'
+    | 'UNDER_REVIEW'
+    | 'SHORTLISTED'
+    | 'ACCEPTED'
+    | 'REJECTED'
+    | 'WITHDRAWN';
+  coverNote: string;
+}
+
+const APPLICATIONS: ApplicationSeed[] = [
+  {
+    employeeEmail: 'jordan.lee@techcorp.example.com',
+    opportunityTitle: 'AI/ML Platform Engineer',
+    status: 'UNDER_REVIEW',
+    coverNote:
+      "I've been picking up Python and ML fundamentals on the side and would love to bring that into a full-time project.",
+  },
+  {
+    employeeEmail: 'riley.chen@techcorp.example.com',
+    opportunityTitle: 'Frontend Engineering Rotation – Design Systems',
+    status: 'PENDING',
+    coverNote:
+      'I work closely with the design team already and want to help formalize our component library.',
+  },
+];
+
+export async function seedOpportunities(prisma: PrismaClient) {
+  console.log('Seeding TechCorp opportunities...');
+
+  const org = await prisma.organization.findFirst({
+    where: { name: TECHCORP_ORG_NAME },
   });
 
-  if (!orgAdmin?.organizationId) {
+  if (!org) {
     console.warn(
-      `  Skipping opportunities: org admin ${orgAdminEmail} not found.`,
+      `  Warning: ${TECHCORP_ORG_NAME} not found. Skipping opportunities.`,
     );
     return;
   }
 
-  const orgId = orgAdmin.organizationId;
+  const opportunityIdByTitle = new Map<string, string>();
 
-  const departments = await prisma.department.findMany({
-    where: { organizationId: orgId },
-  });
-  const deptMap = new Map(departments.map((d) => [d.name, d.id]));
-
-  const skills = await prisma.skill.findMany({
-    where: { organizationId: orgId },
-  });
-  const skillMap = new Map(skills.map((s) => [s.name, s.id]));
-
-  for (const opp of opportunities) {
-    const hiringManager = await prisma.user.findUnique({
-      where: { email: opp.hiringManagerEmail },
+  for (const opportunity of OPPORTUNITIES) {
+    const department = await prisma.department.findFirstOrThrow({
+      where: { name: opportunity.department, organizationId: org.id },
+    });
+    const hiringManager = await prisma.user.findUniqueOrThrow({
+      where: { email: opportunity.hiringManagerEmail },
     });
 
-    const deadline = opp.deadlineDaysFromNow
-      ? new Date(Date.now() + opp.deadlineDaysFromNow * 24 * 60 * 60 * 1000)
-      : null;
-
-    const opportunity = await prisma.opportunity.create({
+    const created = await prisma.opportunity.create({
       data: {
-        title: opp.title,
-        type: opp.type,
-        description: opp.description,
-        status: opp.status,
-        deadline,
-        requiredLevel: opp.requiredLevel,
-        organizationId: orgId,
-        departmentId: deptMap.get(opp.departmentName) || null,
-        hiringManagerId: hiringManager?.id || null,
+        title: opportunity.title,
+        type: opportunity.type,
+        description: opportunity.description,
+        status: opportunity.status,
+        deadline: opportunity.deadline,
+        requiredLevel: opportunity.requiredLevel,
+        organizationId: org.id,
+        departmentId: department.id,
+        hiringManagerId: hiringManager.id,
       },
     });
+    opportunityIdByTitle.set(opportunity.title, created.id);
 
-    // Create required skills
-    for (const rs of opp.requiredSkills) {
-      const skillId = skillMap.get(rs.skillName);
-      if (skillId) {
-        await prisma.opportunitySkill.create({
-          data: {
-            opportunityId: opportunity.id,
-            skillId,
-            requiredLevel: rs.requiredLevel,
-          },
-        });
-      }
+    await prisma.opportunitySkill.createMany({
+      data: await Promise.all(
+        opportunity.requiredSkills.map(async (skill) => {
+          const skillRecord = await prisma.skill.findFirstOrThrow({
+            where: { name: skill.name, organizationId: org.id },
+          });
+          return {
+            opportunityId: created.id,
+            skillId: skillRecord.id,
+            requiredLevel: skill.requiredLevel,
+          };
+        }),
+      ),
+    });
+  }
+
+  for (const application of APPLICATIONS) {
+    const employee = await prisma.user.findUniqueOrThrow({
+      where: { email: application.employeeEmail },
+    });
+    const opportunityId = opportunityIdByTitle.get(
+      application.opportunityTitle,
+    );
+    if (!opportunityId) {
+      throw new Error(
+        `Unknown opportunity title in APPLICATIONS seed: "${application.opportunityTitle}"`,
+      );
     }
 
-    console.log(`  Created opportunity: ${opp.title} (${opp.status})`);
+    await prisma.application.create({
+      data: {
+        userId: employee.id,
+        opportunityId,
+        status: application.status,
+        coverNote: application.coverNote,
+      },
+    });
   }
-}
 
-export async function seedOpportunities(prisma: PrismaClient) {
-  console.log('Seeding opportunities...');
-  await seedOpportunitiesForOrg(prisma, TECHCORP_OPPORTUNITIES);
-  await seedOpportunitiesForOrg(prisma, GREEN_ENERGY_OPPORTUNITIES);
-  console.log('Opportunities seeded.');
+  console.log(
+    `Opportunities seeded: ${OPPORTUNITIES.length}, applications seeded: ${APPLICATIONS.length} for ${org.name}`,
+  );
 }
