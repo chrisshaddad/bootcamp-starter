@@ -6,11 +6,11 @@ import { seedEmployees } from './seedEmployees';
 import { seedOpportunities } from './seedOpportunities';
 
 async function main() {
-  // Seed users first (org admins need to exist before organizations)
+  // 1. Seed users first (org admins need to exist before organizations)
   await seedSuperAdmins(prisma);
   await seedOrgAdmins(prisma);
 
-  // Seed organizations (links org admins to their orgs)
+  // 2. Seed organizations (links org admins to their orgs)
   await seedOrganizations(prisma);
 
   // Seed mobility data for TechCorp Solutions (skills before employees before opportunities)

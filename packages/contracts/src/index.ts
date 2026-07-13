@@ -6,3 +6,5 @@ export * from './employees';
 export * from './opportunities';
 export * from './applications';
 export * from './skill-gaps';
+export * from './skills';
+export * from './departments';
