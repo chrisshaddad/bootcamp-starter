@@ -1,8 +1,10 @@
 import {
   ConflictException,
   NotFoundException,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { Prisma } from '@repo/db';
 import { PrismaService } from '../database/prisma.service';
 import { GithubRepositorySnapshotService } from '../repository-scanner/github-repository-snapshot.service';
 import { ProjectsService } from './projects.service';
@@ -148,6 +150,40 @@ describe('ProjectsService GitHub import', () => {
     expect(tx.projectMember.create).not.toHaveBeenCalled();
   });
 
+  it('reports concurrent project slug conflicts accurately', async () => {
+    prisma.$transaction.mockRejectedValueOnce(
+      new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+        code: 'P2002',
+        clientVersion: '7.2.0',
+        meta: { target: ['slug'] },
+      }),
+    );
+
+    await expect(
+      service.importGithubProject(USER_ID, {
+        repositoryUrl: 'https://github.com/vercel/next.js',
+      }),
+    ).rejects.toThrow('A project with this slug already exists.');
+  });
+
+  it('rejects invalid GitHub repository IDs before starting a transaction', async () => {
+    const analysis = createRepositoryAnalysisPreview();
+    snapshotService.previewRepositoryAnalysis.mockResolvedValue({
+      ...analysis,
+      repository: {
+        ...analysis.repository,
+        githubRepoId: 'not-a-number',
+      },
+    });
+
+    await expect(
+      service.importGithubProject(USER_ID, {
+        repositoryUrl: 'https://github.com/vercel/next.js',
+      }),
+    ).rejects.toThrow(ServiceUnavailableException);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
   it('propagates safe GitHub analysis errors without starting a transaction', async () => {
     const error = new NotFoundException(
       'Repository not found, private, or inaccessible.',
@@ -256,39 +292,45 @@ function createPrismaMock(tx: ReturnType<typeof createTransactionMock>) {
 
 function createSnapshotServiceMock() {
   return {
-    previewRepositoryAnalysis: jest.fn().mockResolvedValue({
-      repository: {
-        githubRepoId: '70107786',
-        fullName: 'vercel/next.js',
-        ownerLogin: 'vercel',
-        repoName: 'next.js',
-        htmlUrl: 'https://github.com/vercel/next.js',
-        defaultBranch: 'canary',
-        visibility: 'PUBLIC',
-        description: 'The React Framework',
-        lastPushedAt: '2026-07-09T10:00:00.000Z',
+    previewRepositoryAnalysis: jest
+      .fn()
+      .mockResolvedValue(createRepositoryAnalysisPreview()),
+  };
+}
+
+function createRepositoryAnalysisPreview() {
+  return {
+    repository: {
+      githubRepoId: '70107786',
+      fullName: 'vercel/next.js',
+      ownerLogin: 'vercel',
+      repoName: 'next.js',
+      htmlUrl: 'https://github.com/vercel/next.js',
+      defaultBranch: 'canary',
+      visibility: 'PUBLIC',
+      description: 'The React Framework',
+      lastPushedAt: '2026-07-09T10:00:00.000Z',
+    },
+    languages: [{ name: 'TypeScript', bytes: 100 }],
+    detectedTechnologies: [
+      {
+        name: 'React',
+        slug: 'react',
+        category: 'FRAMEWORK',
+        evidence: ['Detected dependency "react" in package.json'],
+        sourceFiles: ['package.json'],
+        signals: ['package-json'],
       },
-      languages: [{ name: 'TypeScript', bytes: 100 }],
-      detectedTechnologies: [
-        {
-          name: 'React',
-          slug: 'react',
-          category: 'FRAMEWORK',
-          evidence: ['Detected dependency "react" in package.json'],
-          sourceFiles: ['package.json'],
-          signals: ['package-json'],
-        },
-        {
-          name: 'TypeScript',
-          slug: 'typescript',
-          category: 'LANGUAGE',
-          evidence: ['Detected GitHub language "TypeScript" (100 bytes)'],
-          sourceFiles: [],
-          signals: ['github-language'],
-        },
-      ],
-      inspectedFiles: ['package.json'],
-      missingOptionalFiles: ['Dockerfile'],
-    }),
+      {
+        name: 'TypeScript',
+        slug: 'typescript',
+        category: 'LANGUAGE',
+        evidence: ['Detected GitHub language "TypeScript" (100 bytes)'],
+        sourceFiles: [],
+        signals: ['github-language'],
+      },
+    ],
+    inspectedFiles: ['package.json'],
+    missingOptionalFiles: ['Dockerfile'],
   };
 }

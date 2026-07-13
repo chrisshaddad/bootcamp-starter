@@ -34,6 +34,8 @@ const GITHUB_API_UNAVAILABLE_MESSAGE =
   'GitHub API is currently unavailable. Please try again later.';
 const REPOSITORY_PROJECT_CONFLICT_MESSAGE =
   'This repository is already linked to a project.';
+const PROJECT_SLUG_CONFLICT_MESSAGE =
+  'A project with this slug already exists.';
 
 @Injectable()
 export class ProjectsService {
@@ -244,6 +246,17 @@ export class ProjectsService {
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2002'
       ) {
+        const target = error.meta?.target;
+        const targetFields = Array.isArray(target)
+          ? target.filter((field): field is string => typeof field === 'string')
+          : typeof target === 'string'
+            ? [target]
+            : [];
+
+        if (targetFields.some((field) => field.includes('slug'))) {
+          throw new ConflictException(PROJECT_SLUG_CONFLICT_MESSAGE);
+        }
+
         throw new ConflictException(REPOSITORY_PROJECT_CONFLICT_MESSAGE);
       }
 
