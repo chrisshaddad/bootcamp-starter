@@ -19,10 +19,11 @@ const POLL_MS = 15_000;
 export const NOTIFICATION_DISPLAY_LIMIT = 20;
 
 // The bell surfaces content changes only — create / update / delete of the
-// platform's core entities. Auth/session events (login, logout, signup, magic
-// link, set password) fall in the login/security categories and are dropped, and
-// inquiry activity is dropped too (the inquiry officer has a dedicated bell for
-// it). All of these still appear in the full Audit Logs page.
+// platform's core entities. Auth/session events are dropped by their `auth.`
+// prefix (a category filter alone isn't enough — auth.signup maps to "create"),
+// and inquiry activity is dropped by entity (the inquiry officer has a dedicated
+// bell for it). All of these still appear in the full Audit Logs page.
+const AUTH_ACTION_PREFIX = 'auth.';
 const NOTIFIED_CATEGORIES = new Set<Category>(['create', 'update', 'delete']);
 const EXCLUDED_ENTITIES = new Set<string>(['Inquiry']);
 
@@ -88,13 +89,15 @@ export function useNotifications(): UseNotificationsReturn {
   // Build the bell feed from the raw audit log:
   //   • drop the actor's own actions — the feed is for keeping tabs on other
   //     super admins and the pharmacies, not one's own writes;
-  //   • keep only content CRUD (create/update/delete) — this drops auth/session
-  //     events, which live in the login/security categories;
+  //   • drop auth/session events by their `auth.` prefix (auth.signup maps to
+  //     the "create" category, so a category filter alone would let it through);
+  //   • keep only content CRUD (create/update/delete);
   //   • drop inquiry activity — the inquiry officer has a dedicated bell for it.
   // Applying it here excludes them from the list, the unread count, and toasts.
   const notifications = data?.logs?.filter(
     (item) =>
       item.userId !== userId &&
+      !item.action.startsWith(AUTH_ACTION_PREFIX) &&
       NOTIFIED_CATEGORIES.has(actionMeta(item.action).category) &&
       !EXCLUDED_ENTITIES.has(item.entity),
   );

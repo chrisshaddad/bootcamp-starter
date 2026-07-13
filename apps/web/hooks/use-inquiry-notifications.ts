@@ -115,39 +115,33 @@ export function useInquiryNotifications(): UseInquiryNotificationsReturn {
     setReadIds(loadReadIds(userId));
   }, [userId]);
 
-  // Persist a new read set, pruned to ids still present in the feed so storage
-  // stays bounded as inquiries are answered and scroll out of the awaiting set.
-  const persist = useCallback(
-    (next: Set<string>) => {
-      if (!userId || typeof window === 'undefined') return next;
-      const feedIds = notifications?.map((item) => item.notifId);
-      const pruned = feedIds
-        ? new Set(feedIds.filter((id) => next.has(id)))
-        : next;
-      window.localStorage.setItem(readKey(userId), JSON.stringify([...pruned]));
-      return pruned;
-    },
-    [userId, notifications],
-  );
-
-  const markRead = useCallback(
-    (notifId: string) => {
-      setReadIds((prev) => {
-        if (prev.has(notifId)) return prev;
-        return persist(new Set(prev).add(notifId));
-      });
-    },
-    [persist],
-  );
+  // State updates stay pure (no side effects) — React may double-invoke these.
+  const markRead = useCallback((notifId: string) => {
+    setReadIds((prev) =>
+      prev.has(notifId) ? prev : new Set(prev).add(notifId),
+    );
+  }, []);
 
   const markAllRead = useCallback(() => {
     if (!notifications || notifications.length === 0) return;
     setReadIds((prev) => {
       const next = new Set(prev);
       notifications.forEach((item) => next.add(item.notifId));
-      return persist(next);
+      return next;
     });
-  }, [notifications, persist]);
+  }, [notifications]);
+
+  // Persist the read set as a side effect (never inside a state updater), pruned
+  // to ids still present in the feed so storage stays bounded as inquiries are
+  // answered and scroll out of the awaiting set.
+  useEffect(() => {
+    if (!userId || typeof window === 'undefined') return;
+    const feedIds = notifications?.map((item) => item.notifId);
+    const pruned = feedIds
+      ? new Set(feedIds.filter((id) => readIds.has(id)))
+      : readIds;
+    window.localStorage.setItem(readKey(userId), JSON.stringify([...pruned]));
+  }, [userId, notifications, readIds]);
 
   const isRead = useCallback(
     (notifId: string) => readIds.has(notifId),
