@@ -22,8 +22,7 @@ import {
   type StockBatchResponse,
   type StockBatchUpdateRequest,
 } from '@repo/contracts';
-import { useUser } from '@/hooks/use-auth';
-import { isReadOnlyStaff } from '@/lib/role-routes';
+import { useReadOnlyStaff } from '@/hooks/use-auth';
 import { useStockMedicineDetail, useStockActions } from '@/hooks/use-stock';
 import { AddBatchDialog } from '@/components/stock/add-batch-dialog';
 import { QuantityPill } from '@/components/stock/quantity-pill';
@@ -275,8 +274,7 @@ function StockMedicineDetailContent() {
   const [dialog, setDialog] = useState<BatchDialog>(null);
 
   // A PHARMACY_EMPLOYEE views batches read-only — no add/edit/delete controls.
-  const { user } = useUser({ redirectOnUnauthenticated: false });
-  const readOnly = isReadOnlyStaff(user?.role);
+  const readOnly = useReadOnlyStaff();
 
   const { detail, isLoading, error, mutate } = useStockMedicineDetail(
     medicineId,

@@ -5,6 +5,7 @@ import { useCallback, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { toast } from 'sonner';
 import { apiPost, ApiError } from '@/lib/api';
+import { isReadOnlyStaff } from '@/lib/role-routes';
 import type {
   MagicLinkRequest,
   MagicLinkVerifyRequest,
@@ -80,6 +81,17 @@ export function useUser(options: UseUserOptions = {}): UseUserReturn {
     error,
     mutate,
   };
+}
+
+/**
+ * Whether the current user is read-only staff (a PHARMACY_EMPLOYEE), used to
+ * hide mutating controls on the stock & inquiries pages. Does not redirect on an
+ * unauthenticated session — the page's own data hooks handle that — and returns
+ * false while the role is still loading. See {@link isReadOnlyStaff}.
+ */
+export function useReadOnlyStaff(): boolean {
+  const { user } = useUser({ redirectOnUnauthenticated: false });
+  return isReadOnlyStaff(user?.role);
 }
 
 export function useAuth() {

@@ -1,5 +1,3 @@
-'use client';
-
 import { ProfilePage } from '@/components/profile/profile-page';
 
 // Personal profile for pharmacy users (admin, manager, employee, stock manager,

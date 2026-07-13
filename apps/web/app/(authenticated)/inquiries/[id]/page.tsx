@@ -26,8 +26,7 @@ import {
   type InquiryStatus,
 } from '@repo/contracts';
 import { useInquiryDetail, useInquiryActions } from '@/hooks/use-inquiries';
-import { useUser } from '@/hooks/use-auth';
-import { isReadOnlyStaff } from '@/lib/role-routes';
+import { useReadOnlyStaff } from '@/hooks/use-auth';
 import { ApiError } from '@/lib/api';
 import {
   INQUIRY_STATUSES,
@@ -102,8 +101,7 @@ export default function InquiryDetailPage() {
   const { reply, updateStatus } = useInquiryActions();
 
   // A PHARMACY_EMPLOYEE reads the thread but cannot reply or change its status.
-  const { user } = useUser({ redirectOnUnauthenticated: false });
-  const readOnly = isReadOnlyStaff(user?.role);
+  const readOnly = useReadOnlyStaff();
 
   const [statusSaving, setStatusSaving] = useState(false);
 

@@ -12,8 +12,7 @@ import {
 import { toast } from 'sonner';
 import type { InquiryResponse, InquiryStatus } from '@repo/contracts';
 import { useInquiries, useInquiryActions } from '@/hooks/use-inquiries';
-import { useUser } from '@/hooks/use-auth';
-import { isReadOnlyStaff } from '@/lib/role-routes';
+import { useReadOnlyStaff } from '@/hooks/use-auth';
 import { ApiError } from '@/lib/api';
 import {
   INQUIRY_STATUSES,
@@ -189,8 +188,7 @@ export default function InquiriesPage() {
   const [tab, setTab] = useState<TabKey>('ALL');
 
   // A PHARMACY_EMPLOYEE views the queue read-only — no inline status changes.
-  const { user } = useUser({ redirectOnUnauthenticated: false });
-  const readOnly = isReadOnlyStaff(user?.role);
+  const readOnly = useReadOnlyStaff();
 
   const { branchName, inquiries, counts, total, isLoading, error, mutate } =
     useInquiries();

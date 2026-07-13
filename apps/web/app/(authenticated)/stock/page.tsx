@@ -14,8 +14,7 @@ import {
   TriangleAlert,
 } from 'lucide-react';
 import type { StockMedicineSummary } from '@repo/contracts';
-import { useUser } from '@/hooks/use-auth';
-import { isReadOnlyStaff } from '@/lib/role-routes';
+import { useReadOnlyStaff } from '@/hooks/use-auth';
 import { useStock, useStockBranches } from '@/hooks/use-stock';
 import { AddBatchDialog } from '@/components/stock/add-batch-dialog';
 import { QuantityPill } from '@/components/stock/quantity-pill';
@@ -198,8 +197,7 @@ function StockPageContent() {
   const [addOpen, setAddOpen] = useState(false);
 
   // A PHARMACY_EMPLOYEE sees this branch's stock read-only — no batch mutations.
-  const { user } = useUser({ redirectOnUnauthenticated: false });
-  const readOnly = isReadOnlyStaff(user?.role);
+  const readOnly = useReadOnlyStaff();
 
   const {
     branches,
