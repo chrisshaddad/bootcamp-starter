@@ -1,6 +1,10 @@
+'use client';
+
+import { useState } from 'react';
 import { Github, ExternalLink, Bookmark, ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import type {
   ProjectResponse,
   PublicProjectMediaResponse,
@@ -27,6 +31,9 @@ interface ProjectShowcaseProps {
 }
 
 export function ProjectShowcase({ project, onSave }: ProjectShowcaseProps) {
+  const [lightboxMedia, setLightboxMedia] =
+    useState<PublicProjectMediaResponse | null>(null);
+
   // mock: ProjectTechnology has no endpoint — reuse the fixture list so the
   // "Built with" panel isn't empty while real data isn't available.
   const technologiesByCategory = MOCK_TECHNOLOGIES.reduce<
@@ -93,13 +100,19 @@ export function ProjectShowcase({ project, onSave }: ProjectShowcaseProps) {
             {project.media.length > 0 ? (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {project.media.map((media) => (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <button
                     key={media.id}
-                    src={media.publicUrl}
-                    alt={media.caption ?? project.title}
-                    className="aspect-video w-full rounded-lg border object-cover"
-                  />
+                    type="button"
+                    onClick={() => setLightboxMedia(media)}
+                    className="focus-visible:ring-ring rounded-lg focus-visible:ring-2 focus-visible:outline-none"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={media.publicUrl}
+                      alt={media.caption ?? project.title}
+                      className="aspect-video w-full cursor-zoom-in rounded-lg border object-cover"
+                    />
+                  </button>
                 ))}
               </div>
             ) : (
@@ -181,6 +194,25 @@ export function ProjectShowcase({ project, onSave }: ProjectShowcaseProps) {
           </Card>
         </div>
       </div>
+
+      <Dialog
+        open={!!lightboxMedia}
+        onOpenChange={(open) => !open && setLightboxMedia(null)}
+      >
+        <DialogContent className="max-w-3xl border-none bg-transparent p-0 shadow-none sm:max-w-3xl">
+          <DialogTitle className="sr-only">
+            {lightboxMedia?.caption ?? `${project.title} screenshot`}
+          </DialogTitle>
+          {lightboxMedia && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={lightboxMedia.publicUrl}
+              alt={lightboxMedia.caption ?? project.title}
+              className="max-h-[85vh] w-full rounded-lg object-contain"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

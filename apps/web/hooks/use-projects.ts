@@ -50,6 +50,13 @@ export function useUpdateProject() {
   }, []);
 }
 
+export function useDeleteProject() {
+  return useCallback(async (id: string) => {
+    await apiDelete<{ success: true }>(`/projects/${id}`);
+    await globalMutate(PROJECTS_KEY);
+  }, []);
+}
+
 // real: GET /projects/slug/:slug, public, only returns PUBLISHED projects.
 // Includes media.
 export function useProjectBySlug(slug: string | undefined) {

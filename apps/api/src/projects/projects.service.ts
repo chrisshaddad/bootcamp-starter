@@ -392,4 +392,29 @@ export class ProjectsService {
 
     return { storageKey: media.storageKey };
   }
+
+  async deleteProject(user: User, projectId: string) {
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+      include: { media: true },
+    });
+
+    if (!project) throw new NotFoundException('Project not found');
+
+    const isAdmin = user.accountType === AccountType.SUPER_ADMIN;
+    const isCreator = project.createdByUserId === user.id;
+
+    if (!isAdmin && !isCreator) {
+      throw new ForbiddenException(
+        'You are not authorized to delete this project',
+      );
+    }
+
+    // ProjectMedia/ProjectMember/ProjectTechnology/SavedProject rows cascade
+    // on the schema's onDelete: Cascade — only the on-disk media files need
+    // manual cleanup, which the controller does with the keys returned here.
+    await this.prisma.project.delete({ where: { id: projectId } });
+
+    return { mediaStorageKeys: project.media.map((m) => m.storageKey) };
+  }
 }

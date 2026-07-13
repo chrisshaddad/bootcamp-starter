@@ -14,6 +14,7 @@ import {
 import {
   useProject,
   useUpdateProject,
+  useDeleteProject,
   useUploadProjectMedia,
   useDeleteProjectMedia,
 } from '@/hooks/use-projects';
@@ -33,6 +34,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 export default function EditProjectPage() {
   // Route folder is named [slug] to satisfy Next.js's constraint that
@@ -42,10 +54,12 @@ export default function EditProjectPage() {
   const router = useRouter();
   const { project, isLoading } = useProject(params.slug);
   const updateProject = useUpdateProject();
+  const deleteProject = useDeleteProject();
   const uploadMedia = useUploadProjectMedia();
   const deleteMedia = useDeleteProjectMedia();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [deletingMediaId, setDeletingMediaId] = useState<string | null>(null);
   const [technologies, setTechnologies] = useState<MockTechnology[]>([]);
@@ -129,6 +143,22 @@ export default function EditProjectPage() {
       );
     } finally {
       setDeletingMediaId(null);
+    }
+  };
+
+  const handleDeleteProject = async () => {
+    if (!project) return;
+
+    setIsDeleting(true);
+    try {
+      await deleteProject(project.id);
+      toast.success('Project deleted');
+      router.push('/projects');
+    } catch (error) {
+      toast.error(
+        error instanceof ApiError ? error.message : 'Unable to delete project',
+      );
+      setIsDeleting(false);
     }
   };
 
@@ -335,6 +365,56 @@ export default function EditProjectPage() {
               'Save changes'
             )}
           </Button>
+
+          <Card className="border-destructive/50">
+            <CardHeader>
+              <CardTitle className="text-destructive text-sm">
+                Danger zone
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    className="w-full"
+                    disabled={isDeleting}
+                  >
+                    {isDeleting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Deleting...
+                      </>
+                    ) : (
+                      'Delete project'
+                    )}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      Delete &ldquo;{project.title}&rdquo;?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This permanently deletes the project and all of its
+                      screenshots. This can&apos;t be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel type="button">Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      type="button"
+                      variant="destructive"
+                      onClick={handleDeleteProject}
+                    >
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </CardContent>
+          </Card>
         </div>
       </form>
     </div>

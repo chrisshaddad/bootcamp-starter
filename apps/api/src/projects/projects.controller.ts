@@ -13,6 +13,7 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
@@ -60,6 +61,8 @@ if (!existsSync(PROJECT_MEDIA_DIR)) {
 @ApiTags('projects')
 @Controller('projects')
 export class ProjectsController {
+  private readonly logger = new Logger(ProjectsController.name);
+
   constructor(private readonly projectsService: ProjectsService) {}
 
   @Get()
@@ -171,6 +174,44 @@ export class ProjectsController {
       updatedAt: project.updatedAt.toISOString(),
       publishedAt: project.publishedAt?.toISOString() ?? null,
     };
+  }
+
+  @Delete(':id')
+  @Roles(AccountType.DEVELOPER, AccountType.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Delete a project and all of its media' })
+  @ApiResponse({ status: 200, description: 'Project successfully deleted.' })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden if the user does not own the project.',
+  })
+  @ApiResponse({ status: 404, description: 'Project not found.' })
+  async deleteProject(
+    @CurrentUser() user: User,
+    @Param('id') projectId: string,
+  ) {
+    const { mediaStorageKeys } = await this.projectsService.deleteProject(
+      user,
+      projectId,
+    );
+
+    await Promise.all(
+      mediaStorageKeys.map(async (storageKey) => {
+        try {
+          await unlink(join(PROJECT_MEDIA_DIR, storageKey));
+        } catch (error) {
+          const code = (error as NodeJS.ErrnoException).code;
+          if (code !== 'ENOENT') {
+            const message =
+              error instanceof Error ? error.message : String(error);
+            this.logger.warn(
+              `Failed to delete media file ${storageKey} for removed project ${projectId}: ${message}`,
+            );
+          }
+        }
+      }),
+    );
+
+    return { success: true };
   }
 
   @Get('slug/:slug')
