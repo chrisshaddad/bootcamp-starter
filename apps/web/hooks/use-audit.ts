@@ -2,6 +2,7 @@
 
 import useSWR from 'swr';
 import type { AuditListResponse } from '@repo/contracts';
+import { buildAuditQuery } from '@/lib/audit-query';
 
 interface UseAuditLogsOptions {
   action?: string;
@@ -27,11 +28,7 @@ export function useAuditLogs(
 ): UseAuditLogsReturn {
   const { action, entity, userId, enabled = true } = options;
 
-  const params = new URLSearchParams();
-  if (action) params.set('action', action);
-  if (entity) params.set('entity', entity);
-  if (userId) params.set('userId', userId);
-  const query = params.toString();
+  const query = buildAuditQuery({ action, entity, userId });
   const endpoint = query ? `/audit?${query}` : '/audit';
 
   const {
