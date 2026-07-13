@@ -13,7 +13,10 @@ import { cn } from '@/lib/utils';
 export type StatTone = 'brand' | 'success' | 'info' | 'warning' | 'critical';
 
 const TONE: Record<StatTone, { chip: string; accent: string }> = {
-  brand: { chip: 'bg-primary-100 text-primary-hover', accent: 'bg-primary-base' },
+  brand: {
+    chip: 'bg-primary-100 text-primary-hover',
+    accent: 'bg-primary-base',
+  },
   success: { chip: 'bg-success/10 text-success', accent: 'bg-success' },
   info: { chip: 'bg-blue/10 text-blue', accent: 'bg-blue' },
   warning: { chip: 'bg-warn-soft text-warn', accent: 'bg-warn-accent' },

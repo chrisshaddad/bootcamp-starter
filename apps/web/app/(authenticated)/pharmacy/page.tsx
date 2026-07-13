@@ -178,7 +178,11 @@ function BranchCard({ branch }: { branch: PharmacyBranchStat }) {
   const attention = branch.openInquiries + branch.lowStock + branch.nearExpiry;
   const cells = [
     { label: 'Staff', value: branch.staff, icon: Users },
-    { label: 'Open inquiries', value: branch.openInquiries, icon: MessageSquare },
+    {
+      label: 'Open inquiries',
+      value: branch.openInquiries,
+      icon: MessageSquare,
+    },
     { label: 'Low stock', value: branch.lowStock, icon: PackageX },
     { label: 'Near expiry', value: branch.nearExpiry, icon: Clock },
   ];
@@ -372,7 +376,10 @@ export default function PharmacyDashboardPage() {
   return (
     <div className="space-y-6">
       <div
-        className={cn('flex flex-wrap items-start justify-between gap-3', ENTER)}
+        className={cn(
+          'flex flex-wrap items-start justify-between gap-3',
+          ENTER,
+        )}
         style={enterStyle(0)}
       >
         <div>
@@ -386,7 +393,10 @@ export default function PharmacyDashboardPage() {
       </div>
 
       {error ? (
-        <Card className={cn('py-0', CARD_SURFACE, ENTER)} style={enterStyle(70)}>
+        <Card
+          className={cn('py-0', CARD_SURFACE, ENTER)}
+          style={enterStyle(70)}
+        >
           <CardContent className="flex flex-col items-center justify-center py-16">
             <AlertTriangle className="mb-4 h-12 w-12 text-error" />
             <h3 className="mb-1 text-lg font-semibold text-gray-900">
@@ -469,10 +479,7 @@ export default function PharmacyDashboardPage() {
           </div>
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-            <div
-              className={cn('lg:col-span-2', ENTER)}
-              style={enterStyle(500)}
-            >
+            <div className={cn('lg:col-span-2', ENTER)} style={enterStyle(500)}>
               <div className="mb-4 flex h-9 items-center justify-between">
                 <h2 className="text-lg font-semibold text-gray-900">
                   Branches

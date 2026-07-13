@@ -21,7 +21,11 @@ import type { PharmacyBranchStat } from '@repo/contracts';
 export const ATTENTION_SERIES = [
   { key: 'openInquiries', label: 'Open inquiries', color: 'var(--color-blue)' },
   { key: 'lowStock', label: 'Low stock', color: 'var(--color-error)' },
-  { key: 'nearExpiry', label: 'Near expiry', color: 'var(--color-warn-accent)' },
+  {
+    key: 'nearExpiry',
+    label: 'Near expiry',
+    color: 'var(--color-warn-accent)',
+  },
 ] as const;
 
 const STAFF_COLOR = 'var(--color-primary-base)';
