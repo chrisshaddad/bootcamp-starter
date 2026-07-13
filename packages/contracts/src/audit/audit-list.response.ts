@@ -6,7 +6,7 @@ import { dateSchema } from '../common';
 // entry outlives the user who created it. `details` is the raw JSON payload
 // recorded with the action; its shape is action-specific, so it stays `unknown`
 // and is rendered as raw JSON in the row detail view.
-const auditLogItemSchema = z.object({
+export const auditLogItemSchema = z.object({
   id: z.uuid(),
   action: z.string(),
   entity: z.string(),
