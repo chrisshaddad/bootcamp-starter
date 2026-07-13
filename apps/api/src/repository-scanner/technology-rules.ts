@@ -117,7 +117,10 @@ export const PACKAGE_DEPENDENCY_RULES: PackageDependencyRule[] = [
 ];
 
 export const PACKAGE_SCRIPT_RULES: PackageScriptRule[] = [
-  { commandPattern: /\bnext\b/, technology: TECHNOLOGIES.nextjs },
+  {
+    commandPattern: /^next\s+(?:dev|build|start)\b/,
+    technology: TECHNOLOGIES.nextjs,
+  },
   { commandPattern: /\bvite\b/, technology: TECHNOLOGIES.vite },
   { commandPattern: /\bprisma\b/, technology: TECHNOLOGIES.prisma },
   { commandPattern: /\btailwindcss\b/, technology: TECHNOLOGIES.tailwindcss },

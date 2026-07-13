@@ -59,6 +59,48 @@ describe('analyzeRepositorySnapshot', () => {
     });
   });
 
+  it('detects Next.js from framework script commands', () => {
+    const detections = analyzeRepositorySnapshot({
+      files: [
+        {
+          path: 'package.json',
+          content: JSON.stringify({
+            scripts: {
+              dev: 'next dev',
+              build: 'next build',
+            },
+          }),
+        },
+      ],
+    });
+
+    expect(getDetection(detections, 'nextjs')).toMatchObject({
+      name: 'Next.js',
+      category: 'FRAMEWORK',
+      signals: ['package-json'],
+    });
+  });
+
+  it('does not detect Next.js from an npm release tag', () => {
+    const detections = analyzeRepositorySnapshot({
+      files: [
+        {
+          path: 'package.json',
+          content: JSON.stringify({
+            dependencies: {
+              '@nestjs/core': '^11.0.0',
+            },
+            scripts: {
+              release: 'release-it --npm-tag=next',
+            },
+          }),
+        },
+      ],
+    });
+
+    expect(getSlugs(detections)).toEqual(['nestjs']);
+  });
+
   it('detects Docker from a Dockerfile', () => {
     const detections = analyzeRepositorySnapshot({
       files: [{ path: 'Dockerfile', content: 'FROM node:24-alpine' }],
