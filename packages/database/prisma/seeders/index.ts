@@ -17,6 +17,13 @@ async function resetGeneratedData() {
   await prisma.inquiryMessage.deleteMany();
   await prisma.inquiry.deleteMany();
   await prisma.stockBatch.deleteMany();
+  // Branches are re-created with fresh ids each run. Detach employees first, or
+  // the User.branch FK (onDelete: Restrict) blocks the branch wipe. seedUsers
+  // re-attaches them to the new branches afterwards.
+  await prisma.user.updateMany({
+    where: { branchId: { not: null } },
+    data: { branchId: null },
+  });
   await prisma.pharmacyBranch.deleteMany();
 }
 
@@ -29,7 +36,7 @@ async function main() {
 
   const pharmacies = await seedPharmacies(prisma);
   const branches = await seedBranches(prisma, pharmacies);
-  await seedUsers(prisma, pharmacies);
+  await seedUsers(prisma, pharmacies, branches);
   await seedStockBatches(prisma, branches);
   await seedInquiries(prisma, branches);
   await seedInquiryMessages(prisma);
