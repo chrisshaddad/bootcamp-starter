@@ -1,7 +1,40 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@repo/db';
-import type { AuditListQuery, AuditListResponse } from '@repo/contracts';
+import type {
+  AuditListQuery,
+  AuditListResponse,
+  AuditLogItem,
+} from '@repo/contracts';
 import { PrismaService } from '../database/prisma.service';
+
+// How many recent entries the branch dashboard activity feed shows.
+const RECENT_ACTIVITY_LIMIT = 8;
+
+// Columns that make up an `AuditLogItem` (actor resolved to name/email).
+const AUDIT_ITEM_SELECT = {
+  id: true,
+  action: true,
+  entity: true,
+  entityId: true,
+  details: true,
+  createdAt: true,
+  userId: true,
+  // `userId` is a soft ref (onDelete: SetNull), so the actor may be gone.
+  user: { select: { firstName: true, lastName: true, email: true } },
+} satisfies Prisma.AuditLogSelect;
+
+type AuditLogRow = Prisma.AuditLogGetPayload<{
+  select: typeof AUDIT_ITEM_SELECT;
+}>;
+
+function toAuditItem(row: AuditLogRow): AuditLogItem {
+  const { user, ...log } = row;
+  return {
+    ...log,
+    userName: user ? `${user.firstName} ${user.lastName}` : null,
+    userEmail: user?.email ?? null,
+  };
+}
 
 // The audit log grows without bound (every write + every login is recorded), so
 // the console reads only the most recent slice. `total` still reports the full
@@ -80,27 +113,32 @@ export class AuditService {
         // several entries share a createdAt timestamp.
         orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
         take: AUDIT_LIST_LIMIT,
-        select: {
-          id: true,
-          action: true,
-          entity: true,
-          entityId: true,
-          details: true,
-          createdAt: true,
-          userId: true,
-          // `userId` is a soft ref (onDelete: SetNull), so the actor may be gone.
-          user: { select: { firstName: true, lastName: true, email: true } },
-        },
+        select: AUDIT_ITEM_SELECT,
       }),
     ]);
 
     return {
       total,
-      logs: logs.map(({ user, ...log }) => ({
-        ...log,
-        userName: user ? `${user.firstName} ${user.lastName}` : null,
-        userEmail: user?.email ?? null,
-      })),
+      logs: logs.map(toAuditItem),
     };
+  }
+
+  /**
+   * Most recent audit entries by a given branch's staff, newest first. Powers
+   * the branch dashboard's activity feed. Scoped via the actor relation (each
+   * `User` carries its `branchId`); the caller is a branch-bound role restricted
+   * at the controller. Read-only — writes no audit entry of its own.
+   */
+  async recentForBranch(
+    branchId: string,
+    limit = RECENT_ACTIVITY_LIMIT,
+  ): Promise<AuditLogItem[]> {
+    const logs = await this.prisma.auditLog.findMany({
+      where: { user: { branchId } },
+      orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+      take: limit,
+      select: AUDIT_ITEM_SELECT,
+    });
+    return logs.map(toAuditItem);
   }
 }
