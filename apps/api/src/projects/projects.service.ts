@@ -10,6 +10,7 @@ import {
   type UpdateProjectRequest,
   type ProjectMediaUploadRequest,
   type ProjectMediaUpdateRequest,
+  type ProjectsExploreQuery,
 } from '@repo/contracts';
 import {
   ProjectStatus,
@@ -132,6 +133,7 @@ export class ProjectsService {
           data: {
             title: data.title,
             slug: data.slug,
+            logoUrl: data.logoUrl,
             shortDescription: data.shortDescription,
             fullDescription: data.fullDescription,
             deploymentUrl: data.deploymentUrl,
@@ -240,6 +242,7 @@ export class ProjectsService {
         data: {
           title: data.title,
           slug: data.slug,
+          logoUrl: data.logoUrl,
           shortDescription: data.shortDescription,
           fullDescription: data.fullDescription,
           deploymentUrl: data.deploymentUrl,
@@ -260,6 +263,30 @@ export class ProjectsService {
       }
       throw error;
     }
+  }
+
+  async uploadLogo(user: User, projectId: string, logoUrl: string) {
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    const isAdmin = user.accountType === AccountType.SUPER_ADMIN;
+    const isCreator = project.createdByUserId === user.id;
+
+    if (!isAdmin && !isCreator) {
+      throw new ForbiddenException(
+        'You are not authorized to edit this project',
+      );
+    }
+
+    return this.prisma.project.update({
+      where: { id: projectId },
+      data: { logoUrl },
+    });
   }
 
   async getProjectBySlug(slug: string) {
@@ -289,6 +316,75 @@ export class ProjectsService {
     }
 
     return project;
+  }
+
+  async exploreProjects(query: ProjectsExploreQuery) {
+    const skip = (query.page - 1) * query.limit;
+    const take = query.limit;
+
+    const where: Prisma.ProjectWhereInput = {
+      status: ProjectStatus.PUBLISHED,
+      ...(query.search
+        ? {
+            OR: [
+              { title: { contains: query.search, mode: 'insensitive' } },
+              {
+                shortDescription: {
+                  contains: query.search,
+                  mode: 'insensitive',
+                },
+              },
+              {
+                fullDescription: {
+                  contains: query.search,
+                  mode: 'insensitive',
+                },
+              },
+              {
+                technologies: {
+                  some: {
+                    technology: {
+                      name: { contains: query.search, mode: 'insensitive' },
+                    },
+                  },
+                },
+              },
+            ],
+          }
+        : {}),
+    };
+
+    let orderBy: Prisma.ProjectOrderByWithRelationInput = {
+      publishedAt: 'desc',
+    };
+    if (query.sort === 'oldest') {
+      orderBy = { publishedAt: 'asc' };
+    } else if (query.sort === 'alphabetical') {
+      orderBy = { title: 'asc' };
+    }
+
+    const [totalItems, projects] = await Promise.all([
+      this.prisma.project.count({ where }),
+      this.prisma.project.findMany({
+        where,
+        orderBy,
+        skip,
+        take,
+      }),
+    ]);
+
+    const totalPages = Math.ceil(totalItems / query.limit);
+
+    return {
+      data: projects,
+      meta: {
+        totalItems,
+        currentPage: query.page,
+        totalPages,
+        hasNextPage: query.page < totalPages,
+        hasPreviousPage: query.page > 1,
+      },
+    };
   }
 
   async addMedia(
@@ -410,9 +506,6 @@ export class ProjectsService {
       );
     }
 
-    // ProjectMedia/ProjectMember/ProjectTechnology/SavedProject rows cascade
-    // on the schema's onDelete: Cascade — only the on-disk media files need
-    // manual cleanup, which the controller does with the keys returned here.
     await this.prisma.project.delete({ where: { id: projectId } });
 
     return { mediaStorageKeys: project.media.map((m) => m.storageKey) };

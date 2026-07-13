@@ -10,6 +10,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   UseInterceptors,
   UploadedFile,
   BadRequestException,
@@ -35,6 +36,7 @@ import {
   updateProjectRequestSchema,
   projectMediaUploadSchema,
   projectMediaUpdateSchema,
+  projectsExploreQuerySchema,
   type CreateProjectRequest,
   type UpdateProjectRequest,
   type ProjectResponse,
@@ -42,6 +44,8 @@ import {
   type ProjectMediaUpdateRequest,
   type ProjectByIdResponse,
   type ProjectBySlugResponse,
+  type ProjectsExploreQuery,
+  type ExploreProjectsResponse,
 } from '@repo/contracts';
 
 const PROJECT_MEDIA_MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
@@ -53,7 +57,6 @@ const PROJECT_MEDIA_ALLOWED_MIME_TYPES = [
 ];
 const PROJECT_MEDIA_DIR = join(process.cwd(), 'uploads', 'project-media');
 
-// Bootstrap check: synchronous directory creation is acceptable at startup
 if (!existsSync(PROJECT_MEDIA_DIR)) {
   mkdirSync(PROJECT_MEDIA_DIR, { recursive: true });
 }
@@ -81,6 +84,32 @@ export class ProjectsController {
       updatedAt: project.updatedAt.toISOString(),
       publishedAt: project.publishedAt?.toISOString() ?? null,
     }));
+  }
+
+  @Get('explore')
+  @Public()
+  @ApiOperation({
+    summary: 'Explore public published projects with search and pagination',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Paginated public projects list successfully retrieved.',
+  })
+  async exploreProjects(
+    @Query(new ZodValidationPipe(projectsExploreQuerySchema))
+    query: ProjectsExploreQuery,
+  ): Promise<ExploreProjectsResponse> {
+    const result = await this.projectsService.exploreProjects(query);
+
+    return {
+      data: result.data.map((project) => ({
+        ...project,
+        createdAt: project.createdAt.toISOString(),
+        updatedAt: project.updatedAt.toISOString(),
+        publishedAt: project.publishedAt?.toISOString() ?? null,
+      })),
+      meta: result.meta,
+    };
   }
 
   @Get('id/:id')
@@ -166,6 +195,88 @@ export class ProjectsController {
       user,
       projectId,
       body,
+    );
+
+    return {
+      ...project,
+      createdAt: project.createdAt.toISOString(),
+      updatedAt: project.updatedAt.toISOString(),
+      publishedAt: project.publishedAt?.toISOString() ?? null,
+    };
+  }
+
+  @Post(':id/logo')
+  @Roles(AccountType.DEVELOPER, AccountType.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Upload a logo/profile picture for a project' })
+  @ApiConsumes('multipart/form-data')
+  @ApiResponse({ status: 200, description: 'Logo successfully uploaded.' })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: PROJECT_MEDIA_DIR,
+        filename: (_req, _file, callback) =>
+          callback(null, `logo-${randomUUID()}`),
+      }),
+      limits: { fileSize: PROJECT_MEDIA_MAX_SIZE_BYTES },
+      fileFilter: (_req, file, callback) => {
+        if (!PROJECT_MEDIA_ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+          callback(
+            new BadRequestException(
+              'Only JPEG, PNG, WEBP, or GIF images are allowed',
+            ),
+            false,
+          );
+          return;
+        }
+        callback(null, true);
+      },
+    }),
+  )
+  async uploadProjectLogo(
+    @CurrentUser() user: User,
+    @Param('id') projectId: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+
+    let fileBuffer: Buffer;
+    try {
+      fileBuffer = await readFile(file.path);
+    } catch (_readError) {
+      throw new BadRequestException('Could not read the uploaded file');
+    }
+
+    const extension = detectImageExtension(fileBuffer);
+    if (!extension) {
+      try {
+        await unlink(file.path);
+      } catch (_unlinkError) {
+        // Ignore cleanup errors.
+      }
+      throw new BadRequestException('The uploaded file is not a valid image');
+    }
+
+    const finalFilename = `${file.filename}${extension}`;
+    try {
+      await rename(file.path, join(PROJECT_MEDIA_DIR, finalFilename));
+    } catch (_renameError) {
+      try {
+        await unlink(file.path);
+      } catch (_unlinkError) {
+        // Ignore cleanup errors.
+      }
+      throw new BadRequestException('Failed to process the uploaded file');
+    }
+
+    const apiUrl = process.env.API_URL ?? 'http://localhost:3001';
+    const publicUrl = `${apiUrl}/uploads/project-media/${finalFilename}`;
+
+    const project = await this.projectsService.uploadLogo(
+      user,
+      projectId,
+      publicUrl,
     );
 
     return {
