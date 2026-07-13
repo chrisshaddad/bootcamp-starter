@@ -413,7 +413,17 @@ export class ProjectsService {
     // ProjectMedia/ProjectMember/ProjectTechnology/SavedProject rows cascade
     // on the schema's onDelete: Cascade — only the on-disk media files need
     // manual cleanup, which the controller does with the keys returned here.
-    await this.prisma.project.delete({ where: { id: projectId } });
+    try {
+      await this.prisma.project.delete({ where: { id: projectId } });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2025'
+      ) {
+        throw new NotFoundException('Project not found');
+      }
+      throw error;
+    }
 
     return { mediaStorageKeys: project.media.map((m) => m.storageKey) };
   }
