@@ -28,7 +28,8 @@
       ]
     },
     "db:generate": {
-      "cache": false
+      "cache": false,
+      "env": ["DATABASE_URL"]
     },
     "db:migrate": {
       "cache": false,
@@ -46,7 +47,8 @@
     },
     "db:build": {
       "dependsOn": ["db:generate"],
-      "cache": false
+      "cache": false,
+      "env": ["DATABASE_URL"]
     }
   }
 }
