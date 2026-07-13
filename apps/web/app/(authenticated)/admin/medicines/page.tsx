@@ -879,19 +879,50 @@ function MedicineFormDialog({
 
             <section className="space-y-3">
               <SectionLabel>Ingredients</SectionLabel>
-              <MultiCombobox
-                value={watch('ingredients') ?? []}
-                onChange={(next) =>
-                  setValue('ingredients', next, { shouldValidate: true })
-                }
-                options={ingredientOptions ?? []}
-                placeholder="Add ingredients — pick existing or type…"
-              />
-              {errors.ingredients?.message ? (
-                <p className="text-xs text-error">
-                  {errors.ingredients.message}
-                </p>
-              ) : null}
+              {isEdit ? (
+                // Ingredients are set only when a medicine is first created — the
+                // shared catalog is the source of truth for an existing one, so
+                // they're read-only here (mirrors the update contract, which
+                // omits them). They stay editable only on the create path below.
+                <>
+                  {(watch('ingredients') ?? []).length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {(watch('ingredients') ?? []).map((name) => (
+                        <span
+                          key={name}
+                          className="inline-flex items-center rounded-md bg-gray-100 px-2.5 py-1 text-sm text-gray-700"
+                        >
+                          {name}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-400">
+                      No ingredients listed.
+                    </p>
+                  )}
+                  <p className="text-xs text-gray-500">
+                    Ingredients are set when a medicine is created and can’t be
+                    changed here.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <MultiCombobox
+                    value={watch('ingredients') ?? []}
+                    onChange={(next) =>
+                      setValue('ingredients', next, { shouldValidate: true })
+                    }
+                    options={ingredientOptions ?? []}
+                    placeholder="Add ingredients — pick existing or type…"
+                  />
+                  {errors.ingredients?.message ? (
+                    <p className="text-xs text-error">
+                      {errors.ingredients.message}
+                    </p>
+                  ) : null}
+                </>
+              )}
             </section>
           </div>
 

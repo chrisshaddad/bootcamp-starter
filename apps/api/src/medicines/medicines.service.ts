@@ -384,9 +384,9 @@ export class MedicinesService {
   }
 
   /**
-   * Update a medicine. Any subset of fields may change, including barcode. When
-   * `ingredients` is provided, the free-text column, the `Ingredient` rows, and
-   * the `MedicineIngredient` links are all updated together in one transaction.
+   * Update a medicine. Any subset of scalar fields may change, including
+   * barcode. Ingredients are immutable after creation (the update contract omits
+   * them), so an update only ever touches scalar fields — no ingredient sync.
    */
   async update(
     id: string,
@@ -402,26 +402,14 @@ export class MedicinesService {
       throw new NotFoundException('Medicine not found.');
     }
 
-    const { ingredients, ...scalars } = dto;
-    // Scope the barcode-conflict mapper to the transaction only; the diff +
-    // best-effort audit below run after it has committed.
+    // A single scalar write — map a barcode uniqueness violation to a clean 409;
+    // the diff + best-effort audit below run after it has committed.
     let medicine: MedicineRow;
     try {
-      medicine = await this.prisma.$transaction(async (tx) => {
-        const updated = await tx.medicine.update({
-          where: { id },
-          data: {
-            ...scalars,
-            ...(ingredients !== undefined
-              ? { ingredients: joinIngredients(ingredients) }
-              : {}),
-          },
-          select: MEDICINE_SELECT,
-        });
-        if (ingredients !== undefined) {
-          await this.syncIngredients(tx, id, ingredients);
-        }
-        return updated;
+      medicine = await this.prisma.medicine.update({
+        where: { id },
+        data: { ...dto },
+        select: MEDICINE_SELECT,
       });
     } catch (error) {
       throw this.mapBarcodeConflict(error);
@@ -432,6 +420,7 @@ export class MedicinesService {
     const before = this.toResponse(existing);
     const after = this.toResponse(medicine);
     const changes: AuditChanges = {};
+    // `ingredients` is intentionally not diffed — an update can't change it.
     const fields = [
       'brandName',
       'type',
@@ -441,7 +430,6 @@ export class MedicinesService {
       'priceLbp',
       'mophId',
       'atcCode',
-      'ingredients',
     ] as const;
     for (const field of fields) {
       const from = before[field];

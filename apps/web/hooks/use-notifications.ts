@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import type { AuditListResponse } from '@repo/contracts';
-import { actionMeta } from '@/lib/audit-format';
+import { actionMeta, type Category } from '@/lib/audit-format';
 import { useUser } from './use-auth';
 
 // The notification feed is the platform audit log: every action recorded by the
@@ -17,6 +17,15 @@ const POLL_MS = 15_000;
 // How many recent events the bell renders. The list itself is capped by the API
 // (500 most recent); the bell only ever shows the freshest handful.
 export const NOTIFICATION_DISPLAY_LIMIT = 20;
+
+// The bell surfaces content changes only — create / update / delete of the
+// platform's core entities. Auth/session events are dropped by their `auth.`
+// prefix (a category filter alone isn't enough — auth.signup maps to "create"),
+// and inquiry activity is dropped by entity (the inquiry officer has a dedicated
+// bell for it). All of these still appear in the full Audit Logs page.
+const AUTH_ACTION_PREFIX = 'auth.';
+const NOTIFIED_CATEGORIES = new Set<Category>(['create', 'update', 'delete']);
+const EXCLUDED_ENTITIES = new Set<string>(['Inquiry']);
 
 // Read state is per-user and browser-local (there's no server-side read state),
 // so one account's unread set never leaks into another on a shared machine. We
@@ -77,10 +86,21 @@ export function useNotifications(): UseNotificationsReturn {
     },
   );
 
-  // A super admin doesn't need to be notified of their own actions — the feed is
-  // for keeping tabs on other super admins and the pharmacies. Filter the actor
-  // out here so it's excluded from the list, the unread count, and the toasts.
-  const notifications = data?.logs?.filter((item) => item.userId !== userId);
+  // Build the bell feed from the raw audit log:
+  //   • drop the actor's own actions — the feed is for keeping tabs on other
+  //     super admins and the pharmacies, not one's own writes;
+  //   • drop auth/session events by their `auth.` prefix (auth.signup maps to
+  //     the "create" category, so a category filter alone would let it through);
+  //   • keep only content CRUD (create/update/delete);
+  //   • drop inquiry activity — the inquiry officer has a dedicated bell for it.
+  // Applying it here excludes them from the list, the unread count, and toasts.
+  const notifications = data?.logs?.filter(
+    (item) =>
+      item.userId !== userId &&
+      !item.action.startsWith(AUTH_ACTION_PREFIX) &&
+      NOTIFIED_CATEGORIES.has(actionMeta(item.action).category) &&
+      !EXCLUDED_ENTITIES.has(item.entity),
+  );
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
 
   // Load the persisted read set once the user is known.
