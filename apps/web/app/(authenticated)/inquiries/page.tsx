@@ -12,6 +12,7 @@ import {
 import { toast } from 'sonner';
 import type { InquiryResponse, InquiryStatus } from '@repo/contracts';
 import { useInquiries, useInquiryActions } from '@/hooks/use-inquiries';
+import { InquiryNotificationBell } from '@/components/inquiry-notification-bell';
 import { useReadOnlyStaff } from '@/hooks/use-auth';
 import { ApiError } from '@/lib/api';
 import {
@@ -210,25 +211,32 @@ export default function InquiriesPage() {
 
   return (
     <div className="space-y-6">
-      <div className={ENTER} style={enterStyle(0)}>
-        <h1 className="text-2xl font-bold text-gray-900">Inquiries</h1>
-        {branchName ? (
-          <p className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-gray-500">
-            {readOnly
-              ? 'Viewing client inquiries for'
-              : 'Answering client questions for'}
-            <span className="inline-flex items-center gap-1 rounded-md bg-primary-100 px-2 py-0.5 text-sm font-semibold text-primary-hover">
-              <Building2 className="h-3.5 w-3.5" />
-              {branchName}
-            </span>
-          </p>
-        ) : (
-          <p className="mt-1 text-sm text-gray-500">
-            {readOnly
-              ? 'View client questions about medicine availability at your branch.'
-              : 'Answer client questions about medicine availability at your branch.'}
-          </p>
-        )}
+      <div
+        className={`flex items-start justify-between gap-4 ${ENTER}`}
+        style={enterStyle(0)}
+      >
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Inquiries</h1>
+          {branchName ? (
+            <p className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-gray-500">
+              {readOnly
+                ? 'Viewing client inquiries for'
+                : 'Answering client questions for'}
+              <span className="inline-flex items-center gap-1 rounded-md bg-primary-100 px-2 py-0.5 text-sm font-semibold text-primary-hover">
+                <Building2 className="h-3.5 w-3.5" />
+                {branchName}
+              </span>
+            </p>
+          ) : (
+            <p className="mt-1 text-sm text-gray-500">
+              {readOnly
+                ? 'View client questions about medicine availability at your branch.'
+                : 'Answer client questions about medicine availability at your branch.'}
+            </p>
+          )}
+        </div>
+        {/* Officer-only awaiting-reply bell; self-hides for every other role. */}
+        <InquiryNotificationBell />
       </div>
 
       {/* Status tabs */}

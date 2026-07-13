@@ -1,4 +1,5 @@
 export * from './inquiry-status.schema';
+export * from './inquiry-sender.schema';
 export * from './inquiry.response';
 export * from './inquiry-list.request';
 export * from './inquiry-list.response';

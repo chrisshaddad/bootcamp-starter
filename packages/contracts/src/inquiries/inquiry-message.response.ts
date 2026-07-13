@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { senderTypeSchema } from './inquiry-sender.schema';
 import { dateSchema } from '../common';
 
 // A single message in an inquiry thread. `senderType` drives the chat styling
@@ -7,7 +8,7 @@ import { dateSchema } from '../common';
 // (InquiryMessage.senderId is a soft ref — onDelete: SetNull).
 export const inquiryMessageResponseSchema = z.object({
   id: z.uuid(),
-  senderType: z.enum(['CLIENT', 'EMPLOYEE']),
+  senderType: senderTypeSchema,
   senderName: z.string().nullable(),
   message: z.string(),
   createdAt: dateSchema,

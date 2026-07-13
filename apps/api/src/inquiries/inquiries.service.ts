@@ -97,6 +97,16 @@ export class InquiriesService {
           medicine: { select: { brandName: true } },
           branch: { select: { name: true } },
           _count: { select: { messages: true } },
+          // The most recent message drives the officer's notification bell: its
+          // sender tells us whether the inquiry is awaiting a reply (CLIENT).
+          // The `id` tie-breaker keeps "latest" stable when several messages
+          // share a createdAt (otherwise `take: 1` could pick a different one on
+          // each poll and make an inquiry flicker in and out of the bell).
+          messages: {
+            orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+            take: 1,
+            select: { senderType: true, createdAt: true },
+          },
         },
       }),
       // Counts span the whole queue (ignoring the status filter) so the tab
@@ -120,17 +130,22 @@ export class InquiriesService {
       counts[group.status] = group._count._all;
     }
 
-    const inquiries: InquiryResponse[] = rows.map((row) => ({
-      id: row.id,
-      clientName: fullName(row.client.firstName, row.client.lastName),
-      medicineId: row.medicineId,
-      medicineName: row.medicine.brandName,
-      branchName: row.branch.name,
-      status: row.status,
-      messageCount: row._count.messages,
-      lastUpdatedAt: row.updatedAt,
-      createdAt: row.createdAt,
-    }));
+    const inquiries: InquiryResponse[] = rows.map((row) => {
+      const lastMessage = row.messages[0] ?? null;
+      return {
+        id: row.id,
+        clientName: fullName(row.client.firstName, row.client.lastName),
+        medicineId: row.medicineId,
+        medicineName: row.medicine.brandName,
+        branchName: row.branch.name,
+        status: row.status,
+        messageCount: row._count.messages,
+        lastUpdatedAt: row.updatedAt,
+        lastMessageAt: lastMessage?.createdAt ?? null,
+        lastMessageSenderType: lastMessage?.senderType ?? null,
+        createdAt: row.createdAt,
+      };
+    });
 
     return {
       branchName,
