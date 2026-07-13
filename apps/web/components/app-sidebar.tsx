@@ -65,12 +65,7 @@ const pharmacyAdminNavItems: NavItem[] = [
   // area scoped to their own branch. (Role→page wiring is finalized later — the
   // admin can reach it here for now.)
   { title: 'Inquiries', url: '/inquiries', icon: MessageSquare },
-  {
-    title: 'Audit Logs',
-    url: '/pharmacy/audit',
-    icon: ScrollText,
-    disabled: true,
-  },
+  { title: 'Audit Logs', url: '/pharmacy/audit', icon: ScrollText },
 ];
 
 // PHARMACY_MANAGER / PHARMACY_EMPLOYEE — one branch.

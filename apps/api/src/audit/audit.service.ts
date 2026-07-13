@@ -94,17 +94,54 @@ export class AuditService {
    * no audit entries of its own.
    */
   async list(filters: AuditListQuery): Promise<AuditListResponse> {
-    const where: Prisma.AuditLogWhereInput = {
+    return this.runList(this.whereFromFilters(filters));
+  }
+
+  /**
+   * Pharmacy-scoped audit log listing for the pharmacy-admin console
+   * (`/audit/pharmacy`). Same shape as `list`, but restricted to entries by the
+   * caller's own pharmacy staff via the actor relation (`AuditLog` carries no
+   * pharmacyId of its own). The caller is restricted to `PHARMACY_ADMIN` at the
+   * controller, and the pharmacyId comes from the session — never the request.
+   * Read-only; produces no audit entry of its own.
+   */
+  async listForPharmacy(
+    pharmacyId: string,
+    filters: AuditListQuery,
+  ): Promise<AuditListResponse> {
+    return this.runList(
+      this.whereFromFilters(filters, { user: { pharmacyId } }),
+    );
+  }
+
+  /**
+   * Build the `where` for an audit listing from the optional action/entity/user
+   * filters, optionally AND-ed with a tenant `scope` predicate (e.g. restricting
+   * to one pharmacy's staff). Kept in one place so the platform and pharmacy
+   * listings can't drift.
+   */
+  private whereFromFilters(
+    filters: AuditListQuery,
+    scope?: Prisma.AuditLogWhereInput,
+  ): Prisma.AuditLogWhereInput {
+    return {
       AND: [
+        ...(scope ? [scope] : []),
         ...(filters.action ? [{ action: filters.action }] : []),
         ...(filters.entity ? [{ entity: filters.entity }] : []),
         ...(filters.userId ? [{ userId: filters.userId }] : []),
       ],
     };
+  }
 
-    // Count the full match set but only fetch the most recent page-worth, so the
-    // payload (and the client's per-keystroke filtering) stays bounded as the
-    // table grows.
+  /**
+   * Run a bounded audit listing: count the full match set but fetch only the
+   * most recent page-worth, so the payload (and the client's per-keystroke
+   * filtering) stays bounded as the table grows.
+   */
+  private async runList(
+    where: Prisma.AuditLogWhereInput,
+  ): Promise<AuditListResponse> {
     const [total, logs] = await this.prisma.$transaction([
       this.prisma.auditLog.count({ where }),
       this.prisma.auditLog.findMany({
