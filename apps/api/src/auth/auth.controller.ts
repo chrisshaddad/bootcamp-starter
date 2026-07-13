@@ -93,7 +93,10 @@ export class AuthController {
 
   @Get('me')
   async getCurrentUser(@CurrentUser() user: User): Promise<UserResponse> {
-    const isManager = await this.authService.isManager(user.id);
+    const isManager = await this.authService.isManager(
+      user.id,
+      user.organizationId,
+    );
 
     return {
       id: user.id,

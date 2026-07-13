@@ -243,11 +243,16 @@ export async function seedOpportunities(prisma: PrismaClient) {
     const opportunityId = opportunityIdByTitle.get(
       application.opportunityTitle,
     );
+    if (!opportunityId) {
+      throw new Error(
+        `Unknown opportunity title in APPLICATIONS seed: "${application.opportunityTitle}"`,
+      );
+    }
 
     await prisma.application.create({
       data: {
         userId: employee.id,
-        opportunityId: opportunityId as string,
+        opportunityId,
         status: application.status,
         coverNote: application.coverNote,
       },
