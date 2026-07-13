@@ -2,6 +2,7 @@
 
 import useSWR from 'swr';
 import type { AuditListResponse } from '@repo/contracts';
+import { buildAuditQuery } from '@/lib/audit-query';
 
 interface UsePharmacyAuditLogsOptions {
   action?: string;
@@ -20,11 +21,7 @@ export function usePharmacyAuditLogs(
 ) {
   const { action, entity, userId, enabled = true } = options;
 
-  const params = new URLSearchParams();
-  if (action) params.set('action', action);
-  if (entity) params.set('entity', entity);
-  if (userId) params.set('userId', userId);
-  const query = params.toString();
+  const query = buildAuditQuery({ action, entity, userId });
   const endpoint = query ? `/audit/pharmacy?${query}` : '/audit/pharmacy';
 
   const { data, error, isLoading, mutate } = useSWR<AuditListResponse>(

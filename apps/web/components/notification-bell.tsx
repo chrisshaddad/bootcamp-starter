@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AlertTriangle, Bell, Check } from 'lucide-react';
 import type { AuditLogItem } from '@repo/contracts';
 import {
@@ -64,8 +64,16 @@ export function NotificationBell() {
   } = useNotifications();
   const [open, setOpen] = useState(false);
 
+  // `enabled` is derived from client-side auth, so it can differ between the
+  // server render and the first client render. Gate on a mounted flag so both
+  // render nothing on first paint — otherwise conditionally mounting this Radix
+  // dropdown shifts the useId counter for the next Radix component (the user
+  // menu in the navbar) and triggers a hydration mismatch. Reveal after mount.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   // Only the super admin has access to the platform audit feed.
-  if (!enabled) return null;
+  if (!mounted || !enabled) return null;
 
   const items = (notifications ?? []).slice(0, NOTIFICATION_DISPLAY_LIMIT);
   const hasUnread = unreadCount > 0;
