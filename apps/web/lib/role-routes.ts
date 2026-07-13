@@ -27,3 +27,15 @@ export function homePathForRole(role: UserRole | undefined | null): string {
   if (!role) return '/dashboard';
   return ROLE_HOME[role] ?? '/dashboard';
 }
+
+/**
+ * A PHARMACY_EMPLOYEE gets read-only visibility of the stock & inquiries areas:
+ * they can view their branch's inventory and inquiry queue but cannot mutate
+ * either (add/edit/delete batches, reply to or re-status an inquiry). The API
+ * enforces this too — the stock/inquiries controllers only widen their GET
+ * handlers to this role — so this helper just drives the UI, hiding the
+ * mutating controls. Returns false while the role is still loading.
+ */
+export function isReadOnlyStaff(role: UserRole | undefined | null): boolean {
+  return role === 'PHARMACY_EMPLOYEE';
+}

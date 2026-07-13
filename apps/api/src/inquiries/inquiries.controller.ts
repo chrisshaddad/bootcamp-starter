@@ -27,15 +27,19 @@ import { InquiriesService } from './inquiries.service';
 const inquiryIdSchema = z.uuid();
 
 // Staff side of client inquiries. The global AuthGuard already requires a valid
-// session; @Roles narrows to the inquiry officer (their own branch) and the
-// pharmacy admin (cross-branch oversight within their pharmacy). Every handler
-// scopes its work to the caller's tenant predicate (see the service).
+// session; the class-level @Roles narrows WRITES (reply, status change) to the
+// inquiry officer (their own branch) and the pharmacy admin (cross-branch
+// oversight within their pharmacy). The GET handlers widen the allow-list to
+// include the PHARMACY_EMPLOYEE, who gets read-only visibility of their branch's
+// queue. Every handler scopes its work to the caller's tenant predicate (see the
+// service).
 @Controller('inquiries')
 @Roles('INQUIRY_OFFICER', 'PHARMACY_ADMIN')
 export class InquiriesController {
   constructor(private readonly inquiriesService: InquiriesService) {}
 
   @Get()
+  @Roles('INQUIRY_OFFICER', 'PHARMACY_ADMIN', 'PHARMACY_EMPLOYEE')
   list(
     @Query(new ZodValidationPipe(inquiryListQuerySchema))
     query: InquiryListQuery,
@@ -45,6 +49,7 @@ export class InquiriesController {
   }
 
   @Get(':id')
+  @Roles('INQUIRY_OFFICER', 'PHARMACY_ADMIN', 'PHARMACY_EMPLOYEE')
   detail(
     @Param('id', new ZodValidationPipe(inquiryIdSchema)) id: string,
     @CurrentUser() actor: User,

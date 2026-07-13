@@ -14,6 +14,8 @@ import {
   TriangleAlert,
 } from 'lucide-react';
 import type { StockMedicineSummary } from '@repo/contracts';
+import { useUser } from '@/hooks/use-auth';
+import { isReadOnlyStaff } from '@/lib/role-routes';
 import { useStock, useStockBranches } from '@/hooks/use-stock';
 import { AddBatchDialog } from '@/components/stock/add-batch-dialog';
 import { QuantityPill } from '@/components/stock/quantity-pill';
@@ -195,6 +197,10 @@ function StockPageContent() {
   const [sort, setSort] = useState<SortKey>('name');
   const [addOpen, setAddOpen] = useState(false);
 
+  // A PHARMACY_EMPLOYEE sees this branch's stock read-only — no batch mutations.
+  const { user } = useUser({ redirectOnUnauthenticated: false });
+  const readOnly = isReadOnlyStaff(user?.role);
+
   const {
     branches,
     error: branchesError,
@@ -290,16 +296,18 @@ function StockPageContent() {
             </p>
           )}
         </div>
-        <Button
-          type="button"
-          size="lg"
-          className="h-12 w-44 shrink-0 justify-center px-6 text-base"
-          onClick={() => setAddOpen(true)}
-          disabled={!activeBranchId}
-        >
-          <Plus className="h-5 w-5" />
-          Add batch
-        </Button>
+        {readOnly ? null : (
+          <Button
+            type="button"
+            size="lg"
+            className="h-12 w-44 shrink-0 justify-center px-6 text-base"
+            onClick={() => setAddOpen(true)}
+            disabled={!activeBranchId}
+          >
+            <Plus className="h-5 w-5" />
+            Add batch
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

@@ -12,6 +12,8 @@ import {
 import { toast } from 'sonner';
 import type { InquiryResponse, InquiryStatus } from '@repo/contracts';
 import { useInquiries, useInquiryActions } from '@/hooks/use-inquiries';
+import { useUser } from '@/hooks/use-auth';
+import { isReadOnlyStaff } from '@/lib/role-routes';
 import { ApiError } from '@/lib/api';
 import {
   INQUIRY_STATUSES,
@@ -94,12 +96,32 @@ function StatusSelect({ inquiry }: { inquiry: InquiryResponse }) {
   );
 }
 
+// Static status pill for the read-only view — mirrors the StatusSelect trigger's
+// colour but carries no interaction (a PHARMACY_EMPLOYEE cannot change status).
+function StatusBadge({ status }: { status: InquiryStatus }) {
+  return (
+    <span
+      className={cn(
+        'inline-flex h-8 w-36 items-center gap-1.5 rounded-md px-3 text-sm font-medium',
+        INQUIRY_STATUS_META[status].badge,
+      )}
+    >
+      <span
+        className={cn('h-2 w-2 rounded-full', INQUIRY_STATUS_META[status].dot)}
+      />
+      {INQUIRY_STATUS_META[status].label}
+    </span>
+  );
+}
+
 function InquiryRow({
   inquiry,
   onOpen,
+  readOnly,
 }: {
   inquiry: InquiryResponse;
   onOpen: () => void;
+  readOnly: boolean;
 }) {
   return (
     <TableRow
@@ -138,7 +160,11 @@ function InquiryRow({
         </span>
       </TableCell>
       <TableCell>
-        <StatusSelect inquiry={inquiry} />
+        {readOnly ? (
+          <StatusBadge status={inquiry.status} />
+        ) : (
+          <StatusSelect inquiry={inquiry} />
+        )}
       </TableCell>
       <TableCell>
         <span
@@ -161,6 +187,10 @@ function InquiryRow({
 export default function InquiriesPage() {
   const router = useRouter();
   const [tab, setTab] = useState<TabKey>('ALL');
+
+  // A PHARMACY_EMPLOYEE views the queue read-only — no inline status changes.
+  const { user } = useUser({ redirectOnUnauthenticated: false });
+  const readOnly = isReadOnlyStaff(user?.role);
 
   const { branchName, inquiries, counts, total, isLoading, error, mutate } =
     useInquiries();
@@ -186,7 +216,9 @@ export default function InquiriesPage() {
         <h1 className="text-2xl font-bold text-gray-900">Inquiries</h1>
         {branchName ? (
           <p className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-gray-500">
-            Answering client questions for
+            {readOnly
+              ? 'Viewing client inquiries for'
+              : 'Answering client questions for'}
             <span className="inline-flex items-center gap-1 rounded-md bg-primary-100 px-2 py-0.5 text-sm font-semibold text-primary-hover">
               <Building2 className="h-3.5 w-3.5" />
               {branchName}
@@ -194,7 +226,9 @@ export default function InquiriesPage() {
           </p>
         ) : (
           <p className="mt-1 text-sm text-gray-500">
-            Answer client questions about medicine availability at your branch.
+            {readOnly
+              ? 'View client questions about medicine availability at your branch.'
+              : 'Answer client questions about medicine availability at your branch.'}
           </p>
         )}
       </div>
@@ -302,6 +336,7 @@ export default function InquiriesPage() {
                 <InquiryRow
                   key={inquiry.id}
                   inquiry={inquiry}
+                  readOnly={readOnly}
                   onOpen={() => router.push(`/inquiries/${inquiry.id}`)}
                 />
               ))}

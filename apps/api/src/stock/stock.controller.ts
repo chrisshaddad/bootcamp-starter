@@ -38,9 +38,11 @@ import { StockService } from './stock.service';
 // Ids are UUIDs; reject malformed path params before they reach Prisma.
 const idSchema = z.uuid();
 
-// Branch inventory. The global AuthGuard requires a valid session; @Roles
-// narrows to the stock manager (their own branch) and the pharmacy admin
-// (cross-branch oversight within their pharmacy). Every handler resolves its
+// Branch inventory. The global AuthGuard requires a valid session; the
+// class-level @Roles narrows WRITES to the stock manager (their own branch) and
+// the pharmacy admin (cross-branch oversight within their pharmacy). The GET
+// handlers widen the allow-list to include the PHARMACY_EMPLOYEE, who gets
+// read-only visibility of their branch's stock. Every handler resolves its
 // branch from the session actor — never from a request-supplied branchId.
 @Controller('stock')
 @Roles('STOCK_MANAGER', 'PHARMACY_ADMIN')
@@ -48,6 +50,7 @@ export class StockController {
   constructor(private readonly stockService: StockService) {}
 
   @Get()
+  @Roles('STOCK_MANAGER', 'PHARMACY_ADMIN', 'PHARMACY_EMPLOYEE')
   list(
     @Query(new ZodValidationPipe(stockListQuerySchema)) query: StockListQuery,
     @CurrentUser() actor: User,
@@ -56,16 +59,19 @@ export class StockController {
   }
 
   @Get('branches')
+  @Roles('STOCK_MANAGER', 'PHARMACY_ADMIN', 'PHARMACY_EMPLOYEE')
   branches(@CurrentUser() actor: User): Promise<StockBranchOptionsResponse> {
     return this.stockService.branchOptions(actor);
   }
 
   @Get('attributes')
+  @Roles('STOCK_MANAGER', 'PHARMACY_ADMIN', 'PHARMACY_EMPLOYEE')
   attributes(): Promise<StockAttributesResponse> {
     return this.stockService.attributes();
   }
 
   @Get('catalog')
+  @Roles('STOCK_MANAGER', 'PHARMACY_ADMIN', 'PHARMACY_EMPLOYEE')
   catalog(
     @Query(new ZodValidationPipe(stockCatalogQuerySchema))
     query: StockCatalogQuery,
@@ -83,6 +89,7 @@ export class StockController {
   }
 
   @Get('medicines/:medicineId')
+  @Roles('STOCK_MANAGER', 'PHARMACY_ADMIN', 'PHARMACY_EMPLOYEE')
   medicineDetail(
     @Param('medicineId', new ZodValidationPipe(idSchema)) medicineId: string,
     @Query(new ZodValidationPipe(stockBranchScopeQuerySchema))

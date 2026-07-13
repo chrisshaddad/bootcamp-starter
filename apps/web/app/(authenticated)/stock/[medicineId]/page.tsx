@@ -22,6 +22,8 @@ import {
   type StockBatchResponse,
   type StockBatchUpdateRequest,
 } from '@repo/contracts';
+import { useUser } from '@/hooks/use-auth';
+import { isReadOnlyStaff } from '@/lib/role-routes';
 import { useStockMedicineDetail, useStockActions } from '@/hooks/use-stock';
 import { AddBatchDialog } from '@/components/stock/add-batch-dialog';
 import { QuantityPill } from '@/components/stock/quantity-pill';
@@ -272,6 +274,10 @@ function StockMedicineDetailContent() {
   const [addOpen, setAddOpen] = useState(false);
   const [dialog, setDialog] = useState<BatchDialog>(null);
 
+  // A PHARMACY_EMPLOYEE views batches read-only — no add/edit/delete controls.
+  const { user } = useUser({ redirectOnUnauthenticated: false });
+  const readOnly = isReadOnlyStaff(user?.role);
+
   const { detail, isLoading, error, mutate } = useStockMedicineDetail(
     medicineId,
     branchId,
@@ -354,15 +360,17 @@ function StockMedicineDetailContent() {
                 </div>
               </div>
             </div>
-            <Button
-              type="button"
-              size="lg"
-              className="h-12 w-44 shrink-0 justify-center px-6 text-base"
-              onClick={() => setAddOpen(true)}
-            >
-              <Plus className="h-5 w-5" />
-              Add batch
-            </Button>
+            {readOnly ? null : (
+              <Button
+                type="button"
+                size="lg"
+                className="h-12 w-44 shrink-0 justify-center px-6 text-base"
+                onClick={() => setAddOpen(true)}
+              >
+                <Plus className="h-5 w-5" />
+                Add batch
+              </Button>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4 sm:max-w-md">
@@ -410,7 +418,9 @@ function StockMedicineDetailContent() {
                   No batches yet
                 </h3>
                 <p className="max-w-md text-center text-sm text-gray-500">
-                  Add a batch to start tracking this medicine&apos;s stock.
+                  {readOnly
+                    ? 'No batches are on record for this medicine yet.'
+                    : "Add a batch to start tracking this medicine's stock."}
                 </p>
               </div>
             ) : (
@@ -420,7 +430,9 @@ function StockMedicineDetailContent() {
                     <TableHead>Batch number</TableHead>
                     <TableHead className="w-28">Quantity</TableHead>
                     <TableHead className="w-56">Expiry</TableHead>
-                    <TableHead className="w-24 text-right">Actions</TableHead>
+                    {readOnly ? null : (
+                      <TableHead className="w-24 text-right">Actions</TableHead>
+                    )}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -442,29 +454,33 @@ function StockMedicineDetailContent() {
                           <ExpiryBadge value={batch.expiryDate} />
                         </span>
                       </TableCell>
-                      <TableCell>
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            aria-label="Edit batch"
-                            onClick={() => setDialog({ mode: 'edit', batch })}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            aria-label="Delete batch"
-                            className="text-error hover:bg-error/10 hover:text-error"
-                            onClick={() => setDialog({ mode: 'delete', batch })}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
+                      {readOnly ? null : (
+                        <TableCell>
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              aria-label="Edit batch"
+                              onClick={() => setDialog({ mode: 'edit', batch })}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              aria-label="Delete batch"
+                              className="text-error hover:bg-error/10 hover:text-error"
+                              onClick={() =>
+                                setDialog({ mode: 'delete', batch })
+                              }
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>
