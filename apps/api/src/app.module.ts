@@ -8,6 +8,7 @@ import { MailModule } from './mail/mail.module';
 import { OrganizationsModule } from './organizations/organizations.module';
 import { DatabaseModule } from './database/database.module';
 import { UsersModule } from './users/users.module';
+import { TeacherModule } from './teacher/teacher.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { UsersModule } from './users/users.module';
     MailModule,
     OrganizationsModule,
     UsersModule,
+    TeacherModule,
   ],
   controllers: [AppController],
   providers: [AppService],
