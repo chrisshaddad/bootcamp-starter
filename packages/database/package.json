@@ -10,17 +10,18 @@
     "db:deploy": "prisma migrate deploy",
     "db:reset": "prisma migrate reset",
     "db:seed": "prisma db seed",
-    "db:build": "tsc"
+    "db:build": "tsc",
+    "build": "tsc"
   },
   "devDependencies": {
-    "@repo/typescript-config": "*",
     "@faker-js/faker": "^10.1.0",
+    "@repo/typescript-config": "*",
     "@types/node": "^22.19.3",
     "@types/pg": "^8.16.0",
+    "prettier": "^3.4.2",
     "prisma": "^7.2.0",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.2",
-    "prettier": "^3.4.2"
+    "typescript": "^5.9.2"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.2.0",

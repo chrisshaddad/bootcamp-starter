@@ -67,6 +67,11 @@ const orgSecondaryNavItems: NavItem[] = [
 
 const superAdminSecondaryNavItems: NavItem[] = [
   {
+    title: 'Create User',
+    url: '/users/create',
+    icon: Users,
+  },
+  {
     title: 'Settings',
     url: '/settings',
     icon: Settings,
