@@ -58,6 +58,9 @@ function SignupForm({ onSuccess }: { onSuccess: (email: string) => void }) {
           JSON.stringify({ lat, lng, email: data.email }),
         );
       }
+      // Registration emails a magic link; the client clicks it to set their
+      // password and finish onboarding. The pending location (if any) is applied
+      // on their first fully signed-in load, after that step.
       onSuccess(data.email);
     } catch (error) {
       if (error instanceof ApiError) {
@@ -181,7 +184,8 @@ function SignupForm({ onSuccess }: { onSuccess: (email: string) => void }) {
       </Button>
 
       <p className="text-center text-xs font-medium leading-relaxed text-gray-400">
-        We&apos;ll email you a magic link to verify your address and sign in.
+        We&apos;ll email you a magic link to set your password. After that you
+        can sign in with your password or a magic link.
       </p>
     </form>
   );
@@ -197,9 +201,9 @@ function CheckEmail({ email }: { email: string }) {
         Check your email
       </h3>
       <p className="text-sm font-medium leading-relaxed text-gray-600">
-        If <span className="font-semibold text-gray-900">{email}</span>{' '}
-        isn&apos;t already registered, we&apos;ve sent a magic link to it. Click
-        the link to verify your account and sign in.
+        We&apos;ve sent a magic link to{' '}
+        <span className="font-semibold text-gray-900">{email}</span>. Click it to
+        set your password and finish creating your account.
       </p>
       <Link
         href="/login"

@@ -1,8 +1,10 @@
 import { z } from 'zod';
 
 // Request for POST /auth/signup — CLIENT self-registration only.
-// The server forces role = CLIENT and status = ACTIVE; the client cannot
-// choose a role here. A magic link is emailed to verify the address.
+// The server forces role = CLIENT and status = ACTIVE; the client cannot choose
+// a role here. Registration only creates the account record and signs the
+// client in — no password is set here. They log in via magic link and can add a
+// password later from their profile to enable password login.
 export const signupRequestSchema = z.object({
   firstName: z.string().trim().min(1, 'First name is required').max(100),
   lastName: z.string().trim().min(1, 'Last name is required').max(100),
