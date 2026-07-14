@@ -330,6 +330,15 @@ export class LeasesService {
     });
     if (!existing) throw new NotFoundException('Lease not found.');
 
+    const invoiceCount = await this.prisma.invoice.count({
+      where: { leaseId },
+    });
+    if (invoiceCount > 0) {
+      throw new ConflictException(
+        'Cannot delete a lease that is referenced by an invoice.',
+      );
+    }
+
     await this.prisma.lease.delete({ where: { id: leaseId } });
 
     await this.timeline.emit({

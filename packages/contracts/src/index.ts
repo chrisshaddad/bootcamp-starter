@@ -697,3 +697,31 @@ export type InvoiceResponse = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type InvoiceLineItemInput = {
+  category: InvoiceLineItemCategory;
+  description?: string;
+  amount: number;
+};
+
+/**
+ * At least one line item is required. buildingId is derived server-side from
+ * the lease, never accepted as input.
+ */
+export type CreateInvoiceBody = {
+  leaseId: string;
+  dueDate: string;
+  notes?: string;
+  lineItems: InvoiceLineItemInput[];
+};
+
+/**
+ * When lineItems is provided, the full desired set is replaced wholesale
+ * (delete-then-recreate) — not diffed individually. Omit it to patch
+ * dueDate/notes only.
+ */
+export type PatchInvoiceBody = {
+  dueDate?: string;
+  notes?: string | null;
+  lineItems?: InvoiceLineItemInput[];
+};

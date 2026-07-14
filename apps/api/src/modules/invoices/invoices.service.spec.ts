@@ -1,4 +1,8 @@
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InvoicesService } from './invoices.service';
 import { Role } from '@/common/enums';
 
@@ -10,6 +14,8 @@ describe('InvoicesService', () => {
   function makeService(
     overrides: {
       invoice?: Partial<Record<string, jest.Mock>>;
+      lease?: Partial<Record<string, jest.Mock>>;
+      invoiceLineItem?: Partial<Record<string, jest.Mock>>;
       buildingAccess?: Partial<Record<string, jest.Mock>>;
     } = {},
   ) {
@@ -17,16 +23,35 @@ describe('InvoicesService', () => {
       invoice: {
         findFirst: jest.fn().mockResolvedValue(null),
         findMany: jest.fn().mockResolvedValue([]),
+        create: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
         ...overrides.invoice,
       },
+      lease: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        ...overrides.lease,
+      },
+      invoiceLineItem: {
+        deleteMany: jest.fn().mockResolvedValue(undefined),
+        ...overrides.invoiceLineItem,
+      },
     };
+    prisma.$transaction = jest.fn(async (cb: (tx: unknown) => unknown) =>
+      cb(prisma),
+    );
     const buildingAccess = {
       getAllowedBuildingIds: jest.fn().mockResolvedValue(null),
       assertBuildingAccess: jest.fn().mockResolvedValue(undefined),
       ...overrides.buildingAccess,
     };
-    const service = new InvoicesService(prisma, buildingAccess as any);
-    return { service, prisma, buildingAccess };
+    const timeline = { emit: jest.fn().mockResolvedValue(undefined) };
+    const service = new InvoicesService(
+      prisma,
+      buildingAccess as any,
+      timeline as any,
+    );
+    return { service, prisma, buildingAccess, timeline };
   }
 
   const decimal = (value: string) => ({
@@ -163,6 +188,174 @@ describe('InvoicesService', () => {
 
       await expect(
         service.findOne(orgId, callerId, Role.SUPERVISOR, 'invoice-1'),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+  });
+
+  describe('create', () => {
+    const dto = {
+      leaseId: 'lease-1',
+      dueDate: '2099-02-01',
+      notes: undefined,
+      lineItems: [{ category: 'rent' as const, amount: 1000 }],
+    };
+
+    it('creates an invoice with the denormalized buildingId from the lease', async () => {
+      const { service, prisma, timeline } = makeService({
+        lease: {
+          findFirst: jest
+            .fn()
+            .mockResolvedValue({ id: 'lease-1', buildingId }),
+        },
+        invoice: { create: jest.fn().mockResolvedValue(invoiceRow()) },
+      });
+
+      const result = await service.create(orgId, callerId, Role.ORG_ADMIN, dto);
+
+      expect(prisma.invoice.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            orgId,
+            buildingId,
+            leaseId: 'lease-1',
+          }),
+        }),
+      );
+      expect(timeline.emit).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'invoice.created' }),
+      );
+      expect(result.data.id).toBe('invoice-1');
+    });
+
+    it('rejects when line items are empty', async () => {
+      const { service } = makeService({
+        lease: {
+          findFirst: jest
+            .fn()
+            .mockResolvedValue({ id: 'lease-1', buildingId }),
+        },
+      });
+
+      await expect(
+        service.create(orgId, callerId, Role.ORG_ADMIN, {
+          ...dto,
+          lineItems: [],
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('rejects when a required field is missing', async () => {
+      const { service } = makeService();
+
+      await expect(
+        service.create(orgId, callerId, Role.ORG_ADMIN, {
+          ...dto,
+          leaseId: '',
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('throws NotFoundException when the lease does not exist in the org', async () => {
+      const { service } = makeService({
+        lease: { findFirst: jest.fn().mockResolvedValue(null) },
+      });
+
+      await expect(
+        service.create(orgId, callerId, Role.ORG_ADMIN, dto),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('rejects a supervisor caller', async () => {
+      const { service } = makeService();
+
+      await expect(
+        service.create(orgId, callerId, Role.SUPERVISOR, dto),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+  });
+
+  describe('update', () => {
+    it('replaces the line-item set wholesale when line items are provided', async () => {
+      const { service, prisma, timeline } = makeService({
+        invoice: {
+          findFirst: jest.fn().mockResolvedValue(invoiceRow()),
+          update: jest.fn().mockResolvedValue(invoiceRow()),
+        },
+      });
+
+      await service.update(orgId, callerId, Role.FINANCE, 'invoice-1', {
+        lineItems: [{ category: 'utilities', amount: 250 }],
+      });
+
+      expect(prisma.invoiceLineItem.deleteMany).toHaveBeenCalledWith({
+        where: { invoiceId: 'invoice-1' },
+      });
+      expect(prisma.invoice.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            lineItems: { create: [expect.objectContaining({ amount: 250 })] },
+          }),
+        }),
+      );
+      expect(timeline.emit).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'invoice.updated' }),
+      );
+    });
+
+    it('patches dueDate/notes independently when line items are not provided', async () => {
+      const { service, prisma } = makeService({
+        invoice: {
+          findFirst: jest.fn().mockResolvedValue(invoiceRow()),
+          update: jest.fn().mockResolvedValue(invoiceRow()),
+        },
+      });
+
+      await service.update(orgId, callerId, Role.ORG_ADMIN, 'invoice-1', {
+        notes: 'updated notes',
+      });
+
+      expect(prisma.invoiceLineItem.deleteMany).not.toHaveBeenCalled();
+      expect(prisma.invoice.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: { notes: 'updated notes' },
+        }),
+      );
+    });
+
+    it('throws NotFoundException for an invoice outside the org', async () => {
+      const { service } = makeService();
+
+      await expect(
+        service.update(orgId, callerId, Role.ORG_ADMIN, 'missing', {
+          notes: 'x',
+        }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe('remove', () => {
+    it('deletes the invoice and its line items', async () => {
+      const { service, prisma, timeline } = makeService({
+        invoice: { findFirst: jest.fn().mockResolvedValue(invoiceRow()) },
+      });
+
+      await service.remove(orgId, callerId, Role.ORG_ADMIN, 'invoice-1');
+
+      expect(prisma.invoice.delete).toHaveBeenCalledWith({
+        where: { id: 'invoice-1' },
+      });
+      expect(timeline.emit).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'invoice.deleted' }),
+      );
+    });
+
+    it('rejects a supervisor caller', async () => {
+      const { service } = makeService({
+        invoice: { findFirst: jest.fn().mockResolvedValue(invoiceRow()) },
+      });
+
+      await expect(
+        service.remove(orgId, callerId, Role.SUPERVISOR, 'invoice-1'),
       ).rejects.toBeInstanceOf(ForbiddenException);
     });
   });

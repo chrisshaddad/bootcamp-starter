@@ -1,5 +1,10 @@
 import { baseApi } from '@/store/api/base-api';
-import type { ApiEnvelope, InvoiceResponse } from '@/types/api';
+import type {
+  ApiEnvelope,
+  CreateInvoiceBody,
+  InvoiceResponse,
+  PatchInvoiceBody,
+} from '@/types/api';
 
 function unwrap<TData>(response: TData | ApiEnvelope<TData>): TData {
   return response && typeof response === 'object' && 'data' in response
@@ -22,7 +27,54 @@ export const invoicesApi = baseApi.injectEndpoints({
             ]
           : [{ type: 'Invoice', id: 'LIST' }],
     }),
+
+    createInvoice: build.mutation<InvoiceResponse, CreateInvoiceBody>({
+      query: (body) => ({ url: '/invoices', method: 'POST', body }),
+      transformResponse: (
+        response: InvoiceResponse | ApiEnvelope<InvoiceResponse>,
+      ) => unwrap(response),
+      invalidatesTags: [{ type: 'Invoice', id: 'LIST' }, 'Timeline'],
+    }),
+
+    updateInvoice: build.mutation<
+      InvoiceResponse,
+      { id: string; body: PatchInvoiceBody }
+    >({
+      query: ({ id, body }) => ({
+        url: `/invoices/${encodeURIComponent(id)}`,
+        method: 'PATCH',
+        body,
+      }),
+      transformResponse: (
+        response: InvoiceResponse | ApiEnvelope<InvoiceResponse>,
+      ) => unwrap(response),
+      invalidatesTags: (_result, _error, { id }) => [
+        { type: 'Invoice', id },
+        { type: 'Invoice', id: 'LIST' },
+        'Timeline',
+      ],
+    }),
+
+    deleteInvoice: build.mutation<{ id: string }, string>({
+      query: (id) => ({
+        url: `/invoices/${encodeURIComponent(id)}`,
+        method: 'DELETE',
+      }),
+      transformResponse: (
+        response: { id: string } | ApiEnvelope<{ id: string }>,
+      ) => unwrap(response),
+      invalidatesTags: (_result, _error, id) => [
+        { type: 'Invoice', id },
+        { type: 'Invoice', id: 'LIST' },
+        'Timeline',
+      ],
+    }),
   }),
 });
 
-export const { useListInvoicesQuery } = invoicesApi;
+export const {
+  useListInvoicesQuery,
+  useCreateInvoiceMutation,
+  useUpdateInvoiceMutation,
+  useDeleteInvoiceMutation,
+} = invoicesApi;
