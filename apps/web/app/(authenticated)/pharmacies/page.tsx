@@ -22,14 +22,10 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ENTER, enterStyle } from '@/lib/enter-animation';
 import { cn } from '@/lib/utils';
+import { directionsUrl } from '@/lib/maps';
 
 // Two cards per row × three rows.
 const PAGE_SIZE = 6;
-
-// External maps directions link built from the branch coordinates — no API key.
-function directionsUrl(lat: number, lng: number): string {
-  return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
-}
 
 // One card carries full emphasis — the nearest (`isPrimary`): filled brand-green
 // icon, solid primary action, and a green distance pill. Every other card
@@ -168,10 +164,15 @@ export default function PharmaciesPage() {
     <div className="relative isolate space-y-6 overflow-hidden">
       {/* Brand watermark: the MedFind mark in logo green, faint and bleeding
           off the corner behind the content — a subtle nod to the theme. */}
-      <LogoMark
+      <div
         aria-hidden
-        className="pointer-events-none absolute -top-12 -right-12 -z-10 h-72 w-72 select-none text-primary-base opacity-[0.05]"
-      />
+        className="pointer-events-none absolute -top-12 -right-12 -z-10 h-72 w-72 select-none opacity-[0.05]"
+      >
+        {/* aria-hidden on the wrapper (not LogoMark, which only forwards
+            className) so the decorative mark — whose SVG carries role="img" +
+            an aria-label — is silenced for screen readers. */}
+        <LogoMark className="h-full w-full text-primary-base" />
+      </div>
       <div className={ENTER} style={enterStyle(0)}>
         <h1 className="text-2xl font-bold text-gray-900">Pharmacies</h1>
         <p className="mt-1 text-sm text-gray-500">

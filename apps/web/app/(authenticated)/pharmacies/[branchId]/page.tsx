@@ -21,13 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ENTER, enterStyle } from '@/lib/enter-animation';
-
-// External maps link built from the branch coordinates — no API key, and (unlike
-// the in-app Lebanon-locked LocationMap) it works for any coordinate. Mirrors
-// how the A2 medicine-detail page surfaces branch locations.
-function directionsUrl(lat: number, lng: number): string {
-  return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
-}
+import { directionsUrl } from '@/lib/maps';
 
 function formatExpiry(value: string | Date | null): string {
   if (!value) return '—';
