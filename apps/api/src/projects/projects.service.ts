@@ -54,12 +54,6 @@ export class ProjectsService {
     return status as ProjectStatus;
   }
 
-  /**
-   * Imports a readable public repository as an unverified draft project.
-   *
-   * A successful scan confirms repository accessibility, not ownership or
-   * contribution. Verification remains pending for a separate review flow.
-   */
   async importGithubProject(
     userId: string,
     data: ImportGithubProjectRequest,
@@ -88,7 +82,10 @@ export class ProjectsService {
     const title = data.title ?? analysis.repository.repoName;
 
     this.logger.log(
-      `Importing GitHub repository ${analysis.repository.fullName} for user ${userId}`,
+      'Importing GitHub repository ' +
+        analysis.repository.fullName +
+        ' for user ' +
+        userId,
     );
 
     try {
@@ -245,7 +242,10 @@ export class ProjectsService {
       });
 
       this.logger.log(
-        `Imported GitHub repository ${analysis.repository.fullName} as project ${response.project.id}`,
+        'Imported GitHub repository ' +
+          analysis.repository.fullName +
+          ' as project ' +
+          response.project.id,
       );
 
       return response;
@@ -400,7 +400,6 @@ export class ProjectsService {
           data: {
             title: data.title,
             slug: data.slug,
-            logoUrl: data.logoUrl,
             shortDescription: data.shortDescription,
             fullDescription: data.fullDescription,
             deploymentUrl: data.deploymentUrl,
@@ -551,13 +550,22 @@ export class ProjectsService {
     }
 
     const previousLogoUrl = project.logoUrl;
+    let previousLogoKey: string | null = null;
+
+    if (previousLogoUrl) {
+      const parts = previousLogoUrl.split('/');
+      const oldFilename = parts[parts.length - 1];
+      if (oldFilename) {
+        previousLogoKey = oldFilename;
+      }
+    }
 
     const updatedProject = await this.prisma.project.update({
       where: { id: projectId },
       data: { logoUrl },
     });
 
-    return { ...updatedProject, previousLogoUrl };
+    return { ...updatedProject, previousLogoKey };
   }
 
   async getProjectBySlug(slug: string) {
@@ -641,6 +649,19 @@ export class ProjectsService {
         orderBy,
         skip,
         take,
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          logoUrl: true,
+          shortDescription: true,
+          fullDescription: true,
+          deploymentUrl: true,
+          status: true,
+          publishedAt: true,
+          createdAt: true,
+          updatedAt: true,
+        },
       }),
     ]);
 

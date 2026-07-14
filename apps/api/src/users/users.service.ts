@@ -5,17 +5,14 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { UsersExploreQuery, UpdateProfileRequest } from '@repo/contracts';
-import { Prisma, OrganizationType } from '@repo/db'; // Import OrganizationType directly
-
+import { Prisma, OrganizationType } from '@repo/db';
 @Injectable()
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
-
   private getSafeSelect() {
     return {
       id: true,
       accountType: true,
-      createdAt: true,
       developerProfile: {
         select: {
           id: true,
@@ -42,7 +39,6 @@ export class UsersService {
       },
     };
   }
-
   async exploreUsers(query: UsersExploreQuery) {
     const skip = (query.page - 1) * query.limit;
     const take = query.limit;
@@ -134,7 +130,6 @@ export class UsersService {
       },
     };
   }
-
   async getUserById(id: string) {
     const user = await this.prisma.user.findUnique({
       where: { id },
@@ -147,7 +142,6 @@ export class UsersService {
 
     return user;
   }
-
   async getUserBySlug(slug: string) {
     const user = await this.prisma.user.findFirst({
       where: { developerProfile: { publicSlug: slug } },
@@ -160,7 +154,6 @@ export class UsersService {
 
     return user;
   }
-
   async updateProfile(userId: string, data: UpdateProfileRequest) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -191,7 +184,7 @@ export class UsersService {
           where: { id: user.hiringProfile.id },
           data: {
             organizationName: data.organizationName,
-            organizationType: data.organizationType as OrganizationType, // Using the direct import
+            organizationType: data.organizationType as OrganizationType,
             jobTitle: data.jobTitle,
             linkedinUrl: data.linkedinUrl,
             organizationWebsiteUrl: data.organizationWebsiteUrl,

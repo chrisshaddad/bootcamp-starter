@@ -247,6 +247,17 @@ export class ProjectsController {
   @Roles(AccountType.DEVELOPER, AccountType.SUPER_ADMIN)
   @ApiOperation({ summary: 'Upload a logo/profile picture for a project' })
   @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
   @ApiResponse({ status: 200, description: 'Logo successfully uploaded.' })
   @UseInterceptors(
     FileInterceptor('file', {
@@ -322,17 +333,14 @@ export class ProjectsController {
         projectId,
         publicUrl,
       );
-      const { previousLogoUrl, ...project } = result;
+      const { previousLogoKey, ...project } = result;
 
-      if (previousLogoUrl) {
-        const parts = previousLogoUrl.split('/');
-        const oldFilename = parts[parts.length - 1];
-        if (oldFilename) {
-          try {
-            await unlink(join(PROJECT_MEDIA_DIR, oldFilename));
-          } catch (_unlinkError) {
-            // Ignored
-          }
+      // Unlink safely using the server-extracted storage key
+      if (previousLogoKey) {
+        try {
+          await unlink(join(PROJECT_MEDIA_DIR, previousLogoKey));
+        } catch (_unlinkError) {
+          // Ignored
         }
       }
 
@@ -351,6 +359,7 @@ export class ProjectsController {
       throw error;
     }
   }
+
   @Delete(':id')
   @Roles(AccountType.DEVELOPER, AccountType.SUPER_ADMIN)
   @ApiOperation({ summary: 'Delete a project and all of its media' })

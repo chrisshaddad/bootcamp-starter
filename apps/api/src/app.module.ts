@@ -9,8 +9,8 @@ import { OrganizationsModule } from './organizations/organizations.module';
 import { DatabaseModule } from './database/database.module';
 import { GithubModule } from './github/github.module';
 import { ProjectsModule } from './projects/projects.module';
-import { UsersModule } from './users/users.module'; // <-- Add this import
-
+import { UsersModule } from './users/users.module';
+import { TechnologiesModule } from './technologies/technologies.module';
 @Module({
   imports: [
     ConfigModule.forRoot(),
@@ -25,7 +25,8 @@ import { UsersModule } from './users/users.module'; // <-- Add this import
     OrganizationsModule,
     GithubModule,
     ProjectsModule,
-    UsersModule, // <-- Add UsersModule to the imports array
+    UsersModule,
+    TechnologiesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -4,6 +4,7 @@ import {
   ApiResponse,
   ApiTags,
   ApiBearerAuth,
+  ApiBody,
 } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { Public } from '../auth/decorators/public.decorator';
@@ -16,12 +17,10 @@ import {
   type UpdateProfileRequest,
   type ExploreUsersResponse,
 } from '@repo/contracts';
-
 @ApiTags('users')
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
-
   @Get('explore')
   @Public()
   @ApiOperation({ summary: 'Explore public users with search and pagination' })
@@ -35,7 +34,6 @@ export class UsersController {
   ): Promise<ExploreUsersResponse> {
     const result = await this.usersService.exploreUsers(query);
 
-    // Formatting handles explicit `null` mappings for type safety over the wire
     return {
       data: result.data.map((user) => ({
         id: user.id,
@@ -56,24 +54,41 @@ export class UsersController {
       meta: result.meta,
     };
   }
-
   @Get('id/:id')
   @Public()
   @ApiOperation({ summary: 'Get a user by their unique ID' })
   async getUserById(@Param('id') id: string) {
     return this.usersService.getUserById(id);
   }
-
   @Get('slug/:slug')
   @Public()
   @ApiOperation({ summary: 'Get a developer by their public slug' })
   async getUserBySlug(@Param('slug') slug: string) {
     return this.usersService.getUserBySlug(slug);
   }
-
   @Patch('profile')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update the logged-in user profile' })
+  @ApiBody({
+    description: 'Update user profile data',
+    schema: {
+      type: 'object',
+      properties: {
+        displayName: { type: 'string' },
+        publicSlug: { type: 'string' },
+        headline: { type: 'string' },
+        bio: { type: 'string' },
+        location: { type: 'string' },
+        linkedinUrl: { type: 'string' },
+        personalWebsiteUrl: { type: 'string' },
+        profilePictureUrl: { type: 'string' },
+        organizationName: { type: 'string' },
+        organizationType: { type: 'string' },
+        jobTitle: { type: 'string' },
+        organizationWebsiteUrl: { type: 'string' },
+      },
+    },
+  })
   @ApiResponse({ status: 200, description: 'Profile successfully updated.' })
   @ApiResponse({
     status: 409,
