@@ -7,6 +7,7 @@ import { apiPost, ApiError } from '@/lib/api';
 import type {
   MagicLinkRequest,
   MagicLinkVerifyRequest,
+  ActiveOrganizationRequest,
   UserResponse,
 } from '@repo/contracts';
 
@@ -85,9 +86,22 @@ export function useAuth() {
     mutate();
   }, [mutate]);
 
+  const setActiveOrganization = useCallback(
+    async (data: ActiveOrganizationRequest) => {
+      const result = await apiPost<UserResponse>(
+        '/auth/active-organization',
+        data,
+      );
+      mutate();
+      return result;
+    },
+    [mutate],
+  );
+
   return {
     requestMagicLink,
     verifyMagicLink,
     logout,
+    setActiveOrganization,
   };
 }

@@ -4,7 +4,7 @@ import type { NextRequest } from 'next/server';
 const SESSION_COOKIE_NAME = 'bootcamp_starter_session';
 
 // Public routes that don't require authentication
-const publicRoutes = ['/login', '/register', '/auth/verify'];
+const publicRoutes = ['/login', '/register', '/signup', '/auth/verify'];
 
 // Default landing page for authenticated users
 const DEFAULT_AUTHENTICATED_ROUTE = '/dashboard';

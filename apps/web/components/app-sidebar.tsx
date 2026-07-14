@@ -10,6 +10,11 @@ import {
   Settings,
   LogOut,
   Building2,
+  Compass,
+  Library,
+  BookOpen,
+  Clock,
+  Bookmark,
 } from 'lucide-react';
 import { useAuth, useUser } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
@@ -34,12 +39,41 @@ interface NavItem {
   disabled?: boolean;
 }
 
-// Navigation items for ORG_ADMIN, LIBRARIAN, and MEMBER roles
+// Navigation items for ORG_ADMIN and LIBRARIAN roles
 const orgNavItems: NavItem[] = [
   {
     title: 'Dashboard',
     url: '/dashboard',
     icon: LayoutDashboard,
+  },
+];
+
+// Navigation items for the MEMBER (patron) role
+const patronNavItems: NavItem[] = [
+  {
+    title: 'Discover',
+    url: '/discover',
+    icon: Compass,
+  },
+  {
+    title: 'My Libraries',
+    url: '/my-libraries',
+    icon: Library,
+  },
+  {
+    title: 'Browse Books',
+    url: '/browse',
+    icon: BookOpen,
+  },
+  {
+    title: 'My Rentals',
+    url: '/my-rentals',
+    icon: Clock,
+  },
+  {
+    title: 'My Reservations',
+    url: '/my-reservations',
+    icon: Bookmark,
   },
 ];
 
@@ -51,6 +85,11 @@ const superAdminNavItems: NavItem[] = [
     icon: Building2,
   },
   {
+    title: 'Patrons',
+    url: '/patrons',
+    icon: Users,
+  },
+  {
     title: 'Users',
     url: '/users',
     icon: Users,
@@ -59,6 +98,14 @@ const superAdminNavItems: NavItem[] = [
 ];
 
 const orgSecondaryNavItems: NavItem[] = [
+  {
+    title: 'Settings',
+    url: '/settings',
+    icon: Settings,
+  },
+];
+
+const patronSecondaryNavItems: NavItem[] = [
   {
     title: 'Settings',
     url: '/settings',
@@ -80,10 +127,17 @@ export function AppSidebar() {
   const { user } = useUser({ redirectOnUnauthenticated: false });
 
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
-  const mainNavItems = isSuperAdmin ? superAdminNavItems : orgNavItems;
+  const isPatron = user?.role === 'MEMBER';
+  const mainNavItems = isSuperAdmin
+    ? superAdminNavItems
+    : isPatron
+      ? patronNavItems
+      : orgNavItems;
   const secondaryNavItems = isSuperAdmin
     ? superAdminSecondaryNavItems
-    : orgSecondaryNavItems;
+    : isPatron
+      ? patronSecondaryNavItems
+      : orgSecondaryNavItems;
 
   const isActive = (url: string) => {
     if (url === '/dashboard') {
