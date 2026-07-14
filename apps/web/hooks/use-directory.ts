@@ -3,16 +3,15 @@
 import useSWR from 'swr';
 import type {
   BranchDetailResponse,
+  BranchDirectoryRequest,
   BranchDirectoryResponse,
 } from '@repo/contracts';
 
-interface UseDirectoryOptions {
-  search?: string;
-  // Optional "near me" origin override; when omitted the API falls back to the
-  // caller's saved location for nearest-first ordering.
-  lat?: number;
-  lng?: number;
-}
+// The hook's options ARE the directory query, so reuse the wire type instead of
+// re-declaring it (it can't drift from the API schema). `lat`/`lng` are the
+// optional "near me" origin override; omitted → the API uses the caller's saved
+// location for nearest-first ordering.
+type UseDirectoryOptions = BranchDirectoryRequest;
 
 /**
  * Browse/search the public pharmacy directory (GET /directory/branches). Global

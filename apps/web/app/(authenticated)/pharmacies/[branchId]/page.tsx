@@ -31,9 +31,12 @@ function directionsUrl(lat: number, lng: number): string {
 
 function formatExpiry(value: string | Date | null): string {
   if (!value) return '—';
+  // Expiry is a pure calendar date stored at UTC midnight (@db.Date). Render it
+  // in UTC so a US-timezone reader doesn't see it shift to the previous month.
   return new Date(value).toLocaleDateString(undefined, {
     year: 'numeric',
     month: 'short',
+    timeZone: 'UTC',
   });
 }
 

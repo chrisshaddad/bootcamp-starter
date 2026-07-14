@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@repo/db';
 import type { User } from '@repo/db';
 import type {
@@ -28,6 +28,8 @@ type BranchRow = Prisma.PharmacyBranchGetPayload<{
 
 @Injectable()
 export class DirectoryService {
+  private readonly logger = new Logger(DirectoryService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   /**

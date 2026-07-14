@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   AlertTriangle,
@@ -93,8 +93,17 @@ function BranchCard({
 
 export default function PharmaciesPage() {
   const [search, setSearch] = useState('');
+  // Debounce before the search drives the SWR key, so typing doesn't fire a
+  // request (and a three-field DB search) on every keystroke. Mirrors the
+  // catalog finder's 300ms pattern.
+  const [debounced, setDebounced] = useState('');
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(search.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   const { branches, orderedByDistance, isLoading, error } = useDirectory({
-    search: search.trim() || undefined,
+    search: debounced || undefined,
   });
 
   return (
