@@ -133,6 +133,41 @@ export class SessionService {
   }
 
   /**
+   * Updates the active organization on an existing session (both DB and the
+   * Redis cache), for a patron switching which library's portal they're using.
+   */
+  async updateActiveOrganization(
+    sessionId: string,
+    activeOrganizationId: string,
+  ): Promise<void> {
+    const session = await this.prisma.session.update({
+      where: { id: sessionId },
+      data: { activeOrganizationId },
+    });
+
+    const remainingTtl = Math.floor(
+      (session.expiresAt.getTime() - Date.now()) / 1000,
+    );
+
+    if (remainingTtl > 0) {
+      const sessionData: SessionData = {
+        userId: session.userId,
+        activeOrganizationId,
+        expiresAt: session.expiresAt,
+      };
+      await this.redis.setex(
+        `${SESSION_PREFIX}${sessionId}`,
+        remainingTtl,
+        JSON.stringify(sessionData),
+      );
+    }
+
+    this.logger.log(
+      `Active organization updated for session ${sessionId} -> ${activeOrganizationId}`,
+    );
+  }
+
+  /**
    * Deletes a session from both DB and Redis
    */
   async deleteSession(sessionId: string): Promise<void> {

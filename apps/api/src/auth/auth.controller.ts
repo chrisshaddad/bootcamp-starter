@@ -7,6 +7,7 @@ import {
   Req,
   HttpCode,
   HttpStatus,
+  UnauthorizedException,
   UsePipes,
 } from '@nestjs/common';
 import type { Response } from 'express';
@@ -19,8 +20,13 @@ import {
 import {
   magicLinkRequestSchema,
   magicLinkVerifyRequestSchema,
+  patronRegisterRequestSchema,
+  activeOrganizationRequestSchema,
   type MagicLinkRequest,
   type MagicLinkVerifyRequest,
+  type PatronRegisterRequest,
+  type PatronRegisterResponse,
+  type ActiveOrganizationRequest,
   type UserResponse,
 } from '@repo/contracts';
 import type { User } from '@repo/db';
@@ -31,6 +37,16 @@ const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  @Public()
+  @Post('register')
+  @HttpCode(HttpStatus.CREATED)
+  async registerPatron(
+    @Body(new ZodValidationPipe(patronRegisterRequestSchema))
+    body: PatronRegisterRequest,
+  ): Promise<PatronRegisterResponse> {
+    return this.authService.registerPatron(body.name, body.email);
+  }
 
   @Public()
   @Post('magic-link')
@@ -85,6 +101,37 @@ export class AuthController {
     });
 
     return { success: true };
+  }
+
+  @Post('active-organization')
+  @HttpCode(HttpStatus.OK)
+  async setActiveOrganization(
+    @CurrentUser() user: User,
+    @Req() request: AuthenticatedRequest,
+    @Body(new ZodValidationPipe(activeOrganizationRequestSchema))
+    body: ActiveOrganizationRequest,
+  ): Promise<UserResponse> {
+    const sessionId = request.sessionId;
+
+    if (!sessionId) {
+      throw new UnauthorizedException('No session found');
+    }
+
+    await this.authService.setActiveOrganization(
+      user.id,
+      sessionId,
+      body.organizationId,
+    );
+
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      organizationId: user.organizationId,
+      activeOrganizationId: body.organizationId,
+      isConfirmed: user.isConfirmed,
+    };
   }
 
   @Get('me')

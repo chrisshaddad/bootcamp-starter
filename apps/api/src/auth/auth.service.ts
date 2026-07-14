@@ -1,10 +1,16 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import * as crypto from 'crypto';
 import { PrismaService } from '../database/prisma.service';
 import { SessionService } from './session.service';
 import { MAIL_QUEUE, MAIL_JOBS } from '../mail/mail.constants';
+import type { PatronRegisterResponse } from '@repo/contracts';
 
 const MAGIC_LINK_EXPIRY_MINUTES = 15;
 
@@ -17,6 +23,34 @@ export class AuthService {
     private readonly sessionService: SessionService,
     @InjectQueue(MAIL_QUEUE) private readonly mailQueue: Queue,
   ) {}
+
+  /**
+   * Public patron self-signup. Not tied to any library - joining a specific
+   * library is a separate, later step (portal membership requests). Unlike
+   * requestMagicLink's deliberate "don't reveal" behavior, this endpoint is
+   * explicitly "create my account", so an existing email is a clear conflict
+   * rather than a silently-successful no-op.
+   */
+  async registerPatron(
+    name: string,
+    email: string,
+  ): Promise<PatronRegisterResponse> {
+    const existing = await this.prisma.user.findUnique({ where: { email } });
+
+    if (existing) {
+      throw new ConflictException(
+        `An account with the email "${email}" already exists.`,
+      );
+    }
+
+    const user = await this.prisma.user.create({
+      data: { email, name, role: 'MEMBER' },
+    });
+
+    await this.requestMagicLink(email);
+
+    return { id: user.id, name: user.name, email: user.email };
+  }
 
   /**
    * Request a magic link for the given email
@@ -130,6 +164,33 @@ export class AuthService {
         role: magicLink.user.role,
       },
     };
+  }
+
+  /**
+   * Switch a patron's session to a different one of their ACTIVE library
+   * memberships. Login itself no longer resolves a library (an account can
+   * hold memberships across many), so this is how a patron picks one after
+   * signing in.
+   */
+  async setActiveOrganization(
+    userId: string,
+    sessionId: string,
+    organizationId: string,
+  ): Promise<void> {
+    const membership = await this.prisma.libraryMember.findFirst({
+      where: { organizationId, userId },
+    });
+
+    if (!membership || membership.membershipStatus !== 'ACTIVE') {
+      throw new NotFoundException(
+        'No active membership found for this library',
+      );
+    }
+
+    await this.sessionService.updateActiveOrganization(
+      sessionId,
+      organizationId,
+    );
   }
 
   /**
