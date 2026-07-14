@@ -14,6 +14,8 @@ import { Label } from '@/components/ui/label';
 import { ApiError } from '@/lib/api';
 import { AuthShell, AuthCanvas } from '@/components/auth/auth-shell';
 import { AuthCard } from '@/components/auth/auth-card';
+import { LocationPicker } from '@/components/location-picker';
+import { PENDING_LOCATION_KEY } from '@/hooks/use-pending-location';
 
 const fieldLabel = 'flex gap-0.5 text-[12.5px] font-semibold text-gray-900';
 const submitButton =
@@ -22,6 +24,11 @@ const submitButton =
 function SignupForm({ onSuccess }: { onSuccess: (email: string) => void }) {
   const { signup } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Optional location. Signup is pre-auth so it can't be saved yet; we stash it
+  // and apply it via PATCH /profile on the client's first signed-in load
+  // (see useApplyPendingLocation).
+  const [latitude, setLatitude] = useState('');
+  const [longitude, setLongitude] = useState('');
 
   const {
     register,
@@ -35,6 +42,22 @@ function SignupForm({ onSuccess }: { onSuccess: (email: string) => void }) {
     setIsSubmitting(true);
     try {
       await signup(data);
+      const lat = Number(latitude);
+      const lng = Number(longitude);
+      if (
+        latitude.trim() !== '' &&
+        longitude.trim() !== '' &&
+        Number.isFinite(lat) &&
+        Number.isFinite(lng)
+      ) {
+        // Tag the stash with the signup email so it can only be applied to the
+        // matching account — on a shared browser a later signup overwrites this
+        // key, and without an owner marker the wrong profile would inherit it.
+        window.localStorage.setItem(
+          PENDING_LOCATION_KEY,
+          JSON.stringify({ lat, lng, email: data.email }),
+        );
+      }
       onSuccess(data.email);
     } catch (error) {
       if (error instanceof ApiError) {
@@ -125,6 +148,27 @@ function SignupForm({ onSuccess }: { onSuccess: (email: string) => void }) {
         )}
       </div>
 
+      <div className="flex flex-col gap-2">
+        <Label
+          htmlFor="location"
+          className="text-[12.5px] font-semibold text-gray-900"
+        >
+          Location <span className="font-normal text-gray-400">(optional)</span>
+        </Label>
+        <p className="-mt-1 text-[12px] text-gray-500">
+          Set it now to find the nearest pharmacies right away — or add it later
+          from your profile.
+        </p>
+        <LocationPicker
+          latitude={latitude}
+          longitude={longitude}
+          onChange={(lat, lng) => {
+            setLatitude(lat);
+            setLongitude(lng);
+          }}
+        />
+      </div>
+
       <Button type="submit" className={submitButton} disabled={isSubmitting}>
         {isSubmitting ? (
           <>
@@ -189,23 +233,29 @@ export default function SignupPage() {
         </>
       }
     >
-      <AuthCard>
-        <h2 className="mb-1.5 text-[22px] font-extrabold tracking-[-0.4px] text-gray-900">
-          Create your account
-        </h2>
-        <p className="mb-5 text-[13.5px] font-medium leading-snug text-gray-600">
-          Join MedFind to find and manage medicine availability across Lebanon.
-        </p>
-        <SignupForm onSuccess={setSubmittedEmail} />
-        <p className="mt-5 text-center text-[13px] font-medium text-gray-600">
-          Already have an account?{' '}
-          <Link
-            href="/login"
-            className="font-bold text-primary-base hover:underline"
-          >
-            Log in
-          </Link>
-        </p>
+      {/* Card keeps its rounded corners (overflow-hidden); the inner wrapper is
+          what scrolls, so its scrollbar sits inset from the padding and never
+          rides over the curved edges. */}
+      <AuthCard className="max-h-[88dvh] overflow-hidden">
+        <div className="max-h-[calc(88dvh-4rem)] overflow-y-auto pr-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-1.5 hover:[&::-webkit-scrollbar-thumb]:bg-gray-400">
+          <h2 className="mb-1.5 text-[22px] font-extrabold tracking-[-0.4px] text-gray-900">
+            Create your account
+          </h2>
+          <p className="mb-5 text-[13.5px] font-medium leading-snug text-gray-600">
+            Join MedFind to find and manage medicine availability across
+            Lebanon.
+          </p>
+          <SignupForm onSuccess={setSubmittedEmail} />
+          <p className="mt-5 text-center text-[13px] font-medium text-gray-600">
+            Already have an account?{' '}
+            <Link
+              href="/login"
+              className="font-bold text-primary-base hover:underline"
+            >
+              Log in
+            </Link>
+          </p>
+        </div>
       </AuthCard>
     </AuthShell>
   );
