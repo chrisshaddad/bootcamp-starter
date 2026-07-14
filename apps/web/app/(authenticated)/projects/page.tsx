@@ -75,8 +75,16 @@ export default function ProjectsPage() {
             return (
               <Card
                 key={project.id}
-                className="group flex flex-col overflow-hidden py-0"
+                className="group relative flex flex-col overflow-hidden py-0"
               >
+                <Link
+                  href={`/projects/${project.id}/edit`}
+                  className="absolute top-9 right-2.5 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-background/90 text-muted-foreground opacity-0 shadow-sm backdrop-blur-sm transition-opacity hover:bg-background hover:text-foreground group-hover:opacity-100 focus-visible:opacity-100"
+                  aria-label="Edit"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Link>
+
                 <Link
                   href={`/projects/${project.id}/preview`}
                   className="flex flex-1 flex-col"
@@ -123,35 +131,26 @@ export default function ProjectsPage() {
                   </div>
                 </Link>
 
-                <div className="mt-3 flex items-center justify-between border-t px-4 py-2.5">
-                  <div className="flex items-center gap-3 text-muted-foreground">
-                    {project.deploymentUrl && (
-                      <a
-                        href={project.deploymentUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 text-xs hover:text-primary"
-                      >
-                        <ExternalLink className="h-3.5 w-3.5" />
-                      </a>
-                    )}
-                    {project.status === 'PUBLISHED' && (
-                      <Link
-                        href={`/projects/${project.slug}`}
-                        className="text-xs hover:text-primary"
-                        target="_blank"
-                      >
-                        View public page
-                      </Link>
-                    )}
-                  </div>
-                  <Link
-                    href={`/projects/${project.id}/edit`}
-                    className="flex h-7 w-7 items-center justify-center rounded-md border text-muted-foreground hover:bg-muted"
-                    aria-label="Edit"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Link>
+                <div className="mt-3 flex items-center gap-3 border-t px-4 py-2.5 text-muted-foreground">
+                  {project.deploymentUrl && (
+                    <a
+                      href={project.deploymentUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 text-xs hover:text-primary"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  )}
+                  {project.status === 'PUBLISHED' && (
+                    <Link
+                      href={`/projects/${project.slug}`}
+                      className="text-xs hover:text-primary"
+                      target="_blank"
+                    >
+                      View public page
+                    </Link>
+                  )}
                 </div>
               </Card>
             );
