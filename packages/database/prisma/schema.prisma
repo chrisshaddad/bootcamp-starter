@@ -65,6 +65,15 @@ enum WorkOrderStatus {
   canceled
 }
 
+enum ExpenseCategory {
+  repairs
+  vendor_payment
+  utilities
+  taxes
+  insurance
+  other
+}
+
 model Organization {
   id               String        @id @default(cuid())
   name             String
@@ -244,6 +253,7 @@ model Vendor {
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
   workOrders      WorkOrder[]
+  expenses        Expense[]
 
   @@index([orgId])
 }
@@ -285,8 +295,30 @@ model WorkOrder {
   updatedAt            DateTime           @updatedAt
   maintenanceRequest   MaintenanceRequest @relation(fields: [maintenanceRequestId], references: [id], onDelete: Cascade)
   vendor               Vendor?            @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  expenses             Expense[]
 
   @@index([maintenanceRequestId])
   @@index([vendorId])
   @@index([orgId])
+}
+
+model Expense {
+  id          String          @id @default(cuid())
+  orgId       String
+  buildingId  String?
+  vendorId    String?
+  workOrderId String?
+  category    ExpenseCategory
+  amount      Decimal         @db.Decimal(12, 2)
+  incurredAt  DateTime
+  notes       String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  vendor      Vendor?         @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  workOrder   WorkOrder?      @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+
+  @@index([orgId])
+  @@index([buildingId])
+  @@index([vendorId])
+  @@index([workOrderId])
 }

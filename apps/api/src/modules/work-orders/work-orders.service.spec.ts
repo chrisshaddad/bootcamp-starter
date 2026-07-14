@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
@@ -19,6 +20,7 @@ describe('WorkOrdersService', () => {
     overrides: {
       maintenanceRequest?: Partial<Record<string, jest.Mock>>;
       workOrder?: Partial<Record<string, jest.Mock>>;
+      expense?: Partial<Record<string, jest.Mock>>;
       buildingAccess?: Partial<Record<string, jest.Mock>>;
       workOrderApartmentStatus?: Partial<Record<string, jest.Mock>>;
     } = {},
@@ -40,6 +42,10 @@ describe('WorkOrdersService', () => {
         update: jest.fn(),
         delete: jest.fn(),
         ...overrides.workOrder,
+      },
+      expense: {
+        count: jest.fn().mockResolvedValue(0),
+        ...overrides.expense,
       },
     };
     const buildingAccess = {
@@ -601,6 +607,29 @@ describe('WorkOrdersService', () => {
           'missing',
         ),
       ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('throws ConflictException when an expense references the work order', async () => {
+      const { service, prisma } = makeService({
+        workOrder: {
+          findFirst: jest.fn().mockResolvedValue({
+            ...workOrderRow(),
+            maintenanceRequest: { apartmentId },
+          }),
+        },
+        expense: { count: jest.fn().mockResolvedValue(1) },
+      });
+
+      await expect(
+        service.remove(
+          orgId,
+          actorId,
+          Role.ORG_ADMIN,
+          maintenanceRequestId,
+          'wo-1',
+        ),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(prisma.workOrder.delete).not.toHaveBeenCalled();
     });
   });
 });

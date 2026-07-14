@@ -158,6 +158,15 @@ export class VendorsService {
       );
     }
 
+    const expenseCount = await this.prisma.expense.count({
+      where: { vendorId },
+    });
+    if (expenseCount > 0) {
+      throw new ConflictException(
+        'Cannot delete a vendor that is referenced by an expense.',
+      );
+    }
+
     await this.prisma.vendor.delete({ where: { id: vendorId } });
 
     await this.timeline.emit({
