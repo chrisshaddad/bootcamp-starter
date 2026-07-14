@@ -1,7 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { Github, ExternalLink, Bookmark, ImageIcon } from 'lucide-react';
+import {
+  Github,
+  ExternalLink,
+  Bookmark,
+  ImageIcon,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
@@ -31,8 +38,20 @@ interface ProjectShowcaseProps {
 }
 
 export function ProjectShowcase({ project, onSave }: ProjectShowcaseProps) {
-  const [lightboxMedia, setLightboxMedia] =
-    useState<PublicProjectMediaResponse | null>(null);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const lightboxMedia =
+    lightboxIndex !== null ? project.media[lightboxIndex] : null;
+
+  const showPrevious = () =>
+    setLightboxIndex((current) =>
+      current === null
+        ? current
+        : (current - 1 + project.media.length) % project.media.length,
+    );
+  const showNext = () =>
+    setLightboxIndex((current) =>
+      current === null ? current : (current + 1) % project.media.length,
+    );
 
   // mock: ProjectTechnology has no endpoint — reuse the fixture list so the
   // "Built with" panel isn't empty while real data isn't available.
@@ -99,11 +118,11 @@ export function ProjectShowcase({ project, onSave }: ProjectShowcaseProps) {
             <h2 className="mb-3 text-sm font-bold">Screenshots</h2>
             {project.media.length > 0 ? (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {project.media.map((media) => (
+                {project.media.map((media, index) => (
                   <button
                     key={media.id}
                     type="button"
-                    onClick={() => setLightboxMedia(media)}
+                    onClick={() => setLightboxIndex(index)}
                     className="focus-visible:ring-ring rounded-lg focus-visible:ring-2 focus-visible:outline-none"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -197,19 +216,45 @@ export function ProjectShowcase({ project, onSave }: ProjectShowcaseProps) {
 
       <Dialog
         open={!!lightboxMedia}
-        onOpenChange={(open) => !open && setLightboxMedia(null)}
+        onOpenChange={(open) => !open && setLightboxIndex(null)}
       >
         <DialogContent className="max-w-3xl border-none bg-transparent p-0 shadow-none sm:max-w-3xl">
           <DialogTitle className="sr-only">
             {lightboxMedia?.caption ?? `${project.title} screenshot`}
           </DialogTitle>
           {lightboxMedia && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={lightboxMedia.publicUrl}
-              alt={lightboxMedia.caption ?? project.title}
-              className="max-h-[85vh] w-full rounded-lg object-contain"
-            />
+            <div className="relative">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={lightboxMedia.publicUrl}
+                alt={lightboxMedia.caption ?? project.title}
+                className="max-h-[85vh] w-full rounded-lg object-contain"
+              />
+              {project.media.length > 1 && (
+                <>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="icon"
+                    onClick={showPrevious}
+                    className="absolute top-1/2 left-2 -translate-y-1/2 rounded-full"
+                    aria-label="Previous screenshot"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="icon"
+                    onClick={showNext}
+                    className="absolute top-1/2 right-2 -translate-y-1/2 rounded-full"
+                    aria-label="Next screenshot"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
+            </div>
           )}
         </DialogContent>
       </Dialog>

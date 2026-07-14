@@ -37,12 +37,14 @@ export class ProjectsService {
     if (user.accountType === AccountType.SUPER_ADMIN) {
       return this.prisma.project.findMany({
         orderBy: { updatedAt: 'desc' },
+        include: { media: { orderBy: { sortOrder: 'asc' } } },
       });
     }
 
     return this.prisma.project.findMany({
       where: { createdByUserId: user.id },
       orderBy: { updatedAt: 'desc' },
+      include: { media: { orderBy: { sortOrder: 'asc' } } },
     });
   }
 

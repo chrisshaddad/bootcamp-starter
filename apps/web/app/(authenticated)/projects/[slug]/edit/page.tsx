@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import { ArrowLeft, ImageIcon, Loader2, X } from 'lucide-react';
+import { ArrowLeft, ImageIcon, Loader2, Star, X } from 'lucide-react';
 import {
   updateProjectRequestSchema,
   type UpdateProjectRequest,
@@ -16,7 +16,9 @@ import {
   useUpdateProject,
   useDeleteProject,
   useUploadProjectMedia,
+  useUpdateProjectMedia,
   useDeleteProjectMedia,
+  useUploadProjectLogo,
 } from '@/hooks/use-projects';
 import { ApiError } from '@/lib/api';
 import type { MockTechnology } from '@/lib/mock-projects';
@@ -56,12 +58,19 @@ export default function EditProjectPage() {
   const updateProject = useUpdateProject();
   const deleteProject = useDeleteProject();
   const uploadMedia = useUploadProjectMedia();
+  const updateMedia = useUpdateProjectMedia();
   const deleteMedia = useDeleteProjectMedia();
+  const uploadLogo = useUploadProjectLogo();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [deletingMediaId, setDeletingMediaId] = useState<string | null>(null);
+  const [settingCoverMediaId, setSettingCoverMediaId] = useState<
+    string | null
+  >(null);
   const [technologies, setTechnologies] = useState<MockTechnology[]>([]);
 
   const {
@@ -143,6 +152,51 @@ export default function EditProjectPage() {
       );
     } finally {
       setDeletingMediaId(null);
+    }
+  };
+
+  // Card grid shows project.media[0] as the cover, so "use as cover" just
+  // needs to make the clicked screenshot sort first — swap sortOrder with
+  // whichever screenshot currently holds that spot instead of renumbering
+  // every item in the gallery.
+  const handleSetCover = async (mediaId: string) => {
+    if (!project) return;
+    const current = project.media[0];
+    if (!current || current.id === mediaId) return;
+    const target = project.media.find((m) => m.id === mediaId);
+    if (!target) return;
+
+    setSettingCoverMediaId(mediaId);
+    try {
+      await Promise.all([
+        updateMedia(project.id, target.id, { sortOrder: current.sortOrder }),
+        updateMedia(project.id, current.id, { sortOrder: target.sortOrder }),
+      ]);
+    } catch (error) {
+      toast.error(
+        error instanceof ApiError ? error.message : 'Unable to set cover photo',
+      );
+    } finally {
+      setSettingCoverMediaId(null);
+    }
+  };
+
+  const handleLogoSelected = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !project || isUploadingLogo) return;
+
+    setIsUploadingLogo(true);
+    try {
+      await uploadLogo(project.id, file);
+    } catch (error) {
+      toast.error(
+        error instanceof ApiError ? error.message : 'Unable to upload logo',
+      );
+    } finally {
+      setIsUploadingLogo(false);
     }
   };
 
@@ -235,6 +289,43 @@ export default function EditProjectPage() {
           </div>
 
           <div className="space-y-2">
+            <Label>Logo</Label>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                disabled={isUploadingLogo}
+                onClick={() => logoInputRef.current?.click()}
+                aria-label={project.logoUrl ? 'Replace logo' : 'Add logo'}
+                className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-dashed text-muted-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {isUploadingLogo ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : project.logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={project.logoUrl}
+                    alt="Project logo"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <ImageIcon className="h-5 w-5" />
+                )}
+              </button>
+              <input
+                ref={logoInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                onChange={handleLogoSelected}
+                className="hidden"
+              />
+              <p className="text-muted-foreground text-xs">
+                Square image works best — shown as a small badge on the
+                project card. Click to {project.logoUrl ? 'replace' : 'add'}.
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="shortDescription">Short description</Label>
             <Textarea id="shortDescription" {...register('shortDescription')} />
           </div>
@@ -252,29 +343,54 @@ export default function EditProjectPage() {
             <Label>Media</Label>
             {project.media.length > 0 && (
               <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                {project.media.map((media) => (
-                  <div key={media.id} className="group relative">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={media.publicUrl}
-                      alt={media.caption ?? project.title}
-                      className="aspect-video w-full rounded-lg border object-cover"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteMedia(media.id)}
-                      disabled={deletingMediaId === media.id}
-                      aria-label="Delete media"
-                      className="bg-background/90 text-foreground absolute top-1 right-1 flex h-6 w-6 items-center justify-center rounded-full border opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
-                    >
-                      {deletingMediaId === media.id ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
+                {project.media.map((media, index) => {
+                  const isCover = index === 0;
+                  const isSettingCover = settingCoverMediaId === media.id;
+
+                  return (
+                    <div key={media.id} className="group relative">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={media.publicUrl}
+                        alt={media.caption ?? project.title}
+                        className="aspect-video w-full rounded-lg border object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteMedia(media.id)}
+                        disabled={deletingMediaId === media.id}
+                        aria-label="Delete media"
+                        className="bg-background/90 text-foreground absolute top-1 right-1 flex h-6 w-6 items-center justify-center rounded-full border opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                      >
+                        {deletingMediaId === media.id ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <X className="h-3 w-3" />
+                        )}
+                      </button>
+                      {isCover ? (
+                        <span className="bg-background/90 text-foreground absolute bottom-1 left-1 inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium">
+                          <Star className="h-2.5 w-2.5 fill-current" />
+                          Cover
+                        </span>
                       ) : (
-                        <X className="h-3 w-3" />
+                        <button
+                          type="button"
+                          onClick={() => handleSetCover(media.id)}
+                          disabled={isSettingCover}
+                          className="bg-background/90 text-foreground absolute bottom-1 left-1 inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 disabled:cursor-not-allowed"
+                        >
+                          {isSettingCover ? (
+                            <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                          ) : (
+                            <Star className="h-2.5 w-2.5" />
+                          )}
+                          Use as cover
+                        </button>
                       )}
-                    </button>
-                  </div>
-                ))}
+                    </div>
+                  );
+                })}
               </div>
             )}
             <input

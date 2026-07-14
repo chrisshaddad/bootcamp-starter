@@ -6,13 +6,25 @@ import Link from 'next/link';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import { ArrowLeft, Github, ImageIcon, Loader2, Search, X } from 'lucide-react';
+import {
+  ArrowLeft,
+  Github,
+  ImageIcon,
+  Loader2,
+  Search,
+  Star,
+  X,
+} from 'lucide-react';
 import {
   createProjectRequestSchema,
   type CreateProjectRequest,
   type GithubRepositoryPreviewResponse,
 } from '@repo/contracts';
-import { useCreateProject, useUploadProjectMedia } from '@/hooks/use-projects';
+import {
+  useCreateProject,
+  useUploadProjectMedia,
+  useUploadProjectLogo,
+} from '@/hooks/use-projects';
 import { apiPost, ApiError } from '@/lib/api';
 import {
   KNOWN_SEEDED_REPOSITORIES,
@@ -49,13 +61,16 @@ export default function NewProjectPage() {
   const router = useRouter();
   const createProject = useCreateProject();
   const uploadMedia = useUploadProjectMedia();
+  const uploadLogo = useUploadProjectLogo();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  // Tracks every blob URL ever created for pendingMedia previews, so they
-  // can all be revoked on unmount (covers both the post-submit redirect and
-  // navigating away without submitting) — not just on manual removal.
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  // Tracks every blob URL ever created for pendingMedia/pendingLogo previews,
+  // so they can all be revoked on unmount (covers both the post-submit
+  // redirect and navigating away without submitting) — not just manual removal.
   const objectUrlsRef = useRef<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pendingMedia, setPendingMedia] = useState<PendingMedia[]>([]);
+  const [pendingLogo, setPendingLogo] = useState<PendingMedia | null>(null);
   // mock: no Technology/ProjectTechnology endpoint yet — selections here are
   // local-only, not sent on submit.
   const [technologies, setTechnologies] = useState<MockTechnology[]>([]);
@@ -106,6 +121,16 @@ export default function NewProjectPage() {
         if (failedCount > 0) {
           toast.error(
             `Project created, but ${failedCount} screenshot${failedCount > 1 ? 's' : ''} failed to upload — you can retry from the edit page.`,
+          );
+        }
+      }
+
+      if (pendingLogo) {
+        try {
+          await uploadLogo(project.id, pendingLogo.file);
+        } catch {
+          toast.error(
+            'Project created, but the logo failed to upload — you can retry from the edit page.',
           );
         }
       }
@@ -210,6 +235,39 @@ export default function NewProjectPage() {
       const removed = prev[index];
       if (removed) URL.revokeObjectURL(removed.previewUrl);
       return prev.filter((_, i) => i !== index);
+    });
+  };
+
+  // Nothing's uploaded yet at this point (see the comment above
+  // handleFilesSelected), so "cover" here is just moving an entry to the
+  // front of the local array — sortOrder gets assigned from array position
+  // at submit time, no API calls needed the way Edit's version requires.
+  const handleSetCoverPending = (index: number) => {
+    setPendingMedia((prev) => {
+      if (index === 0) return prev;
+      const next = [...prev];
+      const [chosen] = next.splice(index, 1);
+      if (chosen) next.unshift(chosen);
+      return next;
+    });
+  };
+
+  // Same staging approach as screenshots — logo upload also needs a
+  // project id, so it's held locally and uploaded right after creation.
+  const handleLogoSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    const previewUrl = URL.createObjectURL(file);
+    objectUrlsRef.current.push(previewUrl);
+    setPendingLogo({ file, previewUrl });
+  };
+
+  const handleRemoveLogo = () => {
+    setPendingLogo((prev) => {
+      if (prev) URL.revokeObjectURL(prev.previewUrl);
+      return null;
     });
   };
 
@@ -360,6 +418,50 @@ export default function NewProjectPage() {
           </div>
 
           <div className="space-y-2">
+            <Label>Logo</Label>
+            <div className="flex items-center gap-3">
+              {pendingLogo ? (
+                <div className="group relative h-16 w-16 shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={pendingLogo.previewUrl}
+                    alt="Logo preview"
+                    className="h-16 w-16 rounded-xl border object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleRemoveLogo}
+                    aria-label="Remove logo"
+                    className="bg-background/90 text-foreground absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full border opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => logoInputRef.current?.click()}
+                  className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-dashed text-muted-foreground hover:bg-muted"
+                  aria-label="Add logo"
+                >
+                  <ImageIcon className="h-5 w-5" />
+                </button>
+              )}
+              <input
+                ref={logoInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                onChange={handleLogoSelected}
+                className="hidden"
+              />
+              <p className="text-muted-foreground text-xs">
+                Square image works best — shown as a small badge on the
+                project card. Uploaded once you create the project.
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="shortDescription">Short description</Label>
             <Textarea
               id="shortDescription"
@@ -398,6 +500,21 @@ export default function NewProjectPage() {
                     >
                       <X className="h-3 w-3" />
                     </button>
+                    {index === 0 ? (
+                      <span className="bg-background/90 text-foreground absolute bottom-1 left-1 inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium">
+                        <Star className="h-2.5 w-2.5 fill-current" />
+                        Cover
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleSetCoverPending(index)}
+                        className="bg-background/90 text-foreground absolute bottom-1 left-1 inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                      >
+                        <Star className="h-2.5 w-2.5" />
+                        Use as cover
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>

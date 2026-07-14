@@ -17,9 +17,11 @@ import type {
 const PROJECTS_KEY = '/projects';
 const projectKey = (id: string) => `/projects/id/${id}`;
 
-// real: GET /projects, list of projects owned by the current user.
+// real: GET /projects, list of projects owned by the current user. Includes
+// media so the dashboard card grid can use each project's cover screenshot.
 export function useProjects() {
-  const { data, error, isLoading } = useSWR<ProjectResponse[]>(PROJECTS_KEY);
+  const { data, error, isLoading } =
+    useSWR<ProjectByIdResponse[]>(PROJECTS_KEY);
   return { projects: data ?? [], error, isLoading };
 }
 
@@ -94,6 +96,26 @@ export function useUploadProjectMedia() {
     },
     [],
   );
+}
+
+// projectId is a call-time argument for the same reason as
+// useUploadProjectMedia above — the new-project form uploads the logo right
+// after creation, before any component has rendered with that id yet.
+export function useUploadProjectLogo() {
+  return useCallback(async (projectId: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const project = await apiUpload<ProjectResponse>(
+      `/projects/${projectId}/logo`,
+      formData,
+    );
+    await Promise.all([
+      globalMutate(PROJECTS_KEY),
+      globalMutate(projectKey(projectId)),
+    ]);
+    return project;
+  }, []);
 }
 
 export function useUpdateProjectMedia() {

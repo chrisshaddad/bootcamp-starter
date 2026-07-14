@@ -75,7 +75,7 @@ export class ProjectsController {
     status: 200,
     description: 'List of projects successfully retrieved.',
   })
-  async getMyProjects(@CurrentUser() user: User): Promise<ProjectResponse[]> {
+  async getMyProjects(@CurrentUser() user: User): Promise<ProjectByIdResponse[]> {
     const projects = await this.projectsService.getMyProjects(user);
 
     return projects.map((project) => ({
@@ -83,6 +83,18 @@ export class ProjectsController {
       createdAt: project.createdAt.toISOString(),
       updatedAt: project.updatedAt.toISOString(),
       publishedAt: project.publishedAt?.toISOString() ?? null,
+      media: project.media.map((m) => ({
+        id: m.id,
+        projectId: m.projectId,
+        uploadedByUserId: m.uploadedByUserId,
+        mediaType: m.mediaType as 'IMAGE' | 'GIF' | 'ARCHITECTURE_DIAGRAM',
+        storageKey: m.storageKey,
+        publicUrl: m.publicUrl,
+        caption: m.caption,
+        sortOrder: m.sortOrder,
+        createdAt: m.createdAt.toISOString(),
+        updatedAt: m.updatedAt.toISOString(),
+      })),
     }));
   }
 
