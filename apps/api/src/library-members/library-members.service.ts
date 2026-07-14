@@ -187,7 +187,11 @@ export class LibraryMembersService {
       );
     }
 
-    for (let attempt = 0; attempt < CARD_NUMBER_GENERATION_ATTEMPTS; attempt++) {
+    for (
+      let attempt = 0;
+      attempt < CARD_NUMBER_GENERATION_ATTEMPTS;
+      attempt++
+    ) {
       try {
         return await this.prisma.libraryMember.create({
           data: {

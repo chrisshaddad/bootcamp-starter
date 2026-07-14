@@ -59,7 +59,7 @@ export class PortalReservationsController {
     @ActiveOrganizationId() activeOrganizationId: string | null,
     @Param('id') id: string,
   ): Promise<ReservationResponse> {
-    const { organizationId, reservation } = await this.findOwnReservation(
+    const { reservation } = await this.findOwnReservation(
       user,
       activeOrganizationId,
       id,

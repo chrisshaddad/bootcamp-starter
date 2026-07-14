@@ -7,4 +7,6 @@ export const patronRegisterResponseSchema = z.object({
   name: z.string(),
   email: z.email(),
 });
-export type PatronRegisterResponse = z.infer<typeof patronRegisterResponseSchema>;
+export type PatronRegisterResponse = z.infer<
+  typeof patronRegisterResponseSchema
+>;
