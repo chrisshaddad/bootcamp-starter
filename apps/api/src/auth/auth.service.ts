@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   ForbiddenException,
   Injectable,
   Logger,
@@ -34,10 +35,17 @@ export class AuthService {
   /**
    * Request a magic link for the given email.
    *
-   * Always resolves to `{ success: true }` regardless of whether the email
-   * exists or the account is allowed to log in — this prevents account
-   * enumeration. A link is only actually created/sent for accounts that can
-   * authenticate (not SUSPENDED/INACTIVE).
+   * Magic link is a login mechanism for accounts that already exist — it never
+   * creates one. The email must resolve to a real user first:
+   *   - not found            -> reject; the caller must register first.
+   *   - SUSPENDED / INACTIVE -> reject via assertCanAuthenticate.
+   *   - PENDING (invited, no password yet) -> issue a link; verifying it routes
+   *     them to the set-password screen (see verifyMagicLink consumers).
+   *   - ACTIVE               -> issue a link that logs them straight in.
+   *
+   * Note: this deliberately reveals whether an email is registered (a clear
+   * "no account" error is required by product) and so is NOT enumeration-safe,
+   * unlike the constant-time password login.
    */
   async requestMagicLink(email: string): Promise<{ success: boolean }> {
     const normalizedEmail = email.toLowerCase().trim();
@@ -47,15 +55,13 @@ export class AuthService {
 
     if (!user) {
       this.logger.warn('Magic link requested for non-existent email');
-      return { success: true };
+      throw new NotFoundException(
+        'No account found with this email — please register first.',
+      );
     }
 
-    if (!this.canAuthenticate(user)) {
-      this.logger.warn(
-        'Magic link requested for a non-authenticatable account; not sending',
-      );
-      return { success: true };
-    }
+    // Throws for SUSPENDED/INACTIVE; PENDING and ACTIVE are allowed through.
+    this.assertCanAuthenticate(user);
 
     await this.issueMagicLink(user);
     return { success: true };
@@ -163,9 +169,17 @@ export class AuthService {
   }
 
   /**
-   * CLIENT self-registration. Forces role = CLIENT, status = ACTIVE, and emails
-   * a magic link to verify the address. Non-enumerable: if the email already
-   * exists we simply (re)send a magic link instead of erroring.
+   * CLIENT self-registration. This is the only path that creates a
+   * self-registered client's record. The account is created PENDING with no
+   * password and a magic link is emailed — the caller is NOT signed in. Clicking
+   * that link authenticates them and, because they're PENDING, routes them to
+   * the set-password screen (see verifyMagicLink consumers + the web PENDING
+   * guard). Setting that first password flips them to ACTIVE; from then on both
+   * password and magic-link login work.
+   *
+   * The email must be brand new. If it already exists — including an
+   * admin-invited PENDING account — registration is rejected so the existing
+   * user is directed to their login link instead of overwriting the record.
    */
   async signup(input: {
     firstName: string;
@@ -179,57 +193,50 @@ export class AuthService {
       where: { email },
       select: { id: true },
     });
-
-    if (!existing) {
-      try {
-        const created = await this.prisma.user.create({
-          data: {
-            firstName: input.firstName,
-            lastName: input.lastName,
-            email,
-            phoneNumber: input.phoneNumber ?? null,
-            role: 'CLIENT',
-            status: 'ACTIVE',
-          },
-          select: { id: true },
-        });
-        this.logger.log('New CLIENT registered');
-
-        // Self-actor: the newly registered user is the only actor available for
-        // a public signup. Logged only on real creation, never for the
-        // existing-email path, so the audit trail can't be used to probe which
-        // emails already exist.
-        await this.audit.record({
-          userId: created.id,
-          action: AUDIT_ACTIONS.AUTH_SIGNUP,
-          entity: AUDIT_ENTITIES.USER,
-          entityId: created.id,
-          details: { email },
-        });
-      } catch (error) {
-        // A concurrent signup for the same email can win the race between the
-        // findUnique above and this create, raising a unique-constraint
-        // violation. Treat it like the pre-existing case: still send a link.
-        if (
-          error instanceof Prisma.PrismaClientKnownRequestError &&
-          error.code === 'P2002'
-        ) {
-          this.logger.warn(
-            'Concurrent signup for the same email; sending login link instead',
-          );
-        } else {
-          throw error;
-        }
-      }
-    } else {
-      this.logger.warn(
-        'Signup for an existing email; sending login link instead',
-      );
+    if (existing) {
+      throw this.emailTakenError();
     }
 
-    // Sends a link for the new account, or for the pre-existing one — caller
-    // can't tell the difference.
-    await this.requestMagicLink(email);
+    let created: User;
+    try {
+      created = await this.prisma.user.create({
+        data: {
+          firstName: input.firstName,
+          lastName: input.lastName,
+          email,
+          phoneNumber: input.phoneNumber ?? null,
+          role: 'CLIENT',
+          // PENDING until they set a password; verifying the magic link routes
+          // PENDING users to the set-password screen before the rest of the app.
+          status: 'PENDING',
+        },
+      });
+    } catch (error) {
+      // A concurrent signup for the same email can win the race between the
+      // findUnique above and this create, raising a unique-constraint
+      // violation. Surface it as the same "email taken" rejection.
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw this.emailTakenError();
+      }
+      throw error;
+    }
+
+    this.logger.log('New CLIENT registered');
+
+    await this.audit.record({
+      userId: created.id,
+      action: AUDIT_ACTIONS.AUTH_SIGNUP,
+      entity: AUDIT_ENTITIES.USER,
+      entityId: created.id,
+    });
+
+    // Email the link that carries them into the set-password step. The record
+    // now exists, so we can issue it directly without the existence check.
+    await this.issueMagicLink(created);
+
     return { success: true };
   }
 
@@ -329,8 +336,17 @@ export class AuthService {
     return createHash('sha256').update(token).digest('hex');
   }
 
-  private canAuthenticate(user: Pick<User, 'status'>): boolean {
-    return user.status !== 'SUSPENDED' && user.status !== 'INACTIVE';
+  /**
+   * Rejection for a signup whose email is already registered — whether it's an
+   * admin invite, a finished account, or a half-finished signup. Sends them to
+   * the login page without promising password sign-in, since password-less
+   * PENDING accounts can only get in via a magic link until onboarding is done.
+   */
+  private emailTakenError(): ConflictException {
+    return new ConflictException(
+      'An account with this email already exists. Head to the login page to ' +
+        'sign in or request a magic link.',
+    );
   }
 
   private assertCanAuthenticate(user: Pick<User, 'status'>): void {

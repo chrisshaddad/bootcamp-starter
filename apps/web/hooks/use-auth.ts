@@ -140,6 +140,9 @@ export function useAuth() {
   );
 
   const signup = useCallback(async (data: SignupRequest) => {
+    // Registration emails a magic link and does NOT sign the client in; they
+    // click the link to authenticate and set their password (see the verify +
+    // set-password flow). So there's no session/cache to prime here.
     return apiPost<{ success: boolean }>('/auth/signup', data);
   }, []);
 

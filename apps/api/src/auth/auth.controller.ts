@@ -104,6 +104,8 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @UsePipes(new ZodValidationPipe(signupRequestSchema))
   async signup(@Body() body: SignupRequest) {
+    // Registration emails a magic link (that carries the client into the
+    // set-password step); it does not sign them in here.
     return this.authService.signup(body);
   }
 
