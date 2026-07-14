@@ -6,6 +6,7 @@ export * from './branches';
 export * from './pharmacies';
 export * from './medicines';
 export * from './catalog';
+export * from './directory';
 export * from './stock';
 export * from './inquiries';
 export * from './stats';

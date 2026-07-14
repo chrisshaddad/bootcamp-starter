@@ -11,6 +11,7 @@ import { BranchesModule } from './branches/branches.module';
 import { PharmaciesModule } from './pharmacies/pharmacies.module';
 import { MedicinesModule } from './medicines/medicines.module';
 import { CatalogModule } from './catalog/catalog.module';
+import { DirectoryModule } from './directory/directory.module';
 import { StockModule } from './stock/stock.module';
 import { InquiriesModule } from './inquiries/inquiries.module';
 import { StatsModule } from './stats/stats.module';
@@ -35,6 +36,7 @@ import { DatabaseModule } from './database/database.module';
     PharmaciesModule,
     MedicinesModule,
     CatalogModule,
+    DirectoryModule,
     StockModule,
     InquiriesModule,
     StatsModule,

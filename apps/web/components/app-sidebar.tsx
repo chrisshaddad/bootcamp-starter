@@ -112,7 +112,7 @@ const inquiryNavItems: NavItem[] = [
 // show as disabled "Soon" until their owner (Person B) ships the page.
 const clientNavItems: NavItem[] = [
   { title: 'Find medicines', url: '/find', icon: Search },
-  { title: 'Pharmacies', url: '/pharmacies', icon: Building2, disabled: true },
+  { title: 'Pharmacies', url: '/pharmacies', icon: Building2 },
   {
     title: 'My inquiries',
     url: '/my/inquiries',
