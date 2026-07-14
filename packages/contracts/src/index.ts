@@ -57,6 +57,14 @@ export const paymentStatusSchema = z.enum([
 ]);
 export type PaymentStatus = z.infer<typeof paymentStatusSchema>;
 
+export const apartmentStatusSchema = z.enum([
+  'vacant',
+  'occupied',
+  'maintenance',
+  'unavailable',
+]);
+export type ApartmentStatus = z.infer<typeof apartmentStatusSchema>;
+
 /**
  * Wire role — lowercase, matches Keycloak realm roles and the Role enum in
  * the web's auth/roles.ts.
@@ -224,6 +232,7 @@ export type BuildingResponse = {
   code?: string | null;
   notes?: string | null;
   createdAt: string;
+  updatedAt: string;
   /** Keycloak user IDs (`sub`) currently assigned. */
   assignedUserIds: string[];
 };
@@ -244,4 +253,64 @@ export type PatchBuildingBody = {
 
 export type SetBuildingAssignmentsBody = {
   userIds: string[];
+};
+
+// ── Floors ───────────────────────────────────────────────────────────────────
+
+export type FloorResponse = {
+  id: string;
+  orgId: string;
+  buildingId: string;
+  name: string;
+  order: number;
+  notes?: string | null;
+  apartmentCount: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateFloorBody = {
+  name: string;
+  notes?: string;
+};
+
+export type PatchFloorBody = {
+  name?: string;
+  order?: number;
+  notes?: string;
+};
+
+// ── Apartments ───────────────────────────────────────────────────────────────
+
+export type ApartmentResponse = {
+  id: string;
+  orgId: string;
+  buildingId: string;
+  floorId: string;
+  unitNumber: string;
+  bedrooms: number;
+  bathrooms: string; // Decimal(3,1) serialized as string
+  sqft?: number | null;
+  status: ApartmentStatus;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateApartmentBody = {
+  unitNumber: string;
+  bedrooms: number;
+  bathrooms: number;
+  sqft?: number;
+  status?: ApartmentStatus;
+  notes?: string;
+};
+
+export type PatchApartmentBody = {
+  unitNumber?: string;
+  bedrooms?: number;
+  bathrooms?: number;
+  sqft?: number;
+  status?: ApartmentStatus;
+  notes?: string;
 };

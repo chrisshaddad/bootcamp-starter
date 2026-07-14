@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -76,9 +77,10 @@ const ASSIGNABLE: AssignableRole[] = ['supervisor', 'maintenance'];
 interface BuildingsPageProps {
   /** When false (non-admin), hide all write actions. */
   canWrite: boolean;
+  locale: string;
 }
 
-export function BuildingsPage({ canWrite }: BuildingsPageProps) {
+export function BuildingsPage({ canWrite, locale }: BuildingsPageProps) {
   const { data: buildings, isLoading } = useListBuildingsQuery();
   const { data: allUsers } = useListUsersQuery();
   const [createBuilding, { isLoading: creating }] = useCreateBuildingMutation();
@@ -330,6 +332,16 @@ export function BuildingsPage({ canWrite }: BuildingsPageProps) {
                           }
                         />
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            render={
+                              <Link
+                                href={`/${locale}/dashboard/buildings/${building.id}`}
+                              />
+                            }
+                          >
+                            <EyeIcon className="size-3.5 mr-1.5" />
+                            View
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => openEdit(building)}>
                             <PencilIcon className="size-3.5 mr-1.5" />
                             Edit

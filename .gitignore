@@ -61,6 +61,13 @@ CLAUDE.md
 .claude/
 .gitnexus
 .fallow/
+hadi/
+
+# Scratch notes
+temporary.md
+
+# Local issue tracking
+issues/
 
 # TypeScript incremental build info
 *.tsbuildinfo

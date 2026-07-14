@@ -20,6 +20,13 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum ApartmentStatus {
+  vacant
+  occupied
+  maintenance
+  unavailable
+}
+
 model Organization {
   id               String        @id @default(cuid())
   name             String
@@ -84,6 +91,8 @@ model Building {
   updatedAt   DateTime             @updatedAt
   org         Organization         @relation(fields: [orgId], references: [id], onDelete: Cascade)
   assignments BuildingAssignment[]
+  floors      Floor[]
+  apartments  Apartment[]
 
   @@index([orgId])
 }
@@ -99,4 +108,43 @@ model BuildingAssignment {
   @@unique([userId, buildingId])
   @@index([orgId])
   @@index([userId])
+}
+
+model Floor {
+  id         String      @id @default(cuid())
+  orgId      String
+  buildingId String
+  name       String
+  order      Int
+  notes      String?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  building   Building    @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  apartments Apartment[]
+
+  @@unique([buildingId, name])
+  @@index([buildingId])
+  @@index([orgId])
+}
+
+model Apartment {
+  id         String          @id @default(cuid())
+  orgId      String
+  buildingId String
+  floorId    String
+  unitNumber String
+  bedrooms   Int
+  bathrooms  Decimal         @db.Decimal(3, 1)
+  sqft       Int?
+  status     ApartmentStatus @default(vacant)
+  notes      String?
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  building   Building        @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  floor      Floor           @relation(fields: [floorId], references: [id], onDelete: Cascade)
+
+  @@unique([buildingId, unitNumber])
+  @@index([floorId])
+  @@index([buildingId])
+  @@index([orgId])
 }

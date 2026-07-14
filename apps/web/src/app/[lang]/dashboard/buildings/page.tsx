@@ -21,5 +21,5 @@ export default async function BuildingsPageRoute({
 
   const writeAccess = canWrite(role, 'buildings');
 
-  return <BuildingsPage canWrite={writeAccess} />;
+  return <BuildingsPage canWrite={writeAccess} locale={locale} />;
 }
