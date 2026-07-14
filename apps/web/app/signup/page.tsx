@@ -50,9 +50,12 @@ function SignupForm({ onSuccess }: { onSuccess: (email: string) => void }) {
         Number.isFinite(lat) &&
         Number.isFinite(lng)
       ) {
+        // Tag the stash with the signup email so it can only be applied to the
+        // matching account — on a shared browser a later signup overwrites this
+        // key, and without an owner marker the wrong profile would inherit it.
         window.localStorage.setItem(
           PENDING_LOCATION_KEY,
-          JSON.stringify({ lat, lng }),
+          JSON.stringify({ lat, lng, email: data.email }),
         );
       }
       onSuccess(data.email);

@@ -109,9 +109,21 @@ export class CatalogService {
     }
 
     // In-stock rollup per branch: total quantity, batch count, nearest expiry.
+    // Exclude expired batches — they are unsellable, so a client should never be
+    // routed to a branch whose only stock has lapsed. Expiry is stored as
+    // @db.Date (UTC midnight); a batch expiring today is still valid, so bound at
+    // today 00:00 UTC with `gte` (already-expired batches fall before it).
+    const now = new Date();
+    const todayStart = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+    );
     const grouped = await this.prisma.stockBatch.groupBy({
       by: ['branchId'],
-      where: { medicineId: id, quantity: { gt: 0 } },
+      where: {
+        medicineId: id,
+        quantity: { gt: 0 },
+        expiryDate: { gte: todayStart },
+      },
       _sum: { quantity: true },
       _count: { _all: true },
       _min: { expiryDate: true },

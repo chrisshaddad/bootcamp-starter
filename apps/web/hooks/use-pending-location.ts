@@ -33,16 +33,39 @@ export function useApplyPendingLocation(): void {
     }
 
     let coords: { lat: number; lng: number } | null = null;
+    let owner: string | null = null;
     try {
-      const parsed = JSON.parse(raw) as { lat?: unknown; lng?: unknown };
+      const parsed = JSON.parse(raw) as {
+        lat?: unknown;
+        lng?: unknown;
+        email?: unknown;
+      };
       if (typeof parsed.lat === 'number' && typeof parsed.lng === 'number') {
         coords = { lat: parsed.lat, lng: parsed.lng };
+      }
+      if (typeof parsed.email === 'string') {
+        owner = parsed.email;
       }
     } catch {
       // corrupt payload — fall through and clear it
     }
     if (!coords) {
       window.localStorage.removeItem(PENDING_LOCATION_KEY);
+      doneRef.current = true;
+      return;
+    }
+
+    // Only apply the stash to the account that captured it. On a shared browser
+    // a later signup overwrites the global key, so a stash tagged with a
+    // different email belongs to someone else — leave it for that account rather
+    // than pulling their location into this profile. Legacy stashes with no
+    // owner marker are unverifiable, so drop them instead of applying blind.
+    if (owner === null) {
+      window.localStorage.removeItem(PENDING_LOCATION_KEY);
+      doneRef.current = true;
+      return;
+    }
+    if (owner.toLowerCase() !== profile.email.toLowerCase()) {
       doneRef.current = true;
       return;
     }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import {
@@ -161,7 +161,8 @@ export default function MedicineDetailPage() {
   const medicineId = params.medicineId;
 
   const { medicine, isLoading, error } = useMedicine(medicineId);
-  const { alternatives } = useMedicineAlternatives(medicineId);
+  const { alternatives, isLoading: alternativesLoading } =
+    useMedicineAlternatives(medicineId);
   const {
     hasLocation,
     branches,
@@ -171,6 +172,12 @@ export default function MedicineDetailPage() {
   // Alternatives can be a long list (a common ingredient is widely shared), so
   // page through them client-side rather than dumping them all on the page.
   const [altPage, setAltPage] = useState(1);
+  // The page component stays mounted when navigating between medicines (same
+  // route segment), so reset pagination or a stale page can land past the end of
+  // a shorter alternatives list — an empty grid with the pager hidden.
+  useEffect(() => {
+    setAltPage(1);
+  }, [medicineId]);
   const altTotal = alternatives?.length ?? 0;
   const altTotalPages = Math.max(1, Math.ceil(altTotal / ALT_PAGE_SIZE));
   const pagedAlternatives =
@@ -325,7 +332,15 @@ export default function MedicineDetailPage() {
       </section>
 
       {/* Alternatives */}
-      {alternatives && alternatives.length > 0 ? (
+      {alternativesLoading ? (
+        <section className={ENTER} style={enterStyle(210)}>
+          <SectionHeading>Alternatives</SectionHeading>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Skeleton className="h-19 w-full rounded-2xl" />
+            <Skeleton className="h-19 w-full rounded-2xl" />
+          </div>
+        </section>
+      ) : alternatives && alternatives.length > 0 ? (
         <section className={ENTER} style={enterStyle(210)}>
           <div className="mb-1 flex items-center gap-2.5">
             <span className="h-2 w-2 rounded-full bg-primary-base" />
