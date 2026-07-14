@@ -61,7 +61,7 @@ export const PERMISSION_MATRIX: PermissionMatrix = {
     reports: 'none',
     billing: 'none',
     timeline: 'readonly',
-    tasks: 'none',
+    tasks: 'readonly',
     vendors: 'readonly',
   },
   finance: {

@@ -475,3 +475,120 @@ export type PatchVendorBody = {
   servicesOffered?: VendorServiceType[];
   notes?: string;
 };
+
+// ── Maintenance Requests ─────────────────────────────────────────────────────
+
+export const maintenanceRequestStatusSchema = z.enum([
+  'open',
+  'in_progress',
+  'resolved',
+  'closed',
+]);
+export type MaintenanceRequestStatus = z.infer<
+  typeof maintenanceRequestStatusSchema
+>;
+
+export const maintenanceRequestPrioritySchema = z.enum([
+  'low',
+  'medium',
+  'high',
+  'urgent',
+]);
+export type MaintenanceRequestPriority = z.infer<
+  typeof maintenanceRequestPrioritySchema
+>;
+
+export type MaintenanceRequestResponse = {
+  id: string;
+  orgId: string;
+  buildingId: string;
+  apartmentId: string;
+  renterId: string;
+  title: string;
+  description?: string | null;
+  status: MaintenanceRequestStatus;
+  priority: MaintenanceRequestPriority;
+  notes?: string | null;
+  /** Joined server-side for list-table display; not a stored column. */
+  apartmentUnitNumber: string;
+  /** Joined server-side for list-table display; not a stored column. */
+  renterName: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateMaintenanceRequestBody = {
+  buildingId: string;
+  apartmentId: string;
+  renterId: string;
+  title: string;
+  description?: string;
+  /** Defaults to 'open' when omitted. */
+  status?: MaintenanceRequestStatus;
+  /** Defaults to 'medium' when omitted. */
+  priority?: MaintenanceRequestPriority;
+  notes?: string;
+};
+
+export type PatchMaintenanceRequestBody = {
+  buildingId?: string;
+  apartmentId?: string;
+  renterId?: string;
+  title?: string;
+  description?: string;
+  status?: MaintenanceRequestStatus;
+  priority?: MaintenanceRequestPriority;
+  notes?: string;
+};
+
+// ── Work Orders ──────────────────────────────────────────────────────────────
+
+export const workOrderStatusSchema = z.enum([
+  'scheduled',
+  'in_progress',
+  'completed',
+  'canceled',
+]);
+export type WorkOrderStatus = z.infer<typeof workOrderStatusSchema>;
+
+export type WorkOrderResponse = {
+  id: string;
+  orgId: string;
+  maintenanceRequestId: string;
+  vendorId?: string | null;
+  assignedUserId?: string | null;
+  status: WorkOrderStatus;
+  cost?: string | null; // Decimal(12,2) serialized as string
+  resolutionNotes?: string | null;
+  completedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** GET /maintenance-requests/:id response — MaintenanceRequestResponse plus its full Work Order history. */
+export type MaintenanceRequestDetailResponse = MaintenanceRequestResponse & {
+  workOrders: WorkOrderResponse[];
+};
+
+/**
+ * maintenanceRequestId is implicit from the nested route (not part of the
+ * body), matching the CreateLeaseBody precedent for apartmentId/floorId/
+ * buildingId. Exactly one of vendorId/assignedUserId is required — enforced
+ * in WorkOrdersService, not here.
+ */
+export type CreateWorkOrderBody = {
+  vendorId?: string;
+  assignedUserId?: string;
+  status?: WorkOrderStatus;
+  cost?: number;
+  resolutionNotes?: string;
+};
+
+export type PatchWorkOrderBody = {
+  vendorId?: string | null;
+  assignedUserId?: string | null;
+  status?: WorkOrderStatus;
+  cost?: number | null;
+  resolutionNotes?: string | null;
+  completedAt?: string | null;
+};

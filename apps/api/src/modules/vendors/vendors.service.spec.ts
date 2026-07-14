@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { VendorsService } from './vendors.service';
 
 describe('VendorsService', () => {
@@ -9,6 +9,7 @@ describe('VendorsService', () => {
   function makeService(
     overrides: {
       vendor?: Partial<Record<string, jest.Mock>>;
+      workOrder?: Partial<Record<string, jest.Mock>>;
     } = {},
   ) {
     const prisma = {
@@ -19,6 +20,10 @@ describe('VendorsService', () => {
         update: jest.fn(),
         delete: jest.fn(),
         ...overrides.vendor,
+      },
+      workOrder: {
+        count: jest.fn().mockResolvedValue(0),
+        ...overrides.workOrder,
       },
     };
     const timeline = { emit: jest.fn().mockResolvedValue(undefined) };
@@ -198,19 +203,34 @@ describe('VendorsService', () => {
   });
 
   describe('remove', () => {
-    it('hard-deletes the vendor with no dependent-record guard and emits vendor.deleted', async () => {
+    it('deletes the vendor when no work order references it and emits vendor.deleted', async () => {
       const { service, prisma, timeline } = makeService({
         vendor: { findFirst: jest.fn().mockResolvedValue(vendorRow()) },
       });
 
       await service.remove(orgId, actorId, 'vendor-1');
 
+      expect(prisma.workOrder.count).toHaveBeenCalledWith({
+        where: { vendorId: 'vendor-1' },
+      });
       expect(prisma.vendor.delete).toHaveBeenCalledWith({
         where: { id: 'vendor-1' },
       });
       expect(timeline.emit).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'vendor.deleted' }),
       );
+    });
+
+    it('throws ConflictException when a work order references the vendor', async () => {
+      const { service, prisma } = makeService({
+        vendor: { findFirst: jest.fn().mockResolvedValue(vendorRow()) },
+        workOrder: { count: jest.fn().mockResolvedValue(1) },
+      });
+
+      await expect(
+        service.remove(orgId, actorId, 'vendor-1'),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(prisma.vendor.delete).not.toHaveBeenCalled();
     });
 
     it('throws NotFoundException for a vendor in a different org', async () => {
