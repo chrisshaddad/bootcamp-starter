@@ -127,7 +127,10 @@ export default function BranchDetailPage() {
                     </p>
                   </div>
                 </div>
-                <Button asChild className="shrink-0">
+                <Button
+                  asChild
+                  className="shrink-0 bg-primary-base text-white hover:bg-primary-hover"
+                >
                   <Link
                     href={`/my/inquiries/new?branchId=${branch.branchId}`}
                     aria-label={`Ask ${branch.branchName} a question`}
