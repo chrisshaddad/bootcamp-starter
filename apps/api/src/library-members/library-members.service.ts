@@ -13,11 +13,21 @@ import type {
   LibraryMemberUpdateRequest,
   LibraryMemberStatus,
   LibraryMembershipType,
+  LibraryMemberWithOrganizationResponse,
+  LibraryMemberWithOrganizationListResponse,
+  PortalMembershipRequest,
 } from '@repo/contracts';
 
 const libraryMemberInclude = {
   user: { select: { id: true, email: true, name: true } },
 } satisfies Prisma.LibraryMemberInclude;
+
+const libraryMemberWithOrganizationInclude = {
+  user: { select: { id: true, email: true, name: true } },
+  organization: { select: { id: true, name: true, slug: true } },
+} satisfies Prisma.LibraryMemberInclude;
+
+const CARD_NUMBER_GENERATION_ATTEMPTS = 5;
 
 @Injectable()
 export class LibraryMembersService {
@@ -125,6 +135,181 @@ export class LibraryMembersService {
         data.libraryCardNumber ?? existing.libraryCardNumber,
       );
     }
+  }
+
+  /**
+   * A patron's own membership within a specific (already-active) organization
+   * - used by the portal controllers to resolve "who is this patron here".
+   */
+  async findByUser(
+    organizationId: string,
+    userId: string,
+  ): Promise<LibraryMemberResponse> {
+    const libraryMember = await this.prisma.libraryMember.findFirst({
+      where: { organizationId, userId },
+      include: libraryMemberInclude,
+    });
+
+    if (!libraryMember) {
+      throw new NotFoundException('No membership found for this library');
+    }
+
+    return libraryMember;
+  }
+
+  /**
+   * A patron requesting access to a specific library. userId is always the
+   * caller's own id (from the session) - never client-supplied. The request
+   * starts PENDING; a SUPER_ADMIN reviews it (see approve()/reject() below),
+   * not that library's own staff.
+   */
+  async requestMembership(
+    userId: string,
+    dto: PortalMembershipRequest,
+  ): Promise<LibraryMemberWithOrganizationResponse> {
+    const organization = await this.prisma.organization.findUnique({
+      where: { slug: dto.organizationSlug },
+    });
+
+    if (!organization || organization.status !== 'ACTIVE') {
+      throw new BadRequestException(
+        `Library "${dto.organizationSlug}" was not found`,
+      );
+    }
+
+    const existing = await this.prisma.libraryMember.findFirst({
+      where: { organizationId: organization.id, userId },
+    });
+
+    if (existing) {
+      throw new ConflictException(
+        'You already have a membership request (or membership) for this library',
+      );
+    }
+
+    for (let attempt = 0; attempt < CARD_NUMBER_GENERATION_ATTEMPTS; attempt++) {
+      try {
+        return await this.prisma.libraryMember.create({
+          data: {
+            organizationId: organization.id,
+            userId,
+            libraryCardNumber: this.generateCardNumber(organization.slug),
+            membershipType: dto.membershipType,
+            membershipStatus: 'PENDING',
+          },
+          include: libraryMemberWithOrganizationInclude,
+        });
+      } catch (error) {
+        const isCardNumberConflict =
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2002' &&
+          this.extractConflictingFields(error).includes('libraryCardNumber');
+
+        if (!isCardNumberConflict) {
+          throw error;
+        }
+        // else: retry with a freshly generated card number
+      }
+    }
+
+    throw new ConflictException(
+      'Could not generate a unique library card number, please try again',
+    );
+  }
+
+  /**
+   * A patron's own membership requests/memberships across every library -
+   * intentionally not organizationId-scoped, since it's "my own records only".
+   */
+  async findMyMemberships(
+    userId: string,
+  ): Promise<LibraryMemberWithOrganizationListResponse> {
+    const libraryMembers = await this.prisma.libraryMember.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      include: libraryMemberWithOrganizationInclude,
+    });
+
+    return { libraryMembers, total: libraryMembers.length };
+  }
+
+  /**
+   * Platform-wide pending membership requests, across every organization -
+   * SUPER_ADMIN reviews these, not each library's own staff (mirrors how
+   * Organization registrations are approved today).
+   */
+  async findAllPending(options: {
+    page?: number;
+    limit?: number;
+  }): Promise<LibraryMemberWithOrganizationListResponse> {
+    const { page = 1, limit = 20 } = options;
+    const skip = (page - 1) * limit;
+    const where = { membershipStatus: 'PENDING' as const };
+
+    const [libraryMembers, total] = await Promise.all([
+      this.prisma.libraryMember.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'asc' },
+        include: libraryMemberWithOrganizationInclude,
+      }),
+      this.prisma.libraryMember.count({ where }),
+    ]);
+
+    return { libraryMembers, total };
+  }
+
+  /**
+   * Approve a pending membership request (PENDING -> ACTIVE). Not
+   * organizationId-scoped since a SUPER_ADMIN isn't tied to one org.
+   */
+  async approve(id: string): Promise<LibraryMemberWithOrganizationResponse> {
+    const existing = await this.requirePending(id);
+
+    return this.prisma.libraryMember.update({
+      where: { id: existing.id },
+      data: { membershipStatus: 'ACTIVE' },
+      include: libraryMemberWithOrganizationInclude,
+    });
+  }
+
+  /**
+   * Reject a pending membership request (PENDING -> CANCELLED - there's no
+   * REJECTED value on LibraryMemberStatus, unlike OrganizationStatus).
+   */
+  async reject(id: string): Promise<LibraryMemberWithOrganizationResponse> {
+    const existing = await this.requirePending(id);
+
+    return this.prisma.libraryMember.update({
+      where: { id: existing.id },
+      data: { membershipStatus: 'CANCELLED' },
+      include: libraryMemberWithOrganizationInclude,
+    });
+  }
+
+  private async requirePending(id: string) {
+    const existing = await this.prisma.libraryMember.findUnique({
+      where: { id },
+    });
+
+    if (!existing) {
+      throw new NotFoundException(`Library member with ID ${id} not found`);
+    }
+
+    if (existing.membershipStatus !== 'PENDING') {
+      throw new BadRequestException(
+        `Only a PENDING request can be reviewed (current status: ${existing.membershipStatus})`,
+      );
+    }
+
+    return existing;
+  }
+
+  private generateCardNumber(slug: string): string {
+    const prefix = slug.slice(0, 3).toUpperCase();
+    const suffix = Math.floor(100000 + Math.random() * 900000);
+    return `${prefix}-${suffix}`;
   }
 
   // User.organizationId is null for MEMBER-role users (their org affiliation

@@ -23,6 +23,8 @@ import {
   type LibraryMemberListResponse,
   type LibraryMemberStatus,
   type LibraryMembershipType,
+  type LibraryMemberWithOrganizationListResponse,
+  type LibraryMemberActionResponse,
 } from '@repo/contracts';
 import { ZodValidationPipe } from '../common/pipes';
 
@@ -52,6 +54,33 @@ export class LibraryMembersController {
           : undefined,
       },
     );
+  }
+
+  // Must be registered before @Get(':id') so "pending" isn't captured as an id param.
+  @Get('pending')
+  @Roles('SUPER_ADMIN')
+  async findAllPending(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ): Promise<LibraryMemberWithOrganizationListResponse> {
+    return this.libraryMembersService.findAllPending({
+      page: page ? parseInt(page, 10) : 1,
+      limit: limit ? parseInt(limit, 10) : 20,
+    });
+  }
+
+  @Patch(':id/approve')
+  @Roles('SUPER_ADMIN')
+  async approve(@Param('id') id: string): Promise<LibraryMemberActionResponse> {
+    const libraryMember = await this.libraryMembersService.approve(id);
+    return { message: 'Membership request approved', libraryMember };
+  }
+
+  @Patch(':id/reject')
+  @Roles('SUPER_ADMIN')
+  async reject(@Param('id') id: string): Promise<LibraryMemberActionResponse> {
+    const libraryMember = await this.libraryMembersService.reject(id);
+    return { message: 'Membership request rejected', libraryMember };
   }
 
   @Get(':id')
