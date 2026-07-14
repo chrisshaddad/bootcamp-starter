@@ -202,8 +202,8 @@ function CheckEmail({ email }: { email: string }) {
       </h3>
       <p className="text-sm font-medium leading-relaxed text-gray-600">
         We&apos;ve sent a magic link to{' '}
-        <span className="font-semibold text-gray-900">{email}</span>. Click it to
-        set your password and finish creating your account.
+        <span className="font-semibold text-gray-900">{email}</span>. Click it
+        to set your password and finish creating your account.
       </p>
       <Link
         href="/login"
