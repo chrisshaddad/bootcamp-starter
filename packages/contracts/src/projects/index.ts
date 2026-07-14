@@ -7,3 +7,7 @@ export * from './project-media-upload.request';
 export * from './project-media-update.request';
 export * from './project-by-id.response';
 export * from './project-by-slug.response';
+export * from './project-list.request';
+export * from './project-explore.response';
+export * from './project-public.response';
+export * from './project-slug.schema';

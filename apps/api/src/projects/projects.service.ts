@@ -15,18 +15,19 @@ import {
   type UpdateProjectRequest,
   type ProjectMediaUploadRequest,
   type ProjectMediaUpdateRequest,
+  type ProjectsExploreQuery,
 } from '@repo/contracts';
 import {
-  AccountType,
-  MediaType,
-  Prisma,
   ProjectStatus,
   ProjectRoleKey,
+  VerificationStatus,
+  AccountType,
+  User,
+  Prisma,
+  MediaType,
   ProjectTechnologySource,
   RepositoryVisibility,
   TechnologyCategory,
-  VerificationStatus,
-  type User,
 } from '@repo/db';
 import { GithubRepositorySnapshotService } from '../repository-scanner/github-repository-snapshot.service';
 
@@ -45,6 +46,13 @@ export class ProjectsService {
     private readonly prisma: PrismaService,
     private readonly githubRepositorySnapshotService: GithubRepositorySnapshotService,
   ) {}
+
+  private mapStatus(
+    status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED',
+  ): ProjectStatus | undefined {
+    if (!status) return undefined;
+    return status as ProjectStatus;
+  }
 
   /**
    * Imports a readable public repository as an unverified draft project.
@@ -69,6 +77,7 @@ export class ProjectsService {
       await this.githubRepositorySnapshotService.previewRepositoryAnalysis(
         data.repositoryUrl,
       );
+
     const githubRepoId = parseGithubRepositoryId(
       analysis.repository.githubRepoId,
     );
@@ -119,6 +128,7 @@ export class ProjectsService {
         }
 
         const slug = await this.generateUniqueProjectSlug(tx, title);
+
         const project = await tx.project.create({
           data: {
             repositoryId: repository.id,
@@ -164,6 +174,7 @@ export class ProjectsService {
                   category: TechnologyCategory[detectedTechnology.category],
                 },
               });
+
               const evidence = joinEvidence(detectedTechnology.evidence);
 
               await tx.projectTechnology.upsert({
@@ -236,12 +247,12 @@ export class ProjectsService {
       this.logger.log(
         `Imported GitHub repository ${analysis.repository.fullName} as project ${response.project.id}`,
       );
+
       return response;
     } catch (error) {
       if (error instanceof ConflictException) {
         throw error;
       }
-
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2002'
@@ -256,10 +267,8 @@ export class ProjectsService {
         if (targetFields.some((field) => field.includes('slug'))) {
           throw new ConflictException(PROJECT_SLUG_CONFLICT_MESSAGE);
         }
-
         throw new ConflictException(REPOSITORY_PROJECT_CONFLICT_MESSAGE);
       }
-
       throw error;
     }
   }
@@ -275,6 +284,7 @@ export class ProjectsService {
       },
       select: { slug: true },
     });
+
     const existingSlugs = new Set(
       existingProjects.map((project) => project.slug),
     );
@@ -287,15 +297,7 @@ export class ProjectsService {
     while (existingSlugs.has(`${baseSlug}-${suffix}`)) {
       suffix += 1;
     }
-
     return `${baseSlug}-${suffix}`;
-  }
-
-  private mapStatus(
-    status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED',
-  ): ProjectStatus | undefined {
-    if (!status) return undefined;
-    return status as ProjectStatus;
   }
 
   async getMyProjects(user: User) {
@@ -349,6 +351,14 @@ export class ProjectsService {
       throw new NotFoundException('User not found');
     }
 
+    const repository = await this.prisma.repository.findUnique({
+      where: { id: data.repositoryId },
+    });
+
+    if (!repository) {
+      throw new NotFoundException('Repository not found');
+    }
+
     const githubUsername = user.developerProfile?.githubUsername;
     const isAdmin = user.accountType === AccountType.SUPER_ADMIN;
 
@@ -356,14 +366,6 @@ export class ProjectsService {
       throw new ForbiddenException(
         'A connected GitHub account is required to create a project.',
       );
-    }
-
-    const repository = await this.prisma.repository.findUnique({
-      where: { id: data.repositoryId },
-    });
-
-    if (!repository) {
-      throw new NotFoundException('Repository not found');
     }
 
     const isOwner =
@@ -398,6 +400,7 @@ export class ProjectsService {
           data: {
             title: data.title,
             slug: data.slug,
+            logoUrl: data.logoUrl,
             shortDescription: data.shortDescription,
             fullDescription: data.fullDescription,
             deploymentUrl: data.deploymentUrl,
@@ -506,6 +509,7 @@ export class ProjectsService {
         data: {
           title: data.title,
           slug: data.slug,
+          logoUrl: data.logoUrl,
           shortDescription: data.shortDescription,
           fullDescription: data.fullDescription,
           deploymentUrl: data.deploymentUrl,
@@ -526,6 +530,34 @@ export class ProjectsService {
       }
       throw error;
     }
+  }
+
+  async uploadLogo(user: User, projectId: string, logoUrl: string) {
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    const isAdmin = user.accountType === AccountType.SUPER_ADMIN;
+    const isCreator = project.createdByUserId === user.id;
+
+    if (!isAdmin && !isCreator) {
+      throw new ForbiddenException(
+        'You are not authorized to edit this project',
+      );
+    }
+
+    const previousLogoUrl = project.logoUrl;
+
+    const updatedProject = await this.prisma.project.update({
+      where: { id: projectId },
+      data: { logoUrl },
+    });
+
+    return { ...updatedProject, previousLogoUrl };
   }
 
   async getProjectBySlug(slug: string) {
@@ -555,6 +587,75 @@ export class ProjectsService {
     }
 
     return project;
+  }
+
+  async exploreProjects(query: ProjectsExploreQuery) {
+    const skip = (query.page - 1) * query.limit;
+    const take = query.limit;
+
+    const where: Prisma.ProjectWhereInput = {
+      status: ProjectStatus.PUBLISHED,
+      ...(query.search
+        ? {
+            OR: [
+              { title: { contains: query.search, mode: 'insensitive' } },
+              {
+                shortDescription: {
+                  contains: query.search,
+                  mode: 'insensitive',
+                },
+              },
+              {
+                fullDescription: {
+                  contains: query.search,
+                  mode: 'insensitive',
+                },
+              },
+              {
+                technologies: {
+                  some: {
+                    technology: {
+                      name: { contains: query.search, mode: 'insensitive' },
+                    },
+                  },
+                },
+              },
+            ],
+          }
+        : {}),
+    };
+
+    let orderBy: Prisma.ProjectOrderByWithRelationInput = {
+      publishedAt: 'desc',
+    };
+    if (query.sort === 'oldest') {
+      orderBy = { publishedAt: 'asc' };
+    } else if (query.sort === 'alphabetical') {
+      orderBy = { title: 'asc' };
+    }
+
+    const [totalItems, projects] = await Promise.all([
+      this.prisma.project.count({ where }),
+      this.prisma.project.findMany({
+        where,
+        orderBy,
+        skip,
+        take,
+      }),
+    ]);
+
+    const totalPages = Math.ceil(totalItems / query.limit);
+
+    return {
+      data: projects,
+      meta: {
+        totalItems,
+        currentPage: query.page,
+        totalPages,
+        hasNextPage: query.page < totalPages,
+        hasPreviousPage: query.page > 1,
+      },
+    };
   }
 
   async addMedia(
@@ -658,6 +759,38 @@ export class ProjectsService {
 
     return { storageKey: media.storageKey };
   }
+
+  async deleteProject(user: User, projectId: string) {
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+      include: { media: true },
+    });
+
+    if (!project) throw new NotFoundException('Project not found');
+
+    const isAdmin = user.accountType === AccountType.SUPER_ADMIN;
+    const isCreator = project.createdByUserId === user.id;
+
+    if (!isAdmin && !isCreator) {
+      throw new ForbiddenException(
+        'You are not authorized to delete this project',
+      );
+    }
+
+    await this.prisma.project.delete({ where: { id: projectId } });
+
+    const mediaStorageKeys = project.media.map((m) => m.storageKey);
+
+    if (project.logoUrl) {
+      const parts = project.logoUrl.split('/');
+      const logoKey = parts[parts.length - 1];
+      if (logoKey) {
+        mediaStorageKeys.push(logoKey);
+      }
+    }
+
+    return { mediaStorageKeys };
+  }
 }
 
 function slugifyProjectTitle(title: string): string {
@@ -666,7 +799,6 @@ function slugifyProjectTitle(title: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
-
   return slug || 'project';
 }
 
@@ -690,11 +822,9 @@ function parseNullableGithubDate(value: string | Date | null): Date | null {
   if (value === null) {
     return null;
   }
-
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) {
     throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
   }
-
   return date;
 }

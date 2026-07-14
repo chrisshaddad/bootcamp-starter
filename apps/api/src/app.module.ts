@@ -9,6 +9,7 @@ import { OrganizationsModule } from './organizations/organizations.module';
 import { DatabaseModule } from './database/database.module';
 import { GithubModule } from './github/github.module';
 import { ProjectsModule } from './projects/projects.module';
+import { UsersModule } from './users/users.module'; // <-- Add this import
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { ProjectsModule } from './projects/projects.module';
     OrganizationsModule,
     GithubModule,
     ProjectsModule,
+    UsersModule, // <-- Add UsersModule to the imports array
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -6,6 +6,7 @@ export const updateProjectRequestSchema = z.object({
   slug: z.string().min(1, 'Slug cannot be empty').optional(),
   shortDescription: z.string().optional().nullable(),
   fullDescription: z.string().optional().nullable(),
+  logoUrl: z.string().optional().nullable(), // <--- MAKE SURE THIS IS PRESENT
 
   // FIX: Union allows valid URLs or empty strings, transform sanitizes, and .optional() restores the key optionality
   deploymentUrl: z
