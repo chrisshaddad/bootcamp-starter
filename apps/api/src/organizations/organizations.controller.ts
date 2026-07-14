@@ -20,6 +20,7 @@ import {
   type OrganizationDetailResponse,
   type OrganizationActionResponse,
   type OrganizationRegisterResponse,
+  type OrganizationDirectoryResponse,
 } from '@repo/contracts';
 
 @Controller('organizations')
@@ -34,6 +35,19 @@ export class OrganizationsController {
     body: CreateOrganizationRequest,
   ): Promise<OrganizationRegisterResponse> {
     return this.organizationsService.register(body);
+  }
+
+  // Must be registered before @Get(':id') so "directory" isn't captured as an id param.
+  @Public()
+  @Get('directory')
+  async directory(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ): Promise<OrganizationDirectoryResponse> {
+    return this.organizationsService.directory({
+      page: page ? parseInt(page, 10) : 1,
+      limit: limit ? parseInt(limit, 10) : 20,
+    });
   }
 
   @Get()
