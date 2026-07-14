@@ -19,6 +19,7 @@ import {
   Contact,
   HardHat,
   Receipt,
+  FileText,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -123,6 +124,13 @@ function buildNavItems(
       icon: Receipt,
       href: `/${locale}/dashboard/expenses`,
       areaKey: 'expenses',
+    },
+    {
+      key: 'invoices',
+      label: dict.nav.invoices,
+      icon: FileText,
+      href: `/${locale}/dashboard/invoices`,
+      areaKey: 'invoices',
     },
     {
       key: 'billing',

@@ -643,3 +643,57 @@ export type PatchExpenseBody = {
   workOrderId?: string | null;
   notes?: string | null;
 };
+
+// ── Invoices ─────────────────────────────────────────────────────────────────
+
+export const invoiceLineItemCategorySchema = z.enum([
+  'rent',
+  'late_fee',
+  'utilities',
+  'damages',
+  'deposit',
+  'other',
+]);
+export type InvoiceLineItemCategory = z.infer<
+  typeof invoiceLineItemCategorySchema
+>;
+
+/** Always derived via computeInvoiceSummary — never stored/accepted as input. */
+export const invoiceStatusSchema = z.enum([
+  'open',
+  'partially_paid',
+  'paid',
+  'overdue',
+]);
+export type InvoiceStatus = z.infer<typeof invoiceStatusSchema>;
+
+export type InvoiceLineItemResponse = {
+  id: string;
+  invoiceId: string;
+  category: InvoiceLineItemCategory;
+  description?: string | null;
+  amount: string; // Decimal(12,2) serialized as string
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type InvoiceResponse = {
+  id: string;
+  orgId: string;
+  /** Denormalized from Lease.buildingId at creation time. */
+  buildingId: string;
+  leaseId: string;
+  dueDate: string;
+  notes?: string | null;
+  lineItems: InvoiceLineItemResponse[];
+  /** Computed via computeInvoiceSummary from lineItems + payments; never stored. */
+  totalAmount: string;
+  paidAmount: string;
+  status: InvoiceStatus;
+  /** Joined server-side for list-table display; not a stored column. */
+  renterName: string;
+  /** Joined server-side for list-table display; not a stored column. */
+  apartmentUnitNumber: string;
+  createdAt: string;
+  updatedAt: string;
+};

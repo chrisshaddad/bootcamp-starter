@@ -14,6 +14,7 @@ export const TAG_TYPES = [
   'MaintenanceRequest',
   'WorkOrder',
   'Expense',
+  'Invoice',
 ] as const;
 
 export type TagType = (typeof TAG_TYPES)[number];
