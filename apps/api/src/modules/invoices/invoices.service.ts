@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -32,6 +33,7 @@ type InvoiceRow = {
     createdAt: Date;
     updatedAt: Date;
   }[];
+  payments: { amount: Prisma.Decimal }[];
   lease: {
     renter: { fullName: string };
     apartment: { unitNumber: string };
@@ -40,6 +42,7 @@ type InvoiceRow = {
 
 const INVOICE_INCLUDE = {
   lineItems: true,
+  payments: { select: { amount: true } },
   lease: {
     include: {
       renter: { select: { fullName: true } },
@@ -67,7 +70,7 @@ export class InvoicesService {
   private formatInvoice(invoice: InvoiceRow): InvoiceResponse {
     const { totalAmount, paidAmount, status } = computeInvoiceSummary(
       invoice.lineItems.map((li) => ({ amount: li.amount.toNumber() })),
-      [], // no InvoicePayments module yet
+      invoice.payments.map((p) => ({ amount: p.amount.toNumber() })),
       invoice.dueDate,
       new Date(),
     );
@@ -203,7 +206,10 @@ export class InvoicesService {
       action: 'invoice.created',
       targetType: 'Invoice',
       targetId: invoice.id,
-      metadata: { leaseId: invoice.leaseId, lineItemCount: dto.lineItems.length },
+      metadata: {
+        leaseId: invoice.leaseId,
+        lineItemCount: dto.lineItems.length,
+      },
     });
 
     return { data: this.formatInvoice(invoice) };
@@ -275,6 +281,15 @@ export class InvoicesService {
       where: { id: invoiceId, orgId },
     });
     if (!existing) throw new NotFoundException('Invoice not found.');
+
+    const paymentCount = await this.prisma.invoicePayment.count({
+      where: { invoiceId },
+    });
+    if (paymentCount > 0) {
+      throw new ConflictException(
+        'Cannot delete an invoice that has recorded payments.',
+      );
+    }
 
     await this.prisma.invoice.delete({ where: { id: invoiceId } });
 

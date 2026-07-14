@@ -83,6 +83,14 @@ enum InvoiceLineItemCategory {
   other
 }
 
+enum InvoicePaymentMethod {
+  cash
+  check
+  bank_transfer
+  card
+  other
+}
+
 model Organization {
   id               String        @id @default(cuid())
   name             String
@@ -344,6 +352,7 @@ model Invoice {
   updatedAt  DateTime          @updatedAt
   lease      Lease             @relation(fields: [leaseId], references: [id], onDelete: Restrict)
   lineItems  InvoiceLineItem[]
+  payments   InvoicePayment[]
 
   @@index([orgId])
   @@index([buildingId])
@@ -360,5 +369,21 @@ model InvoiceLineItem {
   updatedAt   DateTime                 @updatedAt
   invoice     Invoice                  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
+  @@index([invoiceId])
+}
+
+model InvoicePayment {
+  id        String               @id @default(cuid())
+  orgId     String
+  invoiceId String
+  amount    Decimal              @db.Decimal(12, 2)
+  method    InvoicePaymentMethod
+  paidAt    DateTime
+  notes     String?
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+  invoice   Invoice              @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+
+  @@index([orgId])
   @@index([invoiceId])
 }

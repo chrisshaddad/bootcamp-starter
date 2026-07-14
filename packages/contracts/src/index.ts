@@ -725,3 +725,55 @@ export type PatchInvoiceBody = {
   notes?: string | null;
   lineItems?: InvoiceLineItemInput[];
 };
+
+// ── Invoice Payments ─────────────────────────────────────────────────────────
+
+/**
+ * Named InvoicePayment (not Payment) — Payment already means the platform's
+ * own Stripe subscription billing, an unrelated concern.
+ */
+export const invoicePaymentMethodSchema = z.enum([
+  'cash',
+  'check',
+  'bank_transfer',
+  'card',
+  'other',
+]);
+export type InvoicePaymentMethod = z.infer<typeof invoicePaymentMethodSchema>;
+
+export type InvoicePaymentResponse = {
+  id: string;
+  orgId: string;
+  invoiceId: string;
+  amount: string; // Decimal(12,2) serialized as string
+  method: InvoicePaymentMethod;
+  paidAt: string;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateInvoicePaymentBody = {
+  invoiceId: string;
+  amount: number;
+  method: InvoicePaymentMethod;
+  paidAt: string;
+  notes?: string;
+};
+
+/** Recomputed via computeInvoiceSummary — returned so the UI can reflect the new state without a separate refetch. */
+export type InvoiceSummarySnapshot = {
+  totalAmount: string;
+  paidAmount: string;
+  status: InvoiceStatus;
+};
+
+export type CreateInvoicePaymentResult = {
+  payment: InvoicePaymentResponse;
+  invoice: InvoiceSummarySnapshot;
+};
+
+export type DeleteInvoicePaymentResult = {
+  id: string;
+  invoice: InvoiceSummarySnapshot;
+};

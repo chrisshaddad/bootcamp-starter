@@ -28,6 +28,14 @@ export const invoicesApi = baseApi.injectEndpoints({
           : [{ type: 'Invoice', id: 'LIST' }],
     }),
 
+    getInvoice: build.query<InvoiceResponse, string>({
+      query: (id) => ({ url: `/invoices/${encodeURIComponent(id)}`, method: 'GET' }),
+      transformResponse: (
+        response: InvoiceResponse | ApiEnvelope<InvoiceResponse>,
+      ) => unwrap(response),
+      providesTags: (_result, _error, id) => [{ type: 'Invoice', id }],
+    }),
+
     createInvoice: build.mutation<InvoiceResponse, CreateInvoiceBody>({
       query: (body) => ({ url: '/invoices', method: 'POST', body }),
       transformResponse: (
@@ -74,6 +82,7 @@ export const invoicesApi = baseApi.injectEndpoints({
 
 export const {
   useListInvoicesQuery,
+  useGetInvoiceQuery,
   useCreateInvoiceMutation,
   useUpdateInvoiceMutation,
   useDeleteInvoiceMutation,

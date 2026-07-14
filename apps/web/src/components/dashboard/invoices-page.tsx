@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -420,9 +421,11 @@ const ALL = '__all__';
 interface InvoicesPageProps {
   /** When false (supervisor), hide all write actions. */
   canWrite: boolean;
+  locale: string;
 }
 
-export function InvoicesPage({ canWrite }: InvoicesPageProps) {
+export function InvoicesPage({ canWrite, locale }: InvoicesPageProps) {
+  const router = useRouter();
   const { data: invoices, isLoading, isError } = useListInvoicesQuery();
   const { data: buildings } = useListBuildingsQuery();
 
@@ -485,6 +488,10 @@ export function InvoicesPage({ canWrite }: InvoicesPageProps) {
   }, [invoices, buildingFilter, statusFilter, fromDate, toDate]);
 
   const hasAnyInvoices = (invoices?.length ?? 0) > 0;
+
+  function goToInvoice(invoiceId: string) {
+    router.push(`/${locale}/dashboard/invoices/${invoiceId}`);
+  }
 
   async function onCreateSubmit(values: InvoiceFormValues) {
     try {
@@ -724,7 +731,19 @@ export function InvoicesPage({ canWrite }: InvoicesPageProps) {
               </TableRow>
             ) : (
               filteredInvoices.map((invoice) => (
-                <TableRow key={invoice.id}>
+                <TableRow
+                  key={invoice.id}
+                  className="cursor-pointer hover:bg-muted/40"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => goToInvoice(invoice.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      goToInvoice(invoice.id);
+                    }
+                  }}
+                >
                   <TableCell className="text-sm font-medium">
                     {invoice.renterName} · {invoice.apartmentUnitNumber}
                   </TableCell>
@@ -745,7 +764,7 @@ export function InvoicesPage({ canWrite }: InvoicesPageProps) {
                     <StatusBadge status={invoice.status} />
                   </TableCell>
                   {canWrite && (
-                    <TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger
                           render={
@@ -759,6 +778,12 @@ export function InvoicesPage({ canWrite }: InvoicesPageProps) {
                           <MoreHorizontalIcon />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => goToInvoice(invoice.id)}
+                          >
+                            <EyeIcon className="size-3.5 mr-1.5" />
+                            View
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => openEdit(invoice)}>
                             <PencilIcon className="size-3.5 mr-1.5" />
                             Edit

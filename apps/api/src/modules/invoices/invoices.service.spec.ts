@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
@@ -16,6 +17,7 @@ describe('InvoicesService', () => {
       invoice?: Partial<Record<string, jest.Mock>>;
       lease?: Partial<Record<string, jest.Mock>>;
       invoiceLineItem?: Partial<Record<string, jest.Mock>>;
+      invoicePayment?: Partial<Record<string, jest.Mock>>;
       buildingAccess?: Partial<Record<string, jest.Mock>>;
     } = {},
   ) {
@@ -35,6 +37,10 @@ describe('InvoicesService', () => {
       invoiceLineItem: {
         deleteMany: jest.fn().mockResolvedValue(undefined),
         ...overrides.invoiceLineItem,
+      },
+      invoicePayment: {
+        count: jest.fn().mockResolvedValue(0),
+        ...overrides.invoicePayment,
       },
     };
     prisma.$transaction = jest.fn(async (cb: (tx: unknown) => unknown) =>
@@ -79,6 +85,7 @@ describe('InvoicesService', () => {
         updatedAt: new Date('2026-01-01T00:00:00.000Z'),
       },
     ],
+    payments: [],
     lease: {
       renter: { fullName: 'Jane Tenant' },
       apartment: { unitNumber: '101' },
@@ -357,6 +364,18 @@ describe('InvoicesService', () => {
       await expect(
         service.remove(orgId, callerId, Role.SUPERVISOR, 'invoice-1'),
       ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('rejects deletion when an InvoicePayment references the invoice', async () => {
+      const { service, prisma } = makeService({
+        invoice: { findFirst: jest.fn().mockResolvedValue(invoiceRow()) },
+        invoicePayment: { count: jest.fn().mockResolvedValue(1) },
+      });
+
+      await expect(
+        service.remove(orgId, callerId, Role.ORG_ADMIN, 'invoice-1'),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(prisma.invoice.delete).not.toHaveBeenCalled();
     });
   });
 });
