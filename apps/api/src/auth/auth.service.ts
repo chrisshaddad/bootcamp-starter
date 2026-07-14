@@ -231,7 +231,6 @@ export class AuthService {
       action: AUDIT_ACTIONS.AUTH_SIGNUP,
       entity: AUDIT_ENTITIES.USER,
       entityId: created.id,
-      details: { email },
     });
 
     // Email the link that carries them into the set-password step. The record
@@ -340,13 +339,13 @@ export class AuthService {
   /**
    * Rejection for a signup whose email is already registered — whether it's an
    * admin invite, a finished account, or a half-finished signup. Sends them to
-   * the login page, which offers both a magic link and password login, so the
-   * message holds regardless of which case it is.
+   * the login page without promising password sign-in, since password-less
+   * PENDING accounts can only get in via a magic link until onboarding is done.
    */
   private emailTakenError(): ConflictException {
     return new ConflictException(
       'An account with this email already exists. Head to the login page to ' +
-        'sign in with your password or request a magic link.',
+        'sign in or request a magic link.',
     );
   }
 
