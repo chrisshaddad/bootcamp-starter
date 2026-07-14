@@ -232,8 +232,11 @@ export default function AiInsightsPage() {
   const waitingForReply =
     status === 'submitted' && messages.at(-1)?.role === 'user';
 
+  // `messages` changes on every streamed chunk, so this runs many times a
+  // second while a reply lands. A smooth scroll would restart its animation on
+  // each one and visibly stutter — keep the anchor instant.
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth' });
+    endRef.current?.scrollIntoView({ behavior: 'instant' });
   }, [messages, waitingForReply]);
 
   const ask = (text: string) => {
