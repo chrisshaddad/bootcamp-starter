@@ -164,6 +164,22 @@ export class MedicinesService {
     return medicine ? this.toResponse(medicine) : null;
   }
 
+  /**
+   * Full catalog records for a set of ids, ordered by brand name. Reused by the
+   * client catalog slice (e.g. rendering a medicine's ingredient-based
+   * alternatives) without duplicating the Decimal/ingredient mapping. Global —
+   * no tenant scope.
+   */
+  async listByIds(ids: string[]): Promise<MedicineResponse[]> {
+    if (ids.length === 0) return [];
+    const medicines = await this.prisma.medicine.findMany({
+      where: { id: { in: ids } },
+      select: MEDICINE_SELECT,
+      orderBy: [{ brandName: 'asc' }, { id: 'asc' }],
+    });
+    return medicines.map((medicine) => this.toResponse(medicine));
+  }
+
   // Build the Prisma filter from the shared catalog filters. `ignore` drops one
   // dimension so faceting can compute "what other values are available if this
   // one weren't selected" — the basis for the cascading dropdowns.

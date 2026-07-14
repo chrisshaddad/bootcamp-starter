@@ -444,6 +444,22 @@ html {
   }
 }
 
+/* Gentle floating bob for the client finder's location map (presentational) */
+@media (prefers-reduced-motion: no-preference) {
+  .medfind-float {
+    animation: medfind-float 6s ease-in-out infinite;
+  }
+}
+@keyframes medfind-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-9px);
+  }
+}
+
 /* Blinking caret for the auth showcase's typed-out search (presentational) */
 @media (prefers-reduced-motion: no-preference) {
   .medfind-caret {

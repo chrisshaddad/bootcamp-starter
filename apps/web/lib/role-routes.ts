@@ -14,8 +14,8 @@ const ROLE_HOME: Record<UserRole, string> = {
   PHARMACY_EMPLOYEE: '/branch',
   STOCK_MANAGER: '/stock',
   INQUIRY_OFFICER: '/inquiries',
-  // CLIENT has no back-office panel yet; keep them on the neutral landing.
-  CLIENT: '/dashboard',
+  // CLIENT lands on the consumer-facing medicine finder.
+  CLIENT: '/find',
 };
 
 /**

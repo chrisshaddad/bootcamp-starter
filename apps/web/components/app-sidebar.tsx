@@ -14,6 +14,7 @@ import {
   UserCircle2,
   Package,
   MessageSquare,
+  Search,
 } from 'lucide-react';
 import type { UserRole } from '@repo/contracts';
 import { useAuth, useUser } from '@/hooks/use-auth';
@@ -105,7 +106,23 @@ const inquiryNavItems: NavItem[] = [
   profileNavItem,
 ];
 
-// Fallback (e.g. CLIENT) — neutral landing until the consumer app lands.
+// CLIENT — the consumer portal nav. Like every staff panel it ends with the
+// shared Profile item (identity + saved location); Settings (password) is
+// appended for every role from secondaryNavItems below. Not-yet-built areas
+// show as disabled "Soon" until their owner (Person B) ships the page.
+const clientNavItems: NavItem[] = [
+  { title: 'Find medicines', url: '/find', icon: Search },
+  { title: 'Pharmacies', url: '/pharmacies', icon: Building2, disabled: true },
+  {
+    title: 'My inquiries',
+    url: '/my/inquiries',
+    icon: MessageSquare,
+    disabled: true,
+  },
+  profileNavItem,
+];
+
+// Fallback — neutral landing for any role without a dedicated panel.
 const orgNavItems: NavItem[] = [
   { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
 ];
@@ -134,6 +151,8 @@ function panelForRole(role: UserRole | undefined): {
       return { items: stockNavItems, label: 'Stock' };
     case 'INQUIRY_OFFICER':
       return { items: inquiryNavItems, label: 'Inquiries' };
+    case 'CLIENT':
+      return { items: clientNavItems, label: 'Menu' };
     default:
       return { items: orgNavItems, label: 'Main' };
   }
