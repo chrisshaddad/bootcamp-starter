@@ -13,6 +13,7 @@ import { KeycloakModule } from '@/infrastructure/keycloak/keycloak.module';
 import { PrismaModule } from '@/infrastructure/prisma/prisma.module';
 import { OrgScopeModule } from '@/common/org-scope/org-scope.module';
 import { BuildingAccessModule } from '@/common/building-access/building-access.module';
+import { LeaseStatusModule } from '@/common/lease-status/lease-status.module';
 import { HealthModule } from '@/modules/health/health.module';
 import { TimelineModule } from '@/modules/timeline/timeline.module';
 import { MeModule } from '@/modules/me/me.module';
@@ -24,6 +25,8 @@ import { UsersModule } from '@/modules/users/users.module';
 import { BuildingsModule } from '@/modules/buildings/buildings.module';
 import { FloorsModule } from '@/modules/floors/floors.module';
 import { ApartmentsModule } from '@/modules/apartments/apartments.module';
+import { RentersModule } from '@/modules/renters/renters.module';
+import { LeasesModule } from '@/modules/leases/leases.module';
 
 @Module({
   imports: [
@@ -51,6 +54,7 @@ import { ApartmentsModule } from '@/modules/apartments/apartments.module';
     KeycloakModule,
     OrgScopeModule,
     BuildingAccessModule,
+    LeaseStatusModule,
     TimelineModule,
     HealthModule,
     MeModule,
@@ -62,6 +66,8 @@ import { ApartmentsModule } from '@/modules/apartments/apartments.module';
     BuildingsModule,
     FloorsModule,
     ApartmentsModule,
+    RentersModule,
+    LeasesModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

@@ -271,6 +271,15 @@ export class ApartmentsService {
     });
     if (!existing) throw new NotFoundException('Apartment not found.');
 
+    const leaseCount = await this.prisma.lease.count({
+      where: { apartmentId },
+    });
+    if (leaseCount > 0) {
+      throw new ConflictException(
+        'Cannot delete an apartment that has leases on record.',
+      );
+    }
+
     await this.prisma.apartment.delete({ where: { id: apartmentId } });
 
     await this.timeline.emit({

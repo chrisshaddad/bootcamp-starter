@@ -314,3 +314,117 @@ export type PatchApartmentBody = {
   status?: ApartmentStatus;
   notes?: string;
 };
+
+// ── Renters ──────────────────────────────────────────────────────────────────
+
+export const renterEffectiveStatusSchema = z.enum([
+  'current',
+  'former',
+  'none',
+]);
+export type RenterEffectiveStatus = z.infer<typeof renterEffectiveStatusSchema>;
+
+export type RenterResponse = {
+  id: string;
+  orgId: string;
+  fullName: string;
+  email?: string | null;
+  phone?: string | null;
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
+  notes?: string | null;
+  /** Derived from the renter's most recent lease via LeaseStatusService. */
+  effectiveStatus: RenterEffectiveStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateRenterBody = {
+  fullName: string;
+  email?: string;
+  phone?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  notes?: string;
+};
+
+export type PatchRenterBody = {
+  fullName?: string;
+  email?: string;
+  phone?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  notes?: string;
+};
+
+/** GET /renters/:id response — RenterResponse plus full lease history. */
+export type RenterDetailResponse = RenterResponse & {
+  leases: LeaseResponse[];
+};
+
+// ── Leases ───────────────────────────────────────────────────────────────────
+
+export const leaseStatusSchema = z.enum([
+  'draft',
+  'active',
+  'expired',
+  'terminated',
+]);
+export type LeaseStatus = z.infer<typeof leaseStatusSchema>;
+
+export type LeaseResponse = {
+  id: string;
+  orgId: string;
+  buildingId: string;
+  floorId: string;
+  apartmentId: string;
+  renterId: string;
+  startDate: string;
+  endDate: string;
+  rentAmount: string; // Decimal(12,2) serialized as string
+  depositAmount: string; // Decimal(12,2) serialized as string
+  /** Raw stored status. */
+  status: LeaseStatus;
+  /** Derived via LeaseStatusService (e.g. 'active' + past endDate -> 'expired'). */
+  effectiveStatus: LeaseStatus;
+  renewalTerms?: string | null;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateLeaseBody = {
+  renterId: string;
+  startDate: string;
+  endDate: string;
+  rentAmount: number;
+  depositAmount: number;
+  /** Defaults to 'active' when omitted. */
+  status?: LeaseStatus;
+  renewalTerms?: string;
+  notes?: string;
+};
+
+export type PatchLeaseBody = {
+  renterId?: string;
+  startDate?: string;
+  endDate?: string;
+  rentAmount?: number;
+  depositAmount?: number;
+  status?: LeaseStatus;
+  renewalTerms?: string;
+  notes?: string;
+};
+
+/**
+ * Renter and apartment are implicit from the existing lease/route being
+ * renewed — not overridable here.
+ */
+export type RenewLeaseBody = {
+  startDate: string;
+  endDate: string;
+  rentAmount?: number;
+  depositAmount?: number;
+  renewalTerms?: string;
+  notes?: string;
+};

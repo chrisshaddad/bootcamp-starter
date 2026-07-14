@@ -27,6 +27,13 @@ enum ApartmentStatus {
   unavailable
 }
 
+enum LeaseStatus {
+  draft
+  active
+  expired
+  terminated
+}
+
 model Organization {
   id               String        @id @default(cuid())
   name             String
@@ -142,9 +149,51 @@ model Apartment {
   updatedAt  DateTime        @updatedAt
   building   Building        @relation(fields: [buildingId], references: [id], onDelete: Cascade)
   floor      Floor           @relation(fields: [floorId], references: [id], onDelete: Cascade)
+  leases     Lease[]
 
   @@unique([buildingId, unitNumber])
   @@index([floorId])
+  @@index([buildingId])
+  @@index([orgId])
+}
+
+model Renter {
+  id                    String   @id @default(cuid())
+  orgId                 String
+  fullName              String
+  email                 String?
+  phone                 String?
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  notes                 String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  leases                Lease[]
+
+  @@index([orgId])
+}
+
+model Lease {
+  id            String      @id @default(cuid())
+  orgId         String
+  buildingId    String
+  floorId       String
+  apartmentId   String
+  renterId      String
+  startDate     DateTime
+  endDate       DateTime
+  rentAmount    Decimal     @db.Decimal(12, 2)
+  depositAmount Decimal     @db.Decimal(12, 2)
+  status        LeaseStatus @default(draft)
+  renewalTerms  String?
+  notes         String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  apartment     Apartment   @relation(fields: [apartmentId], references: [id], onDelete: Restrict)
+  renter        Renter      @relation(fields: [renterId], references: [id], onDelete: Restrict)
+
+  @@index([apartmentId])
+  @@index([renterId])
   @@index([buildingId])
   @@index([orgId])
 }

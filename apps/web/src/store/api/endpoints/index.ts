@@ -7,3 +7,5 @@ import './users.api';
 import './buildings.api';
 import './floors.api';
 import './apartments.api';
+import './renters.api';
+import './leases.api';
