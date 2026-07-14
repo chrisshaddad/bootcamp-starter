@@ -8,7 +8,8 @@ import { MailModule } from './mail/mail.module';
 import { OrganizationsModule } from './organizations/organizations.module';
 import { DatabaseModule } from './database/database.module';
 import { UsersModule } from './users/users.module';
-
+import { StudentsModule } from './students/students.module';
+import { TeachersModule } from './teachers/teachers.module';
 @Module({
   imports: [
     ConfigModule.forRoot(),
@@ -22,6 +23,8 @@ import { UsersModule } from './users/users.module';
     MailModule,
     OrganizationsModule,
     UsersModule,
+    StudentsModule,
+    TeachersModule,
   ],
   controllers: [AppController],
   providers: [AppService],
