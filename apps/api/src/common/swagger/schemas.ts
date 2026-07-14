@@ -1,6 +1,7 @@
 import type { ApiBodyOptions } from '@nestjs/swagger';
 import {
   githubRepositoryPreviewRequestSchema as githubRepositoryPreviewRequestContractSchema,
+  importGithubProjectRequestSchema as importGithubProjectRequestContractSchema,
   loginRequestSchema as loginRequestContractSchema,
   magicLinkRequestSchema,
   magicLinkVerifyRequestSchema as magicLinkVerifyRequestContractSchema,
@@ -97,5 +98,14 @@ export const githubRepositoryPreviewRequestSchema: ApiBodySchema = withExample(
   toOpenApiSchema(githubRepositoryPreviewRequestContractSchema),
   {
     repositoryUrl: 'https://github.com/vercel/next.js',
+  },
+);
+
+export const importGithubProjectRequestSchema: ApiBodySchema = withExample(
+  toOpenApiSchema(importGithubProjectRequestContractSchema),
+  {
+    repositoryUrl: 'https://github.com/vercel/next.js',
+    title: 'Next.js',
+    shortDescription: 'The React Framework',
   },
 );

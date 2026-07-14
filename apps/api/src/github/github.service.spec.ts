@@ -1,5 +1,9 @@
-import { NotFoundException, ServiceUnavailableException } from '@nestjs/common';
-import { GithubService } from './github.service';
+import {
+  Logger,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
+import { GithubRequestTimeoutException, GithubService } from './github.service';
 
 const originalFetch = global.fetch;
 
@@ -16,6 +20,10 @@ describe('GithubService', () => {
 
   afterAll(() => {
     global.fetch = originalFetch;
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   it('normalizes repository metadata and language byte counts', async () => {
@@ -118,6 +126,135 @@ describe('GithubService', () => {
     await service.previewRepository('https://github.com/openai/openai-node');
 
     expect(getFetchHeaders(fetchMock)).not.toHaveProperty('Authorization');
+  });
+
+  it('fetches repository file text from the GitHub contents API', async () => {
+    const packageJson = JSON.stringify({
+      dependencies: {
+        react: '^19.0.0',
+      },
+    });
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        type: 'file',
+        encoding: 'base64',
+        size: Buffer.byteLength(packageJson),
+        content: Buffer.from(packageJson, 'utf8').toString('base64'),
+      }),
+    );
+
+    await expect(
+      service.fetchRepositoryFileText(
+        { owner: 'owner', repo: 'repo' },
+        'package.json',
+        'main',
+      ),
+    ).resolves.toBe(packageJson);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      'https://api.github.com/repos/owner/repo/contents/package.json?ref=main',
+    );
+  });
+
+  it('lists file paths from a repository directory', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse([
+        { path: 'package.json', type: 'file' },
+        { path: 'Dockerfile', type: 'file' },
+        { path: 'prisma', type: 'dir' },
+      ]),
+    );
+
+    await expect(
+      service.fetchRepositoryDirectoryFilePaths(
+        { owner: 'owner', repo: 'repo' },
+        '.github/workflows',
+        'feature/test',
+      ),
+    ).resolves.toEqual(['package.json', 'Dockerfile']);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      'https://api.github.com/repos/owner/repo/contents/.github/workflows?ref=feature%2Ftest',
+    );
+  });
+
+  it('returns an empty root file list for repositories without contents', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ message: 'Not Found' }, 404),
+    );
+
+    await expect(
+      service.fetchRepositoryDirectoryFilePaths(
+        { owner: 'owner', repo: 'repo' },
+        '',
+        'main',
+      ),
+    ).resolves.toEqual([]);
+  });
+
+  it('returns null for missing repository files', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ message: 'Not Found' }, 404),
+    );
+
+    await expect(
+      service.fetchRepositoryFileText(
+        { owner: 'owner', repo: 'repo' },
+        'package.json',
+        'main',
+      ),
+    ).resolves.toBeNull();
+  });
+
+  it('logs repository file timeouts with request context', async () => {
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+    fetchMock.mockRejectedValueOnce(
+      new DOMException('Request timed out', 'TimeoutError'),
+    );
+
+    await expect(
+      service.fetchRepositoryFileText(
+        { owner: 'owner', repo: 'repo' },
+        'package.json',
+        'main',
+      ),
+    ).rejects.toThrow(GithubRequestTimeoutException);
+    expect(warn).toHaveBeenCalledWith(
+      'GitHub file request timed out for owner/repo/package.json',
+    );
+  });
+
+  it('logs repository metadata timeouts', async () => {
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+    fetchMock
+      .mockRejectedValueOnce(
+        new DOMException('Request timed out', 'TimeoutError'),
+      )
+      .mockResolvedValueOnce(jsonResponse({}));
+
+    await expect(
+      service.previewRepository('https://github.com/owner/repo'),
+    ).rejects.toThrow(GithubRequestTimeoutException);
+    expect(warn).toHaveBeenCalledWith(
+      'GitHub API request timed out: /repos/owner/repo',
+    );
+  });
+
+  it('rejects oversized repository file responses', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        type: 'file',
+        encoding: 'base64',
+        size: 200_001,
+        content: '',
+      }),
+    );
+
+    await expect(
+      service.fetchRepositoryFileText(
+        { owner: 'owner', repo: 'repo' },
+        'package.json',
+        'main',
+      ),
+    ).rejects.toThrow(ServiceUnavailableException);
   });
 
   it('maps GitHub 404 responses to the safe inaccessible repository message', async () => {

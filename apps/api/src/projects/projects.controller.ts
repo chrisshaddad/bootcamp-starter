@@ -18,6 +18,8 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
+  ApiBody,
+  ApiCookieAuth,
   ApiConsumes,
   ApiOperation,
   ApiResponse,
@@ -33,11 +35,14 @@ import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { detectImageExtension } from '../auth/utils/detect-image-signature';
 import {
   createProjectRequestSchema,
+  importGithubProjectRequestSchema,
   updateProjectRequestSchema,
   projectMediaUploadSchema,
   projectMediaUpdateSchema,
   projectsExploreQuerySchema,
   type CreateProjectRequest,
+  type ImportGithubProjectRequest,
+  type ImportGithubProjectResponse,
   type UpdateProjectRequest,
   type ProjectResponse,
   type ProjectMediaUploadRequest,
@@ -47,6 +52,7 @@ import {
   type ProjectsExploreQuery,
   type ExploreProjectsResponse,
 } from '@repo/contracts';
+import { importGithubProjectRequestSchema as importGithubProjectOpenApiRequestSchema } from '../common/swagger/schemas';
 
 const PROJECT_MEDIA_MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
 const PROJECT_MEDIA_ALLOWED_MIME_TYPES = [
@@ -67,6 +73,38 @@ export class ProjectsController {
   private readonly logger = new Logger(ProjectsController.name);
 
   constructor(private readonly projectsService: ProjectsService) {}
+
+  @Post('import-github')
+  @Roles(AccountType.DEVELOPER, AccountType.SUPER_ADMIN)
+  @ApiCookieAuth('session')
+  @ApiOperation({ summary: 'Import a public GitHub repository as a project' })
+  @ApiBody({ schema: importGithubProjectOpenApiRequestSchema })
+  @ApiResponse({
+    status: 201,
+    description: 'GitHub repository imported as an unverified draft project.',
+  })
+  @ApiResponse({ status: 400, description: 'Invalid import request.' })
+  @ApiResponse({ status: 401, description: 'Missing or invalid session.' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions.' })
+  @ApiResponse({
+    status: 404,
+    description: 'Repository not found, private, or inaccessible.',
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'The repository already has a project.',
+  })
+  @ApiResponse({
+    status: 503,
+    description: 'GitHub API unavailable or rate limited.',
+  })
+  async importGithubProject(
+    @CurrentUser('id') userId: string,
+    @Body(new ZodValidationPipe(importGithubProjectRequestSchema))
+    body: ImportGithubProjectRequest,
+  ): Promise<ImportGithubProjectResponse> {
+    return this.projectsService.importGithubProject(userId, body);
+  }
 
   @Get()
   @Roles(AccountType.DEVELOPER, AccountType.SUPER_ADMIN)

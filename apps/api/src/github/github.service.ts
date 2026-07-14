@@ -21,6 +21,13 @@ const GITHUB_API_UNAVAILABLE_MESSAGE =
   'GitHub API is currently unavailable. Please try again later.';
 const GITHUB_RATE_LIMIT_MESSAGE =
   'GitHub API rate limit exceeded. Please try again later.';
+const MAX_REPOSITORY_FILE_BYTES = 200_000;
+
+export class GithubRequestTimeoutException extends ServiceUnavailableException {
+  constructor() {
+    super(GITHUB_API_UNAVAILABLE_MESSAGE);
+  }
+}
 
 @Injectable()
 export class GithubService {
@@ -91,7 +98,88 @@ export class GithubService {
     return this.normalizeLanguages(apiLanguages);
   }
 
-  private async fetchGithubJson<T>(path: string): Promise<T> {
+  /** Returns file paths reported by GitHub for a repository directory. */
+  async fetchRepositoryDirectoryFilePaths(
+    repository: ParsedGithubRepository,
+    directoryPath: string,
+    ref?: string | null,
+  ): Promise<string[]> {
+    const encodedDirectoryPath = directoryPath
+      .split('/')
+      .filter(Boolean)
+      .map(encodeURIComponent)
+      .join('/');
+    const pathSuffix = encodedDirectoryPath ? `/${encodedDirectoryPath}` : '';
+    const refQuery = ref ? `?ref=${encodeURIComponent(ref)}` : '';
+    const apiEntries = await this.fetchGithubJson<unknown>(
+      `/repos/${encodeURIComponent(repository.owner)}/${encodeURIComponent(
+        repository.repo,
+      )}/contents${pathSuffix}${refQuery}`,
+      [],
+    );
+
+    return this.normalizeDirectoryFilePaths(apiEntries);
+  }
+
+  async fetchRepositoryFileText(
+    repository: ParsedGithubRepository,
+    path: string,
+    ref?: string | null,
+  ): Promise<string | null> {
+    const encodedPath = path.split('/').map(encodeURIComponent).join('/');
+    const refQuery = ref ? `?ref=${encodeURIComponent(ref)}` : '';
+
+    let response: Response;
+
+    try {
+      response = await fetch(
+        `${GITHUB_API_BASE_URL}/repos/${encodeURIComponent(
+          repository.owner,
+        )}/${encodeURIComponent(repository.repo)}/contents/${encodedPath}${refQuery}`,
+        {
+          headers: this.buildHeaders(),
+          signal: AbortSignal.timeout(10_000),
+        },
+      );
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'TimeoutError') {
+        this.logger.warn(
+          `GitHub file request timed out for ${repository.owner}/${repository.repo}/${path}`,
+        );
+        throw new GithubRequestTimeoutException();
+      }
+      this.logger.warn(
+        `GitHub file request failed before response: ${getErrorMessage(error)}`,
+      );
+      throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+    }
+
+    if (response.status === 404) {
+      return null;
+    }
+
+    if (!response.ok) {
+      this.handleGithubErrorResponse(response);
+    }
+
+    let apiFile: unknown;
+
+    try {
+      apiFile = await response.json();
+    } catch (error) {
+      this.logger.warn(
+        `GitHub file API returned invalid JSON: ${getErrorMessage(error)}`,
+      );
+      throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+    }
+
+    return this.normalizeFileText(apiFile);
+  }
+
+  private async fetchGithubJson<T>(
+    path: string,
+    notFoundValue?: T,
+  ): Promise<T> {
     let response: Response;
 
     try {
@@ -101,12 +189,17 @@ export class GithubService {
       });
     } catch (error) {
       if (error instanceof DOMException && error.name === 'TimeoutError') {
-        throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+        this.logger.warn(`GitHub API request timed out: ${path}`);
+        throw new GithubRequestTimeoutException();
       }
       this.logger.warn(
         `GitHub API request failed before response: ${getErrorMessage(error)}`,
       );
       throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+    }
+
+    if (response.status === 404 && notFoundValue !== undefined) {
+      return notFoundValue;
     }
 
     if (!response.ok) {
@@ -171,6 +264,50 @@ export class GithubService {
       .map(([name, bytes]) => ({ name, bytes }));
   }
 
+  private normalizeDirectoryFilePaths(apiEntries: unknown): string[] {
+    if (!Array.isArray(apiEntries)) {
+      throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+    }
+
+    return apiEntries.flatMap((entry) => {
+      if (!isRecord(entry)) {
+        throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+      }
+
+      const path = getOptionalString(entry.path);
+      const type = getOptionalString(entry.type);
+      if (!path || !type) {
+        throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+      }
+
+      return type === 'file' ? [path] : [];
+    });
+  }
+
+  private normalizeFileText(apiFile: unknown): string {
+    if (!isRecord(apiFile)) {
+      throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+    }
+
+    const fileSize = getOptionalNumber(apiFile.size);
+    if (fileSize !== undefined && fileSize > MAX_REPOSITORY_FILE_BYTES) {
+      throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+    }
+
+    if (apiFile.type !== 'file' || apiFile.encoding !== 'base64') {
+      throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+    }
+
+    const content = getRequiredFileContent(apiFile.content);
+    const decoded = Buffer.from(content.replace(/\s/g, ''), 'base64');
+
+    if (decoded.byteLength > MAX_REPOSITORY_FILE_BYTES) {
+      throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+    }
+
+    return decoded.toString('utf8');
+  }
+
   /**
    * Converts GitHub's raw repository payload into the API preview shape.
    *
@@ -224,6 +361,14 @@ function getRequiredString(value: unknown): string {
   return value;
 }
 
+function getRequiredFileContent(value: unknown): string {
+  if (typeof value !== 'string') {
+    throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+  }
+
+  return value;
+}
+
 function getRequiredStringOrNumber(value: unknown): string {
   if (
     (typeof value !== 'string' && typeof value !== 'number') ||
@@ -237,6 +382,12 @@ function getRequiredStringOrNumber(value: unknown): string {
 
 function getOptionalString(value: unknown): string | undefined {
   return typeof value === 'string' ? value : undefined;
+}
+
+function getOptionalNumber(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? value
+    : undefined;
 }
 
 function getNullableString(value: unknown): string | null {

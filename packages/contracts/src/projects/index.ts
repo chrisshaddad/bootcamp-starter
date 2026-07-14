@@ -1,4 +1,6 @@
 export * from './project-create.request';
+export * from './project-import-github.request';
+export * from './project-import-github.response';
 export * from './project-update.request';
 export * from './project.response';
 export * from './project-media-upload.request';
