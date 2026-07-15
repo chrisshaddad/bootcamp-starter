@@ -13,8 +13,10 @@ import type { User } from '@repo/db';
 import {
   institutionCreateRequestSchema,
   institutionListQuerySchema,
+  institutionUpdateRequestSchema,
   type InstitutionCreateRequest,
   type InstitutionListQuery,
+  type InstitutionUpdateRequest,
   type InstitutionListResponse,
   type InstitutionDetailResponse,
   type InstitutionActionResponse,
@@ -32,6 +34,26 @@ export class InstitutionsController {
     query: InstitutionListQuery,
   ): Promise<InstitutionListResponse> {
     return this.institutionsService.findAll(query);
+  }
+
+  // The caller's own institution. Declared before :id so "me" isn't captured
+  // as an institution id.
+  @Get('me')
+  @Roles('INSTITUTION_ADMIN', 'STAFF', 'PROFESSIONAL')
+  async findMine(
+    @CurrentUser() user: User,
+  ): Promise<InstitutionDetailResponse> {
+    return this.institutionsService.findMine(user.institutionId);
+  }
+
+  @Patch('me')
+  @Roles('INSTITUTION_ADMIN')
+  async updateMine(
+    @Body(new ZodValidationPipe(institutionUpdateRequestSchema))
+    body: InstitutionUpdateRequest,
+    @CurrentUser() user: User,
+  ): Promise<InstitutionDetailResponse> {
+    return this.institutionsService.updateMine(user.institutionId, body);
   }
 
   @Get(':id')

@@ -39,7 +39,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Building2, Plus, ShieldX } from 'lucide-react';
+import { Building2, Plus } from 'lucide-react';
 import { useState } from 'react';
 import {
   institutionCreateRequestSchema,
@@ -47,6 +47,8 @@ import {
   type InstitutionStatus,
 } from '@repo/contracts';
 import { ApiError } from '@/lib/api';
+import { StatusBadge } from '@/components/status-badge';
+import { ForbiddenPage } from '@/components/forbidden-page';
 
 type StatusFilter =
   | 'all'
@@ -55,45 +57,6 @@ type StatusFilter =
   | 'REJECTED'
   | 'SUSPENDED'
   | 'INACTIVE';
-
-const STATUS_LABELS: Record<string, string> = {
-  PENDING: 'Pending',
-  ACTIVE: 'Active',
-  REJECTED: 'Rejected',
-  SUSPENDED: 'Suspended',
-  INACTIVE: 'Inactive',
-};
-
-const STATUS_COLORS: Record<string, string> = {
-  PENDING: 'bg-yellow-100 text-yellow-800',
-  ACTIVE: 'bg-green-100 text-green-800',
-  REJECTED: 'bg-red-100 text-red-800',
-  SUSPENDED: 'bg-orange-100 text-orange-800',
-  INACTIVE: 'bg-gray-100 text-gray-800',
-};
-
-function StatusBadge({ status }: { status: string }) {
-  return (
-    <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[status] || 'bg-gray-100 text-gray-800'}`}
-    >
-      {STATUS_LABELS[status] || status}
-    </span>
-  );
-}
-
-function ForbiddenPage() {
-  return (
-    <div className="flex flex-col items-center justify-center py-20">
-      <ShieldX className="h-16 w-16 text-red-400 mb-4" />
-      <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
-      <p className="text-gray-500 text-center max-w-md">
-        You don&apos;t have permission to access this page. Only Super Admins
-        can manage institutions.
-      </p>
-    </div>
-  );
-}
 
 function LoadingSkeleton() {
   return (
@@ -247,7 +210,9 @@ export default function InstitutionsPage() {
 
   // Show 403 for non-super admins
   if (user?.role !== 'SUPER_ADMIN') {
-    return <ForbiddenPage />;
+    return (
+      <ForbiddenPage message="You don't have permission to access this page. Only Super Admins can manage institutions." />
+    );
   }
 
   return (
@@ -302,7 +267,7 @@ export default function InstitutionsPage() {
               ))}
             </div>
           ) : error ? (
-            <div className="py-10 text-center text-red-500">
+            <div className="py-10 text-center text-error">
               Failed to load institutions
             </div>
           ) : !institutions?.length ? (

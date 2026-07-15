@@ -6,6 +6,11 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { MailModule } from './mail/mail.module';
 import { InstitutionsModule } from './institutions/institutions.module';
+import { UsersModule } from './users/users.module';
+import { PatientsModule } from './patients/patients.module';
+import { AssignmentsModule } from './assignments/assignments.module';
+import { MedicalRecordsModule } from './medical-records/medical-records.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { DatabaseModule } from './database/database.module';
 
 @Module({
@@ -20,6 +25,11 @@ import { DatabaseModule } from './database/database.module';
     AuthModule,
     MailModule,
     InstitutionsModule,
+    UsersModule,
+    PatientsModule,
+    AssignmentsModule,
+    MedicalRecordsModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

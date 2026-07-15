@@ -6,10 +6,15 @@ import type { LucideIcon } from 'lucide-react';
 import {
   LayoutDashboard,
   Users,
+  UsersRound,
+  Stethoscope,
+  HeartPulse,
+  Building2,
+  Bell,
   Settings,
   LogOut,
-  Building2,
 } from 'lucide-react';
+import type { Role } from '@repo/contracts';
 import { useAuth, useUser } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
 import {
@@ -30,47 +35,39 @@ interface NavItem {
   title: string;
   url: string;
   icon: LucideIcon;
-  disabled?: boolean;
 }
 
-// Navigation items for ORG_ADMIN and MEMBER roles
-const orgNavItems: NavItem[] = [
-  {
-    title: 'Dashboard',
-    url: '/dashboard',
-    icon: LayoutDashboard,
-  },
-];
+// Main navigation per role. Backend guards remain the real enforcement — this
+// just hides items a role can't use. Settings is shared (see below).
+const NAV_ITEMS_BY_ROLE: Record<Role, NavItem[]> = {
+  SUPER_ADMIN: [
+    { title: 'Institutions', url: '/institutions', icon: Building2 },
+  ],
+  INSTITUTION_ADMIN: [
+    { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
+    { title: 'Patients', url: '/patients', icon: UsersRound },
+    { title: 'Staff & Doctors', url: '/users', icon: Users },
+    { title: 'My Institution', url: '/institution', icon: Building2 },
+    { title: 'Notifications', url: '/notifications', icon: Bell },
+  ],
+  STAFF: [
+    { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
+    { title: 'Patients', url: '/patients', icon: UsersRound },
+    { title: 'Notifications', url: '/notifications', icon: Bell },
+  ],
+  PROFESSIONAL: [
+    { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
+    { title: 'My Patients', url: '/patients', icon: Stethoscope },
+    { title: 'Notifications', url: '/notifications', icon: Bell },
+  ],
+  PATIENT: [
+    { title: 'My Health', url: '/portal', icon: HeartPulse },
+    { title: 'Notifications', url: '/notifications', icon: Bell },
+  ],
+};
 
-// Navigation items for SUPER_ADMIN role
-const superAdminNavItems: NavItem[] = [
-  {
-    title: 'Institutions',
-    url: '/institutions',
-    icon: Building2,
-  },
-  {
-    title: 'Users',
-    url: '/users',
-    icon: Users,
-    disabled: true, // Placeholder for future implementation
-  },
-];
-
-const orgSecondaryNavItems: NavItem[] = [
-  {
-    title: 'Settings',
-    url: '/settings',
-    icon: Settings,
-  },
-];
-
-const superAdminSecondaryNavItems: NavItem[] = [
-  {
-    title: 'Settings',
-    url: '/settings',
-    icon: Settings,
-  },
+const SECONDARY_NAV_ITEMS: NavItem[] = [
+  { title: 'Settings', url: '/settings', icon: Settings },
 ];
 
 export function AppSidebar() {
@@ -78,15 +75,13 @@ export function AppSidebar() {
   const { logout } = useAuth();
   const { user } = useUser({ redirectOnUnauthenticated: false });
 
-  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
-  const mainNavItems = isSuperAdmin ? superAdminNavItems : orgNavItems;
-  const secondaryNavItems = isSuperAdmin
-    ? superAdminSecondaryNavItems
-    : orgSecondaryNavItems;
+  const role = user?.role;
+  const isSuperAdmin = role === 'SUPER_ADMIN';
+  const mainNavItems = role ? NAV_ITEMS_BY_ROLE[role] : [];
 
   const isActive = (url: string) => {
-    if (url === '/dashboard') {
-      return pathname === '/dashboard';
+    if (url === '/dashboard' || url === '/portal') {
+      return pathname === url;
     }
     return pathname.startsWith(url);
   };
@@ -97,11 +92,9 @@ export function AppSidebar() {
         {/* Logo */}
         <Link href="/dashboard" className="flex items-center gap-2.5">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-base">
-            <span className="text-lg font-bold text-white">✦</span>
+            <HeartPulse className="h-5 w-5 text-white" />
           </div>
-          <span className="text-xl font-semibold text-gray-900">
-            Bootcamp Starter
-          </span>
+          <span className="text-xl font-semibold text-gray-900">MediLink</span>
         </Link>
       </SidebarHeader>
 
@@ -116,31 +109,19 @@ export function AppSidebar() {
               {mainNavItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
-                    asChild={!item.disabled}
+                    asChild
                     isActive={isActive(item.url)}
-                    disabled={item.disabled}
                     className={cn(
                       'h-11 gap-3 rounded-lg px-3 text-sm font-medium transition-colors',
-                      item.disabled && 'cursor-not-allowed opacity-50',
                       isActive(item.url)
                         ? 'bg-primary-100 text-gray-900 hover:bg-primary-200'
                         : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
                     )}
                   >
-                    {item.disabled ? (
-                      <div className="flex items-center gap-3">
-                        <item.icon className="h-5 w-5 text-gray-400" />
-                        <span>{item.title}</span>
-                        <span className="ml-auto text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
-                          Soon
-                        </span>
-                      </div>
-                    ) : (
-                      <Link href={item.url}>
-                        <item.icon className="h-5 w-5 text-gray-500" />
-                        <span>{item.title}</span>
-                      </Link>
-                    )}
+                    <Link href={item.url}>
+                      <item.icon className="h-5 w-5 text-gray-500" />
+                      <span>{item.title}</span>
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -157,7 +138,7 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {secondaryNavItems.map((item) => (
+              {SECONDARY_NAV_ITEMS.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
@@ -186,7 +167,7 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={() => logout()}
-              className="h-11 gap-3 rounded-lg px-3 text-sm font-medium text-gray-600 transition-colors hover:bg-red-50 hover:text-red-600"
+              className="h-11 gap-3 rounded-lg px-3 text-sm font-medium text-gray-600 transition-colors hover:bg-error-light hover:text-error"
             >
               <LogOut className="h-5 w-5 text-gray-500" />
               <span>Logout</span>

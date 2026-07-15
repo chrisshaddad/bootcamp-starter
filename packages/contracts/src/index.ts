@@ -2,3 +2,7 @@ export * from './common';
 export * from './auth';
 export * from './users';
 export * from './institutions';
+export * from './patients';
+export * from './assignments';
+export * from './records';
+export * from './notifications';

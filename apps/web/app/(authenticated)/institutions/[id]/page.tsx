@@ -25,48 +25,10 @@ import {
   Calendar,
   CheckCircle,
   XCircle,
-  ShieldX,
   Clock,
 } from 'lucide-react';
-
-const STATUS_LABELS: Record<string, string> = {
-  PENDING: 'Pending Approval',
-  ACTIVE: 'Active',
-  REJECTED: 'Rejected',
-  SUSPENDED: 'Suspended',
-  INACTIVE: 'Inactive',
-};
-
-const STATUS_COLORS: Record<string, string> = {
-  PENDING: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  ACTIVE: 'bg-green-100 text-green-800 border-green-200',
-  REJECTED: 'bg-red-100 text-red-800 border-red-200',
-  SUSPENDED: 'bg-orange-100 text-orange-800 border-orange-200',
-  INACTIVE: 'bg-gray-100 text-gray-800 border-gray-200',
-};
-
-function StatusBadge({ status }: { status: string }) {
-  return (
-    <span
-      className={`inline-flex items-center rounded-full border px-3 py-1 text-sm font-medium ${STATUS_COLORS[status] || 'bg-gray-100 text-gray-800'}`}
-    >
-      {STATUS_LABELS[status] || status}
-    </span>
-  );
-}
-
-function ForbiddenPage() {
-  return (
-    <div className="flex flex-col items-center justify-center py-20">
-      <ShieldX className="h-16 w-16 text-red-400 mb-4" />
-      <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
-      <p className="text-gray-500 text-center max-w-md">
-        You don&apos;t have permission to access this page. Only Super Admins
-        can manage institutions.
-      </p>
-    </div>
-  );
-}
+import { StatusBadge } from '@/components/status-badge';
+import { ForbiddenPage } from '@/components/forbidden-page';
 
 function LoadingSkeleton() {
   return (
@@ -155,13 +117,15 @@ export default function InstitutionDetailPage() {
 
   // Show 403 for non-super admins
   if (user?.role !== 'SUPER_ADMIN') {
-    return <ForbiddenPage />;
+    return (
+      <ForbiddenPage message="You don't have permission to access this page. Only Super Admins can manage institutions." />
+    );
   }
 
   if (error) {
     return (
       <div className="py-10 text-center">
-        <div className="text-red-500 mb-4">Failed to load institution</div>
+        <div className="text-error mb-4">Failed to load institution</div>
         <Button variant="outline" onClick={() => router.back()}>
           Go Back
         </Button>
@@ -211,7 +175,7 @@ export default function InstitutionDetailPage() {
           <div className="flex gap-3">
             <Button
               variant="outline"
-              className="gap-2 text-red-600 border-red-200 hover:bg-red-50"
+              className="gap-2 text-error border-error-light hover:bg-error-light"
               onClick={() => setShowRejectDialog(true)}
             >
               <XCircle className="h-4 w-4" />
