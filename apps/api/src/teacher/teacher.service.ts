@@ -84,9 +84,10 @@ export class TeacherService {
       );
     }
 
-    const course = await this.prisma.course.findUnique({
+    const course = await this.prisma.course.findFirst({
       where: {
         id: input.courseId,
+        organizationId,
       },
       select: {
         id: true,
@@ -102,11 +103,7 @@ export class TeacherService {
       );
     }
 
-    const teacherOwnsCourse = course.teacherId === teacherId;
-    const courseBelongsToOrganization =
-      course.organizationId === organizationId;
-
-    if (!teacherOwnsCourse || !courseBelongsToOrganization) {
+    if (course.teacherId !== teacherId) {
       throw new ForbiddenException(
         'You cannot create assignments for this course',
       );
@@ -114,7 +111,7 @@ export class TeacherService {
 
     const assignment = await this.prisma.assignment.create({
       data: {
-        courseId: input.courseId,
+        courseId: course.id,
         createdById: teacherId,
         type: 'assignment',
         title: input.title,
@@ -156,7 +153,6 @@ export class TeacherService {
       maxScore: assignment.maxScore.toNumber(),
     };
   }
-
   async findMyAssignments(
     teacherId: string,
     organizationId: string | null,
@@ -224,19 +220,17 @@ export class TeacherService {
       );
     }
 
-    const assignment = await this.prisma.assignment.findUnique({
+    const assignment = await this.prisma.assignment.findFirst({
       where: {
         id: assignmentId,
+        course: {
+          organizationId,
+        },
       },
       select: {
         id: true,
         createdById: true,
         type: true,
-        course: {
-          select: {
-            organizationId: true,
-          },
-        },
       },
     });
 
@@ -246,10 +240,7 @@ export class TeacherService {
       );
     }
 
-    if (
-      assignment.createdById !== teacherId ||
-      assignment.course.organizationId !== organizationId
-    ) {
+    if (assignment.createdById !== teacherId) {
       throw new ForbiddenException(
         'You cannot view submissions for this assignment',
       );
@@ -258,6 +249,11 @@ export class TeacherService {
     const submissions = await this.prisma.submission.findMany({
       where: {
         assignmentId,
+        assignment: {
+          course: {
+            organizationId,
+          },
+        },
       },
       orderBy: {
         submittedAt: 'desc',
@@ -292,10 +288,12 @@ export class TeacherService {
 
     return submissions.map((submission) => ({
       ...submission,
+      submittedAt: submission.submittedAt.toISOString(),
       grade: submission.grade
         ? {
             ...submission.grade,
             score: submission.grade.score.toNumber(),
+            gradedAt: submission.grade.gradedAt.toISOString(),
           }
         : null,
     }));
@@ -312,9 +310,14 @@ export class TeacherService {
       );
     }
 
-    const submission = await this.prisma.submission.findUnique({
+    const submission = await this.prisma.submission.findFirst({
       where: {
         id: submissionId,
+        assignment: {
+          course: {
+            organizationId,
+          },
+        },
       },
       select: {
         id: true,
@@ -322,11 +325,6 @@ export class TeacherService {
           select: {
             createdById: true,
             maxScore: true,
-            course: {
-              select: {
-                organizationId: true,
-              },
-            },
           },
         },
       },
@@ -338,13 +336,7 @@ export class TeacherService {
       );
     }
 
-    const teacherOwnsAssignment =
-      submission.assignment.createdById === teacherId;
-
-    const assignmentBelongsToOrganization =
-      submission.assignment.course.organizationId === organizationId;
-
-    if (!teacherOwnsAssignment || !assignmentBelongsToOrganization) {
+    if (submission.assignment.createdById !== teacherId) {
       throw new ForbiddenException('You cannot grade this submission');
     }
 

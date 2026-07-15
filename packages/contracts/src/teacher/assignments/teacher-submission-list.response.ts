@@ -1,26 +1,40 @@
-export interface TeacherSubmissionListItemResponse {
-  id: string;
-  assignmentId: string;
-  studentId: string;
-  contentText: string | null;
-  fileUrl: string | null;
-  answers: unknown;
-  teacherNote: string | null;
-  submittedAt: Date;
-  status: 'submitted' | 'late' | 'graded';
+import { z } from 'zod';
 
-  student: {
-    id: string;
-    name: string;
-    email: string;
-  };
+export const teacherSubmissionListItemResponseSchema = z.object({
+  id: z.uuid(),
+  assignmentId: z.uuid(),
+  studentId: z.uuid(),
+  contentText: z.string().nullable(),
+  fileUrl: z.string().nullable(),
+  answers: z.unknown(),
+  teacherNote: z.string().nullable(),
+  submittedAt: z.string().datetime(),
+  status: z.enum(['submitted', 'late', 'graded']),
 
-  grade: {
-    id: string;
-    score: number;
-    feedbackText: string | null;
-    gradedAt: Date;
-  } | null;
-}
+  student: z.object({
+    id: z.uuid(),
+    name: z.string(),
+    email: z.email(),
+  }),
 
-export type TeacherSubmissionListResponse = TeacherSubmissionListItemResponse[];
+  grade: z
+    .object({
+      id: z.uuid(),
+      score: z.number(),
+      feedbackText: z.string().nullable(),
+      gradedAt: z.string().datetime(),
+    })
+    .nullable(),
+});
+
+export const teacherSubmissionListResponseSchema = z.array(
+  teacherSubmissionListItemResponseSchema,
+);
+
+export type TeacherSubmissionListItemResponse = z.infer<
+  typeof teacherSubmissionListItemResponseSchema
+>;
+
+export type TeacherSubmissionListResponse = z.infer<
+  typeof teacherSubmissionListResponseSchema
+>;
