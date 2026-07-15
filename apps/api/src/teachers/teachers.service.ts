@@ -4,6 +4,7 @@ import type {
   TeacherOrganizationsResponse,
   TeachersByOrganizationResponse,
   UpdateTeacherRequest,
+  UpdateTeacherResponse,
 } from '@repo/contracts';
 import { PrismaService } from '../database/prisma.service';
 @Injectable()
@@ -126,7 +127,7 @@ export class TeachersService {
       throw new NotFoundException('Teacher not found');
     }
 
-    await this.prisma.user.update({
+    const updatedTeacher = await this.prisma.user.update({
       where: {
         id: teacherId,
       },
@@ -134,12 +135,25 @@ export class TeachersService {
         ...(payload.name !== undefined ? { name: payload.name } : {}),
         ...(payload.email !== undefined ? { email: payload.email } : {}),
       },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isConfirmed: true,
+        createdAt: true,
+      },
     });
 
     this.logger.log(`Updated teacher ${teacherId}.`);
 
     return {
-      id: teacherId,
+      id: updatedTeacher.id,
+      name: updatedTeacher.name || updatedTeacher.email.split('@')[0],
+      email: updatedTeacher.email,
+      role: updatedTeacher.role,
+      status: updatedTeacher.isConfirmed ? 'Active' : 'Pending',
+      createdAt: updatedTeacher.createdAt.toISOString().slice(0, 10),
     };
   }
 

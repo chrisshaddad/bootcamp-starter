@@ -5,6 +5,7 @@ import type {
   TeacherOrganizationsResponse,
   TeachersByOrganizationResponse,
   UpdateTeacherRequest,
+  UpdateTeacherResponse,
 } from '@repo/contracts';
 import {
   TeacherOrganizationParamsSchema,
@@ -40,7 +41,7 @@ export class TeachersController {
     @Param('teacherId') teacherId: string,
     @Body(new ZodValidationPipe(UpdateTeacherRequestSchema))
     payload: UpdateTeacherRequest,
-  ): Promise<TeacherActionResponse> {
+  ): Promise<UpdateTeacherResponse> {
     return this.teachersService.updateTeacher(teacherId, payload);
   }
 
@@ -48,7 +49,7 @@ export class TeachersController {
   @Roles('SUPER_ADMIN')
   async deleteTeacher(
     @Param('teacherId') teacherId: string,
-  ): Promise<TeacherActionResponse> {
+  ): Promise<UpdateTeacherResponse> {
     return this.teachersService.deleteTeacher(teacherId);
   }
 }

@@ -5,6 +5,7 @@ import type {
   StudentOrganizationsResponse,
   StudentsByGradeResponse,
   UpdateStudentRequest,
+  UpdateStudentResponse,
 } from '@repo/contracts';
 import { PrismaService } from '../database/prisma.service';
 
@@ -226,7 +227,7 @@ export class StudentsService {
   async updateStudent(
     studentProfileId: string,
     payload: UpdateStudentRequest,
-  ): Promise<StudentActionResponse> {
+  ): Promise<UpdateStudentResponse> {
     const studentProfile = await this.prisma.studentProfile.findUnique({
       where: {
         id: studentProfileId,
@@ -288,10 +289,47 @@ export class StudentsService {
         });
       }
     });
+    const updatedStudentProfile = await this.prisma.studentProfile.findUnique({
+      where: {
+        id: studentProfileId,
+      },
+      select: {
+        id: true,
+        studentCode: true,
+        dateOfBirth: true,
+        section: {
+          select: {
+            name: true,
+          },
+        },
+        user: {
+          select: {
+            name: true,
+            email: true,
+            isConfirmed: true,
+          },
+        },
+      },
+    });
+
+    if (!updatedStudentProfile) {
+      throw new NotFoundException('Student not found');
+    }
+
     this.logger.log(`Updated student ${studentProfileId}.`);
 
     return {
-      id: studentProfileId,
+      id: updatedStudentProfile.id,
+      studentCode: updatedStudentProfile.studentCode,
+      name:
+        updatedStudentProfile.user.name ||
+        updatedStudentProfile.user.email.split('@')[0],
+      email: updatedStudentProfile.user.email,
+      sectionName: updatedStudentProfile.section?.name ?? null,
+      dateOfBirth: updatedStudentProfile.dateOfBirth
+        ? updatedStudentProfile.dateOfBirth.toISOString().slice(0, 10)
+        : null,
+      status: updatedStudentProfile.user.isConfirmed ? 'Active' : 'Pending',
     };
   }
 

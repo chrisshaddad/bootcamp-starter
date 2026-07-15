@@ -13,6 +13,7 @@ import type {
   StudentOrganizationsResponse,
   StudentsByGradeResponse,
   UpdateStudentRequest,
+  UpdateStudentResponse,
 } from '@repo/contracts';
 import { UpdateStudentRequestSchema } from '@repo/contracts';
 import { Roles } from '../auth/decorators';
@@ -58,7 +59,7 @@ export class StudentsController {
     studentProfileId: string,
     @Body(new ZodValidationPipe(UpdateStudentRequestSchema))
     payload: UpdateStudentRequest,
-  ): Promise<StudentActionResponse> {
+  ): Promise<UpdateStudentResponse> {
     return this.studentsService.updateStudent(studentProfileId, payload);
   }
 
@@ -67,7 +68,7 @@ export class StudentsController {
   async deleteStudent(
     @Param('studentProfileId', new ParseUUIDPipe({ version: '4' }))
     studentProfileId: string,
-  ): Promise<StudentActionResponse> {
+  ): Promise<UpdateStudentResponse> {
     return this.studentsService.deleteStudent(studentProfileId);
   }
 }

@@ -7,6 +7,7 @@ import type {
   StudentActionResponse,
   StudentsByGradeResponse,
   UpdateStudentRequest,
+  UpdateStudentResponse,
 } from '@repo/contracts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -115,22 +116,14 @@ export default function GradeStudentsPage({ params }: GradeStudentsPageProps) {
     };
 
     try {
-      await apiPatch<StudentActionResponse>(
+      const updatedStudent = await apiPatch<UpdateStudentResponse>(
         `/students/${editingStudent.id}`,
         payload,
       );
 
       setStudents((currentStudents) =>
         currentStudents.map((student) =>
-          student.id === editingStudent.id
-            ? {
-                ...student,
-                name: form.name,
-                email: form.email,
-                studentCode: form.studentCode,
-                dateOfBirth: form.dateOfBirth || null,
-              }
-            : student,
+          student.id === updatedStudent.id ? updatedStudent : student,
         ),
       );
 

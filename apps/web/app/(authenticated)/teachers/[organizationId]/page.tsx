@@ -7,6 +7,7 @@ import type {
   TeacherActionResponse,
   TeachersByOrganizationResponse,
   UpdateTeacherRequest,
+  UpdateTeacherResponse,
 } from '@repo/contracts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -107,20 +108,14 @@ export default function TeachersOrganizationPage({
     };
 
     try {
-      await apiPatch<TeacherActionResponse>(
+      const updatedTeacher = await apiPatch<UpdateTeacherResponse>(
         `/teachers/${editingTeacher.id}`,
         payload,
       );
 
       setTeachers((currentTeachers) =>
         currentTeachers.map((teacher) =>
-          teacher.id === editingTeacher.id
-            ? {
-                ...teacher,
-                name: form.name,
-                email: form.email,
-              }
-            : teacher,
+          teacher.id === updatedTeacher.id ? updatedTeacher : teacher,
         ),
       );
 
