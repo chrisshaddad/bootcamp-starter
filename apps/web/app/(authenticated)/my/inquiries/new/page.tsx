@@ -1,8 +1,10 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { Controller, useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import {
   AlertTriangle,
@@ -13,6 +15,10 @@ import {
   Search,
   Send,
 } from 'lucide-react';
+import {
+  clientInquiryCreateRequestSchema,
+  type ClientInquiryCreateRequest,
+} from '@repo/contracts';
 import { useDirectoryBranch } from '@/hooks/use-directory';
 import { useMyInquiryActions } from '@/hooks/use-my-inquiries';
 import { ApiError } from '@/lib/api';
@@ -85,9 +91,35 @@ function NewInquiryForm() {
   const { branch, isLoading, error } = useDirectoryBranch(branchId);
   const { createInquiry } = useMyInquiryActions();
 
-  const [medicineId, setMedicineId] = useState(medicineIdParam);
-  const [message, setMessage] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  const {
+    control,
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm<ClientInquiryCreateRequest>({
+    resolver: zodResolver(clientInquiryCreateRequestSchema),
+    defaultValues: {
+      branchId: branchId ?? '',
+      medicineId: medicineIdParam,
+      message: '',
+    },
+  });
+
+  // A stale `?medicineId=` may name a medicine this branch doesn't stock. Once
+  // the branch loads, clear it if it isn't one of the options, so the picker and
+  // validation reflect reality (and no mismatched id can be submitted).
+  const medicineId = watch('medicineId');
+  useEffect(() => {
+    if (
+      branch &&
+      medicineId &&
+      !branch.medicines.some((m) => m.medicineId === medicineId)
+    ) {
+      setValue('medicineId', '');
+    }
+  }, [branch, medicineId, setValue]);
 
   if (!branchId) return <NoBranch />;
 
@@ -114,96 +146,99 @@ function NewInquiryForm() {
   const medicines = branch.medicines;
   const noStock = medicines.length === 0;
 
-  async function handleSubmit() {
-    if (!branchId || !medicineId || !message.trim() || submitting) return;
-    setSubmitting(true);
+  const onSubmit = async (data: ClientInquiryCreateRequest) => {
     try {
-      const created = await createInquiry({
-        branchId,
-        medicineId,
-        message: message.trim(),
-      });
+      // branchId is fixed from the URL; take it from there, not the form state.
+      const created = await createInquiry({ ...data, branchId });
       toast.success('Your question was sent.');
       router.push(`/my/inquiries/${created.id}`);
     } catch (err) {
       toast.error(
         err instanceof ApiError ? err.message : 'Failed to send your question.',
       );
-      setSubmitting(false);
     }
-  }
+  };
 
   return (
     <Card className={ENTER} style={enterStyle(70)}>
-      <CardContent className="space-y-5 p-6">
-        {/* Pharmacy context */}
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-primary-hover">
-            <Building2 className="h-5 w-5" />
+      <CardContent className="p-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+          {/* Pharmacy context */}
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-primary-hover">
+              <Building2 className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="truncate font-semibold text-gray-900">
+                {branch.pharmacyName}
+              </p>
+              <p className="truncate text-sm text-gray-500">
+                {branch.branchName} · {branch.address}
+              </p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <p className="truncate font-semibold text-gray-900">
-              {branch.pharmacyName}
-            </p>
-            <p className="truncate text-sm text-gray-500">
-              {branch.branchName} · {branch.address}
-            </p>
+
+          <div className="space-y-2">
+            <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+              <Pill className="h-4 w-4 text-gray-400" />
+              Medicine
+            </label>
+            {noStock ? (
+              <p className="rounded-lg bg-warning/10 px-3 py-2 text-sm text-warning-dark">
+                This branch has no medicines in stock to ask about right now.
+              </p>
+            ) : (
+              <Controller
+                control={control}
+                name="medicineId"
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Choose a medicine" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {medicines.map((medicine) => (
+                        <SelectItem
+                          key={medicine.medicineId}
+                          value={medicine.medicineId}
+                        >
+                          {medicine.brandName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            )}
+            {errors.medicineId ? (
+              <p className="text-xs text-error">Please choose a medicine.</p>
+            ) : null}
           </div>
-        </div>
 
-        <div className="space-y-2">
-          <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
-            <Pill className="h-4 w-4 text-gray-400" />
-            Medicine
-          </label>
-          {noStock ? (
-            <p className="rounded-lg bg-warning/10 px-3 py-2 text-sm text-warning-dark">
-              This branch has no medicines in stock to ask about right now.
-            </p>
-          ) : (
-            <Select value={medicineId} onValueChange={setMedicineId}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Choose a medicine" />
-              </SelectTrigger>
-              <SelectContent>
-                {medicines.map((medicine) => (
-                  <SelectItem
-                    key={medicine.medicineId}
-                    value={medicine.medicineId}
-                  >
-                    {medicine.brandName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">
+              Your question
+            </label>
+            <textarea
+              {...register('message')}
+              rows={4}
+              maxLength={2000}
+              placeholder="e.g. Do you have this in stock? What's the price?"
+              disabled={isSubmitting || noStock}
+              className="w-full resize-none rounded-[10px] border border-gray-300 bg-transparent px-3 py-2 text-sm outline-none transition-[color,box-shadow] placeholder:text-gray-500 focus-visible:border-primary-hover focus-visible:ring-[3px] focus-visible:ring-primary-100 disabled:opacity-50"
+            />
+            {errors.message ? (
+              <p className="text-xs text-error">{errors.message.message}</p>
+            ) : null}
+          </div>
 
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-gray-700">
-            Your question
-          </label>
-          <textarea
-            value={message}
-            onChange={(event) => setMessage(event.target.value)}
-            rows={4}
-            maxLength={2000}
-            placeholder="e.g. Do you have this in stock? What's the price?"
-            disabled={submitting || noStock}
-            className="w-full resize-none rounded-[10px] border border-gray-300 bg-transparent px-3 py-2 text-sm outline-none transition-[color,box-shadow] placeholder:text-gray-500 focus-visible:border-primary-hover focus-visible:ring-[3px] focus-visible:ring-primary-100 disabled:opacity-50"
-          />
-        </div>
-
-        <div className="flex justify-end">
-          <Button
-            type="button"
-            onClick={() => void handleSubmit()}
-            disabled={submitting || noStock || !medicineId || !message.trim()}
-          >
-            <Send className="h-4 w-4" />
-            {submitting ? 'Sending…' : 'Send question'}
-          </Button>
-        </div>
+          <div className="flex justify-end">
+            <Button type="submit" disabled={isSubmitting || noStock}>
+              <Send className="h-4 w-4" />
+              {isSubmitting ? 'Sending…' : 'Send question'}
+            </Button>
+          </div>
+        </form>
       </CardContent>
     </Card>
   );

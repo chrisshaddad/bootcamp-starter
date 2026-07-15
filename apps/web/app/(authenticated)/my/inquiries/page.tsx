@@ -124,7 +124,11 @@ export default function MyInquiriesPage() {
       </div>
 
       {/* Status tabs */}
-      <div className={cn('flex flex-wrap gap-2', ENTER)} style={enterStyle(70)}>
+      <div
+        role="tablist"
+        className={cn('flex flex-wrap gap-2', ENTER)}
+        style={enterStyle(70)}
+      >
         {TABS.map((value) => {
           const active = tab === value;
           const count =
@@ -133,6 +137,8 @@ export default function MyInquiriesPage() {
             <button
               key={value}
               type="button"
+              role="tab"
+              aria-selected={active}
               onClick={() => setTab(value)}
               className={cn(
                 'inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors',

@@ -87,13 +87,25 @@ export default function MyInquiryThreadPage() {
   const [sending, setSending] = useState(false);
   const [statusBusy, setStatusBusy] = useState(false);
 
-  // Keep the thread pinned to the newest message — scroll the thread container
-  // itself (not scrollIntoView, which would also scroll the whole page).
+  // Pin the thread to the newest message: always the first time a given thread
+  // appears — including switching to a *different* thread, since the App Router
+  // reuses this component across [id] changes — then only when the reader is
+  // already near the bottom, so a poll-driven reply doesn't yank them away
+  // mid-read. Scrolls the container itself (not scrollIntoView, which would
+  // also move the whole page). Keyed off `id` so an equal message count on a
+  // different thread still re-pins.
   const threadRef = useRef<HTMLDivElement>(null);
+  const pinnedThreadId = useRef<string | undefined>(undefined);
   useEffect(() => {
     const el = threadRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [inquiry?.messages.length]);
+    if (!el) return;
+    const isNewThread = pinnedThreadId.current !== id;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    if (isNewThread || distanceFromBottom < 120) {
+      el.scrollTop = el.scrollHeight;
+      pinnedThreadId.current = id;
+    }
+  }, [id, inquiry?.messages.length]);
 
   const isClosed = inquiry?.status === 'CLOSED';
 

@@ -199,22 +199,25 @@ export class MyInquiriesService {
     actor: User,
   ): Promise<ClientInquiryDetailResponse> {
     const clientId = actor.id;
-    const inquiry = await this.prisma.inquiry.findFirst({
-      where: { id, clientId },
-      select: { id: true, status: true },
-    });
-    if (!inquiry) {
-      throw new NotFoundException('Inquiry not found.');
-    }
-    // A closed inquiry is read-only — the client reopens it first. The UI hides
-    // the composer when closed; enforce the same rule here for direct API calls.
-    if (inquiry.status === 'CLOSED') {
-      throw new BadRequestException(
-        'This inquiry is closed. Reopen it to send a message.',
-      );
-    }
 
     await this.prisma.$transaction(async (tx) => {
+      // Re-check ownership + status INSIDE the transaction so a concurrent close
+      // can't slip a message into a now-closed inquiry (TOCTOU): a close that
+      // committed before this read is seen here and rejected. A closed inquiry
+      // is read-only — the client reopens it first (the UI hides the composer
+      // when closed; this enforces the same rule for direct API calls).
+      const inquiry = await tx.inquiry.findFirst({
+        where: { id, clientId },
+        select: { id: true, status: true },
+      });
+      if (!inquiry) {
+        throw new NotFoundException('Inquiry not found.');
+      }
+      if (inquiry.status === 'CLOSED') {
+        throw new BadRequestException(
+          'This inquiry is closed. Reopen it to send a message.',
+        );
+      }
       await tx.inquiryMessage.create({
         data: {
           inquiryId: id,
