@@ -214,192 +214,192 @@ export class TeacherService {
     }));
   }
   async findAssignmentSubmissions(
-  teacherId: string,
-  organizationId: string | null,
-  assignmentId: string,
-): Promise<TeacherSubmissionListResponse> {
-  if (!organizationId) {
-    throw new ForbiddenException(
-      'Teacher account is not assigned to an organization',
-    );
-  }
+    teacherId: string,
+    organizationId: string | null,
+    assignmentId: string,
+  ): Promise<TeacherSubmissionListResponse> {
+    if (!organizationId) {
+      throw new ForbiddenException(
+        'Teacher account is not assigned to an organization',
+      );
+    }
 
-  const assignment = await this.prisma.assignment.findUnique({
-    where: {
-      id: assignmentId,
-    },
-    select: {
-      id: true,
-      createdById: true,
-      type: true,
-      course: {
-        select: {
-          organizationId: true,
+    const assignment = await this.prisma.assignment.findUnique({
+      where: {
+        id: assignmentId,
+      },
+      select: {
+        id: true,
+        createdById: true,
+        type: true,
+        course: {
+          select: {
+            organizationId: true,
+          },
         },
       },
-    },
-  });
+    });
 
-  if (!assignment || assignment.type !== 'assignment') {
-    throw new NotFoundException(
-      `Assignment with ID ${assignmentId} was not found`,
-    );
-  }
+    if (!assignment || assignment.type !== 'assignment') {
+      throw new NotFoundException(
+        `Assignment with ID ${assignmentId} was not found`,
+      );
+    }
 
-  if (
-    assignment.createdById !== teacherId ||
-    assignment.course.organizationId !== organizationId
-  ) {
-    throw new ForbiddenException(
-      'You cannot view submissions for this assignment',
-    );
-  }
+    if (
+      assignment.createdById !== teacherId ||
+      assignment.course.organizationId !== organizationId
+    ) {
+      throw new ForbiddenException(
+        'You cannot view submissions for this assignment',
+      );
+    }
 
-  const submissions = await this.prisma.submission.findMany({
-    where: {
-      assignmentId,
-    },
-    orderBy: {
-      submittedAt: 'desc',
-    },
-    select: {
-      id: true,
-      assignmentId: true,
-      studentId: true,
-      contentText: true,
-      fileUrl: true,
-      answers: true,
-      teacherNote: true,
-      submittedAt: true,
-      status: true,
-      student: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
+    const submissions = await this.prisma.submission.findMany({
+      where: {
+        assignmentId,
+      },
+      orderBy: {
+        submittedAt: 'desc',
+      },
+      select: {
+        id: true,
+        assignmentId: true,
+        studentId: true,
+        contentText: true,
+        fileUrl: true,
+        answers: true,
+        teacherNote: true,
+        submittedAt: true,
+        status: true,
+        student: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        grade: {
+          select: {
+            id: true,
+            score: true,
+            feedbackText: true,
+            gradedAt: true,
+          },
         },
       },
-      grade: {
-        select: {
-          id: true,
-          score: true,
-          feedbackText: true,
-          gradedAt: true,
-        },
-      },
-    },
-  });
+    });
 
-  return submissions.map((submission) => ({
-    ...submission,
-    grade: submission.grade
-      ? {
-          ...submission.grade,
-          score: submission.grade.score.toNumber(),
-        }
-      : null,
-  }));
-}
-async gradeSubmission(
-  teacherId: string,
-  organizationId: string | null,
-  submissionId: string,
-  input: GradeSubmissionRequest,
-): Promise<GradeSubmissionResponse> {
-  if (!organizationId) {
-    throw new ForbiddenException(
-      'Teacher account is not assigned to an organization',
-    );
+    return submissions.map((submission) => ({
+      ...submission,
+      grade: submission.grade
+        ? {
+            ...submission.grade,
+            score: submission.grade.score.toNumber(),
+          }
+        : null,
+    }));
   }
+  async gradeSubmission(
+    teacherId: string,
+    organizationId: string | null,
+    submissionId: string,
+    input: GradeSubmissionRequest,
+  ): Promise<GradeSubmissionResponse> {
+    if (!organizationId) {
+      throw new ForbiddenException(
+        'Teacher account is not assigned to an organization',
+      );
+    }
 
-  const submission = await this.prisma.submission.findUnique({
-    where: {
-      id: submissionId,
-    },
-    select: {
-      id: true,
-      assignment: {
-        select: {
-          createdById: true,
-          maxScore: true,
-          course: {
-            select: {
-              organizationId: true,
+    const submission = await this.prisma.submission.findUnique({
+      where: {
+        id: submissionId,
+      },
+      select: {
+        id: true,
+        assignment: {
+          select: {
+            createdById: true,
+            maxScore: true,
+            course: {
+              select: {
+                organizationId: true,
+              },
             },
           },
         },
       },
-    },
-  });
-
-  if (!submission) {
-    throw new NotFoundException(
-      `Submission with ID ${submissionId} was not found`,
-    );
-  }
-
-  const teacherOwnsAssignment =
-    submission.assignment.createdById === teacherId;
-
-  const assignmentBelongsToOrganization =
-    submission.assignment.course.organizationId === organizationId;
-
-  if (!teacherOwnsAssignment || !assignmentBelongsToOrganization) {
-    throw new ForbiddenException('You cannot grade this submission');
-  }
-
-  const maxScore = submission.assignment.maxScore.toNumber();
-
-  if (input.score > maxScore) {
-    throw new BadRequestException(
-      `Score cannot exceed the assignment maximum of ${maxScore}`,
-    );
-  }
-
-  const grade = await this.prisma.$transaction(async (tx) => {
-    const savedGrade = await tx.grade.upsert({
-      where: {
-        submissionId,
-      },
-      update: {
-        score: input.score,
-        feedbackText: input.feedbackText,
-        gradedById: teacherId,
-        gradedAt: new Date(),
-      },
-      create: {
-        submissionId,
-        score: input.score,
-        feedbackText: input.feedbackText,
-        gradedById: teacherId,
-      },
-      select: {
-        id: true,
-        submissionId: true,
-        quizAttemptId: true,
-        score: true,
-        feedbackText: true,
-        gradedById: true,
-        gradedAt: true,
-      },
     });
 
-    await tx.submission.update({
-      where: {
-        id: submissionId,
-      },
-      data: {
-        status: 'graded',
-        teacherNote: input.feedbackText,
-      },
+    if (!submission) {
+      throw new NotFoundException(
+        `Submission with ID ${submissionId} was not found`,
+      );
+    }
+
+    const teacherOwnsAssignment =
+      submission.assignment.createdById === teacherId;
+
+    const assignmentBelongsToOrganization =
+      submission.assignment.course.organizationId === organizationId;
+
+    if (!teacherOwnsAssignment || !assignmentBelongsToOrganization) {
+      throw new ForbiddenException('You cannot grade this submission');
+    }
+
+    const maxScore = submission.assignment.maxScore.toNumber();
+
+    if (input.score > maxScore) {
+      throw new BadRequestException(
+        `Score cannot exceed the assignment maximum of ${maxScore}`,
+      );
+    }
+
+    const grade = await this.prisma.$transaction(async (tx) => {
+      const savedGrade = await tx.grade.upsert({
+        where: {
+          submissionId,
+        },
+        update: {
+          score: input.score,
+          feedbackText: input.feedbackText,
+          gradedById: teacherId,
+          gradedAt: new Date(),
+        },
+        create: {
+          submissionId,
+          score: input.score,
+          feedbackText: input.feedbackText,
+          gradedById: teacherId,
+        },
+        select: {
+          id: true,
+          submissionId: true,
+          quizAttemptId: true,
+          score: true,
+          feedbackText: true,
+          gradedById: true,
+          gradedAt: true,
+        },
+      });
+
+      await tx.submission.update({
+        where: {
+          id: submissionId,
+        },
+        data: {
+          status: 'graded',
+          teacherNote: input.feedbackText,
+        },
+      });
+
+      return savedGrade;
     });
 
-    return savedGrade;
-  });
-
-  return {
-    ...grade,
-    score: grade.score.toNumber(),
-  };
-}
+    return {
+      ...grade,
+      score: grade.score.toNumber(),
+    };
+  }
 }

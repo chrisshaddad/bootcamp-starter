@@ -23,5 +23,4 @@ export interface TeacherSubmissionListItemResponse {
   } | null;
 }
 
-export type TeacherSubmissionListResponse =
-  TeacherSubmissionListItemResponse[];
+export type TeacherSubmissionListResponse = TeacherSubmissionListItemResponse[];
