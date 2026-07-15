@@ -41,6 +41,14 @@ enum OpportunityStatus {
   @@schema("public")
 }
 
+enum OpportunityType {
+  ROLE
+  PROJECT
+  ROTATION
+
+  @@schema("public")
+}
+
 enum ApplicationStatus {
   PENDING        // Just submitted
   MANAGER_REVIEW // Awaiting current manager approval (if required)
@@ -235,7 +243,7 @@ model Opportunity {
   id                      String            @id @default(uuid())
   title                   String
   departmentId            String?
-  type                    String            // e.g. "LATERAL_MOVE", "PROMOTION", "PROJECT"
+  type                    OpportunityType
   description             String?           @db.Text
   status                  OpportunityStatus @default(DRAFT)
   deadline                DateTime?

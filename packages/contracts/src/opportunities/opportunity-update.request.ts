@@ -1,9 +1,10 @@
 import { z } from 'zod';
 import { opportunityStatusSchema } from './opportunity-status.schema';
+import { opportunityTypeSchema } from './opportunity-type.schema';
 
 export const opportunityUpdateRequestSchema = z.object({
   title: z.string().min(3).max(200).optional(),
-  type: z.string().min(2).max(50).optional(),
+  type: opportunityTypeSchema.optional(),
   description: z.string().max(5000).optional(),
   departmentId: z.string().uuid().nullable().optional(),
   hiringManagerId: z.string().uuid().nullable().optional(),
