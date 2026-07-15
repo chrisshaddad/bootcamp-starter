@@ -288,14 +288,23 @@ export function EventCalendar({
                           key={event.id}
                           className={cn(
                             'h-1.5 flex-1 rounded-full',
-                            event.isUpcoming === false
-                              ? 'bg-gray-400'
-                              : 'bg-primary-base',
+                            event.hostedByMe
+                              ? 'bg-blue-600'
+                              : event.isUpcoming === false
+                                ? 'bg-gray-400'
+                                : 'bg-primary-base',
                           )}
                         />
                       ))}
                     </div>
-                    <span className="block truncate text-xs font-medium text-gray-600 sm:text-xs">
+                    <span
+                      className={cn(
+                        'block truncate text-xs font-medium text-gray-600 sm:text-xs',
+                        dayEvents.length === 1 &&
+                          dayEvents[0]?.hostedByMe &&
+                          'underline decoration-blue-600 decoration-2 underline-offset-2',
+                      )}
+                    >
                       {dayEvents.length === 1
                         ? dayEvents[0]!.eventName
                         : `${dayEvents.length} events`}
@@ -333,7 +342,13 @@ export function EventCalendar({
                   onClick={() => handleEventClick(event.id)}
                   className="hover:bg-primary-100 focus-visible:ring-primary-base w-full rounded-lg border border-gray-200 bg-gray-50 p-3 text-left transition-colors focus-visible:ring-2 focus-visible:outline-none"
                 >
-                  <p className="font-semibold text-gray-900">
+                  <p
+                    className={cn(
+                      'font-semibold text-gray-900',
+                      event.hostedByMe &&
+                        'underline decoration-blue-600 decoration-2 underline-offset-2',
+                    )}
+                  >
                     {event.eventName}
                   </p>
                   <p className="mt-1 flex items-center gap-1.5 text-sm text-gray-600">

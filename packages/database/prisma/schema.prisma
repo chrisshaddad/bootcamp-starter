@@ -51,6 +51,14 @@ enum AnnouncementAudience {
   @@schema("public")
 }
 
+enum AttendanceStatus {
+  PENDING
+  ATTENDED
+  SKIPPED
+
+  @@schema("public")
+}
+
 model User {
   id             String   @id @default(uuid())
   email          String   @unique
@@ -179,9 +187,9 @@ model Event {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  presenter    Member?         @relation(fields: [presenterId], references: [id], onDelete: SetNull)
-  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  attendees    EventAttendee[]
+  presenter     Member?         @relation(fields: [presenterId], references: [id], onDelete: SetNull)
+  organization  Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  attendees     EventAttendee[]
   announcements Announcement[]
 
   @@index([presenterId])
@@ -215,12 +223,13 @@ model Announcement {
 }
 
 model EventAttendee {
-  id             String   @id @default(uuid())
-  eventId        String
-  userId         String
-  organizationId String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id               String           @id @default(uuid())
+  eventId          String
+  userId           String
+  organizationId   String
+  attendanceStatus AttendanceStatus @default(PENDING)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
 
   event        Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)

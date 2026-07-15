@@ -7,9 +7,11 @@ import { AnnouncementList } from '@/components/announcement-list';
 import { useUser } from '@/hooks/use-auth';
 import { useAnnouncements } from '@/hooks/use-announcements';
 import { useEvents } from '@/hooks/use-events';
+import { useStatsOverview } from '@/hooks/use-stats';
 import { EventCalendar } from '@/components/event-calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { formatRate } from '@/lib/format';
 import { CalendarDays, Clock, Users } from 'lucide-react';
 
 interface PresenterDashboardProps {
@@ -166,6 +168,58 @@ function PresenterDashboard({
   );
 }
 
+function OrgAdminStatCard({
+  title,
+  value,
+  subtitle,
+}: {
+  title: string;
+  value: string | number;
+  subtitle?: string;
+}) {
+  return (
+    <Card className="border-gray-200 bg-white shadow-sm">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium text-gray-500">
+          {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold text-gray-900">{value}</div>
+        {subtitle && <p className="mt-1 text-xs text-gray-500">{subtitle}</p>}
+      </CardContent>
+    </Card>
+  );
+}
+
+function OrgAdminStats() {
+  const { overview, isLoading, error } = useStatsOverview();
+  const value = (n: number | undefined) =>
+    isLoading || error ? '—' : (n ?? 0);
+
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <OrgAdminStatCard title="Members" value={value(overview?.memberCount)} />
+      <OrgAdminStatCard
+        title="Upcoming Events"
+        value={value(overview?.upcomingEvents)}
+        subtitle={
+          overview && !error ? `${overview.totalEvents} total` : undefined
+        }
+      />
+      <OrgAdminStatCard
+        title="Registrations"
+        value={value(overview?.totalRegistrations)}
+      />
+      <OrgAdminStatCard
+        title="Attendance Rate"
+        value={isLoading || error ? '—' : formatRate(overview?.attendanceRate)}
+        subtitle="Across past events"
+      />
+    </div>
+  );
+}
+
 /**
  * Renders the dashboard for the current user and routes super admins to the admin area.
  *
@@ -179,6 +233,7 @@ export default function DashboardPage() {
   const { events, isLoading: eventsLoading } = useEvents({
     enabled:
       !isLoading && (user?.role === 'ORG_ADMIN' || user?.role === 'MEMBER'),
+    ...(isPresenter ? { upcoming: true, hostedByMe: true } : {}),
   });
   const {
     announcements,
@@ -234,6 +289,8 @@ export default function DashboardPage() {
           You&apos;re signed in. Start building your project.
         </p>
       </div>
+
+      {user?.role === 'ORG_ADMIN' && <OrgAdminStats />}
 
       <Card className="border-gray-200 bg-white shadow-sm">
         <CardHeader>

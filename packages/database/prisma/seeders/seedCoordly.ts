@@ -1,5 +1,8 @@
 import { createHash } from 'node:crypto';
-import { PrismaClient } from '../../src/generated/prisma/client';
+import {
+  PrismaClient,
+  AttendanceStatus,
+} from '../../src/generated/prisma/client';
 
 interface MemberSeed {
   username: string;
@@ -16,6 +19,12 @@ interface EventSeed {
   organizationName: string;
   organizationAdminEmail: string;
   startsAt: Date;
+}
+
+interface AttendeeSeed {
+  eventSeedKey: string;
+  userEmail: string;
+  attendanceStatus: AttendanceStatus;
 }
 
 function daysFromNow(days: number): Date {
@@ -93,6 +102,14 @@ const EVENTS: EventSeed[] = [
     startsAt: daysFromNow(14),
   },
   {
+    seedKey: 'techcorp-onboarding-session',
+    eventName: 'New Hire Onboarding',
+    presenterUsername: 'alee',
+    organizationName: 'TechCorp Solutions',
+    organizationAdminEmail: 'admin@techcorp.example.com',
+    startsAt: daysFromNow(-3),
+  },
+  {
     seedKey: 'green-energy-sustainability-camp',
     eventName: 'Sustainability Camp',
     presenterUsername: 'mchen',
@@ -115,6 +132,25 @@ const EVENTS: EventSeed[] = [
     organizationName: 'DataSync Analytics',
     organizationAdminEmail: 'admin@datasync.example.com',
     startsAt: daysFromNow(21),
+  },
+];
+
+// Event sign-ups on past events with resolved attendance, so reports are not empty.
+const ATTENDEES: AttendeeSeed[] = [
+  {
+    eventSeedKey: 'techcorp-onboarding-session',
+    userEmail: 'member@techcorp.example.com',
+    attendanceStatus: AttendanceStatus.ATTENDED,
+  },
+  {
+    eventSeedKey: 'techcorp-onboarding-session',
+    userEmail: 'presenter@techcorp.example.com',
+    attendanceStatus: AttendanceStatus.SKIPPED,
+  },
+  {
+    eventSeedKey: 'green-energy-sustainability-camp',
+    userEmail: 'member@greenenergy.example.com',
+    attendanceStatus: AttendanceStatus.ATTENDED,
   },
 ];
 
@@ -251,7 +287,53 @@ export async function seedCoordly(prisma: PrismaClient) {
     );
   }
 
+  for (const attendee of ATTENDEES) {
+    const user = await prisma.user.findUnique({
+      where: { email: attendee.userEmail },
+    });
+
+    if (!user) {
+      console.warn(
+        `  Warning: User "${attendee.userEmail}" not found. Skipping attendee sign-up.`,
+      );
+      continue;
+    }
+
+    const event = await prisma.event.findUnique({
+      where: { id: seedEventId(attendee.eventSeedKey) },
+    });
+
+    if (!event) {
+      console.warn(
+        `  Warning: Event "${attendee.eventSeedKey}" not found. Skipping attendee sign-up.`,
+      );
+      continue;
+    }
+
+    await prisma.eventAttendee.upsert({
+      where: {
+        eventId_userId: {
+          eventId: event.id,
+          userId: user.id,
+        },
+      },
+      create: {
+        eventId: event.id,
+        userId: user.id,
+        organizationId: event.organizationId,
+        attendanceStatus: attendee.attendanceStatus,
+      },
+      update: {
+        attendanceStatus: attendee.attendanceStatus,
+      },
+    });
+
+    console.log(
+      `  Attendee ready: ${attendee.userEmail} → ${event.eventName} (${attendee.attendanceStatus})`,
+    );
+  }
+
   console.log(
-    `Coordly seeded: ${MEMBERS.length} members, ${EVENTS.length} events`,
+    `Coordly seeded: ${MEMBERS.length} members, ${EVENTS.length} events, ${ATTENDEES.length} attendee sign-ups`,
   );
 }

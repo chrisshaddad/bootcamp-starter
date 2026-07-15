@@ -12,6 +12,8 @@ export const eventDetailResponseSchema = z.object({
   isRegistered: z.boolean(),
   isUpcoming: z.boolean(),
   canRegister: z.boolean(),
+  canManageAttendance: z.boolean(),
+  canUpdateAttendance: z.boolean(),
   attendeeCount: z.number(),
   presenter: z
     .object({
