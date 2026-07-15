@@ -33,6 +33,19 @@ export class DirectoryService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
+   * Today at 00:00 UTC — the sellable-batch expiry cutoff. Expiry is a pure
+   * calendar date (@db.Date, UTC midnight), so bounding at today 00:00 UTC lets
+   * a batch expiring today still count as in-stock. Shared by list() and
+   * detail() so both use the identical boundary.
+   */
+  private todayStartUtc(): Date {
+    const now = new Date();
+    return new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+    );
+  }
+
+  /**
    * Public pharmacy directory: every branch, optionally filtered by a name /
    * address search. Ordered nearest-first from the caller's origin (an explicit
    * lat/lng override, else their saved location); when no origin is known, falls
@@ -66,10 +79,7 @@ export class DirectoryService {
     // (expiry bound at today 00:00 UTC — a batch expiring today still counts).
     // Grouping by (branchId, medicineId) yields one row per medicine a branch
     // carries; counting those rows per branch gives the distinct-medicine total.
-    const now = new Date();
-    const todayStart = new Date(
-      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
-    );
+    const todayStart = this.todayStartUtc();
     const stockGroups = await this.prisma.stockBatch.groupBy({
       by: ['branchId', 'medicineId'],
       where: {
@@ -129,10 +139,7 @@ export class DirectoryService {
     // In-stock rollup per medicine at this branch: total quantity + nearest
     // expiry. Exclude expired batches (unsellable) — bound expiry at today
     // 00:00 UTC (@db.Date), so a batch expiring today still counts.
-    const now = new Date();
-    const todayStart = new Date(
-      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
-    );
+    const todayStart = this.todayStartUtc();
     const grouped = await this.prisma.stockBatch.groupBy({
       by: ['medicineId'],
       where: {
