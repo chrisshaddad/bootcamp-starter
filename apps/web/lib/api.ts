@@ -68,4 +68,26 @@ export async function apiPatch<T>(
   return res.json();
 }
 
+const HTTP_NO_CONTENT = 204;
+
+export async function apiDelete<T = void>(endpoint: string): Promise<T> {
+  const res = await fetch(`${API_URL}${endpoint}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    const error = await res
+      .json()
+      .catch(() => ({ message: 'An error occurred' }));
+    throw new ApiError(res.status, error.message || 'An error occurred');
+  }
+
+  if (res.status === HTTP_NO_CONTENT) {
+    return undefined as T;
+  }
+
+  return res.json();
+}
+
 export { API_URL };

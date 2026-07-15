@@ -9,8 +9,10 @@ import {
   Body,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
-import { CurrentUser, Roles } from '../auth/decorators';
+import { CurrentUser } from '../auth/decorators';
+import { ManagerOrAdminGuard } from '../auth/guards/manager-or-admin.guard';
 import { ZodValidationPipe } from '../common/pipes';
 import { OpportunitiesService } from './opportunities.service';
 import type { User } from '@repo/db';
@@ -47,7 +49,7 @@ export class OpportunitiesController {
   }
 
   @Post()
-  @Roles('HR', 'ORG_ADMIN')
+  @UseGuards(ManagerOrAdminGuard)
   async create(
     @CurrentUser() user: User,
     @Body(new ZodValidationPipe(opportunityCreateRequestSchema))
@@ -57,7 +59,7 @@ export class OpportunitiesController {
   }
 
   @Patch(':id')
-  @Roles('HR', 'ORG_ADMIN')
+  @UseGuards(ManagerOrAdminGuard)
   async update(
     @Param('id') id: string,
     @CurrentUser() user: User,
@@ -68,7 +70,7 @@ export class OpportunitiesController {
   }
 
   @Delete(':id')
-  @Roles('HR', 'ORG_ADMIN')
+  @UseGuards(ManagerOrAdminGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   async delete(
     @Param('id') id: string,
