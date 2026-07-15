@@ -61,10 +61,11 @@ export class InvoicePaymentsService {
 
   /** Recomputes totalAmount/paidAmount/status for the parent Invoice. */
   private async summarizeInvoice(
+    orgId: string,
     invoiceId: string,
   ): Promise<InvoiceSummarySnapshot> {
     const invoice = await this.prisma.invoice.findFirst({
-      where: { id: invoiceId },
+      where: { id: invoiceId, orgId },
       select: {
         dueDate: true,
         lineItems: { select: { amount: true } },
@@ -182,7 +183,7 @@ export class InvoicePaymentsService {
       metadata: { invoiceId: invoice.id, amount: payment.amount.toString() },
     });
 
-    const summary = await this.summarizeInvoice(invoice.id);
+    const summary = await this.summarizeInvoice(orgId, invoice.id);
 
     return { data: { payment: this.formatPayment(payment), invoice: summary } };
   }
@@ -211,7 +212,7 @@ export class InvoicePaymentsService {
       metadata: { invoiceId: existing.invoiceId },
     });
 
-    const summary = await this.summarizeInvoice(existing.invoiceId);
+    const summary = await this.summarizeInvoice(orgId, existing.invoiceId);
 
     return { data: { id: paymentId, invoice: summary } };
   }

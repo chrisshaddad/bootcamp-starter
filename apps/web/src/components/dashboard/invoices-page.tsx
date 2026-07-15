@@ -223,6 +223,7 @@ function LineItemsFields({
                     >
                       <SelectTrigger
                         id={`${idPrefix}-li-${index}-category`}
+                        aria-label={`Line item ${index + 1} category`}
                         className="w-full"
                       >
                         <SelectValue placeholder="Category" />
@@ -241,6 +242,7 @@ function LineItemsFields({
               <div className="flex flex-1 flex-col gap-1">
                 <Input
                   placeholder="Description (optional)"
+                  aria-label={`Line item ${index + 1} description`}
                   {...register(`lineItems.${index}.description`)}
                 />
               </div>
@@ -250,6 +252,7 @@ function LineItemsFields({
                   step="0.01"
                   min="0"
                   placeholder="0.00"
+                  aria-label={`Line item ${index + 1} amount`}
                   aria-invalid={!!errors.lineItems?.[index]?.amount}
                   {...register(`lineItems.${index}.amount`)}
                 />
@@ -742,6 +745,7 @@ export function InvoicesPage({ canWrite, locale }: InvoicesPageProps) {
                   tabIndex={0}
                   onClick={() => goToInvoice(invoice.id)}
                   onKeyDown={(e) => {
+                    if (e.target !== e.currentTarget) return;
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault();
                       goToInvoice(invoice.id);

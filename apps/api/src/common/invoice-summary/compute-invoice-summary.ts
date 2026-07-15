@@ -24,12 +24,17 @@ export function computeInvoiceSummary(
   const totalAmount = lineItems.reduce((sum, item) => sum + item.amount, 0);
   const paidAmount = payments.reduce((sum, p) => sum + p.amount, 0);
 
+  // Compare in integer cents — JS float addition (e.g. 0.1 + 0.2) can leave
+  // paidAmount a hair below totalAmount for a fully paid invoice.
+  const totalCents = Math.round(totalAmount * 100);
+  const paidCents = Math.round(paidAmount * 100);
+
   let status: InvoiceStatus;
-  if (paidAmount >= totalAmount) {
+  if (paidCents >= totalCents) {
     status = 'paid';
   } else if (dueDate < now) {
     status = 'overdue';
-  } else if (paidAmount > 0) {
+  } else if (paidCents > 0) {
     status = 'partially_paid';
   } else {
     status = 'open';

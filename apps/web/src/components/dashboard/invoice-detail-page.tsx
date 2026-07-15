@@ -151,8 +151,11 @@ export function InvoiceDetailPage({
     isLoading: invoiceLoading,
     isError: invoiceError,
   } = useGetInvoiceQuery(invoiceId);
-  const { data: payments, isLoading: paymentsLoading } =
-    useListInvoicePaymentsQuery(invoiceId);
+  const {
+    data: payments,
+    isLoading: paymentsLoading,
+    isError: paymentsError,
+  } = useListInvoicePaymentsQuery(invoiceId);
   const { data: buildings } = useListBuildingsQuery();
 
   const [createPayment, { isLoading: creating }] =
@@ -361,6 +364,15 @@ export function InvoiceDetailPage({
                   </TableRow>
                 ))}
               </>
+            ) : paymentsError ? (
+              <TableRow>
+                <TableCell
+                  colSpan={canWrite ? 5 : 4}
+                  className="text-center py-10 text-muted-foreground"
+                >
+                  Failed to load payments. Please try again.
+                </TableCell>
+              </TableRow>
             ) : !payments?.length ? (
               <TableRow>
                 <TableCell
