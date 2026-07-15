@@ -1,4 +1,5 @@
 import { Test } from '@nestjs/testing';
+import type { Response } from 'express';
 import { ROLES_KEY } from '../auth/decorators/roles.decorator';
 import { GithubRepositorySnapshotService } from '../repository-scanner/github-repository-snapshot.service';
 import { GithubController } from './github.controller';
@@ -8,6 +9,7 @@ describe('GithubController', () => {
   let controller: GithubController;
 
   const mockGithubService = {
+    getOAuthConnectUrl: jest.fn(),
     previewRepository: jest.fn(),
   };
   const mockGithubRepositorySnapshotService = {
@@ -36,6 +38,22 @@ describe('GithubController', () => {
 
   it('should be defined', () => {
     expect(controller).toBeDefined();
+  });
+
+  it('redirects users to their GitHub OAuth authorization URL', async () => {
+    const authorizationUrl =
+      'https://github.com/login/oauth/authorize?client_id=client-id&state=state';
+    const redirect = jest.fn();
+    mockGithubService.getOAuthConnectUrl.mockResolvedValue(authorizationUrl);
+
+    await controller.connectGithub('user-id', {
+      redirect,
+    } as unknown as Response);
+
+    expect(mockGithubService.getOAuthConnectUrl).toHaveBeenCalledWith(
+      'user-id',
+    );
+    expect(redirect).toHaveBeenCalledWith(authorizationUrl);
   });
 
   it('requires developer or super admin accounts for repository previews', () => {

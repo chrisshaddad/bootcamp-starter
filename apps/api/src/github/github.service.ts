@@ -217,66 +217,6 @@ export class GithubService {
     ]);
   }
 
-  async connectUsingEnvToken(userId: string): Promise<void> {
-    const token = process.env.GITHUB_TOKEN?.trim();
-    if (!token) {
-      throw new BadRequestException(
-        'GITHUB_TOKEN is not configured in your backend .env file.',
-      );
-    }
-
-    let response: Response;
-    try {
-      response = await fetch('https://api.github.com/user', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: 'application/vnd.github+json',
-          'User-Agent': GITHUB_USER_AGENT,
-        },
-        signal: AbortSignal.timeout(10_000),
-      });
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'TimeoutError') {
-        throw new GithubRequestTimeoutException();
-      }
-      throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
-    }
-
-    if (!response.ok) {
-      throw new BadRequestException(
-        'Failed to validate the GITHUB_TOKEN. Make sure it has "repo" permissions.',
-      );
-    }
-
-    let githubUser: { id: number; login: string };
-    try {
-      githubUser = (await response.json()) as { id: number; login: string };
-    } catch {
-      throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
-    }
-
-    await this.db.$transaction([
-      this.db.developerProfile.update({
-        where: { userId },
-        data: {
-          githubUserId: BigInt(githubUser.id),
-          githubUsername: githubUser.login,
-          githubConnectedAt: new Date(),
-        },
-      }),
-      this.db.connectedAccount.upsert({
-        where: { userId },
-        create: {
-          userId,
-          githubAccessToken: token ?? null,
-        },
-        update: {
-          githubAccessToken: token ?? null,
-        },
-      }),
-    ]);
-  }
-
   async getUserRepositories(userId: string): Promise<GithubRepository[]> {
     const profile = await this.db.connectedAccount.findUnique({
       where: { userId },
