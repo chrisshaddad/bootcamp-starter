@@ -8,3 +8,4 @@ export * from './applications';
 export * from './skill-gaps';
 export * from './skills';
 export * from './departments';
+export * from './career-paths';

@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Briefcase, Calendar, ListChecks, Search, Users } from 'lucide-react';
 import { useOpportunities } from '@/hooks/use-opportunities';
 import { Input } from '@/components/ui/input';
@@ -70,6 +71,7 @@ function LoadingSkeleton() {
 }
 
 export default function OpportunitiesPage() {
+  const router = useRouter();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('OPEN');
@@ -167,7 +169,8 @@ export default function OpportunitiesPage() {
           {filtered.map((opportunity) => (
             <Card
               key={opportunity.id}
-              className="gap-3 p-5 border-gray-200 shadow-sm"
+              className="gap-3 p-5 border-gray-200 shadow-sm cursor-pointer transition-shadow hover:shadow-md"
+              onClick={() => router.push(`/opportunities/${opportunity.id}`)}
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex flex-wrap items-center gap-2">

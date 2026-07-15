@@ -13,6 +13,7 @@ import { ApplicationsModule } from './applications/applications.module';
 import { SkillGapsModule } from './skill-gaps/skill-gaps.module';
 import { SkillsModule } from './skills/skills.module';
 import { DepartmentsModule } from './departments/departments.module';
+import { CareerPathsModule } from './career-paths/career-paths.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { DepartmentsModule } from './departments/departments.module';
     SkillGapsModule,
     SkillsModule,
     DepartmentsModule,
+    CareerPathsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
