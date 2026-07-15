@@ -1,3 +1,4 @@
+// apps/web/hooks/use-projects.ts
 'use client';
 
 import useSWR, { mutate as globalMutate } from 'swr';
@@ -7,6 +8,8 @@ import type {
   CreateProjectRequest,
   UpdateProjectRequest,
   ProjectResponse,
+  ProjectByIdResponse,
+  ProjectBySlugResponse,
 } from '@repo/contracts';
 
 const PROJECTS_KEY = '/projects';
@@ -20,7 +23,7 @@ export function useProjects() {
 
 // real: GET /projects/id/:id, for prefilling edit forms.
 export function useProject(id: string | undefined) {
-  const { data, error, isLoading } = useSWR<ProjectResponse>(
+  const { data, error, isLoading } = useSWR<ProjectByIdResponse>(
     id ? projectKey(id) : null,
   );
   return { project: data, error, isLoading };
@@ -47,7 +50,7 @@ export function useUpdateProject() {
 
 // real: GET /projects/slug/:slug, public, only returns PUBLISHED projects.
 export function useProjectBySlug(slug: string | undefined) {
-  const { data, error, isLoading } = useSWR<ProjectResponse>(
+  const { data, error, isLoading } = useSWR<ProjectBySlugResponse>(
     slug ? `/projects/slug/${slug}` : null,
   );
 

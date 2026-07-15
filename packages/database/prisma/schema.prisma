@@ -130,6 +130,7 @@ model DeveloperProfile {
   headline    String?
   bio         String? @db.Text
   location    String?
+  githubAccessToken  String?   
 
   profilePictureUrl  String?
   linkedinUrl        String?

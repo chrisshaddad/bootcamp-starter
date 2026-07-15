@@ -10,9 +10,21 @@ const publicRoutes = ['/login', '/signup', '/auth/verify'];
 const DEFAULT_AUTHENTICATED_ROUTE = '/dashboard';
 
 function isPublicRoute(pathname: string): boolean {
-  return publicRoutes.some(
+  // 1. Check exact matches for standard public routes
+  const isStandardPublic = publicRoutes.some(
     (route) => pathname === route || pathname.startsWith(`${route}/`),
   );
+  if (isStandardPublic) return true;
+
+  // 2. Allow public access to showcase pages (e.g., /projects/my-project-slug)
+  // This matches alphanumeric characters and dashes (-) but EXCLUDES 'new' or sub-paths like '/edit'
+  const showcaseMatch = pathname.match(/^\/projects\/([^/]+)$/);
+  if (showcaseMatch) {
+    const slug = showcaseMatch[1];
+    return slug !== 'new'; // /projects/new is private, but /projects/some-slug is public
+  }
+
+  return false;
 }
 
 // 1. CHANGED: Made it async

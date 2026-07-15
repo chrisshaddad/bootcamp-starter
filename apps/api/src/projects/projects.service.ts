@@ -16,6 +16,7 @@ import {
   type ProjectMediaUploadRequest,
   type ProjectMediaUpdateRequest,
   type ProjectsExploreQuery,
+  type AddProjectTechnologyRequest,
 } from '@repo/contracts';
 import {
   ProjectStatus,
@@ -322,6 +323,11 @@ export class ProjectsService {
             sortOrder: 'asc',
           },
         },
+        technologies: {
+          include: {
+            technology: true,
+          },
+        },
       },
     });
 
@@ -587,6 +593,12 @@ export class ProjectsService {
             sortOrder: 'asc',
           },
         },
+        // ADD THIS: Include technologies so we fetch them for public view
+        technologies: {
+          include: {
+            technology: true,
+          },
+        },
       },
     });
 
@@ -596,7 +608,6 @@ export class ProjectsService {
 
     return project;
   }
-
   async exploreProjects(query: ProjectsExploreQuery) {
     const skip = (query.page - 1) * query.limit;
     const take = query.limit;
@@ -811,6 +822,149 @@ export class ProjectsService {
     }
 
     return { mediaStorageKeys };
+  }
+
+  async addProjectTechnology(
+    user: User,
+    projectId: string,
+    data: AddProjectTechnologyRequest,
+  ) {
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    const isAdmin = user.accountType === AccountType.SUPER_ADMIN;
+    const isCreator = project.createdByUserId === user.id;
+
+    if (!isAdmin && !isCreator) {
+      throw new ForbiddenException(
+        'You are not authorized to edit this project',
+      );
+    }
+
+    const technology = await this.prisma.technology.findUnique({
+      where: { id: data.technologyId },
+    });
+
+    if (!technology) {
+      throw new NotFoundException('Technology not found');
+    }
+
+    const existing = await this.prisma.projectTechnology.findUnique({
+      where: {
+        projectId_technologyId: {
+          projectId,
+          technologyId: data.technologyId,
+        },
+      },
+    });
+
+    if (existing) {
+      const newSource =
+        existing.source === ProjectTechnologySource.SCANNER
+          ? ProjectTechnologySource.BOTH
+          : existing.source;
+
+      return this.prisma.projectTechnology.update({
+        where: {
+          projectId_technologyId: {
+            projectId,
+            technologyId: data.technologyId,
+          },
+        },
+        data: {
+          source: newSource,
+          isPrimary: data.isPrimary,
+          addedByUserId: user.id,
+        },
+        include: {
+          technology: true,
+        },
+      });
+    }
+
+    return this.prisma.projectTechnology.create({
+      data: {
+        projectId,
+        technologyId: data.technologyId,
+        source: ProjectTechnologySource.MANUAL,
+        isPrimary: data.isPrimary,
+        addedByUserId: user.id,
+      },
+      include: {
+        technology: true,
+      },
+    });
+  }
+
+  async removeProjectTechnology(
+    user: User,
+    projectId: string,
+    technologyId: string,
+  ) {
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    const isAdmin = user.accountType === AccountType.SUPER_ADMIN;
+    const isCreator = project.createdByUserId === user.id;
+
+    if (!isAdmin && !isCreator) {
+      throw new ForbiddenException(
+        'You are not authorized to edit this project',
+      );
+    }
+
+    const existing = await this.prisma.projectTechnology.findUnique({
+      where: {
+        projectId_technologyId: {
+          projectId,
+          technologyId,
+        },
+      },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Technology relation not found');
+    }
+
+    if (existing.source === ProjectTechnologySource.BOTH) {
+      return this.prisma.projectTechnology.update({
+        where: {
+          projectId_technologyId: {
+            projectId,
+            technologyId,
+          },
+        },
+        data: {
+          source: ProjectTechnologySource.SCANNER,
+          addedByUserId: null,
+        },
+        include: {
+          technology: true,
+        },
+      });
+    }
+
+    return this.prisma.projectTechnology.delete({
+      where: {
+        projectId_technologyId: {
+          projectId,
+          technologyId,
+        },
+      },
+      include: {
+        technology: true,
+      },
+    });
   }
 }
 

@@ -1,3 +1,5 @@
+// apps/web/app/projects/[slug]/page.tsx
+/* eslint-disable @next/next/no-img-element */
 'use client';
 
 import { useParams } from 'next/navigation';
@@ -11,7 +13,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useProjectBySlug } from '@/hooks/use-projects';
 import {
   MOCK_CONTRIBUTORS,
-  MOCK_TECHNOLOGIES,
   TECHNOLOGY_CATEGORY_LABELS,
   type TechnologyCategory,
 } from '@/lib/mock-projects';
@@ -19,6 +20,13 @@ import {
   PROJECT_STATUS_COLORS,
   PROJECT_STATUS_LABELS,
 } from '@/lib/project-status';
+
+interface ProjectTechItem {
+  id: string;
+  name: string;
+  slug: string;
+  category: TechnologyCategory;
+}
 
 // mock: SavedProject has no endpoint yet.
 function handleSave() {
@@ -29,14 +37,23 @@ export default function ProjectShowcasePage() {
   const params = useParams<{ slug: string }>();
   const { project, error, isLoading } = useProjectBySlug(params.slug);
 
-  // mock: ProjectTechnology has no endpoint — reuse the fixture list so the
-  // "Built with" panel isn't empty while real data isn't available.
-  const technologiesByCategory = MOCK_TECHNOLOGIES.reduce<
-    Partial<Record<TechnologyCategory, typeof MOCK_TECHNOLOGIES>>
-  >((acc, tech) => {
-    (acc[tech.category] ??= []).push(tech);
-    return acc;
-  }, {});
+  // Safely extract and type the database technologies
+  const projectTechs = (project?.technologies ?? [])
+    .map((pt) => pt.technology as unknown as ProjectTechItem)
+    .filter(Boolean);
+
+  // Accumulate technologies into their respective categories with explicit types
+  const technologiesByCategory = projectTechs.reduce(
+    (acc: Record<string, ProjectTechItem[]>, tech: ProjectTechItem) => {
+      const category = tech.category;
+      if (!acc[category]) {
+        acc[category] = [];
+      }
+      acc[category].push(tech);
+      return acc;
+    },
+    {} as Record<string, ProjectTechItem[]>,
+  );
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -69,7 +86,9 @@ export default function ProjectShowcasePage() {
                       {project.title}
                     </h1>
                     <span
-                      className={`rounded-full px-2.5 py-0.5 text-xs font-bold tracking-wide uppercase ${PROJECT_STATUS_COLORS[project.status]}`}
+                      className={`rounded-full px-2.5 py-0.5 text-xs font-bold tracking-wide uppercase ${
+                        PROJECT_STATUS_COLORS[project.status]
+                      }`}
                     >
                       {PROJECT_STATUS_LABELS[project.status]}
                     </span>
@@ -128,14 +147,24 @@ export default function ProjectShowcasePage() {
 
                   <section>
                     <h2 className="mb-3 text-sm font-bold">Screenshots</h2>
-                    <Card className="border-dashed">
-                      <CardContent className="flex flex-col items-center gap-1.5 py-8 text-center">
-                        <ImageIcon className="h-5 w-5 text-muted-foreground" />
-                        <p className="text-muted-foreground text-xs">
-                          No screenshots yet — ProjectMedia has no endpoint.
-                        </p>
-                      </CardContent>
-                    </Card>
+                    {project.media && project.media.length > 0 ? (
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        {project.media.map((m: NonNullable<typeof project.media>[number]) => (
+                          <div key={m.id} className="overflow-hidden rounded-xl border bg-muted">
+                            <img src={m.publicUrl} alt={m.caption || ''} className="w-full h-auto object-cover" />
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <Card className="border-dashed">
+                        <CardContent className="flex flex-col items-center gap-1.5 py-8 text-center">
+                          <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                          <p className="text-muted-foreground text-xs">
+                            No screenshots available.
+                          </p>
+                        </CardContent>
+                      </Card>
+                    )}
                   </section>
                 </div>
 

@@ -40,6 +40,7 @@ import {
   projectMediaUploadSchema,
   projectMediaUpdateSchema,
   projectsExploreQuerySchema,
+  addProjectTechnologySchema,
   type CreateProjectRequest,
   type ImportGithubProjectRequest,
   type ImportGithubProjectResponse,
@@ -51,6 +52,7 @@ import {
   type ProjectBySlugResponse,
   type ProjectsExploreQuery,
   type ExploreProjectsResponse,
+  type AddProjectTechnologyRequest,
 } from '@repo/contracts';
 import { importGithubProjectRequestSchema as importGithubProjectOpenApiRequestSchema } from '../common/swagger/schemas';
 
@@ -184,7 +186,24 @@ export class ProjectsController {
         createdAt: m.createdAt.toISOString(),
         updatedAt: m.updatedAt.toISOString(),
       })),
-    };
+      technologies: (project.technologies ?? []).map((t) => ({
+        id: t.id,
+        projectId: t.projectId,
+        technologyId: t.technologyId,
+        source: t.source as 'SCANNER' | 'MANUAL' | 'BOTH',
+        evidence: t.evidence,
+        isPrimary: t.isPrimary,
+        sortOrder: t.sortOrder,
+        createdAt: t.createdAt.toISOString(),
+        updatedAt: t.updatedAt.toISOString(),
+        technology: {
+          id: t.technology.id,
+          name: t.technology.name,
+          slug: t.technology.slug,
+          category: t.technology.category,
+        },
+      })),
+    } as unknown as ProjectByIdResponse; // 👈 Add this force cast here
   }
 
   @Post()
@@ -426,7 +445,25 @@ export class ProjectsController {
         createdAt: m.createdAt.toISOString(),
         updatedAt: m.updatedAt.toISOString(),
       })),
-    };
+      // ADD THIS: Map technologies to the serialized response
+      technologies: (project.technologies ?? []).map((t) => ({
+        id: t.id,
+        projectId: t.projectId,
+        technologyId: t.technologyId,
+        source: t.source as 'SCANNER' | 'MANUAL' | 'BOTH',
+        evidence: t.evidence,
+        isPrimary: t.isPrimary,
+        sortOrder: t.sortOrder,
+        createdAt: t.createdAt.toISOString(),
+        updatedAt: t.updatedAt.toISOString(),
+        technology: {
+          id: t.technology.id,
+          name: t.technology.name,
+          slug: t.technology.slug,
+          category: t.technology.category,
+        },
+      })),
+    } as unknown as ProjectBySlugResponse; // 👈 Add the force-cast here
   }
 
   @Post(':id/media')
@@ -557,5 +594,64 @@ export class ProjectsController {
     }
 
     return { success: true };
+  }
+
+  @Post(':id/technologies')
+  @Roles(AccountType.DEVELOPER, AccountType.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Add a technology to a project' })
+  @ApiResponse({ status: 201, description: 'Technology added successfully.' })
+  async addProjectTechnology(
+    @CurrentUser() user: User,
+    @Param('id') projectId: string,
+    @Body(new ZodValidationPipe(addProjectTechnologySchema))
+    body: AddProjectTechnologyRequest,
+  ) {
+    const result = await this.projectsService.addProjectTechnology(
+      user,
+      projectId,
+      body,
+    );
+    return {
+      id: result.id,
+      projectId: result.projectId,
+      technologyId: result.technologyId,
+      source: result.source,
+      isPrimary: result.isPrimary,
+      sortOrder: result.sortOrder,
+      createdAt: result.createdAt.toISOString(),
+      updatedAt: result.updatedAt.toISOString(),
+      technology: {
+        id: result.technology.id,
+        name: result.technology.name,
+        slug: result.technology.slug,
+        category: result.technology.category,
+      },
+    };
+  }
+
+  @Delete(':id/technologies/:technologyId')
+  @Roles(AccountType.DEVELOPER, AccountType.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Remove a technology from a project' })
+  @ApiResponse({ status: 200, description: 'Technology removed successfully.' })
+  async removeProjectTechnology(
+    @CurrentUser() user: User,
+    @Param('id') projectId: string,
+    @Param('technologyId') technologyId: string,
+  ) {
+    const result = await this.projectsService.removeProjectTechnology(
+      user,
+      projectId,
+      technologyId,
+    );
+    return {
+      id: result.id,
+      projectId: result.projectId,
+      technologyId: result.technologyId,
+      source: result.source,
+      isPrimary: result.isPrimary,
+      sortOrder: result.sortOrder,
+      createdAt: result.createdAt.toISOString(),
+      updatedAt: result.updatedAt.toISOString(),
+    };
   }
 }

@@ -3,8 +3,10 @@ import {
   Logger,
   NotFoundException,
   ServiceUnavailableException,
+  BadRequestException,
 } from '@nestjs/common';
 import type { GithubRepositoryPreviewResponse } from '@repo/contracts';
+import { PrismaService } from '../database/prisma.service';
 import { parseGithubRepositoryUrl } from './github-url.parser';
 import type {
   NormalizedGithubLanguage,
@@ -29,16 +31,183 @@ export class GithubRequestTimeoutException extends ServiceUnavailableException {
   }
 }
 
+interface GithubRepoResponse {
+  id: number;
+  name: string;
+  full_name: string;
+  private: boolean;
+  html_url: string;
+  updated_at: string;
+  description: string | null;
+  language: string | null;
+}
+
 @Injectable()
 export class GithubService {
   private readonly logger = new Logger(GithubService.name);
 
-  /**
-   * Validates a browser GitHub repository URL and returns a read-only preview.
-   *
-   * A successful preview proves only that GitHub metadata can be scanned; it
-   * does not prove ownership, contribution, or permission to publish a project.
-   */
+  constructor(private readonly prisma: PrismaService) {}
+
+  // ==========================================
+  // OAUTH & REPOSITORY FETCHING
+  // ==========================================
+
+  getOAuthConnectUrl(): string {
+    const clientId = process.env.GITHUB_CLIENT_ID;
+    if (!clientId) {
+      throw new ServiceUnavailableException(
+        'GitHub OAuth is not configured on the server',
+      );
+    }
+    const apiUrl = process.env.API_URL ?? 'http://localhost:3001';
+    const redirectUri = encodeURIComponent(`${apiUrl}/github/callback`);
+
+    return `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=repo`;
+  }
+
+  async handleOAuthCallback(userId: string, code: string): Promise<void> {
+    if (!process.env.GITHUB_CLIENT_ID || !process.env.GITHUB_CLIENT_SECRET) {
+      throw new ServiceUnavailableException('GitHub OAuth is not configured');
+    }
+
+    // 1. Exchange code for access token
+    const tokenResponse = await fetch(
+      'https://github.com/login/oauth/access_token',
+      {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          client_id: process.env.GITHUB_CLIENT_ID,
+          client_secret: process.env.GITHUB_CLIENT_SECRET,
+          code,
+        }),
+      },
+    );
+
+    const tokenData = (await tokenResponse.json()) as { access_token?: string };
+    const accessToken = tokenData.access_token;
+
+    if (!accessToken) {
+      this.logger.error('Failed to obtain GitHub access token:', tokenData);
+      throw new BadRequestException('Failed to obtain GitHub access token');
+    }
+
+    // 2. Fetch the user's GitHub profile
+    const userResponse = await fetch('https://api.github.com/user', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: 'application/vnd.github+json',
+        'User-Agent': GITHUB_USER_AGENT,
+      },
+    });
+
+    if (!userResponse.ok) {
+      throw new BadRequestException('Failed to fetch GitHub profile');
+    }
+
+    const githubUser = (await userResponse.json()) as {
+      id: number;
+      login: string;
+    };
+
+    // 3. Save to database
+    await this.prisma.developerProfile.update({
+      where: { userId },
+      data: {
+        githubUserId: BigInt(githubUser.id),
+        githubUsername: githubUser.login,
+        githubAccessToken: accessToken,
+        githubConnectedAt: new Date(),
+      },
+    });
+  }
+
+  async connectUsingEnvToken(userId: string): Promise<void> {
+    const token = process.env.GITHUB_TOKEN?.trim();
+    if (!token) {
+      throw new BadRequestException(
+        'GITHUB_TOKEN is not configured in your backend .env file.',
+      );
+    }
+
+    const response = await fetch('https://api.github.com/user', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/vnd.github+json',
+        'User-Agent': GITHUB_USER_AGENT,
+      },
+    });
+
+    if (!response.ok) {
+      throw new BadRequestException(
+        'Failed to validate the GITHUB_TOKEN. Make sure it has "repo" permissions.',
+      );
+    }
+
+    const githubUser = (await response.json()) as {
+      id: number;
+      login: string;
+    };
+
+    await this.prisma.developerProfile.update({
+      where: { userId },
+      data: {
+        githubUserId: BigInt(githubUser.id),
+        githubUsername: githubUser.login,
+        githubAccessToken: token,
+        githubConnectedAt: new Date(),
+      },
+    });
+  }
+
+  async getUserRepositories(userId: string) {
+    const profile = await this.prisma.developerProfile.findUnique({
+      where: { userId },
+      select: { githubAccessToken: true },
+    });
+
+    if (!profile || !profile.githubAccessToken) {
+      throw new BadRequestException('GitHub account not connected');
+    }
+
+    const response = await fetch(
+      'https://api.github.com/user/repos?sort=updated&per_page=100',
+      {
+        headers: {
+          Authorization: `Bearer ${profile.githubAccessToken}`,
+          Accept: 'application/vnd.github+json',
+          'User-Agent': GITHUB_USER_AGENT,
+        },
+      },
+    );
+
+    if (!response.ok) {
+      throw new ServiceUnavailableException(
+        'Failed to fetch repositories from GitHub',
+      );
+    }
+
+    const repos = (await response.json()) as GithubRepoResponse[];
+
+    return repos.map((repo) => ({
+      id: repo.id.toString(),
+      name: repo.name,
+      fullName: repo.full_name,
+      isPrivate: repo.private,
+      url: repo.html_url,
+      updatedAt: repo.updated_at,
+      description: repo.description,
+      language: repo.language,
+    }));
+  }
+
+  // ==========================================
+  // PREVIEW AND ANALYSIS
+  // ==========================================
+
   async previewRepository(
     repositoryUrl: string,
   ): Promise<GithubRepositoryPreviewResponse> {
@@ -46,12 +215,6 @@ export class GithubService {
     return this.fetchRepositoryPreview(repository);
   }
 
-  /**
-   * Fetches normalized repository metadata and language byte counts.
-   *
-   * This method stays reusable for a future ProjectsService import flow while
-   * keeping persistence and ownership verification outside the GitHub client.
-   */
   async fetchRepositoryPreview(
     repository: ParsedGithubRepository,
   ): Promise<GithubRepositoryPreviewResponse> {
@@ -77,15 +240,6 @@ export class GithubService {
     };
   }
 
-  /**
-   * Fetches GitHub's language byte-count summary for a public repository.
-   *
-   * This uses GitHub's REST API endpoint, not a browser URL:
-   * GET /repos/{owner}/{repo}/languages
-   *
-   * The returned byte counts are kept raw so later scanner/search logic can
-   * calculate language percentages without re-fetching the repository.
-   */
   async fetchRepositoryLanguages(
     repository: ParsedGithubRepository,
   ): Promise<NormalizedGithubLanguage[]> {
@@ -98,7 +252,6 @@ export class GithubService {
     return this.normalizeLanguages(apiLanguages);
   }
 
-  /** Returns file paths reported by GitHub for a repository directory. */
   async fetchRepositoryDirectoryFilePaths(
     repository: ParsedGithubRepository,
     directoryPath: string,
@@ -308,13 +461,6 @@ export class GithubService {
     return decoded.toString('utf8');
   }
 
-  /**
-   * Converts GitHub's raw repository payload into the API preview shape.
-   *
-   * Private or non-public repositories are reported with the same safe 404
-   * wording used for inaccessible repositories so the API does not imply
-   * whether a private repository exists.
-   */
   private normalizeRepository(
     apiRepository: unknown,
   ): NormalizedGithubRepository {

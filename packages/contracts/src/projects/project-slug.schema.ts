@@ -1,13 +1,11 @@
+// packages/contracts/src/projects/project-slug.schema.ts
 import { z } from 'zod';
 
 export const projectSlugSchema = z
   .string()
-  .trim()
-  .min(1, 'Slug is required')
-  .max(120, 'Slug is too long')
+  .min(1)
+  .max(100)
   .regex(
-    /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
-    'Slug must contain only lowercase letters, numbers, and hyphens',
+    /^[a-z0-9-]+$/,
+    'Slug can only contain lowercase letters, numbers, and hyphens',
   );
-
-export type ProjectSlug = z.infer<typeof projectSlugSchema>;

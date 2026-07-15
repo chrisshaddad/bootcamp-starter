@@ -1,4 +1,14 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Post,
+  Query,
+  Res,
+} from '@nestjs/common';
+import type { Response } from 'express';
 import {
   ApiBody,
   ApiCookieAuth,
@@ -12,7 +22,7 @@ import {
   type GithubRepositoryPreviewRequest,
   type GithubRepositoryPreviewResponse,
 } from '@repo/contracts';
-import { Roles } from '../auth/decorators';
+import { CurrentUser, Roles } from '../auth/decorators';
 import { ZodValidationPipe } from '../common/pipes';
 import { githubRepositoryPreviewRequestSchema as githubRepositoryPreviewOpenApiRequestSchema } from '../common/swagger/schemas';
 import { GithubRepositorySnapshotService } from '../repository-scanner/github-repository-snapshot.service';
@@ -26,6 +36,40 @@ export class GithubController {
     private readonly githubService: GithubService,
     private readonly githubRepositorySnapshotService: GithubRepositorySnapshotService,
   ) {}
+
+  @Get('connect')
+  @Roles('DEVELOPER', 'SUPER_ADMIN')
+  @ApiOperation({
+    summary: 'Instantly connects GitHub using the server GITHUB_TOKEN',
+  })
+  async connectGithub(@CurrentUser('id') userId: string, @Res() res: Response) {
+    await this.githubService.connectUsingEnvToken(userId);
+    const appUrl = process.env.APP_URL || 'http://localhost:3000';
+    return res.redirect(`${appUrl}/projects/new`);
+  }
+
+  @Get('callback')
+  @Roles('DEVELOPER', 'SUPER_ADMIN')
+  @ApiOperation({ summary: 'Handles GitHub OAuth callback' })
+  async githubCallback(
+    @CurrentUser('id') userId: string,
+    @Query('code') code: string,
+    @Res() res: Response,
+  ) {
+    await this.githubService.handleOAuthCallback(userId, code);
+    const appUrl = process.env.APP_URL || 'http://localhost:3000';
+    return res.redirect(`${appUrl}/projects/new`);
+  }
+
+  @Get('my-repositories')
+  @Roles('DEVELOPER', 'SUPER_ADMIN')
+  @ApiOperation({
+    summary: "Fetches the authenticated user's GitHub repositories",
+  })
+  @ApiResponse({ status: 200, description: 'List of GitHub repositories' })
+  async getMyRepositories(@CurrentUser('id') userId: string) {
+    return this.githubService.getUserRepositories(userId);
+  }
 
   @Post('repositories/preview')
   @Roles('DEVELOPER', 'SUPER_ADMIN')
