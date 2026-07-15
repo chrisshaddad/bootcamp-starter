@@ -38,7 +38,7 @@ export default function TeacherAssignmentsPage() {
       }
     }
 
-    loadAssignments();
+    void loadAssignments();
   }, []);
 
   return (
@@ -46,6 +46,7 @@ export default function TeacherAssignmentsPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Assignments</h1>
+
           <p className="mt-1 text-sm text-gray-500">
             Create assignments and review student submissions.
           </p>
@@ -82,6 +83,7 @@ export default function TeacherAssignmentsPage() {
 
             <div>
               <p className="font-medium text-gray-900">No assignments yet</p>
+
               <p className="mt-1 text-sm text-gray-500">
                 Create your first assignment to get started.
               </p>
@@ -93,14 +95,11 @@ export default function TeacherAssignmentsPage() {
       {!isLoading && !error && assignments.length > 0 && (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {assignments.map((assignment) => (
-            <Link
-              key={assignment.id}
-              href={`/teacher/assignments/${assignment.id}`}
-              className="block"
-            >
-              <Card className="h-full transition hover:shadow-md">
+            <div key={assignment.id} className="block">
+              <Card className="h-full border-gray-200 bg-white shadow-sm transition hover:border-gray-300 hover:shadow-md">
                 <CardHeader>
                   <CardTitle className="text-lg">{assignment.title}</CardTitle>
+
                   <p className="text-sm text-gray-500">
                     {assignment.course.title}
                   </p>
@@ -126,7 +125,7 @@ export default function TeacherAssignmentsPage() {
                   </div>
                 </CardContent>
               </Card>
-            </Link>
+            </div>
           ))}
         </div>
       )}

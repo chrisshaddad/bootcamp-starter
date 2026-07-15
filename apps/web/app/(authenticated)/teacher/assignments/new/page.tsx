@@ -1,41 +1,60 @@
 'use client';
 
-import { FormEvent, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, BookOpen, Loader2, Save } from 'lucide-react';
-import type {
-  CreateTeacherAssignmentRequest,
-  TeacherCourseListResponse,
+import { zodResolver } from '@hookform/resolvers/zod';
+import {
+  createTeacherAssignmentRequestSchema,
+  type TeacherCourseListResponse,
 } from '@repo/contracts';
+import { ArrowLeft, BookOpen, Loader2, Save } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { toast } from 'sonner';
+import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { fetcher, apiPost } from '@/lib/api';
+import { ApiError, apiPost, fetcher } from '@/lib/api';
 
-type AssignmentStatus = 'draft' | 'published';
+type CreateAssignmentFormInput = z.input<
+  typeof createTeacherAssignmentRequestSchema
+>;
+
+type CreateAssignmentFormOutput = z.output<
+  typeof createTeacherAssignmentRequestSchema
+>;
 
 export default function NewTeacherAssignmentPage() {
   const router = useRouter();
 
   const [courses, setCourses] = useState<TeacherCourseListResponse>([]);
   const [isLoadingCourses, setIsLoadingCourses] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const [courseId, setCourseId] = useState('');
-  const [title, setTitle] = useState('');
-  const [instructions, setInstructions] = useState('');
-  const [maxScore, setMaxScore] = useState('100');
-  const [dueAt, setDueAt] = useState('');
-  const [noteToStudents, setNoteToStudents] = useState('');
-  const [status, setStatus] = useState<AssignmentStatus>('draft');
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm<CreateAssignmentFormInput, unknown, CreateAssignmentFormOutput>({
+    resolver: zodResolver(createTeacherAssignmentRequestSchema),
+    defaultValues: {
+      courseId: '',
+      title: '',
+      instructions: undefined,
+      maxScore: 100,
+      startsAt: undefined,
+      dueAt: undefined,
+      endsAt: undefined,
+      noteToStudents: undefined,
+      status: 'draft',
+    },
+  });
 
   useEffect(() => {
     async function loadCourses() {
       setIsLoadingCourses(true);
-      setError(null);
 
       try {
         const data =
@@ -43,67 +62,38 @@ export default function NewTeacherAssignmentPage() {
 
         setCourses(data);
 
-        if (data.length > 0 && data[0]) {
-          setCourseId(data[0].id);
+        if (data[0]) {
+          setValue('courseId', data[0].id, {
+            shouldValidate: true,
+          });
         }
       } catch (error) {
-        setError(
-          error instanceof Error ? error.message : 'Failed to load courses.',
-        );
+        if (error instanceof ApiError) {
+          toast.error(error.message);
+        } else {
+          toast.error('Failed to load courses. Please try again.');
+        }
       } finally {
         setIsLoadingCourses(false);
       }
     }
 
-    loadCourses();
-  }, []);
+    void loadCourses();
+  }, [setValue]);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError(null);
-
-    const parsedMaxScore = Number(maxScore);
-
-    if (!courseId) {
-      setError('Select a course.');
-      return;
-    }
-
-    if (!title.trim()) {
-      setError('Enter an assignment title.');
-      return;
-    }
-
-    if (!Number.isFinite(parsedMaxScore) || parsedMaxScore <= 0) {
-      setError('Maximum score must be greater than zero.');
-      return;
-    }
-
-    setIsSubmitting(true);
-
+  async function onSubmit(data: CreateAssignmentFormOutput) {
     try {
-      const body: CreateTeacherAssignmentRequest = {
-        courseId,
-        title: title.trim(),
-        maxScore: parsedMaxScore,
-        status,
-        ...(instructions.trim() ? { instructions: instructions.trim() } : {}),
-        ...(dueAt ? { dueAt: new Date(dueAt).toISOString() } : {}),
-        ...(noteToStudents.trim()
-          ? { noteToStudents: noteToStudents.trim() }
-          : {}),
-      };
+      await apiPost('/teacher/assignments', data);
 
-      await apiPost('/teacher/assignments', body);
-
+      toast.success('Assignment created successfully.');
       router.push('/teacher/assignments');
       router.refresh();
     } catch (error) {
-      setError(
-        error instanceof Error ? error.message : 'Failed to create assignment.',
-      );
-    } finally {
-      setIsSubmitting(false);
+      if (error instanceof ApiError) {
+        toast.error(error.message);
+      } else {
+        toast.error('Failed to create assignment. Please try again.');
+      }
     }
   }
 
@@ -122,6 +112,7 @@ export default function NewTeacherAssignmentPage() {
           <h1 className="text-3xl font-bold text-gray-900">
             Create Assignment
           </h1>
+
           <p className="mt-1 text-sm text-gray-500">
             Add an assignment to one of your courses.
           </p>
@@ -137,6 +128,7 @@ export default function NewTeacherAssignmentPage() {
 
             <div>
               <CardTitle>Assignment details</CardTitle>
+
               <p className="mt-1 text-sm text-gray-500">
                 Fields marked as required must be completed.
               </p>
@@ -145,23 +137,21 @@ export default function NewTeacherAssignmentPage() {
         </CardHeader>
 
         <CardContent className="p-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {error && (
-              <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                {error}
-              </div>
-            )}
-
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            className="space-y-6"
+            noValidate
+          >
             <div className="grid gap-6 md:grid-cols-2">
               <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="course">Course</Label>
+                <Label htmlFor="courseId">Course</Label>
 
                 <select
-                  id="course"
-                  value={courseId}
-                  onChange={(event) => setCourseId(event.target.value)}
+                  id="courseId"
                   disabled={isLoadingCourses || courses.length === 0}
-                  className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                  aria-invalid={Boolean(errors.courseId)}
+                  className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 disabled:cursor-not-allowed disabled:bg-gray-50"
+                  {...register('courseId')}
                 >
                   {isLoadingCourses && (
                     <option value="">Loading courses...</option>
@@ -177,65 +167,116 @@ export default function NewTeacherAssignmentPage() {
                     </option>
                   ))}
                 </select>
+
+                {errors.courseId?.message && (
+                  <p className="text-sm text-red-600">
+                    {errors.courseId.message}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="title">Title</Label>
+
                 <Input
                   id="title"
-                  value={title}
-                  onChange={(event) => setTitle(event.target.value)}
                   placeholder="Example: Algebra Homework"
                   maxLength={150}
-                  required
+                  aria-invalid={Boolean(errors.title)}
+                  {...register('title')}
                 />
+
+                {errors.title?.message && (
+                  <p className="text-sm text-red-600">{errors.title.message}</p>
+                )}
               </div>
 
               <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="instructions">Instructions</Label>
+
                 <textarea
                   id="instructions"
-                  value={instructions}
-                  onChange={(event) => setInstructions(event.target.value)}
                   placeholder="Explain what students need to complete..."
                   rows={6}
+                  aria-invalid={Boolean(errors.instructions)}
                   className="w-full resize-y rounded-md border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                  {...register('instructions', {
+                    setValueAs: (value: string) => {
+                      const trimmedValue = value.trim();
+                      return trimmedValue || undefined;
+                    },
+                  })}
                 />
+
+                {errors.instructions?.message && (
+                  <p className="text-sm text-red-600">
+                    {errors.instructions.message}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="maxScore">Maximum score</Label>
+
                 <Input
                   id="maxScore"
                   type="number"
                   min="1"
+                  max="1000"
                   step="1"
-                  value={maxScore}
-                  onChange={(event) => setMaxScore(event.target.value)}
-                  required
+                  aria-invalid={Boolean(errors.maxScore)}
+                  {...register('maxScore', {
+                    valueAsNumber: true,
+                  })}
                 />
+
+                {errors.maxScore?.message && (
+                  <p className="text-sm text-red-600">
+                    {errors.maxScore.message}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="dueAt">Due date</Label>
+
                 <Input
                   id="dueAt"
                   type="datetime-local"
-                  value={dueAt}
-                  onChange={(event) => setDueAt(event.target.value)}
+                  aria-invalid={Boolean(errors.dueAt)}
+                  {...register('dueAt', {
+                    setValueAs: (value: string) =>
+                      value ? new Date(value).toISOString() : undefined,
+                  })}
                 />
+
+                {errors.dueAt?.message && (
+                  <p className="text-sm text-red-600">{errors.dueAt.message}</p>
+                )}
               </div>
 
               <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="noteToStudents">Note to students</Label>
+
                 <textarea
                   id="noteToStudents"
-                  value={noteToStudents}
-                  onChange={(event) => setNoteToStudents(event.target.value)}
                   placeholder="Optional note visible to students..."
                   rows={3}
+                  aria-invalid={Boolean(errors.noteToStudents)}
                   className="w-full resize-y rounded-md border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                  {...register('noteToStudents', {
+                    setValueAs: (value: string) => {
+                      const trimmedValue = value.trim();
+                      return trimmedValue || undefined;
+                    },
+                  })}
                 />
+
+                {errors.noteToStudents?.message && (
+                  <p className="text-sm text-red-600">
+                    {errors.noteToStudents.message}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -243,15 +284,19 @@ export default function NewTeacherAssignmentPage() {
 
                 <select
                   id="status"
-                  value={status}
-                  onChange={(event) =>
-                    setStatus(event.target.value as AssignmentStatus)
-                  }
+                  aria-invalid={Boolean(errors.status)}
                   className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                  {...register('status')}
                 >
                   <option value="draft">Draft</option>
                   <option value="published">Published</option>
                 </select>
+
+                {errors.status?.message && (
+                  <p className="text-sm text-red-600">
+                    {errors.status.message}
+                  </p>
+                )}
               </div>
             </div>
 
