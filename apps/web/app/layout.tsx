@@ -11,8 +11,8 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: 'Bootcamp Starter',
-  description: 'Full-stack bootcamp starter',
+  title: 'PathWay',
+  description: 'Internal talent mobility platform',
 };
 
 export default function RootLayout({

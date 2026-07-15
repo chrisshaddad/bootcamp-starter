@@ -18,6 +18,7 @@ export const userResponseSchema = z.object({
   role: userRoleSchema,
   organizationId: z.uuid().nullable(),
   isConfirmed: z.boolean(),
+  isManager: z.boolean(),
   profile: userProfileSchema.nullable().optional(),
 });
 export type UserResponse = z.infer<typeof userResponseSchema>;

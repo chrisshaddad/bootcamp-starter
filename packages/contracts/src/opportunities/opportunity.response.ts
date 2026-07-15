@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { dateSchema } from '../common';
 import { opportunityStatusSchema } from './opportunity-status.schema';
+import { opportunityTypeSchema } from './opportunity-type.schema';
 
 const opportunityDepartmentSchema = z.object({
   id: z.uuid(),
@@ -23,7 +24,7 @@ const opportunitySkillSchema = z.object({
 export const opportunityResponseSchema = z.object({
   id: z.uuid(),
   title: z.string(),
-  type: z.string(),
+  type: opportunityTypeSchema,
   description: z.string().nullable(),
   status: opportunityStatusSchema,
   deadline: dateSchema.nullable(),
