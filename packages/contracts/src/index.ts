@@ -643,3 +643,137 @@ export type PatchExpenseBody = {
   workOrderId?: string | null;
   notes?: string | null;
 };
+
+// ── Invoices ─────────────────────────────────────────────────────────────────
+
+export const invoiceLineItemCategorySchema = z.enum([
+  'rent',
+  'late_fee',
+  'utilities',
+  'damages',
+  'deposit',
+  'other',
+]);
+export type InvoiceLineItemCategory = z.infer<
+  typeof invoiceLineItemCategorySchema
+>;
+
+/** Always derived via computeInvoiceSummary — never stored/accepted as input. */
+export const invoiceStatusSchema = z.enum([
+  'open',
+  'partially_paid',
+  'paid',
+  'overdue',
+]);
+export type InvoiceStatus = z.infer<typeof invoiceStatusSchema>;
+
+export type InvoiceLineItemResponse = {
+  id: string;
+  invoiceId: string;
+  category: InvoiceLineItemCategory;
+  description?: string | null;
+  amount: string; // Decimal(12,2) serialized as string
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type InvoiceResponse = {
+  id: string;
+  orgId: string;
+  /** Denormalized from Lease.buildingId at creation time. */
+  buildingId: string;
+  leaseId: string;
+  dueDate: string;
+  notes?: string | null;
+  lineItems: InvoiceLineItemResponse[];
+  /** Computed via computeInvoiceSummary from lineItems + payments; never stored. */
+  totalAmount: string;
+  paidAmount: string;
+  status: InvoiceStatus;
+  /** Joined server-side for list-table display; not a stored column. */
+  renterName: string;
+  /** Joined server-side for list-table display; not a stored column. */
+  apartmentUnitNumber: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type InvoiceLineItemInput = {
+  category: InvoiceLineItemCategory;
+  description?: string;
+  amount: number;
+};
+
+/**
+ * At least one line item is required. buildingId is derived server-side from
+ * the lease, never accepted as input.
+ */
+export type CreateInvoiceBody = {
+  leaseId: string;
+  dueDate: string;
+  notes?: string;
+  lineItems: InvoiceLineItemInput[];
+};
+
+/**
+ * When lineItems is provided, the full desired set is replaced wholesale
+ * (delete-then-recreate) — not diffed individually. Omit it to patch
+ * dueDate/notes only.
+ */
+export type PatchInvoiceBody = {
+  dueDate?: string;
+  notes?: string | null;
+  lineItems?: InvoiceLineItemInput[];
+};
+
+// ── Invoice Payments ─────────────────────────────────────────────────────────
+
+/**
+ * Named InvoicePayment (not Payment) — Payment already means the platform's
+ * own Stripe subscription billing, an unrelated concern.
+ */
+export const invoicePaymentMethodSchema = z.enum([
+  'cash',
+  'check',
+  'bank_transfer',
+  'card',
+  'other',
+]);
+export type InvoicePaymentMethod = z.infer<typeof invoicePaymentMethodSchema>;
+
+export type InvoicePaymentResponse = {
+  id: string;
+  orgId: string;
+  invoiceId: string;
+  amount: string; // Decimal(12,2) serialized as string
+  method: InvoicePaymentMethod;
+  paidAt: string;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateInvoicePaymentBody = {
+  invoiceId: string;
+  amount: number;
+  method: InvoicePaymentMethod;
+  paidAt: string;
+  notes?: string;
+};
+
+/** Recomputed via computeInvoiceSummary — returned so the UI can reflect the new state without a separate refetch. */
+export type InvoiceSummarySnapshot = {
+  totalAmount: string;
+  paidAmount: string;
+  status: InvoiceStatus;
+};
+
+export type CreateInvoicePaymentResult = {
+  payment: InvoicePaymentResponse;
+  invoice: InvoiceSummarySnapshot;
+};
+
+export type DeleteInvoicePaymentResult = {
+  id: string;
+  invoice: InvoiceSummarySnapshot;
+};

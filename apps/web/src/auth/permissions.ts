@@ -19,6 +19,10 @@
  *   "expenses"    → /dashboard/expenses (not building-scoped at the area
  *                   level either — a supervisor's building-scoping for
  *                   Expense is enforced server-side, not via this matrix)
+ *   "invoices"    → /dashboard/invoices (covers both Invoices and Invoice
+ *                   Payments together, same as "tasks" covering Maintenance
+ *                   Requests + Work Orders; distinct from "payments"/"billing",
+ *                   which are the platform's own Stripe subscription billing)
  */
 
 import type { Role } from '@/auth/roles';
@@ -33,7 +37,8 @@ export type DashboardArea =
   | 'timeline'
   | 'tasks'
   | 'vendors'
-  | 'expenses';
+  | 'expenses'
+  | 'invoices';
 
 /**
  * Per-role access level for an area.
@@ -57,6 +62,7 @@ export const PERMISSION_MATRIX: PermissionMatrix = {
     tasks: 'full',
     vendors: 'full',
     expenses: 'full',
+    invoices: 'full',
   },
   supervisor: {
     dashboard: 'readonly',
@@ -69,6 +75,7 @@ export const PERMISSION_MATRIX: PermissionMatrix = {
     tasks: 'readonly',
     vendors: 'readonly',
     expenses: 'readonly',
+    invoices: 'readonly',
   },
   finance: {
     dashboard: 'readonly',
@@ -81,6 +88,7 @@ export const PERMISSION_MATRIX: PermissionMatrix = {
     tasks: 'none',
     vendors: 'readonly',
     expenses: 'full',
+    invoices: 'full',
   },
   maintenance: {
     dashboard: 'readonly',
@@ -93,6 +101,7 @@ export const PERMISSION_MATRIX: PermissionMatrix = {
     tasks: 'full',
     vendors: 'readonly',
     expenses: 'none',
+    invoices: 'none',
   },
   tenant: {
     dashboard: 'readonly',
@@ -105,6 +114,7 @@ export const PERMISSION_MATRIX: PermissionMatrix = {
     tasks: 'none',
     vendors: 'none',
     expenses: 'none',
+    invoices: 'none',
   },
 };
 

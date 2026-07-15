@@ -24,6 +24,7 @@ describe('LeasesService', () => {
       lease?: Partial<Record<string, jest.Mock>>;
       apartment?: Partial<Record<string, jest.Mock>>;
       renter?: Partial<Record<string, jest.Mock>>;
+      invoice?: Partial<Record<string, jest.Mock>>;
       buildingAccess?: Partial<Record<string, jest.Mock>>;
     } = {},
   ) {
@@ -50,6 +51,10 @@ describe('LeasesService', () => {
       renter: {
         findFirst: jest.fn().mockResolvedValue({ id: renterId, orgId }),
         ...overrides.renter,
+      },
+      invoice: {
+        count: jest.fn().mockResolvedValue(0),
+        ...overrides.invoice,
       },
     };
     prisma.$transaction = jest.fn(async (cb: (tx: unknown) => unknown) =>
@@ -319,6 +324,25 @@ describe('LeasesService', () => {
       expect(timeline.emit).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'lease.deleted' }),
       );
+    });
+
+    it('rejects deletion when an Invoice references the lease', async () => {
+      const { service, prisma } = makeService({
+        lease: { findFirst: jest.fn().mockResolvedValue(leaseRow()) },
+        invoice: { count: jest.fn().mockResolvedValue(1) },
+      });
+
+      await expect(
+        service.remove(
+          orgId,
+          actorId,
+          buildingId,
+          floorId,
+          apartmentId,
+          'lease-1',
+        ),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(prisma.lease.delete).not.toHaveBeenCalled();
     });
   });
 
