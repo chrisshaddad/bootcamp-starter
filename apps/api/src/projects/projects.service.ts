@@ -514,6 +514,7 @@ export class ProjectsService {
         data: {
           title: data.title,
           slug: data.slug,
+          logoUrl: data.logoUrl,
           shortDescription: data.shortDescription,
           fullDescription: data.fullDescription,
           deploymentUrl: data.deploymentUrl,
