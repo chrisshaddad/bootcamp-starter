@@ -14,6 +14,7 @@ import {
 import { Roles } from '../auth/decorators';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { TeachersService } from './teachers.service';
+
 @Controller('teachers')
 export class TeachersController {
   constructor(private readonly teachersService: TeachersService) {}
@@ -49,7 +50,7 @@ export class TeachersController {
   @Roles('SUPER_ADMIN')
   async deleteTeacher(
     @Param('teacherId') teacherId: string,
-  ): Promise<UpdateTeacherResponse> {
+  ): Promise<TeacherActionResponse> {
     return this.teachersService.deleteTeacher(teacherId);
   }
 }

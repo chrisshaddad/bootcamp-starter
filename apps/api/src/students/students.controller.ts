@@ -19,6 +19,7 @@ import { UpdateStudentRequestSchema } from '@repo/contracts';
 import { Roles } from '../auth/decorators';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { StudentsService } from './students.service';
+
 @Controller('students')
 export class StudentsController {
   constructor(private readonly studentsService: StudentsService) {}
@@ -68,7 +69,7 @@ export class StudentsController {
   async deleteStudent(
     @Param('studentProfileId', new ParseUUIDPipe({ version: '4' }))
     studentProfileId: string,
-  ): Promise<UpdateStudentResponse> {
+  ): Promise<StudentActionResponse> {
     return this.studentsService.deleteStudent(studentProfileId);
   }
 }

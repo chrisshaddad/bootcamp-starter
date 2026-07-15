@@ -321,9 +321,7 @@ export class StudentsService {
     return {
       id: updatedStudentProfile.id,
       studentCode: updatedStudentProfile.studentCode,
-      name:
-        updatedStudentProfile.user.name ||
-        updatedStudentProfile.user.email.split('@')[0],
+      name: updatedStudentProfile.user.name ?? updatedStudentProfile.user.email,
       email: updatedStudentProfile.user.email,
       sectionName: updatedStudentProfile.section?.name ?? null,
       dateOfBirth: updatedStudentProfile.dateOfBirth
