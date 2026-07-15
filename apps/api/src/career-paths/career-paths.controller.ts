@@ -24,9 +24,7 @@ export class CareerPathsController {
   constructor(private readonly careerPathsService: CareerPathsService) {}
 
   @Get()
-  async findAll(
-    @CurrentUser() user: User,
-  ): Promise<CareerPathListResponse> {
+  async findAll(@CurrentUser() user: User): Promise<CareerPathListResponse> {
     return this.careerPathsService.findAll(user);
   }
 
