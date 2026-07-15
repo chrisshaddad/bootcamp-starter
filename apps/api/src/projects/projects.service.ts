@@ -18,16 +18,16 @@ import {
   type ProjectsExploreQuery,
 } from '@repo/contracts';
 import {
-  AccountType,
-  MediaType,
-  Prisma,
   ProjectStatus,
   ProjectRoleKey,
+  VerificationStatus,
+  AccountType,
+  User,
+  Prisma,
+  MediaType,
   ProjectTechnologySource,
   RepositoryVisibility,
   TechnologyCategory,
-  VerificationStatus,
-  type User,
 } from '@repo/db';
 import { GithubRepositorySnapshotService } from '../repository-scanner/github-repository-snapshot.service';
 
@@ -47,12 +47,13 @@ export class ProjectsService {
     private readonly githubRepositorySnapshotService: GithubRepositorySnapshotService,
   ) {}
 
-  /**
-   * Imports a readable public repository as an unverified draft project.
-   *
-   * A successful scan confirms repository accessibility, not ownership or
-   * contribution. Verification remains pending for a separate review flow.
-   */
+  private mapStatus(
+    status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED',
+  ): ProjectStatus | undefined {
+    if (!status) return undefined;
+    return status as ProjectStatus;
+  }
+
   async importGithubProject(
     userId: string,
     data: ImportGithubProjectRequest,
@@ -70,6 +71,7 @@ export class ProjectsService {
       await this.githubRepositorySnapshotService.previewRepositoryAnalysis(
         data.repositoryUrl,
       );
+
     const githubRepoId = parseGithubRepositoryId(
       analysis.repository.githubRepoId,
     );
@@ -80,7 +82,10 @@ export class ProjectsService {
     const title = data.title ?? analysis.repository.repoName;
 
     this.logger.log(
-      `Importing GitHub repository ${analysis.repository.fullName} for user ${userId}`,
+      'Importing GitHub repository ' +
+        analysis.repository.fullName +
+        ' for user ' +
+        userId,
     );
 
     try {
@@ -120,6 +125,7 @@ export class ProjectsService {
         }
 
         const slug = await this.generateUniqueProjectSlug(tx, title);
+
         const project = await tx.project.create({
           data: {
             repositoryId: repository.id,
@@ -165,6 +171,7 @@ export class ProjectsService {
                   category: TechnologyCategory[detectedTechnology.category],
                 },
               });
+
               const evidence = joinEvidence(detectedTechnology.evidence);
 
               await tx.projectTechnology.upsert({
@@ -235,14 +242,17 @@ export class ProjectsService {
       });
 
       this.logger.log(
-        `Imported GitHub repository ${analysis.repository.fullName} as project ${response.project.id}`,
+        'Imported GitHub repository ' +
+          analysis.repository.fullName +
+          ' as project ' +
+          response.project.id,
       );
+
       return response;
     } catch (error) {
       if (error instanceof ConflictException) {
         throw error;
       }
-
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2002'
@@ -257,10 +267,8 @@ export class ProjectsService {
         if (targetFields.some((field) => field.includes('slug'))) {
           throw new ConflictException(PROJECT_SLUG_CONFLICT_MESSAGE);
         }
-
         throw new ConflictException(REPOSITORY_PROJECT_CONFLICT_MESSAGE);
       }
-
       throw error;
     }
   }
@@ -276,6 +284,7 @@ export class ProjectsService {
       },
       select: { slug: true },
     });
+
     const existingSlugs = new Set(
       existingProjects.map((project) => project.slug),
     );
@@ -288,15 +297,7 @@ export class ProjectsService {
     while (existingSlugs.has(`${baseSlug}-${suffix}`)) {
       suffix += 1;
     }
-
     return `${baseSlug}-${suffix}`;
-  }
-
-  private mapStatus(
-    status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED',
-  ): ProjectStatus | undefined {
-    if (!status) return undefined;
-    return status as ProjectStatus;
   }
 
   async getMyProjects(user: User) {
@@ -401,7 +402,6 @@ export class ProjectsService {
           data: {
             title: data.title,
             slug: data.slug,
-            logoUrl: data.logoUrl,
             shortDescription: data.shortDescription,
             fullDescription: data.fullDescription,
             deploymentUrl: data.deploymentUrl,
@@ -552,13 +552,22 @@ export class ProjectsService {
     }
 
     const previousLogoUrl = project.logoUrl;
+    let previousLogoKey: string | null = null;
+
+    if (previousLogoUrl) {
+      const parts = previousLogoUrl.split('/');
+      const oldFilename = parts[parts.length - 1];
+      if (oldFilename) {
+        previousLogoKey = oldFilename;
+      }
+    }
 
     const updatedProject = await this.prisma.project.update({
       where: { id: projectId },
       data: { logoUrl },
     });
 
-    return { ...updatedProject, previousLogoUrl };
+    return { ...updatedProject, previousLogoKey };
   }
 
   async getProjectBySlug(slug: string) {
@@ -600,8 +609,18 @@ export class ProjectsService {
         ? {
             OR: [
               { title: { contains: query.search, mode: 'insensitive' } },
-              { shortDescription: { contains: query.search, mode: 'insensitive' } },
-              { fullDescription: { contains: query.search, mode: 'insensitive' } },
+              {
+                shortDescription: {
+                  contains: query.search,
+                  mode: 'insensitive',
+                },
+              },
+              {
+                fullDescription: {
+                  contains: query.search,
+                  mode: 'insensitive',
+                },
+              },
               {
                 technologies: {
                   some: {
@@ -616,7 +635,9 @@ export class ProjectsService {
         : {}),
     };
 
-    let orderBy: Prisma.ProjectOrderByWithRelationInput = { publishedAt: 'desc' };
+    let orderBy: Prisma.ProjectOrderByWithRelationInput = {
+      publishedAt: 'desc',
+    };
     if (query.sort === 'oldest') {
       orderBy = { publishedAt: 'asc' };
     } else if (query.sort === 'alphabetical') {
@@ -630,6 +651,19 @@ export class ProjectsService {
         orderBy,
         skip,
         take,
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          logoUrl: true,
+          shortDescription: true,
+          fullDescription: true,
+          deploymentUrl: true,
+          status: true,
+          publishedAt: true,
+          createdAt: true,
+          updatedAt: true,
+        },
       }),
     ]);
 
@@ -788,7 +822,6 @@ function slugifyProjectTitle(title: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
-
   return slug || 'project';
 }
 
@@ -812,11 +845,9 @@ function parseNullableGithubDate(value: string | Date | null): Date | null {
   if (value === null) {
     return null;
   }
-
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) {
     throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
   }
-
   return date;
 }

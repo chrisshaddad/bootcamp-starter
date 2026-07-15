@@ -94,6 +94,17 @@ export const profilePictureUploadSchema: ApiBodySchema = {
   },
 };
 
+export const projectLogoUploadSchema: ApiBodySchema = {
+  type: 'object',
+  required: ['file'],
+  properties: {
+    file: {
+      type: 'string',
+      format: 'binary',
+    },
+  },
+};
+
 export const githubRepositoryPreviewRequestSchema: ApiBodySchema = withExample(
   toOpenApiSchema(githubRepositoryPreviewRequestContractSchema),
   {

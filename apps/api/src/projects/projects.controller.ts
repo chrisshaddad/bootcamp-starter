@@ -113,7 +113,9 @@ export class ProjectsController {
     status: 200,
     description: 'List of projects successfully retrieved.',
   })
-  async getMyProjects(@CurrentUser() user: User): Promise<ProjectByIdResponse[]> {
+  async getMyProjects(
+    @CurrentUser() user: User,
+  ): Promise<ProjectByIdResponse[]> {
     const projects = await this.projectsService.getMyProjects(user);
 
     return projects.map((project) => ({
@@ -138,7 +140,9 @@ export class ProjectsController {
 
   @Get('explore')
   @Public()
-  @ApiOperation({ summary: 'Explore public published projects with search and pagination' })
+  @ApiOperation({
+    summary: 'Explore public published projects with search and pagination',
+  })
   @ApiResponse({
     status: 200,
     description: 'Paginated public projects list successfully retrieved.',
@@ -257,12 +261,24 @@ export class ProjectsController {
   @Roles(AccountType.DEVELOPER, AccountType.SUPER_ADMIN)
   @ApiOperation({ summary: 'Upload a logo/profile picture for a project' })
   @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
   @ApiResponse({ status: 200, description: 'Logo successfully uploaded.' })
   @UseInterceptors(
     FileInterceptor('file', {
       storage: diskStorage({
         destination: PROJECT_MEDIA_DIR,
-        filename: (_req, _file, callback) => callback(null, `logo-${randomUUID()}`),
+        filename: (_req, _file, callback) =>
+          callback(null, `logo-${randomUUID()}`),
       }),
       limits: { fileSize: PROJECT_MEDIA_MAX_SIZE_BYTES },
       fileFilter: (_req, file, callback) => {
@@ -294,7 +310,9 @@ export class ProjectsController {
     } catch (_readError) {
       try {
         await unlink(file.path);
-      } catch (_unlinkError) {}
+      } catch (_unlinkError) {
+        // Ignored
+      }
       throw new BadRequestException('Could not read the uploaded file');
     }
 
@@ -302,7 +320,9 @@ export class ProjectsController {
     if (!extension) {
       try {
         await unlink(file.path);
-      } catch (_unlinkError) {}
+      } catch (_unlinkError) {
+        // Ignored
+      }
       throw new BadRequestException('The uploaded file is not a valid image');
     }
 
@@ -312,7 +332,9 @@ export class ProjectsController {
     } catch (_renameError) {
       try {
         await unlink(file.path);
-      } catch (_unlinkError) {}
+      } catch (_unlinkError) {
+        // Ignored
+      }
       throw new BadRequestException('Failed to process the uploaded file');
     }
 
@@ -320,16 +342,19 @@ export class ProjectsController {
     const publicUrl = `${apiUrl}/uploads/project-media/${finalFilename}`;
 
     try {
-      const result = await this.projectsService.uploadLogo(user, projectId, publicUrl);
-      const { previousLogoUrl, ...project } = result;
+      const result = await this.projectsService.uploadLogo(
+        user,
+        projectId,
+        publicUrl,
+      );
+      const { previousLogoKey, ...project } = result;
 
-      if (previousLogoUrl) {
-        const parts = previousLogoUrl.split('/');
-        const oldFilename = parts[parts.length - 1];
-        if (oldFilename) {
-          try {
-            await unlink(join(PROJECT_MEDIA_DIR, oldFilename));
-          } catch (_unlinkError) {}
+      // Unlink safely using the server-extracted storage key
+      if (previousLogoKey) {
+        try {
+          await unlink(join(PROJECT_MEDIA_DIR, previousLogoKey));
+        } catch (_unlinkError) {
+          // Ignored
         }
       }
 
@@ -342,7 +367,9 @@ export class ProjectsController {
     } catch (error) {
       try {
         await unlink(join(PROJECT_MEDIA_DIR, finalFilename));
-      } catch (_unlinkError) {}
+      } catch (_unlinkError) {
+        // Ignored
+      }
       throw error;
     }
   }

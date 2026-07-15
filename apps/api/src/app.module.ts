@@ -9,7 +9,8 @@ import { OrganizationsModule } from './organizations/organizations.module';
 import { DatabaseModule } from './database/database.module';
 import { GithubModule } from './github/github.module';
 import { ProjectsModule } from './projects/projects.module';
-
+import { UsersModule } from './users/users.module';
+import { TechnologiesModule } from './technologies/technologies.module';
 @Module({
   imports: [
     ConfigModule.forRoot(),
@@ -24,6 +25,8 @@ import { ProjectsModule } from './projects/projects.module';
     OrganizationsModule,
     GithubModule,
     ProjectsModule,
+    UsersModule,
+    TechnologiesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

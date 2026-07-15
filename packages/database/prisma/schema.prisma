@@ -201,7 +201,6 @@ model Project {
 
   title String
   slug  String @unique
-
   logoUrl          String?
   shortDescription String? @db.Text
   fullDescription  String? @db.Text
