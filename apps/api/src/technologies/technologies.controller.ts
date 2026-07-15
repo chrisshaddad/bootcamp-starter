@@ -26,6 +26,14 @@ export class TechnologiesController {
     @Query(new ZodValidationPipe(technologyExploreQuerySchema))
     query: TechnologyExploreQuery,
   ) {
-    return this.techService.explore(query);
+    const results = await this.techService.explore(query);
+
+    // Select strictly necessary public properties avoiding raw DB fields like createdAt/updatedAt
+    return results.map((tech) => ({
+      id: tech.id,
+      name: tech.name,
+      slug: tech.slug,
+      category: tech.category,
+    }));
   }
 }

@@ -13,14 +13,19 @@ import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import {
   usersExploreQuerySchema,
   updateProfileRequestSchema,
+  publicUserResponseSchema,
+  exploreUsersResponseSchema,
   type UsersExploreQuery,
   type UpdateProfileRequest,
   type ExploreUsersResponse,
 } from '@repo/contracts';
+import { updateProfileRequestSchema as updateProfileOpenApiSchema } from '../common/swagger/schemas';
+
 @ApiTags('users')
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
+
   @Get('explore')
   @Public()
   @ApiOperation({ summary: 'Explore public users with search and pagination' })
@@ -34,7 +39,7 @@ export class UsersController {
   ): Promise<ExploreUsersResponse> {
     const result = await this.usersService.exploreUsers(query);
 
-    return {
+    return exploreUsersResponseSchema.parse({
       data: result.data.map((user) => ({
         id: user.id,
         accountType: user.accountType as 'DEVELOPER' | 'HIRING' | 'SUPER_ADMIN',
@@ -52,43 +57,29 @@ export class UsersController {
           : null,
       })),
       meta: result.meta,
-    };
+    });
   }
+
   @Get('id/:id')
   @Public()
   @ApiOperation({ summary: 'Get a user by their unique ID' })
   async getUserById(@Param('id') id: string) {
-    return this.usersService.getUserById(id);
+    const user = await this.usersService.getUserById(id);
+    return publicUserResponseSchema.parse(user);
   }
+
   @Get('slug/:slug')
   @Public()
   @ApiOperation({ summary: 'Get a developer by their public slug' })
   async getUserBySlug(@Param('slug') slug: string) {
-    return this.usersService.getUserBySlug(slug);
+    const user = await this.usersService.getUserBySlug(slug);
+    return publicUserResponseSchema.parse(user);
   }
+
   @Patch('profile')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update the logged-in user profile' })
-  @ApiBody({
-    description: 'Update user profile data',
-    schema: {
-      type: 'object',
-      properties: {
-        displayName: { type: 'string' },
-        publicSlug: { type: 'string' },
-        headline: { type: 'string' },
-        bio: { type: 'string' },
-        location: { type: 'string' },
-        linkedinUrl: { type: 'string' },
-        personalWebsiteUrl: { type: 'string' },
-        profilePictureUrl: { type: 'string' },
-        organizationName: { type: 'string' },
-        organizationType: { type: 'string' },
-        jobTitle: { type: 'string' },
-        organizationWebsiteUrl: { type: 'string' },
-      },
-    },
-  })
+  @ApiBody({ schema: updateProfileOpenApiSchema })
   @ApiResponse({ status: 200, description: 'Profile successfully updated.' })
   @ApiResponse({
     status: 409,
@@ -99,6 +90,7 @@ export class UsersController {
     @Body(new ZodValidationPipe(updateProfileRequestSchema))
     body: UpdateProfileRequest,
   ) {
-    return this.usersService.updateProfile(userId, body);
+    const user = await this.usersService.updateProfile(userId, body);
+    return publicUserResponseSchema.parse(user);
   }
 }
