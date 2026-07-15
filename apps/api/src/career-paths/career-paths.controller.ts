@@ -7,6 +7,7 @@ import {
   Body,
   HttpCode,
   HttpStatus,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { CurrentUser } from '../auth/decorators';
 import { ZodValidationPipe } from '../common/pipes';
@@ -30,7 +31,7 @@ export class CareerPathsController {
 
   @Get(':id')
   async findOne(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: User,
   ): Promise<CareerPathResponse> {
     return this.careerPathsService.findOne(id, user);
@@ -48,7 +49,7 @@ export class CareerPathsController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async delete(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: User,
   ): Promise<void> {
     return this.careerPathsService.delete(id, user);

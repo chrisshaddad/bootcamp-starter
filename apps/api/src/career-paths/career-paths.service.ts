@@ -59,15 +59,13 @@ export class CareerPathsService {
   }
 
   async delete(id: string, currentUser: User): Promise<void> {
-    const careerPath = await this.prisma.careerPath.findFirst({
+    const { count } = await this.prisma.careerPath.deleteMany({
       where: { id, userId: currentUser.id },
     });
 
-    if (!careerPath) {
+    if (count === 0) {
       throw new NotFoundException(`Career path with ID ${id} not found`);
     }
-
-    await this.prisma.careerPath.delete({ where: { id } });
   }
 
   private toResponse(careerPath: {

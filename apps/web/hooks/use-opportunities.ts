@@ -95,7 +95,7 @@ export function useOpportunity(
     error,
     isLoading,
     mutate: swrMutate,
-  } = useSWR<OpportunityResponse>(enabled ? `/opportunities/${id}` : null);
+  } = useSWR<OpportunityResponse>(enabled && id ? `/opportunities/${id}` : null);
 
   return {
     opportunity: data,

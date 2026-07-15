@@ -12,6 +12,8 @@ import {
   Info,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useUser } from '@/hooks/use-auth';
 import { useOpportunity } from '@/hooks/use-opportunities';
 import { useApplicationMutations } from '@/hooks/use-applications';
@@ -28,7 +30,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
-import type { OpportunityStatus } from '@repo/contracts';
+import {
+  applicationCreateRequestSchema,
+  type ApplicationCreateRequest,
+  type OpportunityStatus,
+} from '@repo/contracts';
 
 const STATUS_BADGE_COLORS: Record<OpportunityStatus, string> = {
   OPEN: 'bg-green-100 text-green-700',
@@ -84,29 +90,32 @@ export default function OpportunityDetailPage() {
   });
 
   const [applyDialogOpen, setApplyDialogOpen] = useState(false);
-  const [coverNote, setCoverNote] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleApply = async () => {
-    setIsSubmitting(true);
+  const form = useForm<ApplicationCreateRequest>({
+    resolver: zodResolver(applicationCreateRequestSchema),
+    defaultValues: {
+      opportunityId: id,
+      coverNote: '',
+    },
+  });
+
+  const handleApply = form.handleSubmit(async (data) => {
     try {
       await createApplication({
-        opportunityId: id,
-        coverNote: coverNote.trim() || undefined,
+        opportunityId: data.opportunityId,
+        coverNote: data.coverNote?.trim() || undefined,
       });
       toast.success('Application submitted successfully!');
       setApplyDialogOpen(false);
-      setCoverNote('');
+      form.reset();
     } catch (err) {
       if (err instanceof ApiError) {
         toast.error(err.message);
       } else {
         toast.error('Failed to submit application. Please try again.');
       }
-    } finally {
-      setIsSubmitting(false);
     }
-  };
+  });
 
   if (isLoading) {
     return <LoadingSkeleton />;
@@ -361,46 +370,47 @@ export default function OpportunityDetailPage() {
             <DialogTitle>Apply to {opportunity.title}</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-2">
-            <label
-              htmlFor="coverNote"
-              className="text-sm font-medium text-gray-700"
-            >
-              Cover note (optional)
-            </label>
-            <textarea
-              id="coverNote"
-              placeholder="Tell the team why you're a great fit..."
-              rows={5}
-              value={coverNote}
-              onChange={(e) => setCoverNote(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm shadow-xs outline-none placeholder:text-gray-500 focus-visible:border-primary-base focus-visible:ring-[3px] focus-visible:ring-primary-base/20"
-            />
-          </div>
+          <form onSubmit={handleApply}>
+            <div className="space-y-2">
+              <label
+                htmlFor="coverNote"
+                className="text-sm font-medium text-gray-700"
+              >
+                Cover note (optional)
+              </label>
+              <textarea
+                id="coverNote"
+                placeholder="Tell the team why you're a great fit..."
+                rows={5}
+                {...form.register('coverNote')}
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm shadow-xs outline-none placeholder:text-gray-500 focus-visible:border-primary-base focus-visible:ring-[3px] focus-visible:ring-primary-base/20"
+              />
+            </div>
 
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setApplyDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleApply}
-              disabled={isSubmitting}
-              className="bg-primary-base hover:bg-primary-base/90"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Submitting...
-                </>
-              ) : (
-                'Submit Application'
-              )}
-            </Button>
-          </DialogFooter>
+            <DialogFooter className="mt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setApplyDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={form.formState.isSubmitting}
+                className="bg-primary-base hover:bg-primary-base/90"
+              >
+                {form.formState.isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Submitting...
+                  </>
+                ) : (
+                  'Submit Application'
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>
