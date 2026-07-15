@@ -1,15 +1,86 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { GraduationCap, UserRoundCheck } from 'lucide-react';
+import {
+  ArrowRight,
+  Building2,
+  GraduationCap,
+  UsersRound,
+  UserRoundCheck,
+} from 'lucide-react';
+import type {
+  StudentOrganizationsResponse,
+  TeacherOrganizationsResponse,
+} from '@repo/contracts';
 import { useUser } from '@/hooks/use-auth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { fetcher } from '@/lib/api';
 
 export default function DashboardPage() {
   const { user, isLoading } = useUser();
 
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+
+  const [studentStats, setStudentStats] = useState({
+    totalStudents: 0,
+    organizationCount: 0,
+  });
+
+  const [teacherStats, setTeacherStats] = useState({
+    totalTeachers: 0,
+    organizationCount: 0,
+  });
+
+  const [isDashboardStatsLoading, setIsDashboardStatsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isSuperAdmin) {
+      return;
+    }
+
+    async function loadDashboardStats() {
+      setIsDashboardStatsLoading(true);
+
+      try {
+        const [studentData, teacherData] = await Promise.all([
+          fetcher<StudentOrganizationsResponse>('/students/organizations'),
+          fetcher<TeacherOrganizationsResponse>('/teachers/organizations'),
+        ]);
+
+        const totalStudents = studentData.organizations.reduce(
+          (total, organization) => total + organization.studentCount,
+          0,
+        );
+
+        const totalTeachers = teacherData.organizations.reduce(
+          (total, organization) => total + organization.teacherCount,
+          0,
+        );
+
+        setStudentStats({
+          totalStudents,
+          organizationCount: studentData.organizations.length,
+        });
+
+        setTeacherStats({
+          totalTeachers,
+          organizationCount: teacherData.organizations.length,
+        });
+      } catch (error) {
+        console.error('Failed to load dashboard stats:', error);
+      } finally {
+        setIsDashboardStatsLoading(false);
+      }
+    }
+
+    loadDashboardStats();
+  }, [isSuperAdmin]);
+
+  const formatNumber = (value: number) => {
+    return new Intl.NumberFormat('en-US').format(value);
+  };
 
   if (isLoading) {
     return (
@@ -40,32 +111,62 @@ export default function DashboardPage() {
         <div className="grid gap-5 md:grid-cols-2">
           <Link
             href="/students"
-            className="block rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2"
+            className="group block rounded-3xl focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2"
           >
-            <Card className="h-full cursor-pointer border-gray-200 bg-white shadow-sm transition hover:border-gray-300 hover:shadow-md">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-100">
-                    <GraduationCap className="h-6 w-6 text-gray-700" />
+            <Card className="h-full rounded-3xl border-gray-200 bg-white p-6 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
+              <CardHeader className="p-0">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-100">
+                    <GraduationCap className="h-7 w-7 text-emerald-700" />
                   </div>
 
                   <div>
-                    <CardTitle className="text-lg font-semibold text-gray-900">
+                    <CardTitle className="text-xl font-bold text-gray-900">
                       Students
                     </CardTitle>
-                    <p className="mt-1 text-sm text-gray-500">
+                    <p className="mt-1 max-w-xs text-sm font-medium leading-6 text-gray-600">
                       View students by organization, grade, and section.
                     </p>
                   </div>
                 </div>
               </CardHeader>
 
-              <CardContent>
-                <div className="rounded-lg bg-gray-50 p-4">
-                  <p className="text-sm font-medium text-gray-500">
-                    Student Management
-                  </p>
-                  <p className="mt-1 text-2xl font-bold text-gray-900">Open</p>
+              <CardContent className="mt-7 space-y-3 p-0">
+                <div className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3">
+                  <div className="flex items-center gap-3 text-gray-600">
+                    <UsersRound className="h-4 w-4 text-emerald-700" />
+                    <span className="text-sm font-medium">Total students</span>
+                  </div>
+
+                  <span className="text-base font-semibold text-gray-900">
+                    {isDashboardStatsLoading
+                      ? '...'
+                      : formatNumber(studentStats.totalStudents)}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3">
+                  <div className="flex items-center gap-3 text-gray-600">
+                    <Building2 className="h-4 w-4 text-emerald-700" />
+                    <span className="text-sm font-medium">Organizations</span>
+                  </div>
+
+                  <span className="text-base font-semibold text-gray-900">
+                    {isDashboardStatsLoading
+                      ? '...'
+                      : formatNumber(studentStats.organizationCount)}
+                  </span>
+                </div>
+
+                <div className="mt-5 flex items-center justify-between rounded-xl border border-gray-200 px-4 py-4 transition group-hover:border-emerald-200 group-hover:bg-emerald-50/50">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">
+                      Student management
+                    </p>
+                    <p className="text-lg font-semibold text-gray-900">Open</p>
+                  </div>
+
+                  <ArrowRight className="h-5 w-5 text-emerald-700 transition group-hover:translate-x-1" />
                 </div>
               </CardContent>
             </Card>
@@ -73,32 +174,62 @@ export default function DashboardPage() {
 
           <Link
             href="/teachers"
-            className="block rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2"
+            className="group block rounded-3xl focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-700 focus-visible:ring-offset-2"
           >
-            <Card className="h-full cursor-pointer border-gray-200 bg-white shadow-sm transition hover:border-gray-300 hover:shadow-md">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-100">
-                    <UserRoundCheck className="h-6 w-6 text-gray-700" />
+            <Card className="h-full rounded-3xl border-gray-200 bg-white p-6 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
+              <CardHeader className="p-0">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-sky-100">
+                    <UserRoundCheck className="h-7 w-7 text-sky-700" />
                   </div>
 
                   <div>
-                    <CardTitle className="text-lg font-semibold text-gray-900">
+                    <CardTitle className="text-xl font-bold text-gray-900">
                       Teachers
                     </CardTitle>
-                    <p className="mt-1 text-sm text-gray-500">
-                      View teachers by organization.
+                    <p className="mt-1 max-w-xs text-sm font-medium leading-6 text-gray-600">
+                      View teachers by organization and manage teacher accounts.
                     </p>
                   </div>
                 </div>
               </CardHeader>
 
-              <CardContent>
-                <div className="rounded-lg bg-gray-50 p-4">
-                  <p className="text-sm font-medium text-gray-500">
-                    Teacher Management
-                  </p>
-                  <p className="mt-1 text-2xl font-bold text-gray-900">Open</p>
+              <CardContent className="mt-7 space-y-3 p-0">
+                <div className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3">
+                  <div className="flex items-center gap-3 text-gray-600">
+                    <UserRoundCheck className="h-4 w-4 text-sky-700" />
+                    <span className="text-sm font-medium">Total teachers</span>
+                  </div>
+
+                  <span className="text-base font-semibold text-gray-900">
+                    {isDashboardStatsLoading
+                      ? '...'
+                      : formatNumber(teacherStats.totalTeachers)}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3">
+                  <div className="flex items-center gap-3 text-gray-600">
+                    <Building2 className="h-4 w-4 text-sky-700" />
+                    <span className="text-sm font-medium">Organizations</span>
+                  </div>
+
+                  <span className="text-base font-semibold text-gray-900">
+                    {isDashboardStatsLoading
+                      ? '...'
+                      : formatNumber(teacherStats.organizationCount)}
+                  </span>
+                </div>
+
+                <div className="mt-5 flex items-center justify-between rounded-xl border border-gray-200 px-4 py-4 transition group-hover:border-sky-200 group-hover:bg-sky-50/50">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">
+                      Teacher management
+                    </p>
+                    <p className="text-lg font-semibold text-gray-900">Open</p>
+                  </div>
+
+                  <ArrowRight className="h-5 w-5 text-sky-700 transition group-hover:translate-x-1" />
                 </div>
               </CardContent>
             </Card>
