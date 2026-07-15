@@ -1,13 +1,18 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type {
+  StudentActionResponse,
   StudentOrganizationGradesResponse,
   StudentOrganizationsResponse,
   StudentsByGradeResponse,
+  UpdateStudentRequest,
+  UpdateStudentResponse,
 } from '@repo/contracts';
 import { PrismaService } from '../database/prisma.service';
 
 @Injectable()
 export class StudentsService {
+  private readonly logger = new Logger(StudentsService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   async findOrganizations(): Promise<StudentOrganizationsResponse> {
@@ -216,6 +221,144 @@ export class StudentsService {
           : null,
         status: studentProfile.user.isConfirmed ? 'Active' : 'Pending',
       })),
+    };
+  }
+
+  async updateStudent(
+    studentProfileId: string,
+    payload: UpdateStudentRequest,
+  ): Promise<UpdateStudentResponse> {
+    const studentProfile = await this.prisma.studentProfile.findUnique({
+      where: {
+        id: studentProfileId,
+      },
+      select: {
+        id: true,
+        userId: true,
+      },
+    });
+
+    if (!studentProfile) {
+      throw new NotFoundException('Student not found');
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      const userData: {
+        name?: string;
+        email?: string;
+      } = {};
+
+      if (payload.name !== undefined) {
+        userData.name = payload.name;
+      }
+
+      if (payload.email !== undefined) {
+        userData.email = payload.email;
+      }
+
+      if (Object.keys(userData).length > 0) {
+        await tx.user.update({
+          where: {
+            id: studentProfile.userId,
+          },
+          data: userData,
+        });
+      }
+
+      const studentProfileData: {
+        studentCode?: string;
+        dateOfBirth?: Date | null;
+      } = {};
+
+      if (payload.studentCode !== undefined) {
+        studentProfileData.studentCode = payload.studentCode;
+      }
+
+      if (payload.dateOfBirth !== undefined) {
+        studentProfileData.dateOfBirth = payload.dateOfBirth
+          ? new Date(payload.dateOfBirth)
+          : null;
+      }
+
+      if (Object.keys(studentProfileData).length > 0) {
+        await tx.studentProfile.update({
+          where: {
+            id: studentProfileId,
+          },
+          data: studentProfileData,
+        });
+      }
+    });
+    const updatedStudentProfile = await this.prisma.studentProfile.findUnique({
+      where: {
+        id: studentProfileId,
+      },
+      select: {
+        id: true,
+        studentCode: true,
+        dateOfBirth: true,
+        section: {
+          select: {
+            name: true,
+          },
+        },
+        user: {
+          select: {
+            name: true,
+            email: true,
+            isConfirmed: true,
+          },
+        },
+      },
+    });
+
+    if (!updatedStudentProfile) {
+      throw new NotFoundException('Student not found');
+    }
+
+    this.logger.log(`Updated student ${studentProfileId}.`);
+
+    return {
+      id: updatedStudentProfile.id,
+      studentCode: updatedStudentProfile.studentCode,
+      name:
+        updatedStudentProfile.user.name ||
+        updatedStudentProfile.user.email.split('@')[0],
+      email: updatedStudentProfile.user.email,
+      sectionName: updatedStudentProfile.section?.name ?? null,
+      dateOfBirth: updatedStudentProfile.dateOfBirth
+        ? updatedStudentProfile.dateOfBirth.toISOString().slice(0, 10)
+        : null,
+      status: updatedStudentProfile.user.isConfirmed ? 'Active' : 'Pending',
+    };
+  }
+
+  async deleteStudent(
+    studentProfileId: string,
+  ): Promise<StudentActionResponse> {
+    const studentProfile = await this.prisma.studentProfile.findUnique({
+      where: {
+        id: studentProfileId,
+      },
+      select: {
+        id: true,
+        userId: true,
+      },
+    });
+
+    if (!studentProfile) {
+      throw new NotFoundException('Student not found');
+    }
+
+    await this.prisma.user.delete({
+      where: {
+        id: studentProfile.userId,
+      },
+    });
+    this.logger.log(`Deleted student ${studentProfileId}.`);
+
+    return {
+      id: studentProfileId,
     };
   }
 }

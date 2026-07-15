@@ -1,12 +1,24 @@
-import { Controller, Get, Param, ParseUUIDPipe } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+} from '@nestjs/common';
 import type {
+  StudentActionResponse,
   StudentOrganizationGradesResponse,
   StudentOrganizationsResponse,
   StudentsByGradeResponse,
+  UpdateStudentRequest,
+  UpdateStudentResponse,
 } from '@repo/contracts';
+import { UpdateStudentRequestSchema } from '@repo/contracts';
 import { Roles } from '../auth/decorators';
+import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { StudentsService } from './students.service';
-
 @Controller('students')
 export class StudentsController {
   constructor(private readonly studentsService: StudentsService) {}
@@ -38,5 +50,25 @@ export class StudentsController {
       organizationId,
       gradeId,
     );
+  }
+
+  @Patch(':studentProfileId')
+  @Roles('SUPER_ADMIN')
+  async updateStudent(
+    @Param('studentProfileId', new ParseUUIDPipe({ version: '4' }))
+    studentProfileId: string,
+    @Body(new ZodValidationPipe(UpdateStudentRequestSchema))
+    payload: UpdateStudentRequest,
+  ): Promise<UpdateStudentResponse> {
+    return this.studentsService.updateStudent(studentProfileId, payload);
+  }
+
+  @Delete(':studentProfileId')
+  @Roles('SUPER_ADMIN')
+  async deleteStudent(
+    @Param('studentProfileId', new ParseUUIDPipe({ version: '4' }))
+    studentProfileId: string,
+  ): Promise<UpdateStudentResponse> {
+    return this.studentsService.deleteStudent(studentProfileId);
   }
 }

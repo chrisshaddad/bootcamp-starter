@@ -63,6 +63,7 @@ export function useUser(options: UseUserOptions = {}): UseUserReturn {
 
 export function useAuth() {
   const { mutate } = useUser();
+  const router = useRouter();
 
   const requestMagicLink = useCallback(async (data: MagicLinkRequest) => {
     return apiPost<{ success: boolean }>('/auth/magic-link', data);
@@ -81,9 +82,15 @@ export function useAuth() {
   );
 
   const logout = useCallback(async () => {
-    await apiPost<{ success: boolean }>('/auth/logout');
-    mutate();
-  }, [mutate]);
+    try {
+      await apiPost<{ success: boolean }>('/auth/logout');
+    } catch (error) {
+      console.error('Logout request failed:', error);
+    } finally {
+      mutate();
+      router.replace('/login');
+    }
+  }, [mutate, router]);
 
   return {
     requestMagicLink,

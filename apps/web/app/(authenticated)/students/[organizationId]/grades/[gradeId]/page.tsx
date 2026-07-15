@@ -1,13 +1,24 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { FormEvent, use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
-import type { StudentsByGradeResponse } from '@repo/contracts';
+import type {
+  StudentActionResponse,
+  StudentsByGradeResponse,
+  UpdateStudentRequest,
+  UpdateStudentResponse,
+} from '@repo/contracts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { fetcher } from '@/lib/api';
-
+import { apiDelete, apiPatch, fetcher } from '@/lib/api';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 type StudentListItem = StudentsByGradeResponse['students'][number];
 
 interface GradeStudentsPageProps {
@@ -17,12 +28,37 @@ interface GradeStudentsPageProps {
   }>;
 }
 
+interface StudentFormState {
+  name: string;
+  email: string;
+  studentCode: string;
+  dateOfBirth: string;
+}
+
 export default function GradeStudentsPage({ params }: GradeStudentsPageProps) {
   const { organizationId, gradeId } = use(params);
 
   const [students, setStudents] = useState<StudentListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [editingStudent, setEditingStudent] = useState<StudentListItem | null>(
+    null,
+  );
+  const [form, setForm] = useState<StudentFormState>({
+    name: '',
+    email: '',
+    studentCode: '',
+    dateOfBirth: '',
+  });
+
+  const [isSaving, setIsSaving] = useState(false);
+  const [confirmDeleteStudentId, setConfirmDeleteStudentId] = useState<
+    string | null
+  >(null);
+  const [deletingStudentId, setDeletingStudentId] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     async function loadStudents() {
@@ -48,12 +84,95 @@ export default function GradeStudentsPage({ params }: GradeStudentsPageProps) {
     loadStudents();
   }, [organizationId, gradeId]);
 
-  function handleUpdateStudent(studentId: string) {
-    alert(`Update student ${studentId} - UI only for now.`);
+  function openUpdateModal(student: StudentListItem) {
+    setEditingStudent(student);
+    setForm({
+      name: student.name,
+      email: student.email,
+      studentCode: student.studentCode,
+      dateOfBirth: student.dateOfBirth || '',
+    });
   }
 
-  function handleDeleteStudent(studentId: string) {
-    alert(`Delete student ${studentId} - UI only for now.`);
+  function closeUpdateModal() {
+    setEditingStudent(null);
+    setForm({
+      name: '',
+      email: '',
+      studentCode: '',
+      dateOfBirth: '',
+    });
+  }
+
+  async function handleUpdateStudent(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!editingStudent) {
+      return;
+    }
+
+    setIsSaving(true);
+    setError(null);
+
+    const payload: UpdateStudentRequest = {
+      name: form.name,
+      email: form.email,
+      studentCode: form.studentCode,
+      dateOfBirth: form.dateOfBirth || null,
+    };
+
+    try {
+      const updatedStudent = await apiPatch<UpdateStudentResponse>(
+        `/students/${editingStudent.id}`,
+        payload,
+      );
+
+      setStudents((currentStudents) =>
+        currentStudents.map((student) =>
+          student.id === updatedStudent.id ? updatedStudent : student,
+        ),
+      );
+
+      closeUpdateModal();
+    } catch (error) {
+      console.error('Failed to update student:', error);
+      setError(
+        error instanceof Error ? error.message : 'Failed to update student.',
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handleDeleteStudent(studentId: string) {
+    if (deletingStudentId) {
+      return;
+    }
+
+    if (confirmDeleteStudentId !== studentId) {
+      setConfirmDeleteStudentId(studentId);
+      return;
+    }
+
+    setDeletingStudentId(studentId);
+    setError(null);
+
+    try {
+      await apiDelete<StudentActionResponse>(`/students/${studentId}`);
+
+      setStudents((currentStudents) =>
+        currentStudents.filter((student) => student.id !== studentId),
+      );
+
+      setConfirmDeleteStudentId(null);
+    } catch (error) {
+      console.error('Failed to delete student:', error);
+      setError(
+        error instanceof Error ? error.message : 'Failed to delete student.',
+      );
+    } finally {
+      setDeletingStudentId(null);
+    }
   }
 
   return (
@@ -95,7 +214,7 @@ export default function GradeStudentsPage({ params }: GradeStudentsPageProps) {
           )}
 
           {!isLoading && error && (
-            <p className="text-sm text-red-600">{error}</p>
+            <p className="mb-4 text-sm text-error">{error}</p>
           )}
 
           {!isLoading && !error && students.length === 0 && (
@@ -104,7 +223,7 @@ export default function GradeStudentsPage({ params }: GradeStudentsPageProps) {
             </p>
           )}
 
-          {!isLoading && !error && students.length > 0 && (
+          {!isLoading && students.length > 0 && (
             <div className="overflow-hidden rounded-lg border border-gray-200">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
@@ -156,8 +275,9 @@ export default function GradeStudentsPage({ params }: GradeStudentsPageProps) {
                         <td className="px-5 py-4">
                           <button
                             type="button"
-                            onClick={() => handleUpdateStudent(student.id)}
-                            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100"
+                            onClick={() => openUpdateModal(student)}
+                            disabled={deletingStudentId !== null}
+                            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             <Pencil className="h-3.5 w-3.5" />
                             Update
@@ -168,10 +288,15 @@ export default function GradeStudentsPage({ params }: GradeStudentsPageProps) {
                           <button
                             type="button"
                             onClick={() => handleDeleteStudent(student.id)}
-                            className="inline-flex items-center gap-2 rounded-lg border border-error/20 px-3 py-1.5 text-xs font-medium text-error hover:bg-error/10"
+                            disabled={deletingStudentId !== null}
+                            className="inline-flex items-center gap-2 rounded-lg border border-error/20 px-3 py-1.5 text-xs font-medium text-error hover:bg-error/10 disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
-                            Delete
+                            {deletingStudentId === student.id
+                              ? 'Deleting...'
+                              : confirmDeleteStudentId === student.id
+                                ? 'Confirm delete'
+                                : 'Delete'}
                           </button>
                         </td>
                       </tr>
@@ -183,6 +308,134 @@ export default function GradeStudentsPage({ params }: GradeStudentsPageProps) {
           )}
         </CardContent>
       </Card>
+
+      <Dialog
+        open={!!editingStudent}
+        onOpenChange={(open) => {
+          if (isSaving) {
+            return;
+          }
+
+          if (!open) {
+            closeUpdateModal();
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Update Student</DialogTitle>
+            <DialogDescription>
+              Edit student information and save changes.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleUpdateStudent} className="space-y-4">
+            <div>
+              <label
+                htmlFor="student-name"
+                className="text-sm font-medium text-gray-700"
+              >
+                Name
+              </label>
+              <input
+                id="student-name"
+                value={form.name}
+                onChange={(event) =>
+                  setForm((currentForm) => ({
+                    ...currentForm,
+                    name: event.target.value,
+                  }))
+                }
+                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-900"
+                required
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="student-email"
+                className="text-sm font-medium text-gray-700"
+              >
+                Email
+              </label>
+              <input
+                id="student-email"
+                type="email"
+                value={form.email}
+                onChange={(event) =>
+                  setForm((currentForm) => ({
+                    ...currentForm,
+                    email: event.target.value,
+                  }))
+                }
+                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-900"
+                required
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="student-code"
+                className="text-sm font-medium text-gray-700"
+              >
+                Student Code
+              </label>
+              <input
+                id="student-code"
+                value={form.studentCode}
+                onChange={(event) =>
+                  setForm((currentForm) => ({
+                    ...currentForm,
+                    studentCode: event.target.value,
+                  }))
+                }
+                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-900"
+                required
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="student-date-of-birth"
+                className="text-sm font-medium text-gray-700"
+              >
+                Date of Birth
+              </label>
+              <input
+                id="student-date-of-birth"
+                type="date"
+                value={form.dateOfBirth}
+                onChange={(event) =>
+                  setForm((currentForm) => ({
+                    ...currentForm,
+                    dateOfBirth: event.target.value,
+                  }))
+                }
+                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-900"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={closeUpdateModal}
+                disabled={isSaving}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isSaving ? 'Saving...' : 'Save changes'}
+              </button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
