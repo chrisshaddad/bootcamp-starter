@@ -29,7 +29,10 @@ export const invoicesApi = baseApi.injectEndpoints({
     }),
 
     getInvoice: build.query<InvoiceResponse, string>({
-      query: (id) => ({ url: `/invoices/${encodeURIComponent(id)}`, method: 'GET' }),
+      query: (id) => ({
+        url: `/invoices/${encodeURIComponent(id)}`,
+        method: 'GET',
+      }),
       transformResponse: (
         response: InvoiceResponse | ApiEnvelope<InvoiceResponse>,
       ) => unwrap(response),

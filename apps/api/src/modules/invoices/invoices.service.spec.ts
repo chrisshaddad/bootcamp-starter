@@ -170,9 +170,7 @@ describe('InvoicesService', () => {
       expect(prisma.invoice.findFirst).toHaveBeenCalledWith(
         expect.objectContaining({ where: { id: 'invoice-1', orgId } }),
       );
-      expect(result.data).toEqual(
-        expect.objectContaining({ id: 'invoice-1' }),
-      );
+      expect(result.data).toEqual(expect.objectContaining({ id: 'invoice-1' }));
     });
 
     it('throws NotFoundException for an invoice in a different org', async () => {
@@ -210,9 +208,7 @@ describe('InvoicesService', () => {
     it('creates an invoice with the denormalized buildingId from the lease', async () => {
       const { service, prisma, timeline } = makeService({
         lease: {
-          findFirst: jest
-            .fn()
-            .mockResolvedValue({ id: 'lease-1', buildingId }),
+          findFirst: jest.fn().mockResolvedValue({ id: 'lease-1', buildingId }),
         },
         invoice: { create: jest.fn().mockResolvedValue(invoiceRow()) },
       });
@@ -237,9 +233,7 @@ describe('InvoicesService', () => {
     it('rejects when line items are empty', async () => {
       const { service } = makeService({
         lease: {
-          findFirst: jest
-            .fn()
-            .mockResolvedValue({ id: 'lease-1', buildingId }),
+          findFirst: jest.fn().mockResolvedValue({ id: 'lease-1', buildingId }),
         },
       });
 

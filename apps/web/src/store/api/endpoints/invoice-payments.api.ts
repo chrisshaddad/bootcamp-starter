@@ -22,8 +22,7 @@ export const invoicePaymentsApi = baseApi.injectEndpoints({
       }),
       transformResponse: (
         response:
-          | InvoicePaymentResponse[]
-          | ApiEnvelope<InvoicePaymentResponse[]>,
+          InvoicePaymentResponse[] | ApiEnvelope<InvoicePaymentResponse[]>,
       ) => unwrap(response),
       providesTags: (result, _error, invoiceId) =>
         result
@@ -44,8 +43,7 @@ export const invoicePaymentsApi = baseApi.injectEndpoints({
       query: (body) => ({ url: '/invoice-payments', method: 'POST', body }),
       transformResponse: (
         response:
-          | CreateInvoicePaymentResult
-          | ApiEnvelope<CreateInvoicePaymentResult>,
+          CreateInvoicePaymentResult | ApiEnvelope<CreateInvoicePaymentResult>,
       ) => unwrap(response),
       invalidatesTags: (_result, _error, { invoiceId }) => [
         { type: 'InvoicePayment', id: `LIST-${invoiceId}` },
@@ -64,8 +62,7 @@ export const invoicePaymentsApi = baseApi.injectEndpoints({
       }),
       transformResponse: (
         response:
-          | DeleteInvoicePaymentResult
-          | ApiEnvelope<DeleteInvoicePaymentResult>,
+          DeleteInvoicePaymentResult | ApiEnvelope<DeleteInvoicePaymentResult>,
       ) => unwrap(response),
       invalidatesTags: (_result, _error, { id, invoiceId }) => [
         { type: 'InvoicePayment', id },

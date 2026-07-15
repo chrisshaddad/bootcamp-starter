@@ -13,7 +13,11 @@ describe('computeInvoiceSummary', () => {
       beforeDue,
     );
 
-    expect(result).toEqual({ totalAmount: 1000, paidAmount: 0, status: 'open' });
+    expect(result).toEqual({
+      totalAmount: 1000,
+      paidAmount: 0,
+      status: 'open',
+    });
   });
 
   it('is "partially_paid" when some but not all of the total has been paid before the due date', () => {

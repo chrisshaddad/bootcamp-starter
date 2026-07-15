@@ -161,9 +161,8 @@ export function InvoiceDetailPage({
     useDeleteInvoicePaymentMutation();
 
   const [recordOpen, setRecordOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<InvoicePaymentResponse | null>(
-    null,
-  );
+  const [deleteTarget, setDeleteTarget] =
+    useState<InvoicePaymentResponse | null>(null);
 
   const {
     control,

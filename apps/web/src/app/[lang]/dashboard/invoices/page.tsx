@@ -19,7 +19,5 @@ export default async function InvoicesPageRoute({
     redirect(`/${locale}/dashboard`);
   }
 
-  return (
-    <InvoicesPage canWrite={canWrite(role, 'invoices')} locale={locale} />
-  );
+  return <InvoicesPage canWrite={canWrite(role, 'invoices')} locale={locale} />;
 }

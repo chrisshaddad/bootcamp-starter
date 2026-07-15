@@ -150,7 +150,11 @@ const invoiceSchema = z.object({
 
 type InvoiceFormValues = z.infer<typeof invoiceSchema>;
 
-const EMPTY_LINE_ITEM = { category: 'rent' as const, description: '', amount: '' };
+const EMPTY_LINE_ITEM = {
+  category: 'rent' as const,
+  description: '',
+  amount: '',
+};
 
 const EMPTY_VALUES: InvoiceFormValues = {
   leaseId: '',
