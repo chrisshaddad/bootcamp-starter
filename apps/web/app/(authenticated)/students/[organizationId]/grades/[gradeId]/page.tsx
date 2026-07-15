@@ -312,6 +312,10 @@ export default function GradeStudentsPage({ params }: GradeStudentsPageProps) {
       <Dialog
         open={!!editingStudent}
         onOpenChange={(open) => {
+          if (isSaving) {
+            return;
+          }
+
           if (!open) {
             closeUpdateModal();
           }
@@ -415,7 +419,8 @@ export default function GradeStudentsPage({ params }: GradeStudentsPageProps) {
               <button
                 type="button"
                 onClick={closeUpdateModal}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                disabled={isSaving}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Cancel
               </button>
