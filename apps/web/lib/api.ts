@@ -1,4 +1,3 @@
-// apps/web/lib/api.ts
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export class ApiError extends Error {
@@ -102,7 +101,11 @@ export async function apiDelete<T>(endpoint: string): Promise<T> {
     throw new ApiError(res.status, error.message || 'An error occurred');
   }
 
-  return res.json();
+  const text = await res.text();
+  if (!text.trim()) {
+    return {} as T;
+  }
+  return JSON.parse(text) as T;
 }
 
 export { API_URL };

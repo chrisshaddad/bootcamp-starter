@@ -41,6 +41,7 @@ import {
   projectMediaUpdateSchema,
   projectsExploreQuerySchema,
   addProjectTechnologySchema,
+  projectBySlugResponseSchema,
   type CreateProjectRequest,
   type ImportGithubProjectRequest,
   type ImportGithubProjectResponse,
@@ -53,6 +54,7 @@ import {
   type ProjectsExploreQuery,
   type ExploreProjectsResponse,
   type AddProjectTechnologyRequest,
+  type ProjectTechnologyResponse,
 } from '@repo/contracts';
 import { importGithubProjectRequestSchema as importGithubProjectOpenApiRequestSchema } from '../common/swagger/schemas';
 
@@ -203,7 +205,7 @@ export class ProjectsController {
           category: t.technology.category,
         },
       })),
-    } as unknown as ProjectByIdResponse; // 👈 Add this force cast here
+    } as unknown as ProjectByIdResponse;
   }
 
   @Post()
@@ -430,8 +432,16 @@ export class ProjectsController {
   ): Promise<ProjectBySlugResponse> {
     const project = await this.projectsService.getProjectBySlug(slug);
 
-    return {
-      ...project,
+    const result = {
+      id: project.id,
+      repositoryId: project.repositoryId,
+      createdByUserId: project.createdByUserId,
+      title: project.title,
+      slug: project.slug,
+      shortDescription: project.shortDescription,
+      fullDescription: project.fullDescription,
+      deploymentUrl: project.deploymentUrl,
+      status: project.status,
       createdAt: project.createdAt.toISOString(),
       updatedAt: project.updatedAt.toISOString(),
       publishedAt: project.publishedAt?.toISOString() ?? null,
@@ -445,7 +455,6 @@ export class ProjectsController {
         createdAt: m.createdAt.toISOString(),
         updatedAt: m.updatedAt.toISOString(),
       })),
-      // ADD THIS: Map technologies to the serialized response
       technologies: (project.technologies ?? []).map((t) => ({
         id: t.id,
         projectId: t.projectId,
@@ -463,7 +472,9 @@ export class ProjectsController {
           category: t.technology.category,
         },
       })),
-    } as unknown as ProjectBySlugResponse; // 👈 Add the force-cast here
+    };
+
+    return projectBySlugResponseSchema.parse(result);
   }
 
   @Post(':id/media')
@@ -605,7 +616,7 @@ export class ProjectsController {
     @Param('id') projectId: string,
     @Body(new ZodValidationPipe(addProjectTechnologySchema))
     body: AddProjectTechnologyRequest,
-  ) {
+  ): Promise<ProjectTechnologyResponse> {
     const result = await this.projectsService.addProjectTechnology(
       user,
       projectId,
@@ -615,7 +626,7 @@ export class ProjectsController {
       id: result.id,
       projectId: result.projectId,
       technologyId: result.technologyId,
-      source: result.source,
+      source: result.source as 'SCANNER' | 'MANUAL' | 'BOTH',
       isPrimary: result.isPrimary,
       sortOrder: result.sortOrder,
       createdAt: result.createdAt.toISOString(),
@@ -624,7 +635,15 @@ export class ProjectsController {
         id: result.technology.id,
         name: result.technology.name,
         slug: result.technology.slug,
-        category: result.technology.category,
+        category: result.technology.category as
+          | 'LANGUAGE'
+          | 'FRAMEWORK'
+          | 'LIBRARY'
+          | 'DATABASE'
+          | 'CLOUD'
+          | 'DEVOPS'
+          | 'TOOL'
+          | 'OTHER',
       },
     };
   }
@@ -637,7 +656,7 @@ export class ProjectsController {
     @CurrentUser() user: User,
     @Param('id') projectId: string,
     @Param('technologyId') technologyId: string,
-  ) {
+  ): Promise<ProjectTechnologyResponse> {
     const result = await this.projectsService.removeProjectTechnology(
       user,
       projectId,
@@ -647,11 +666,25 @@ export class ProjectsController {
       id: result.id,
       projectId: result.projectId,
       technologyId: result.technologyId,
-      source: result.source,
+      source: result.source as 'SCANNER' | 'MANUAL' | 'BOTH',
       isPrimary: result.isPrimary,
       sortOrder: result.sortOrder,
       createdAt: result.createdAt.toISOString(),
       updatedAt: result.updatedAt.toISOString(),
+      technology: {
+        id: result.technology.id,
+        name: result.technology.name,
+        slug: result.technology.slug,
+        category: result.technology.category as
+          | 'LANGUAGE'
+          | 'FRAMEWORK'
+          | 'LIBRARY'
+          | 'DATABASE'
+          | 'CLOUD'
+          | 'DEVOPS'
+          | 'TOOL'
+          | 'OTHER',
+      },
     };
   }
 }

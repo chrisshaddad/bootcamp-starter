@@ -54,13 +54,14 @@ export class GithubController {
   async githubCallback(
     @CurrentUser('id') userId: string,
     @Query('code') code: string,
+    @Query('state') state: string, // 1. Added @Query('state') extraction
     @Res() res: Response,
   ) {
-    await this.githubService.handleOAuthCallback(userId, code);
+    // 2. Passed the state as the 3rd argument
+    await this.githubService.handleOAuthCallback(userId, code, state);
     const appUrl = process.env.APP_URL || 'http://localhost:3000';
     return res.redirect(`${appUrl}/projects/new`);
   }
-
   @Get('my-repositories')
   @Roles('DEVELOPER', 'SUPER_ADMIN')
   @ApiOperation({

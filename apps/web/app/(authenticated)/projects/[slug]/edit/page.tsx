@@ -1,4 +1,3 @@
-// apps/web/app/(authenticated)/projects/[slug]/edit/page.tsx
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
@@ -9,12 +8,13 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { ArrowLeft, Loader2 } from 'lucide-react';
+import { mutate } from 'swr'; // 1. Imported global mutate from SWR
 import {
   updateProjectRequestSchema,
   type UpdateProjectRequest,
 } from '@repo/contracts';
 import { useProject, useUpdateProject } from '@/hooks/use-projects';
-import { ApiError, apiUpload, apiDelete, apiPost } from '@/lib/api';
+import { ApiError, apiUpload, apiDelete } from '@/lib/api';
 import type { MockTechnology } from '@/lib/mock-projects';
 import { TechPicker } from '@/components/tech-picker';
 import { Button } from '@/components/ui/button';
@@ -36,10 +36,10 @@ export default function EditProjectPage() {
   const router = useRouter();
   const { project, isLoading } = useProject(params.slug);
   const updateProject = useUpdateProject();
-  
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploadingMedia, setIsUploadingMedia] = useState(false);
-  
+
   const [technologies, setTechnologies] = useState<MockTechnology[]>([]);
   const [isTechInitialized, setIsTechInitialized] = useState(false);
 
@@ -47,7 +47,7 @@ export default function EditProjectPage() {
   useEffect(() => {
     if (project?.technologies && !isTechInitialized) {
       setTechnologies(
-        project.technologies.map((t) => t.technology as MockTechnology)
+        project.technologies.map((t) => t.technology as MockTechnology),
       );
       setIsTechInitialized(true);
     }
@@ -77,30 +77,11 @@ export default function EditProjectPage() {
 
     setIsSubmitting(true);
     try {
-      // 1. Update basic project details
-      await updateProject(project.id, data);
-
-      // 2. Diff and update technologies
-      const originalTechIds = new Set(project.technologies.map((t) => t.technologyId));
-      const currentTechIds = new Set(technologies.map((t) => t.id));
-
-      const techsToAdd = technologies.filter((t) => !originalTechIds.has(t.id));
-      const techsToRemove = project.technologies.filter(
-        (t) => !currentTechIds.has(t.technologyId)
-      );
-
-      // Add new technologies
-      for (const tech of techsToAdd) {
-        await apiPost(`/projects/${project.id}/technologies`, {
-          technologyId: tech.id,
-          isPrimary: false,
-        });
-      }
-
-      // Remove unselected technologies
-      for (const tech of techsToRemove) {
-        await apiDelete(`/projects/${project.id}/technologies/${tech.technologyId}`);
-      }
+      // Basic info and tech stack modifications executed in a single atomic transaction
+      await updateProject(project.id, {
+        ...data,
+        technologies: technologies.map((t) => ({ id: t.id })),
+      } as UpdateProjectRequest);
 
       toast.success('Project updated successfully');
       router.push('/projects');
@@ -113,7 +94,7 @@ export default function EditProjectPage() {
         toast.error(
           error instanceof ApiError
             ? error.message
-            : 'Unable to update project'
+            : 'Unable to update project',
         );
       }
     } finally {
@@ -134,9 +115,16 @@ export default function EditProjectPage() {
 
       await apiUpload(`/projects/${project.id}/media`, formData);
       toast.success('Media uploaded');
-      window.location.reload();
-    } catch {
-      toast.error('Failed to upload media');
+
+      // 2. Refreshes SWR keys globally
+      mutate(`/projects/slug/${params.slug}`);
+      mutate(`/projects/id/${project.id}`);
+    } catch (error) {
+      if (error instanceof ApiError) {
+        toast.error(error.message);
+      } else {
+        toast.error('Failed to upload media');
+      }
     } finally {
       setIsUploadingMedia(false);
       e.target.value = '';
@@ -148,9 +136,16 @@ export default function EditProjectPage() {
     try {
       await apiDelete(`/projects/${project.id}/media/${mediaId}`);
       toast.success('Media deleted');
-      window.location.reload();
-    } catch {
-      toast.error('Failed to delete media');
+
+      // 3. Refreshes SWR keys globally
+      mutate(`/projects/slug/${params.slug}`);
+      mutate(`/projects/id/${project.id}`);
+    } catch (error) {
+      if (error instanceof ApiError) {
+        toast.error(error.message);
+      } else {
+        toast.error('Failed to delete media');
+      }
     }
   };
 
@@ -244,13 +239,20 @@ export default function EditProjectPage() {
             <Label>Media</Label>
             {project.media && project.media.length > 0 && (
               <div className="grid grid-cols-2 gap-4 mb-4">
-                {project.media.map((m: NonNullable<typeof project.media>[number]) => (
-                  <div key={m.id} className="relative group rounded-md border bg-muted overflow-hidden">
-                    <img src={m.publicUrl} alt={m.caption || ''} className="w-full h-32 object-cover" />
+                {project.media.map((m) => (
+                  <div
+                    key={m.id}
+                    className="relative group rounded-md border bg-muted overflow-hidden"
+                  >
+                    <img
+                      src={m.publicUrl}
+                      alt={m.caption || ''}
+                      className="w-full h-32 object-cover"
+                    />
                     <button
                       type="button"
                       onClick={() => handleDeleteMedia(m.id)}
-                      className="absolute top-2 right-2 px-2 py-1 bg-red-600/90 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute top-2 right-2 px-2 py-1 bg-red-600/90 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 focus-visible:opacity-100 group-focus-within:opacity-100 transition-opacity outline-none focus-visible:ring-2 focus-visible:ring-red-500"
                     >
                       Delete
                     </button>
@@ -268,7 +270,9 @@ export default function EditProjectPage() {
                   className="max-w-[250px]"
                 />
                 <p className="text-muted-foreground text-xs mt-2">
-                  {isUploadingMedia ? 'Uploading...' : 'Upload screenshots or architecture diagrams.'}
+                  {isUploadingMedia
+                    ? 'Uploading...'
+                    : 'Upload screenshots or architecture diagrams.'}
                 </p>
               </CardContent>
             </Card>

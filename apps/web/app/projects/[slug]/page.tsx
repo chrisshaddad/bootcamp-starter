@@ -1,4 +1,3 @@
-// apps/web/app/projects/[slug]/page.tsx
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
@@ -20,13 +19,7 @@ import {
   PROJECT_STATUS_COLORS,
   PROJECT_STATUS_LABELS,
 } from '@/lib/project-status';
-
-interface ProjectTechItem {
-  id: string;
-  name: string;
-  slug: string;
-  category: TechnologyCategory;
-}
+import { type TechnologyResponse } from '@repo/contracts';
 
 // mock: SavedProject has no endpoint yet.
 function handleSave() {
@@ -37,14 +30,14 @@ export default function ProjectShowcasePage() {
   const params = useParams<{ slug: string }>();
   const { project, error, isLoading } = useProjectBySlug(params.slug);
 
-  // Safely extract and type the database technologies
+  // Safely extract and type database technologies using direct contract references
   const projectTechs = (project?.technologies ?? [])
-    .map((pt) => pt.technology as unknown as ProjectTechItem)
+    .map((pt) => pt.technology as TechnologyResponse)
     .filter(Boolean);
 
-  // Accumulate technologies into their respective categories with explicit types
+  // Accumulate technologies into their respective categories
   const technologiesByCategory = projectTechs.reduce(
-    (acc: Record<string, ProjectTechItem[]>, tech: ProjectTechItem) => {
+    (acc: Record<string, TechnologyResponse[]>, tech) => {
       const category = tech.category;
       if (!acc[category]) {
         acc[category] = [];
@@ -52,7 +45,7 @@ export default function ProjectShowcasePage() {
       acc[category].push(tech);
       return acc;
     },
-    {} as Record<string, ProjectTechItem[]>,
+    {} as Record<string, TechnologyResponse[]>,
   );
 
   return (
@@ -149,9 +142,16 @@ export default function ProjectShowcasePage() {
                     <h2 className="mb-3 text-sm font-bold">Screenshots</h2>
                     {project.media && project.media.length > 0 ? (
                       <div className="grid gap-4 sm:grid-cols-2">
-                        {project.media.map((m: NonNullable<typeof project.media>[number]) => (
-                          <div key={m.id} className="overflow-hidden rounded-xl border bg-muted">
-                            <img src={m.publicUrl} alt={m.caption || ''} className="w-full h-auto object-cover" />
+                        {project.media.map((m) => (
+                          <div
+                            key={m.id}
+                            className="overflow-hidden rounded-xl border bg-muted"
+                          >
+                            <img
+                              src={m.publicUrl}
+                              alt={m.caption || ''}
+                              className="w-full h-auto object-cover"
+                            />
                           </div>
                         ))}
                       </div>

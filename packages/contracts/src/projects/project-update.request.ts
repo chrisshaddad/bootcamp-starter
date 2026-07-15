@@ -1,18 +1,13 @@
 import { z } from 'zod';
+
 export const updateProjectRequestSchema = z.object({
-  title: z.string().min(1, 'Title cannot be empty').optional(),
-  slug: z.string().min(1, 'Slug cannot be empty').optional(),
-  shortDescription: z.string().optional().nullable(),
-  fullDescription: z.string().optional().nullable(),
-  logoUrl: z.literal(null).optional(),
-  deploymentUrl: z
-    .string()
-    .url('Invalid URL')
-    .or(z.literal(''))
-    .optional()
-    .nullable()
-    .transform((val) => (val === '' ? null : val))
-    .optional(),
+  title: z.string().min(1).optional(),
+  slug: z.string().min(1).optional(),
+  shortDescription: z.string().nullable().optional(),
+  fullDescription: z.string().nullable().optional(),
+  deploymentUrl: z.string().url().nullable().optional(),
   status: z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']).optional(),
+  technologies: z.array(z.object({ id: z.string().uuid() })).optional(), // Added atomic tech array
 });
+
 export type UpdateProjectRequest = z.infer<typeof updateProjectRequestSchema>;

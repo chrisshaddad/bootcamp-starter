@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import { Github, Loader2, PlusCircle, Lock, Globe } from 'lucide-react';
 import { toast } from 'sonner';
 import useSWR from 'swr';
-import { fetcher, apiPost } from '@/lib/api';
+import { fetcher, apiPost, ApiError } from '@/lib/api';
 import { useUser } from '@/hooks/use-auth';
+import { type GithubRepository } from '@repo/contracts';
 
 import { SiteHeader } from '@/components/site-header';
 import { SiteFooter } from '@/components/site-footer';
@@ -19,17 +20,6 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-
-interface GithubRepository {
-  id: string;
-  name: string;
-  fullName: string;
-  isPrivate: boolean;
-  url: string;
-  updatedAt: string;
-  description: string | null;
-  language: string | null;
-}
 
 export default function NewProjectPage() {
   const { user, isLoading: isAuthLoading } = useUser();
@@ -65,10 +55,13 @@ export default function NewProjectPage() {
       );
 
       toast.success('Project imported successfully!');
-      router.push(`/projects/${res.project.id}/edit`);
+      router.push(`/projects/${res.project.slug}/edit`);
     } catch (error: unknown) {
-      const err = error as { message?: string };
-      toast.error(err.message || 'Failed to import repository');
+      if (error instanceof ApiError) {
+        toast.error(error.message);
+      } else {
+        toast.error('Failed to import repository');
+      }
     } finally {
       setImportingUrl(null);
     }
@@ -164,21 +157,27 @@ export default function NewProjectPage() {
                         <span className="text-xs font-medium text-muted-foreground">
                           {repo.language || 'Unknown'}
                         </span>
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => handleImport(repo.url)}
-                          disabled={importingUrl === repo.url}
-                        >
-                          {importingUrl === repo.url ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <>
-                              <PlusCircle className="mr-2 h-4 w-4" />
-                              Import
-                            </>
-                          )}
-                        </Button>
+                        {repo.isPrivate ? (
+                          <span className="text-xs text-muted-foreground italic">
+                            Private (imports unavailable)
+                          </span>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => handleImport(repo.url)}
+                            disabled={importingUrl === repo.url}
+                          >
+                            {importingUrl === repo.url ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <>
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Import
+                              </>
+                            )}
+                          </Button>
+                        )}
                       </CardContent>
                     </Card>
                   ))}

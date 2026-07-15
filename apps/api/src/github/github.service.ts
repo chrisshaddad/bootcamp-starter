@@ -5,14 +5,19 @@ import {
   ServiceUnavailableException,
   BadRequestException,
 } from '@nestjs/common';
-import type { GithubRepositoryPreviewResponse } from '@repo/contracts';
-import { PrismaService } from '../database/prisma.service';
+import {
+  type GithubRepositoryPreviewResponse,
+  githubRepositoryListSchema,
+  type GithubRepository,
+} from '@repo/contracts';
+import { DatabaseService } from '../database/prisma.service';
 import { parseGithubRepositoryUrl } from './github-url.parser';
 import type {
   NormalizedGithubLanguage,
   NormalizedGithubRepository,
   ParsedGithubRepository,
 } from './github.types';
+import { randomUUID } from 'crypto';
 
 const GITHUB_API_BASE_URL = 'https://api.github.com';
 const GITHUB_API_VERSION = '2022-11-28';
@@ -42,17 +47,29 @@ interface GithubRepoResponse {
   language: string | null;
 }
 
+function getNextPageUrl(linkHeader: string | null): string | null {
+  if (!linkHeader) return null;
+  const links = linkHeader.split(',');
+  for (const link of links) {
+    const match = link.match(/<([^>]+)>;\s*rel="next"/);
+    if (match) {
+      return match[1] ?? null;
+    }
+  }
+  return null;
+}
+
 @Injectable()
 export class GithubService {
   private readonly logger = new Logger(GithubService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly db: DatabaseService) {}
 
   // ==========================================
   // OAUTH & REPOSITORY FETCHING
   // ==========================================
 
-  getOAuthConnectUrl(): string {
+  async getOAuthConnectUrl(userId: string): Promise<string> {
     const clientId = process.env.GITHUB_CLIENT_ID;
     if (!clientId) {
       throw new ServiceUnavailableException(
@@ -62,67 +79,142 @@ export class GithubService {
     const apiUrl = process.env.API_URL ?? 'http://localhost:3001';
     const redirectUri = encodeURIComponent(`${apiUrl}/github/callback`);
 
-    return `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=repo`;
+    const state = randomUUID();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    await this.db.connectedAccount.upsert({
+      where: { userId },
+      create: {
+        userId,
+        oauthState: state,
+        oauthStateExpiresAt: expiresAt,
+      },
+      update: {
+        oauthState: state,
+        oauthStateExpiresAt: expiresAt,
+      },
+    });
+
+    return `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=repo&state=${state}`;
   }
 
-  async handleOAuthCallback(userId: string, code: string): Promise<void> {
+  async handleOAuthCallback(
+    userId: string,
+    code: string,
+    state: string,
+  ): Promise<void> {
     if (!process.env.GITHUB_CLIENT_ID || !process.env.GITHUB_CLIENT_SECRET) {
       throw new ServiceUnavailableException('GitHub OAuth is not configured');
     }
 
+    if (!state) {
+      throw new BadRequestException('State parameter is missing');
+    }
+
+    const connectedAccount = await this.db.connectedAccount.findUnique({
+      where: { userId },
+    });
+
+    if (
+      !connectedAccount ||
+      connectedAccount.oauthState !== state ||
+      !connectedAccount.oauthStateExpiresAt ||
+      connectedAccount.oauthStateExpiresAt < new Date()
+    ) {
+      throw new BadRequestException('Invalid or expired state parameter');
+    }
+
     // 1. Exchange code for access token
-    const tokenResponse = await fetch(
-      'https://github.com/login/oauth/access_token',
-      {
-        method: 'POST',
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
+    let tokenResponse: Response;
+    try {
+      tokenResponse = await fetch(
+        'https://github.com/login/oauth/access_token',
+        {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            client_id: process.env.GITHUB_CLIENT_ID,
+            client_secret: process.env.GITHUB_CLIENT_SECRET,
+            code,
+          }),
+          signal: AbortSignal.timeout(10_000),
         },
-        body: JSON.stringify({
-          client_id: process.env.GITHUB_CLIENT_ID,
-          client_secret: process.env.GITHUB_CLIENT_SECRET,
-          code,
-        }),
-      },
-    );
+      );
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'TimeoutError') {
+        throw new GithubRequestTimeoutException();
+      }
+      throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+    }
 
-    const tokenData = (await tokenResponse.json()) as { access_token?: string };
+    if (!tokenResponse.ok) {
+      throw new BadRequestException('Failed to obtain GitHub access token');
+    }
+
+    let tokenData: { access_token?: string };
+    try {
+      tokenData = (await tokenResponse.json()) as { access_token?: string };
+    } catch {
+      throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+    }
+
     const accessToken = tokenData.access_token;
-
     if (!accessToken) {
       this.logger.error('Failed to obtain GitHub access token:', tokenData);
       throw new BadRequestException('Failed to obtain GitHub access token');
     }
 
     // 2. Fetch the user's GitHub profile
-    const userResponse = await fetch('https://api.github.com/user', {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        Accept: 'application/vnd.github+json',
-        'User-Agent': GITHUB_USER_AGENT,
-      },
-    });
+    let userResponse: Response;
+    try {
+      userResponse = await fetch('https://api.github.com/user', {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/vnd.github+json',
+          'User-Agent': GITHUB_USER_AGENT,
+        },
+        signal: AbortSignal.timeout(10_000),
+      });
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'TimeoutError') {
+        throw new GithubRequestTimeoutException();
+      }
+      throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+    }
 
     if (!userResponse.ok) {
       throw new BadRequestException('Failed to fetch GitHub profile');
     }
 
-    const githubUser = (await userResponse.json()) as {
-      id: number;
-      login: string;
-    };
+    let githubUser: { id: number; login: string };
+    try {
+      githubUser = (await userResponse.json()) as { id: number; login: string };
+    } catch {
+      throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+    }
 
     // 3. Save to database
-    await this.prisma.developerProfile.update({
-      where: { userId },
-      data: {
-        githubUserId: BigInt(githubUser.id),
-        githubUsername: githubUser.login,
-        githubAccessToken: accessToken,
-        githubConnectedAt: new Date(),
-      },
-    });
+    await this.db.$transaction([
+      this.db.developerProfile.update({
+        where: { userId },
+        data: {
+          githubUserId: BigInt(githubUser.id),
+          githubUsername: githubUser.login,
+          githubConnectedAt: new Date(),
+        },
+      }),
+      this.db.connectedAccount.update({
+        where: { userId },
+        data: {
+          githubAccessToken: accessToken ?? null,
+          oauthState: null,
+          oauthStateExpiresAt: null,
+        },
+      }),
+    ]);
   }
 
   async connectUsingEnvToken(userId: string): Promise<void> {
@@ -133,13 +225,22 @@ export class GithubService {
       );
     }
 
-    const response = await fetch('https://api.github.com/user', {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: 'application/vnd.github+json',
-        'User-Agent': GITHUB_USER_AGENT,
-      },
-    });
+    let response: Response;
+    try {
+      response = await fetch('https://api.github.com/user', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/vnd.github+json',
+          'User-Agent': GITHUB_USER_AGENT,
+        },
+        signal: AbortSignal.timeout(10_000),
+      });
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'TimeoutError') {
+        throw new GithubRequestTimeoutException();
+      }
+      throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+    }
 
     if (!response.ok) {
       throw new BadRequestException(
@@ -147,24 +248,37 @@ export class GithubService {
       );
     }
 
-    const githubUser = (await response.json()) as {
-      id: number;
-      login: string;
-    };
+    let githubUser: { id: number; login: string };
+    try {
+      githubUser = (await response.json()) as { id: number; login: string };
+    } catch {
+      throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+    }
 
-    await this.prisma.developerProfile.update({
-      where: { userId },
-      data: {
-        githubUserId: BigInt(githubUser.id),
-        githubUsername: githubUser.login,
-        githubAccessToken: token,
-        githubConnectedAt: new Date(),
-      },
-    });
+    await this.db.$transaction([
+      this.db.developerProfile.update({
+        where: { userId },
+        data: {
+          githubUserId: BigInt(githubUser.id),
+          githubUsername: githubUser.login,
+          githubConnectedAt: new Date(),
+        },
+      }),
+      this.db.connectedAccount.upsert({
+        where: { userId },
+        create: {
+          userId,
+          githubAccessToken: token ?? null,
+        },
+        update: {
+          githubAccessToken: token ?? null,
+        },
+      }),
+    ]);
   }
 
-  async getUserRepositories(userId: string) {
-    const profile = await this.prisma.developerProfile.findUnique({
+  async getUserRepositories(userId: string): Promise<GithubRepository[]> {
+    const profile = await this.db.connectedAccount.findUnique({
       where: { userId },
       select: { githubAccessToken: true },
     });
@@ -173,26 +287,48 @@ export class GithubService {
       throw new BadRequestException('GitHub account not connected');
     }
 
-    const response = await fetch(
-      'https://api.github.com/user/repos?sort=updated&per_page=100',
-      {
-        headers: {
-          Authorization: `Bearer ${profile.githubAccessToken}`,
-          Accept: 'application/vnd.github+json',
-          'User-Agent': GITHUB_USER_AGENT,
-        },
-      },
-    );
+    const accumulatedRepos: GithubRepoResponse[] = [];
+    let nextUrl: string | null =
+      'https://api.github.com/user/repos?sort=updated&per_page=100';
 
-    if (!response.ok) {
-      throw new ServiceUnavailableException(
-        'Failed to fetch repositories from GitHub',
-      );
+    while (nextUrl) {
+      let response: Response;
+      try {
+        response = await fetch(nextUrl, {
+          headers: {
+            Authorization: `Bearer ${profile.githubAccessToken}`,
+            Accept: 'application/vnd.github+json',
+            'User-Agent': GITHUB_USER_AGENT,
+          },
+          signal: AbortSignal.timeout(10_000),
+        });
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'TimeoutError') {
+          throw new GithubRequestTimeoutException();
+        }
+        throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+      }
+
+      if (!response.ok) {
+        throw new ServiceUnavailableException(
+          'Failed to fetch repositories from GitHub',
+        );
+      }
+
+      let repos: GithubRepoResponse[];
+      try {
+        repos = (await response.json()) as GithubRepoResponse[];
+      } catch {
+        throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+      }
+
+      accumulatedRepos.push(...repos);
+
+      const linkHeader = response.headers.get('link');
+      nextUrl = getNextPageUrl(linkHeader);
     }
 
-    const repos = (await response.json()) as GithubRepoResponse[];
-
-    return repos.map((repo) => ({
+    const validated = accumulatedRepos.map((repo) => ({
       id: repo.id.toString(),
       name: repo.name,
       fullName: repo.full_name,
@@ -202,6 +338,8 @@ export class GithubService {
       description: repo.description,
       language: repo.language,
     }));
+
+    return githubRepositoryListSchema.parse(validated);
   }
 
   // ==========================================

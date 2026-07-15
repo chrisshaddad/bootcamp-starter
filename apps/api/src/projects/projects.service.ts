@@ -514,7 +514,6 @@ export class ProjectsService {
         data: {
           title: data.title,
           slug: data.slug,
-          logoUrl: data.logoUrl,
           shortDescription: data.shortDescription,
           fullDescription: data.fullDescription,
           deploymentUrl: data.deploymentUrl,
@@ -608,6 +607,7 @@ export class ProjectsService {
 
     return project;
   }
+
   async exploreProjects(query: ProjectsExploreQuery) {
     const skip = (query.page - 1) * query.limit;
     const take = query.limit;
@@ -644,13 +644,14 @@ export class ProjectsService {
         : {}),
     };
 
-    let orderBy: Prisma.ProjectOrderByWithRelationInput = {
-      publishedAt: 'desc',
-    };
+    let orderBy: Prisma.ProjectOrderByWithRelationInput[] = [
+      { publishedAt: 'desc' },
+      { id: 'asc' },
+    ];
     if (query.sort === 'oldest') {
-      orderBy = { publishedAt: 'asc' };
+      orderBy = [{ publishedAt: 'asc' }, { id: 'asc' }];
     } else if (query.sort === 'alphabetical') {
-      orderBy = { title: 'asc' };
+      orderBy = [{ title: 'asc' }, { id: 'asc' }];
     }
 
     const [totalItems, projects] = await Promise.all([
@@ -947,6 +948,7 @@ export class ProjectsService {
         data: {
           source: ProjectTechnologySource.SCANNER,
           addedByUserId: null,
+          isPrimary: false,
         },
         include: {
           technology: true,

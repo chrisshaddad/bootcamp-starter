@@ -106,6 +106,7 @@ model User {
 
   developerProfile DeveloperProfile?
   hiringProfile    HiringProfile?
+  connectedAccount ConnectedAccount?
 
   sessions   Session[]
   magicLinks MagicLink[]
@@ -130,7 +131,6 @@ model DeveloperProfile {
   headline    String?
   bio         String? @db.Text
   location    String?
-  githubAccessToken  String?   
 
   profilePictureUrl  String?
   linkedinUrl        String?
@@ -146,6 +146,21 @@ model DeveloperProfile {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@schema("public")
+}
+
+model ConnectedAccount {
+  id                  String    @id @default(uuid())
+  userId              String    @unique
+  githubAccessToken   String?
+  oauthState          String?
+  oauthStateExpiresAt DateTime?
+
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@schema("private")
 }
 
 model HiringProfile {
@@ -375,4 +390,4 @@ model MagicLink {
   @@index([token])
   @@index([userId])
   @@schema("private")
-} 
+}
