@@ -60,6 +60,12 @@ const ACTION_META: Record<string, ActionMeta> = {
   'medicine.delete': { category: 'delete', label: 'Deleted a medicine' },
   'pharmacy.create': { category: 'create', label: 'Created a pharmacy' },
   'pharmacy.delete': { category: 'delete', label: 'Deleted a pharmacy' },
+  'inquiry.create': { category: 'create', label: 'Asked a pharmacy' },
+  'inquiry.reply': { category: 'update', label: 'Replied to an inquiry' },
+  'inquiry.status_change': {
+    category: 'update',
+    label: 'Changed an inquiry status',
+  },
   'branch.create': { category: 'create', label: 'Created a branch' },
   'branch.update': { category: 'update', label: 'Updated a branch' },
   'branch.delete': { category: 'delete', label: 'Deleted a branch' },

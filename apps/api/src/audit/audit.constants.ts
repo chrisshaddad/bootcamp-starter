@@ -34,6 +34,7 @@ export const AUDIT_ACTIONS = {
   STOCK_BATCH_UPDATE: 'stock_batch.update',
   STOCK_BATCH_DELETE: 'stock_batch.delete',
 
+  INQUIRY_CREATE: 'inquiry.create',
   INQUIRY_REPLY: 'inquiry.reply',
   INQUIRY_STATUS_CHANGE: 'inquiry.status_change',
 

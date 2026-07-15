@@ -113,12 +113,7 @@ const inquiryNavItems: NavItem[] = [
 const clientNavItems: NavItem[] = [
   { title: 'Find medicines', url: '/find', icon: Search },
   { title: 'Pharmacies', url: '/pharmacies', icon: Building2 },
-  {
-    title: 'My inquiries',
-    url: '/my/inquiries',
-    icon: MessageSquare,
-    disabled: true,
-  },
+  { title: 'My inquiries', url: '/my/inquiries', icon: MessageSquare },
   profileNavItem,
 ];
 
