@@ -8,14 +8,15 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { ArrowLeft, Loader2 } from 'lucide-react';
-import { mutate } from 'swr'; // 1. Imported global mutate from SWR
+import { mutate } from 'swr';
 import {
   updateProjectRequestSchema,
   type UpdateProjectRequest,
+  type TechnologyResponse,
 } from '@repo/contracts';
 import { useProject, useUpdateProject } from '@/hooks/use-projects';
+import { useTechnologies } from '@/hooks/use-technologies'; // Imported catalog hook
 import { ApiError, apiUpload, apiDelete } from '@/lib/api';
-import type { MockTechnology } from '@/lib/mock-projects';
 import { TechPicker } from '@/components/tech-picker';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,41 +37,50 @@ export default function EditProjectPage() {
   const router = useRouter();
   const { project, isLoading } = useProject(params.slug);
   const updateProject = useUpdateProject();
+  const { technologies: allTechnologies, isLoading: isTechsLoading } =
+    useTechnologies(); // Loaded SWR catalog
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploadingMedia, setIsUploadingMedia] = useState(false);
 
-  const [technologies, setTechnologies] = useState<MockTechnology[]>([]);
+  const [technologies, setTechnologies] = useState<TechnologyResponse[]>([]); // Typed as TechnologyResponse[]
   const [isTechInitialized, setIsTechInitialized] = useState(false);
-
-  // Initialize technologies from the fetched project data
-  useEffect(() => {
-    if (project?.technologies && !isTechInitialized) {
-      setTechnologies(
-        project.technologies.map((t) => t.technology as MockTechnology),
-      );
-      setIsTechInitialized(true);
-    }
-  }, [project, isTechInitialized]);
+  const [isFormInitialized, setIsFormInitialized] = useState(false);
 
   const {
     register,
     handleSubmit,
     control,
+    reset,
     formState: { errors },
   } = useForm<UpdateProjectRequest>({
     resolver: zodResolver(updateProjectRequestSchema),
-    values: project
-      ? {
-          title: project.title,
-          slug: project.slug,
-          shortDescription: project.shortDescription,
-          fullDescription: project.fullDescription,
-          deploymentUrl: project.deploymentUrl,
-          status: project.status,
-        }
-      : undefined,
   });
+
+  // Initialize form details EXACTLY ONCE upon initial load
+  useEffect(() => {
+    if (project && !isFormInitialized) {
+      reset({
+        title: project.title,
+        slug: project.slug,
+        shortDescription: project.shortDescription ?? '',
+        fullDescription: project.fullDescription ?? '',
+        deploymentUrl: project.deploymentUrl ?? '',
+        status: project.status,
+      });
+      setIsFormInitialized(true);
+    }
+  }, [project, isFormInitialized, reset]);
+
+  // Initialize technologies EXACTLY ONCE upon initial load
+  useEffect(() => {
+    if (project?.technologies && !isTechInitialized) {
+      setTechnologies(
+        project.technologies.map((t) => t.technology as TechnologyResponse),
+      );
+      setIsTechInitialized(true);
+    }
+  }, [project, isTechInitialized]);
 
   const onSubmit = async (data: UpdateProjectRequest) => {
     if (!project) return;
@@ -116,7 +126,6 @@ export default function EditProjectPage() {
       await apiUpload(`/projects/${project.id}/media`, formData);
       toast.success('Media uploaded');
 
-      // 2. Refreshes SWR keys globally
       mutate(`/projects/slug/${params.slug}`);
       mutate(`/projects/id/${project.id}`);
     } catch (error) {
@@ -137,7 +146,6 @@ export default function EditProjectPage() {
       await apiDelete(`/projects/${project.id}/media/${mediaId}`);
       toast.success('Media deleted');
 
-      // 3. Refreshes SWR keys globally
       mutate(`/projects/slug/${params.slug}`);
       mutate(`/projects/id/${project.id}`);
     } catch (error) {
@@ -280,7 +288,15 @@ export default function EditProjectPage() {
 
           <div className="space-y-2">
             <Label>Tech stack</Label>
-            <TechPicker selected={technologies} onChange={setTechnologies} />
+            {isTechsLoading ? (
+              <Skeleton className="h-24 w-full" />
+            ) : (
+              <TechPicker
+                selected={technologies}
+                onChange={setTechnologies}
+                suggestions={allTechnologies || []}
+              />
+            )}
           </div>
         </div>
 

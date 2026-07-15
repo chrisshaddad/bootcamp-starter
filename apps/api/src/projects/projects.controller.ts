@@ -479,6 +479,30 @@ export class ProjectsController {
 
   @Post(':id/media')
   @Roles(AccountType.DEVELOPER, AccountType.SUPER_ADMIN)
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['file'],
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+        mediaType: {
+          type: 'string',
+          enum: ['IMAGE', 'GIF', 'ARCHITECTURE_DIAGRAM'],
+          default: 'IMAGE',
+        },
+        caption: {
+          type: 'string',
+        },
+        sortOrder: {
+          type: 'integer',
+          default: 0,
+        },
+      },
+    },
+  })
   @ApiOperation({ summary: 'Upload media for a project' })
   @ApiConsumes('multipart/form-data')
   @ApiResponse({ status: 201, description: 'Media successfully uploaded.' })
@@ -562,6 +586,20 @@ export class ProjectsController {
   @Patch(':id/media/:mediaId')
   @Roles(AccountType.DEVELOPER, AccountType.SUPER_ADMIN)
   @ApiOperation({ summary: 'Update media details (caption, order)' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        caption: {
+          type: 'string',
+          nullable: true,
+        },
+        sortOrder: {
+          type: 'integer',
+        },
+      },
+    },
+  })
   @ApiResponse({ status: 200, description: 'Media successfully updated.' })
   async updateProjectMedia(
     @CurrentUser() user: User,

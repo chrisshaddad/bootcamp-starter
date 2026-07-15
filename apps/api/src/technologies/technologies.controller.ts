@@ -5,8 +5,10 @@ import { Public } from '../auth/decorators';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import {
   technologyExploreQuerySchema,
+  technologySchema,
   type TechnologyExploreQuery,
 } from '@repo/contracts';
+import { z } from 'zod';
 
 @ApiTags('technologies')
 @Controller('technologies')
@@ -26,6 +28,9 @@ export class TechnologiesController {
     @Query(new ZodValidationPipe(technologyExploreQuerySchema))
     query: TechnologyExploreQuery,
   ) {
-    return this.techService.explore(query);
+    const results = await this.techService.explore(query);
+
+    // Enforces public response shape by stripping extra DB columns (such as createdAt/updatedAt)
+    return z.array(technologySchema).parse(results);
   }
 }

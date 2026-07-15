@@ -1,36 +1,27 @@
 'use client';
 
 import { cn } from '@/lib/utils';
+import { type TechnologyResponse } from '@repo/contracts';
 import {
-  MOCK_TECHNOLOGIES,
   TECHNOLOGY_CATEGORY_LABELS,
-  type MockTechnology,
   type TechnologyCategory,
 } from '@/lib/mock-projects';
 
 interface TechPickerProps {
-  selected: MockTechnology[];
-  onChange: (technologies: MockTechnology[]) => void;
-  // Suggestion list to offer below the selected chips. Defaults to the
-  // fixture list; pass [] to hide suggestions entirely — e.g. once
-  // technologies were populated from a real GitHub language fetch, the
-  // fixed mock stack (TypeScript/NestJS/etc.) has nothing to do with that
-  // repo and would be misleading to offer alongside it.
-  suggestions?: MockTechnology[];
+  selected: TechnologyResponse[];
+  onChange: (technologies: TechnologyResponse[]) => void;
+  // Suggestions lists are loaded live from the SWR database catalog
+  suggestions: TechnologyResponse[];
 }
 
-// mock: Technology/ProjectTechnology have no API endpoints yet, so
-// suggestions default to the fixture list in lib/mock-projects.ts.
-// Selections aren't persisted anywhere — swap the data source and add a
-// save call once the endpoints exist.
 export function TechPicker({
   selected,
   onChange,
-  suggestions = MOCK_TECHNOLOGIES,
+  suggestions,
 }: TechPickerProps) {
   const selectedIds = new Set(selected.map((t) => t.id));
 
-  const toggle = (tech: MockTechnology) => {
+  const toggle = (tech: TechnologyResponse) => {
     if (selectedIds.has(tech.id)) {
       onChange(selected.filter((t) => t.id !== tech.id));
     } else {
@@ -39,9 +30,10 @@ export function TechPicker({
   };
 
   const byCategory = suggestions.reduce<
-    Partial<Record<TechnologyCategory, MockTechnology[]>>
+    Partial<Record<TechnologyCategory, TechnologyResponse[]>>
   >((acc, tech) => {
-    (acc[tech.category] ??= []).push(tech);
+    const category = tech.category as TechnologyCategory;
+    (acc[category] ??= []).push(tech);
     return acc;
   }, {});
 

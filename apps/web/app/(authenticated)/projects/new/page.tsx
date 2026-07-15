@@ -55,7 +55,7 @@ export default function NewProjectPage() {
       );
 
       toast.success('Project imported successfully!');
-      router.push(`/projects/${res.project.slug}/edit`);
+      router.push(`/projects/${res.project.id}/edit`);
     } catch (error: unknown) {
       if (error instanceof ApiError) {
         toast.error(error.message);

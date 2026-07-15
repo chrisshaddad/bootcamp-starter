@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { technologySchema } from '../technologies/technology.schema';
 
 export const projectTechnologyResponseSchema = z.object({
   id: z.string().uuid(),
@@ -10,12 +11,7 @@ export const projectTechnologyResponseSchema = z.object({
   sortOrder: z.number().int(),
   createdAt: z.string(),
   updatedAt: z.string(),
-  technology: z.object({
-    id: z.string().uuid(),
-    name: z.string(),
-    slug: z.string(),
-    category: z.string(),
-  }),
+  technology: technologySchema, // Reuses shared technology schema directly
 });
 
 export type ProjectTechnologyResponse = z.infer<
