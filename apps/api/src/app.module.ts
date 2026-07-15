@@ -14,6 +14,7 @@ import { CatalogModule } from './catalog/catalog.module';
 import { DirectoryModule } from './directory/directory.module';
 import { StockModule } from './stock/stock.module';
 import { InquiriesModule } from './inquiries/inquiries.module';
+import { MyInquiriesModule } from './my-inquiries/my-inquiries.module';
 import { StatsModule } from './stats/stats.module';
 import { AuditModule } from './audit/audit.module';
 import { ProfileModule } from './profile/profile.module';
@@ -39,6 +40,7 @@ import { DatabaseModule } from './database/database.module';
     DirectoryModule,
     StockModule,
     InquiriesModule,
+    MyInquiriesModule,
     StatsModule,
     AuditModule,
     ProfileModule,
