@@ -394,4 +394,60 @@ export class TeacherService {
       score: grade.score.toNumber(),
     };
   }
+  async findAssignmentById(
+    teacherId: string,
+    organizationId: string | null,
+    assignmentId: string,
+  ): Promise<TeacherAssignmentResponse> {
+    if (!organizationId) {
+      throw new ForbiddenException(
+        'Teacher account is not assigned to an organization',
+      );
+    }
+
+    const assignment = await this.prisma.assignment.findFirst({
+      where: {
+        id: assignmentId,
+        type: 'assignment',
+        createdById: teacherId,
+        course: {
+          organizationId,
+        },
+      },
+      select: {
+        id: true,
+        courseId: true,
+        createdById: true,
+        type: true,
+        title: true,
+        instructions: true,
+        maxScore: true,
+        startsAt: true,
+        dueAt: true,
+        endsAt: true,
+        noteToStudents: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+        course: {
+          select: {
+            id: true,
+            title: true,
+          },
+        },
+      },
+    });
+
+    if (!assignment) {
+      throw new NotFoundException(
+        `Assignment with ID ${assignmentId} was not found`,
+      );
+    }
+
+    return {
+      ...assignment,
+      type: 'assignment',
+      maxScore: assignment.maxScore.toNumber(),
+    };
+  }
 }

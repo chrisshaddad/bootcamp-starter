@@ -46,6 +46,17 @@ export class TeacherController {
       body,
     );
   }
+  @Get('assignments/:assignmentId')
+  async findAssignmentById(
+    @CurrentUser() user: User,
+    @Param('assignmentId') assignmentId: string,
+  ): Promise<TeacherAssignmentResponse> {
+    return this.teacherService.findAssignmentById(
+      user.id,
+      user.organizationId,
+      assignmentId,
+    );
+  }
   @Get('assignments/:assignmentId/submissions')
   async findAssignmentSubmissions(
     @CurrentUser() user: User,
