@@ -2,7 +2,7 @@
 
 import { FormEvent, use, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Pencil, Trash2, X } from 'lucide-react';
+import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
 import type {
   StudentActionResponse,
   StudentsByGradeResponse,
@@ -12,7 +12,13 @@ import type {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { apiDelete, apiPatch, fetcher } from '@/lib/api';
-
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 type StudentListItem = StudentsByGradeResponse['students'][number];
 
 interface GradeStudentsPageProps {
@@ -303,119 +309,128 @@ export default function GradeStudentsPage({ params }: GradeStudentsPageProps) {
         </CardContent>
       </Card>
 
-      {editingStudent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl bg-white p-6 shadow-lg">
-            <div className="mb-5 flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Update Student
-                </h2>
-                <p className="mt-1 text-sm text-gray-500">
-                  Edit student information and save changes.
-                </p>
-              </div>
+      <Dialog
+        open={!!editingStudent}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeUpdateModal();
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Update Student</DialogTitle>
+            <DialogDescription>
+              Edit student information and save changes.
+            </DialogDescription>
+          </DialogHeader>
 
+          <form onSubmit={handleUpdateStudent} className="space-y-4">
+            <div>
+              <label
+                htmlFor="student-name"
+                className="text-sm font-medium text-gray-700"
+              >
+                Name
+              </label>
+              <input
+                id="student-name"
+                value={form.name}
+                onChange={(event) =>
+                  setForm((currentForm) => ({
+                    ...currentForm,
+                    name: event.target.value,
+                  }))
+                }
+                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-900"
+                required
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="student-email"
+                className="text-sm font-medium text-gray-700"
+              >
+                Email
+              </label>
+              <input
+                id="student-email"
+                type="email"
+                value={form.email}
+                onChange={(event) =>
+                  setForm((currentForm) => ({
+                    ...currentForm,
+                    email: event.target.value,
+                  }))
+                }
+                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-900"
+                required
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="student-code"
+                className="text-sm font-medium text-gray-700"
+              >
+                Student Code
+              </label>
+              <input
+                id="student-code"
+                value={form.studentCode}
+                onChange={(event) =>
+                  setForm((currentForm) => ({
+                    ...currentForm,
+                    studentCode: event.target.value,
+                  }))
+                }
+                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-900"
+                required
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="student-date-of-birth"
+                className="text-sm font-medium text-gray-700"
+              >
+                Date of Birth
+              </label>
+              <input
+                id="student-date-of-birth"
+                type="date"
+                value={form.dateOfBirth}
+                onChange={(event) =>
+                  setForm((currentForm) => ({
+                    ...currentForm,
+                    dateOfBirth: event.target.value,
+                  }))
+                }
+                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-900"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
               <button
                 type="button"
                 onClick={closeUpdateModal}
-                className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
               >
-                <X className="h-5 w-5" />
+                Cancel
+              </button>
+
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isSaving ? 'Saving...' : 'Save changes'}
               </button>
             </div>
-
-            <form onSubmit={handleUpdateStudent} className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-gray-700">
-                  Name
-                </label>
-                <input
-                  value={form.name}
-                  onChange={(event) =>
-                    setForm((currentForm) => ({
-                      ...currentForm,
-                      name: event.target.value,
-                    }))
-                  }
-                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-900"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-gray-700">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={form.email}
-                  onChange={(event) =>
-                    setForm((currentForm) => ({
-                      ...currentForm,
-                      email: event.target.value,
-                    }))
-                  }
-                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-900"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-gray-700">
-                  Student Code
-                </label>
-                <input
-                  value={form.studentCode}
-                  onChange={(event) =>
-                    setForm((currentForm) => ({
-                      ...currentForm,
-                      studentCode: event.target.value,
-                    }))
-                  }
-                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-900"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-gray-700">
-                  Date of Birth
-                </label>
-                <input
-                  type="date"
-                  value={form.dateOfBirth}
-                  onChange={(event) =>
-                    setForm((currentForm) => ({
-                      ...currentForm,
-                      dateOfBirth: event.target.value,
-                    }))
-                  }
-                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-900"
-                />
-              </div>
-
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={closeUpdateModal}
-                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {isSaving ? 'Saving...' : 'Save changes'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
