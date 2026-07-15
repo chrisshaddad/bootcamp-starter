@@ -14,6 +14,9 @@ export const directoryBranchSchema = z.object({
   latitude: z.number(),
   longitude: z.number(),
   distanceKm: z.number().nullable(),
+  // Distinct medicines this branch currently stocks (in-stock, non-expired) — a
+  // directory-level "how much is here" signal, shown as a chip on each card.
+  stockedMedicineCount: z.number().int().nonnegative(),
 });
 export type DirectoryBranch = z.infer<typeof directoryBranchSchema>;
 
