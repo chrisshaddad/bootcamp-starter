@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
 import Link from 'next/link';
+import useSWR from 'swr';
 import {
   ArrowRight,
   Building2,
@@ -23,60 +24,44 @@ export default function DashboardPage() {
 
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
 
-  const [studentStats, setStudentStats] = useState({
-    totalStudents: 0,
-    organizationCount: 0,
-  });
+  const { data: studentData, isLoading: isStudentStatsLoading } =
+    useSWR<StudentOrganizationsResponse>(
+      isSuperAdmin ? '/students/organizations' : null,
+      fetcher,
+    );
 
-  const [teacherStats, setTeacherStats] = useState({
-    totalTeachers: 0,
-    organizationCount: 0,
-  });
+  const { data: teacherData, isLoading: isTeacherStatsLoading } =
+    useSWR<TeacherOrganizationsResponse>(
+      isSuperAdmin ? '/teachers/organizations' : null,
+      fetcher,
+    );
 
-  const [isDashboardStatsLoading, setIsDashboardStatsLoading] = useState(false);
+  const studentStats = useMemo(() => {
+    const organizations = studentData?.organizations ?? [];
 
-  useEffect(() => {
-    if (!isSuperAdmin) {
-      return;
-    }
+    return {
+      totalStudents: organizations.reduce(
+        (total, organization) => total + organization.studentCount,
+        0,
+      ),
+      organizationCount: organizations.length,
+    };
+  }, [studentData]);
 
-    async function loadDashboardStats() {
-      setIsDashboardStatsLoading(true);
+  const teacherStats = useMemo(() => {
+    const organizations = teacherData?.organizations ?? [];
 
-      try {
-        const [studentData, teacherData] = await Promise.all([
-          fetcher<StudentOrganizationsResponse>('/students/organizations'),
-          fetcher<TeacherOrganizationsResponse>('/teachers/organizations'),
-        ]);
+    return {
+      totalTeachers: organizations.reduce(
+        (total, organization) => total + organization.teacherCount,
+        0,
+      ),
+      organizationCount: organizations.length,
+    };
+  }, [teacherData]);
 
-        const totalStudents = studentData.organizations.reduce(
-          (total, organization) => total + organization.studentCount,
-          0,
-        );
-
-        const totalTeachers = teacherData.organizations.reduce(
-          (total, organization) => total + organization.teacherCount,
-          0,
-        );
-
-        setStudentStats({
-          totalStudents,
-          organizationCount: studentData.organizations.length,
-        });
-
-        setTeacherStats({
-          totalTeachers,
-          organizationCount: teacherData.organizations.length,
-        });
-      } catch (error) {
-        console.error('Failed to load dashboard stats:', error);
-      } finally {
-        setIsDashboardStatsLoading(false);
-      }
-    }
-
-    loadDashboardStats();
-  }, [isSuperAdmin]);
+  const isDashboardStatsLoading =
+    isStudentStatsLoading || isTeacherStatsLoading;
 
   const formatNumber = (value: number) => {
     return new Intl.NumberFormat('en-US').format(value);
