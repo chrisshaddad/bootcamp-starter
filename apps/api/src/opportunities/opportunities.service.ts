@@ -265,7 +265,10 @@ export class OpportunitiesService {
         organizationId,
       );
 
-      if (!data.departmentId || !managedDepartmentIds.includes(data.departmentId)) {
+      if (
+        !data.departmentId ||
+        !managedDepartmentIds.includes(data.departmentId)
+      ) {
         throw new ForbiddenException(
           'You can only create openings for a department you manage',
         );

@@ -13,7 +13,10 @@ import {
 import { toast } from 'sonner';
 import type { OpportunityResponse, OpportunityStatus } from '@repo/contracts';
 import { useUser } from '@/hooks/use-auth';
-import { useOpportunities, useOpportunityMutations } from '@/hooks/use-opportunities';
+import {
+  useOpportunities,
+  useOpportunityMutations,
+} from '@/hooks/use-opportunities';
 import { ApiError } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -60,6 +63,20 @@ const STATUS_OPTIONS: { label: string; value: OpportunityStatus }[] = [
   { label: 'Filled', value: 'FILLED' },
 ];
 
+// Deadlines are date-only values stored at UTC midnight; format in UTC so the
+// displayed day doesn't shift for users west of UTC (toLocaleDateString would
+// convert to the browser's local timezone and can show the prior calendar day).
+const DEADLINE_FORMATTER = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'UTC',
+  year: 'numeric',
+  month: 'numeric',
+  day: 'numeric',
+});
+
+function formatDeadline(deadline: string | Date): string {
+  return DEADLINE_FORMATTER.format(new Date(deadline));
+}
+
 function ForbiddenPage() {
   return (
     <div className="flex flex-col items-center justify-center py-20">
@@ -84,14 +101,16 @@ function LoadingSkeleton() {
 
 export default function ManageOpeningsPage() {
   const { user, isLoading: isUserLoading } = useUser();
-  const { opportunities, isLoading } = useOpportunities({ mine: true });
+  const { opportunities, isLoading, error } = useOpportunities({ mine: true });
   const { updateOpportunity, deleteOpportunity } = useOpportunityMutations();
 
   const [formOpen, setFormOpen] = useState(false);
-  const [editingOpportunity, setEditingOpportunity] =
-    useState<OpportunityResponse | undefined>(undefined);
-  const [deletingOpportunity, setDeletingOpportunity] =
-    useState<OpportunityResponse | undefined>(undefined);
+  const [editingOpportunity, setEditingOpportunity] = useState<
+    OpportunityResponse | undefined
+  >(undefined);
+  const [deletingOpportunity, setDeletingOpportunity] = useState<
+    OpportunityResponse | undefined
+  >(undefined);
   const [isDeleting, setIsDeleting] = useState(false);
 
   if (isUserLoading) {
@@ -150,9 +169,7 @@ export default function ManageOpeningsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            Manage Openings
-          </h1>
+          <h1 className="text-2xl font-bold text-gray-900">Manage Openings</h1>
           <p className="mt-1 text-sm text-gray-500">
             Create and manage internal openings for your team
           </p>
@@ -168,6 +185,10 @@ export default function ManageOpeningsPage() {
 
       {isLoading ? (
         <LoadingSkeleton />
+      ) : error ? (
+        <div className="py-10 text-center text-red-500">
+          Failed to load openings
+        </div>
       ) : !opportunities?.length ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 bg-white py-20 text-center">
           <FolderKanban className="h-10 w-10 text-gray-300" />
@@ -202,9 +223,8 @@ export default function ManageOpeningsPage() {
                     )}
                   >
                     {
-                      STATUS_OPTIONS.find(
-                        (s) => s.value === opportunity.status,
-                      )?.label
+                      STATUS_OPTIONS.find((s) => s.value === opportunity.status)
+                        ?.label
                     }
                   </span>
                 </div>
@@ -213,7 +233,10 @@ export default function ManageOpeningsPage() {
                   <Select
                     value={opportunity.status}
                     onValueChange={(status) =>
-                      handleStatusChange(opportunity, status as OpportunityStatus)
+                      handleStatusChange(
+                        opportunity,
+                        status as OpportunityStatus,
+                      )
                     }
                   >
                     <SelectTrigger className="h-9 w-32 rounded-lg border-gray-200 bg-white text-sm">
@@ -268,7 +291,7 @@ export default function ManageOpeningsPage() {
                 {opportunity.deadline && (
                   <span className="flex items-center gap-1.5">
                     <Calendar className="h-3.5 w-3.5" />
-                    {new Date(opportunity.deadline).toLocaleDateString()}
+                    {formatDeadline(opportunity.deadline)}
                   </span>
                 )}
               </div>
@@ -309,7 +332,8 @@ export default function ManageOpeningsPage() {
               variant="destructive"
               disabled={
                 isDeleting ||
-                (deletingOpportunity && deletingOpportunity.applicationCount > 0)
+                (deletingOpportunity &&
+                  deletingOpportunity.applicationCount > 0)
               }
               onClick={handleDelete}
             >

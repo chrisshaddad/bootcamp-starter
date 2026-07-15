@@ -39,8 +39,12 @@ export function useOpportunities(
   const query = params.toString();
   const endpoint = query ? `/opportunities?${query}` : '/opportunities';
 
-  const { data, error, isLoading, mutate: swrMutate } =
-    useSWR<OpportunityListResponse>(enabled ? endpoint : null);
+  const {
+    data,
+    error,
+    isLoading,
+    mutate: swrMutate,
+  } = useSWR<OpportunityListResponse>(enabled ? endpoint : null);
 
   return {
     opportunities: data?.opportunities,
@@ -77,10 +81,7 @@ export function useOpportunityMutations(): UseOpportunityMutationsReturn {
 
   const createOpportunity = useCallback(
     async (data: OpportunityCreateRequest) => {
-      const result = await apiPost<OpportunityResponse>(
-        '/opportunities',
-        data,
-      );
+      const result = await apiPost<OpportunityResponse>('/opportunities', data);
       invalidateAll();
       return result;
     },

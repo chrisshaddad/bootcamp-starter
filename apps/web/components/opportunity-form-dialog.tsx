@@ -154,10 +154,7 @@ export function OpportunityFormDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <form
-          onSubmit={handleSubmit(onSubmit)}
-          className="space-y-4"
-        >
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="title">Title</Label>
             <Input
@@ -239,9 +236,7 @@ export function OpportunityFormDialog({
               {...register('description')}
             />
             {errors.description && (
-              <p className="text-sm text-error">
-                {errors.description.message}
-              </p>
+              <p className="text-sm text-error">{errors.description.message}</p>
             )}
           </div>
 
