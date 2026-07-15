@@ -13,11 +13,18 @@ export class ApiError extends Error {
 }
 
 async function parseErrorMessage(res: Response): Promise<string> {
-  const error = await res
-    .json()
-    .catch(() => ({ message: 'An error occurred' }));
+  const error: unknown = await res.json().catch(() => null);
 
-  return error.message || 'An error occurred';
+  if (
+    error &&
+    typeof error === 'object' &&
+    'message' in error &&
+    typeof error.message === 'string'
+  ) {
+    return error.message;
+  }
+
+  return 'An error occurred';
 }
 
 export async function fetcher<T>(endpoint: string): Promise<T> {
