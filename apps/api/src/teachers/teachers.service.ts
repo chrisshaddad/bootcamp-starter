@@ -1,10 +1,11 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type {
+  TeacherActionResponse,
   TeacherOrganizationsResponse,
   TeachersByOrganizationResponse,
+  UpdateTeacherRequest,
 } from '@repo/contracts';
 import { PrismaService } from '../database/prisma.service';
-
 @Injectable()
 export class TeachersService {
   private readonly logger = new Logger(TeachersService.name);
@@ -104,6 +105,69 @@ export class TeachersService {
         status: teacher.isConfirmed ? 'Active' : 'Pending',
         createdAt: teacher.createdAt.toISOString().slice(0, 10),
       })),
+    };
+  }
+
+  async updateTeacher(
+    teacherId: string,
+    payload: UpdateTeacherRequest,
+  ): Promise<TeacherActionResponse> {
+    const teacher = await this.prisma.user.findFirst({
+      where: {
+        id: teacherId,
+        role: 'ORG_ADMIN',
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!teacher) {
+      throw new NotFoundException('Teacher not found');
+    }
+
+    await this.prisma.user.update({
+      where: {
+        id: teacherId,
+      },
+      data: {
+        ...(payload.name !== undefined ? { name: payload.name } : {}),
+        ...(payload.email !== undefined ? { email: payload.email } : {}),
+      },
+    });
+
+    this.logger.log(`Updated teacher ${teacherId}.`);
+
+    return {
+      id: teacherId,
+    };
+  }
+
+  async deleteTeacher(teacherId: string): Promise<TeacherActionResponse> {
+    const teacher = await this.prisma.user.findFirst({
+      where: {
+        id: teacherId,
+        role: 'ORG_ADMIN',
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!teacher) {
+      throw new NotFoundException('Teacher not found');
+    }
+
+    await this.prisma.user.delete({
+      where: {
+        id: teacherId,
+      },
+    });
+
+    this.logger.log(`Deleted teacher ${teacherId}.`);
+
+    return {
+      id: teacherId,
     };
   }
 }

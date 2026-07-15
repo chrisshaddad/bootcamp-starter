@@ -1,14 +1,18 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch } from '@nestjs/common';
 import type {
+  TeacherActionResponse,
   TeacherOrganizationParams,
   TeacherOrganizationsResponse,
   TeachersByOrganizationResponse,
+  UpdateTeacherRequest,
 } from '@repo/contracts';
-import { TeacherOrganizationParamsSchema } from '@repo/contracts';
+import {
+  TeacherOrganizationParamsSchema,
+  UpdateTeacherRequestSchema,
+} from '@repo/contracts';
 import { Roles } from '../auth/decorators';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { TeachersService } from './teachers.service';
-
 @Controller('teachers')
 export class TeachersController {
   constructor(private readonly teachersService: TeachersService) {}
@@ -28,5 +32,23 @@ export class TeachersController {
     return this.teachersService.findTeachersByOrganization(
       params.organizationId,
     );
+  }
+
+  @Patch(':teacherId')
+  @Roles('SUPER_ADMIN')
+  async updateTeacher(
+    @Param('teacherId') teacherId: string,
+    @Body(new ZodValidationPipe(UpdateTeacherRequestSchema))
+    payload: UpdateTeacherRequest,
+  ): Promise<TeacherActionResponse> {
+    return this.teachersService.updateTeacher(teacherId, payload);
+  }
+
+  @Delete(':teacherId')
+  @Roles('SUPER_ADMIN')
+  async deleteTeacher(
+    @Param('teacherId') teacherId: string,
+  ): Promise<TeacherActionResponse> {
+    return this.teachersService.deleteTeacher(teacherId);
   }
 }
