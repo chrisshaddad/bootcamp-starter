@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import type {
@@ -14,11 +15,11 @@ import type {
   TeacherSubmissionListResponse,
 } from '@repo/contracts';
 import { PrismaService } from '../database/prisma.service';
-
 @Injectable()
 export class TeacherService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(TeacherService.name);
 
+  constructor(private readonly prisma: PrismaService) {}
   async findMyCourses(
     teacherId: string,
     organizationId: string | null,
