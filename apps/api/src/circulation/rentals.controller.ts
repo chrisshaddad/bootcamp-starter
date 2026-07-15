@@ -7,10 +7,9 @@ import {
   Query,
   Body,
   BadRequestException,
-  ForbiddenException,
 } from '@nestjs/common';
 import { RentalsService } from './rentals.service';
-import { Roles, CurrentUser } from '../auth/decorators';
+import { Roles, CurrentUser, OrganizationId } from '../auth/decorators';
 import type { User } from '@repo/db';
 import {
   rentalCheckoutRequestSchema,
@@ -34,14 +33,14 @@ export class RentalsController {
 
   @Get()
   async findAll(
-    @CurrentUser() user: User,
+    @OrganizationId() organizationId: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('memberId') memberId?: string,
     @Query('bookCopyId') bookCopyId?: string,
     @Query('status') status?: string,
   ): Promise<RentalListResponse> {
-    return this.rentalsService.findAll(this.requireOrganizationId(user), {
+    return this.rentalsService.findAll(organizationId, {
       page: page ? parseInt(page, 10) : 1,
       limit: limit ? parseInt(limit, 10) : 20,
       memberId,
@@ -52,76 +51,54 @@ export class RentalsController {
 
   @Get(':id')
   async findOne(
-    @CurrentUser() user: User,
+    @OrganizationId() organizationId: string,
     @Param('id') id: string,
   ): Promise<RentalResponse> {
-    return this.rentalsService.findOne(this.requireOrganizationId(user), id);
+    return this.rentalsService.findOne(organizationId, id);
   }
 
   @Post()
   async checkout(
+    @OrganizationId() organizationId: string,
     @CurrentUser() user: User,
     @Body(new ZodValidationPipe(rentalCheckoutRequestSchema))
     body: RentalCheckoutRequest,
   ): Promise<RentalResponse> {
-    return this.rentalsService.checkout(
-      this.requireOrganizationId(user),
-      user.id,
-      body,
-    );
+    return this.rentalsService.checkout(organizationId, user.id, body);
   }
 
   @Patch(':id/return')
   async returnRental(
-    @CurrentUser() user: User,
+    @OrganizationId() organizationId: string,
     @Param('id') id: string,
     @Body(new ZodValidationPipe(rentalReturnRequestSchema))
     body: RentalReturnRequest,
   ): Promise<RentalActionResponse> {
-    const rental = await this.rentalsService.return(
-      this.requireOrganizationId(user),
-      id,
-      body,
-    );
+    const rental = await this.rentalsService.return(organizationId, id, body);
 
     return { message: 'Rental returned successfully', rental };
   }
 
   @Patch(':id/lost')
   async markLost(
-    @CurrentUser() user: User,
+    @OrganizationId() organizationId: string,
     @Param('id') id: string,
     @Body(new ZodValidationPipe(rentalLostRequestSchema))
     body: RentalLostRequest,
   ): Promise<RentalActionResponse> {
-    const rental = await this.rentalsService.markLost(
-      this.requireOrganizationId(user),
-      id,
-      body,
-    );
+    const rental = await this.rentalsService.markLost(organizationId, id, body);
 
     return { message: 'Rental marked as lost', rental };
   }
 
   @Patch(':id/pay-fine')
   async payFine(
-    @CurrentUser() user: User,
+    @OrganizationId() organizationId: string,
     @Param('id') id: string,
   ): Promise<RentalActionResponse> {
-    const rental = await this.rentalsService.payFine(
-      this.requireOrganizationId(user),
-      id,
-    );
+    const rental = await this.rentalsService.payFine(organizationId, id);
 
     return { message: 'Fine marked as paid', rental };
-  }
-
-  private requireOrganizationId(user: User): string {
-    if (!user.organizationId) {
-      throw new ForbiddenException('User is not scoped to an organization');
-    }
-
-    return user.organizationId;
   }
 
   private parseStatus(status: string): RentalStatus {

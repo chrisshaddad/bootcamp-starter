@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { StatusBadge } from '@/components/status-badge';
+import { ForbiddenPage } from '@/components/forbidden-page';
 import {
   Dialog,
   DialogContent,
@@ -27,7 +28,6 @@ import {
   Calendar,
   CheckCircle,
   XCircle,
-  ShieldX,
   Clock,
   Power,
   PowerOff,
@@ -49,19 +49,6 @@ const STATUS_COLORS: Record<string, string> = {
     'bg-library-accent-100 text-library-accent-800 border-library-accent-300',
   INACTIVE: 'bg-muted text-muted-foreground border-border',
 };
-
-function ForbiddenPage() {
-  return (
-    <div className="flex flex-col items-center justify-center py-20">
-      <ShieldX className="h-16 w-16 text-error/70 mb-4" />
-      <h1 className="text-2xl font-bold text-foreground mb-2">Access Denied</h1>
-      <p className="text-muted-foreground text-center max-w-md">
-        You don&apos;t have permission to access this page. Only Super Admins
-        can manage organizations.
-      </p>
-    </div>
-  );
-}
 
 function LoadingSkeleton() {
   return (
@@ -186,7 +173,9 @@ export default function OrganizationDetailPage() {
 
   // Show 403 for non-super admins
   if (user?.role !== 'SUPER_ADMIN') {
-    return <ForbiddenPage />;
+    return (
+      <ForbiddenPage message="Only Super Admins can manage organizations." />
+    );
   }
 
   if (error) {

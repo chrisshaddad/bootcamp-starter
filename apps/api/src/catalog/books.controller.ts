@@ -6,11 +6,9 @@ import {
   Param,
   Query,
   Body,
-  ForbiddenException,
 } from '@nestjs/common';
 import { BooksService } from './books.service';
-import { Roles, CurrentUser } from '../auth/decorators';
-import type { User } from '@repo/db';
+import { Roles, OrganizationId } from '../auth/decorators';
 import {
   bookCreateRequestSchema,
   bookUpdateRequestSchema,
@@ -28,11 +26,11 @@ export class BooksController {
 
   @Get()
   async findAll(
-    @CurrentUser() user: User,
+    @OrganizationId() organizationId: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ): Promise<BookListResponse> {
-    return this.booksService.findAll(this.requireOrganizationId(user), {
+    return this.booksService.findAll(organizationId, {
       page: page ? parseInt(page, 10) : 1,
       limit: limit ? parseInt(limit, 10) : 20,
     });
@@ -40,36 +38,28 @@ export class BooksController {
 
   @Get(':id')
   async findOne(
-    @CurrentUser() user: User,
+    @OrganizationId() organizationId: string,
     @Param('id') id: string,
   ): Promise<BookResponse> {
-    return this.booksService.findOne(this.requireOrganizationId(user), id);
+    return this.booksService.findOne(organizationId, id);
   }
 
   @Post()
   async create(
-    @CurrentUser() user: User,
+    @OrganizationId() organizationId: string,
     @Body(new ZodValidationPipe(bookCreateRequestSchema))
     body: BookCreateRequest,
   ): Promise<BookResponse> {
-    return this.booksService.create(this.requireOrganizationId(user), body);
+    return this.booksService.create(organizationId, body);
   }
 
   @Patch(':id')
   async update(
-    @CurrentUser() user: User,
+    @OrganizationId() organizationId: string,
     @Param('id') id: string,
     @Body(new ZodValidationPipe(bookUpdateRequestSchema))
     body: BookUpdateRequest,
   ): Promise<BookResponse> {
-    return this.booksService.update(this.requireOrganizationId(user), id, body);
-  }
-
-  private requireOrganizationId(user: User): string {
-    if (!user.organizationId) {
-      throw new ForbiddenException('User is not scoped to an organization');
-    }
-
-    return user.organizationId;
+    return this.booksService.update(organizationId, id, body);
   }
 }

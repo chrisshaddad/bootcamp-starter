@@ -6,11 +6,9 @@ import {
   Param,
   Query,
   Body,
-  ForbiddenException,
 } from '@nestjs/common';
 import { CategoriesService } from './categories.service';
-import { Roles, CurrentUser } from '../auth/decorators';
-import type { User } from '@repo/db';
+import { Roles, OrganizationId } from '../auth/decorators';
 import {
   categoryCreateRequestSchema,
   categoryUpdateRequestSchema,
@@ -28,11 +26,11 @@ export class CategoriesController {
 
   @Get()
   async findAll(
-    @CurrentUser() user: User,
+    @OrganizationId() organizationId: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ): Promise<CategoryListResponse> {
-    return this.categoriesService.findAll(this.requireOrganizationId(user), {
+    return this.categoriesService.findAll(organizationId, {
       page: page ? parseInt(page, 10) : 1,
       limit: limit ? parseInt(limit, 10) : 20,
     });
@@ -40,43 +38,28 @@ export class CategoriesController {
 
   @Get(':id')
   async findOne(
-    @CurrentUser() user: User,
+    @OrganizationId() organizationId: string,
     @Param('id') id: string,
   ): Promise<CategoryResponse> {
-    return this.categoriesService.findOne(this.requireOrganizationId(user), id);
+    return this.categoriesService.findOne(organizationId, id);
   }
 
   @Post()
   async create(
-    @CurrentUser() user: User,
+    @OrganizationId() organizationId: string,
     @Body(new ZodValidationPipe(categoryCreateRequestSchema))
     body: CategoryCreateRequest,
   ): Promise<CategoryResponse> {
-    return this.categoriesService.create(
-      this.requireOrganizationId(user),
-      body,
-    );
+    return this.categoriesService.create(organizationId, body);
   }
 
   @Patch(':id')
   async update(
-    @CurrentUser() user: User,
+    @OrganizationId() organizationId: string,
     @Param('id') id: string,
     @Body(new ZodValidationPipe(categoryUpdateRequestSchema))
     body: CategoryUpdateRequest,
   ): Promise<CategoryResponse> {
-    return this.categoriesService.update(
-      this.requireOrganizationId(user),
-      id,
-      body,
-    );
-  }
-
-  private requireOrganizationId(user: User): string {
-    if (!user.organizationId) {
-      throw new ForbiddenException('User is not scoped to an organization');
-    }
-
-    return user.organizationId;
+    return this.categoriesService.update(organizationId, id, body);
   }
 }
