@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type {
   StudentActionResponse,
   StudentOrganizationGradesResponse,
@@ -10,6 +10,8 @@ import { PrismaService } from '../database/prisma.service';
 
 @Injectable()
 export class StudentsService {
+  private readonly logger = new Logger(StudentsService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   async findOrganizations(): Promise<StudentOrganizationsResponse> {
@@ -286,6 +288,7 @@ export class StudentsService {
         });
       }
     });
+    this.logger.log(`Updated student ${studentProfileId}.`);
 
     return {
       id: studentProfileId,
@@ -314,6 +317,7 @@ export class StudentsService {
         id: studentProfile.userId,
       },
     });
+    this.logger.log(`Deleted student ${studentProfileId}.`);
 
     return {
       id: studentProfileId,
