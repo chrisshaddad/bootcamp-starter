@@ -21,6 +21,7 @@ import { formatPrice } from '@/lib/stock';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ENTER, enterStyle } from '@/lib/enter-animation';
+import { directionsUrl } from '@/lib/maps';
 
 const ALT_PAGE_SIZE = 6; // 2 per row × 3 rows, like the search grid
 
@@ -31,11 +32,6 @@ function formatDate(value: string | Date | null): string {
     month: 'short',
     day: 'numeric',
   });
-}
-
-// External maps directions link built from the branch coordinates — no API key.
-function directionsUrl(lat: number, lng: number): string {
-  return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
 }
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
