@@ -166,64 +166,66 @@ export default function OpportunitiesPage() {
       ) : (
         <div className="space-y-4">
           {filtered.map((opportunity) => (
-            <Link key={opportunity.id} href={`/opportunities/${opportunity.id}`} className="block">
-            <Card
-              className="gap-3 p-5 border-gray-200 shadow-sm transition-shadow hover:shadow-md"
+            <Link
+              key={opportunity.id}
+              href={`/opportunities/${opportunity.id}`}
+              className="block"
             >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-base font-semibold text-gray-900">
-                    {opportunity.title}
-                  </h2>
-                  <span className="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-700">
-                    {toLabel(opportunity.type)}
+              <Card className="gap-3 p-5 border-gray-200 shadow-sm transition-shadow hover:shadow-md">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-base font-semibold text-gray-900">
+                      {opportunity.title}
+                    </h2>
+                    <span className="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-700">
+                      {toLabel(opportunity.type)}
+                    </span>
+                    <span
+                      className={cn(
+                        'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
+                        STATUS_BADGE_COLORS[opportunity.status],
+                      )}
+                    >
+                      {toLabel(opportunity.status)}
+                    </span>
+                  </div>
+                </div>
+
+                {(opportunity.department || opportunity.requiredLevel) && (
+                  <p className="text-sm text-gray-500">
+                    {opportunity.department?.name}
+                    {opportunity.department && opportunity.requiredLevel
+                      ? ' · '
+                      : ''}
+                    {opportunity.requiredLevel
+                      ? `L${opportunity.requiredLevel}+`
+                      : ''}
+                  </p>
+                )}
+
+                {opportunity.description && (
+                  <p className="line-clamp-2 text-sm text-gray-600">
+                    {opportunity.description}
+                  </p>
+                )}
+
+                <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500">
+                  <span className="flex items-center gap-1.5">
+                    <Users className="h-3.5 w-3.5" />
+                    {opportunity.applicationCount} applied
                   </span>
-                  <span
-                    className={cn(
-                      'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
-                      STATUS_BADGE_COLORS[opportunity.status],
-                    )}
-                  >
-                    {toLabel(opportunity.status)}
+                  {opportunity.deadline && (
+                    <span className="flex items-center gap-1.5">
+                      <Calendar className="h-3.5 w-3.5" />
+                      Due {new Date(opportunity.deadline).toLocaleDateString()}
+                    </span>
+                  )}
+                  <span className="flex items-center gap-1.5">
+                    <ListChecks className="h-3.5 w-3.5" />
+                    {opportunity.requiredSkills.length} required skills
                   </span>
                 </div>
-              </div>
-
-              {(opportunity.department || opportunity.requiredLevel) && (
-                <p className="text-sm text-gray-500">
-                  {opportunity.department?.name}
-                  {opportunity.department && opportunity.requiredLevel
-                    ? ' · '
-                    : ''}
-                  {opportunity.requiredLevel
-                    ? `L${opportunity.requiredLevel}+`
-                    : ''}
-                </p>
-              )}
-
-              {opportunity.description && (
-                <p className="line-clamp-2 text-sm text-gray-600">
-                  {opportunity.description}
-                </p>
-              )}
-
-              <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500">
-                <span className="flex items-center gap-1.5">
-                  <Users className="h-3.5 w-3.5" />
-                  {opportunity.applicationCount} applied
-                </span>
-                {opportunity.deadline && (
-                  <span className="flex items-center gap-1.5">
-                    <Calendar className="h-3.5 w-3.5" />
-                    Due {new Date(opportunity.deadline).toLocaleDateString()}
-                  </span>
-                )}
-                <span className="flex items-center gap-1.5">
-                  <ListChecks className="h-3.5 w-3.5" />
-                  {opportunity.requiredSkills.length} required skills
-                </span>
-              </div>
-            </Card>
+              </Card>
             </Link>
           ))}
         </div>
