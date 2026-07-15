@@ -132,8 +132,8 @@ export default function OpportunityDetailPage() {
   }
 
   const levelLabel = opportunity.requiredLevel
-    ? LEVEL_LABELS[opportunity.requiredLevel] ??
-      `L${opportunity.requiredLevel}+`
+    ? (LEVEL_LABELS[opportunity.requiredLevel] ??
+      `L${opportunity.requiredLevel}+`)
     : null;
 
   return (

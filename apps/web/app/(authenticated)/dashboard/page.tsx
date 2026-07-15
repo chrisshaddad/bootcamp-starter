@@ -99,8 +99,7 @@ export default function DashboardPage() {
       {/* Welcome */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">
-          Welcome back,{' '}
-          {user?.name || user?.email?.split('@')[0] || 'there'}
+          Welcome back, {user?.name || user?.email?.split('@')[0] || 'there'}
         </h1>
         <p className="mt-1 text-sm text-gray-500">
           Here&apos;s an overview of your career activity
@@ -132,9 +131,7 @@ export default function DashboardPage() {
         />
         <StatCard
           title="Pending Applications"
-          value={
-            applications?.filter((a) => a.status === 'PENDING').length
-          }
+          value={applications?.filter((a) => a.status === 'PENDING').length}
           icon={<Layers className="h-5 w-5" />}
           href="/applications"
           loading={appsLoading}
@@ -169,9 +166,7 @@ export default function DashboardPage() {
         ) : recentApplications.length === 0 ? (
           <Card className="flex flex-col items-center justify-center border-dashed border-gray-200 py-12 text-center">
             <FileText className="h-8 w-8 text-gray-300" />
-            <p className="mt-2 text-sm text-gray-500">
-              No applications yet
-            </p>
+            <p className="mt-2 text-sm text-gray-500">No applications yet</p>
             <Button
               variant="outline"
               size="sm"

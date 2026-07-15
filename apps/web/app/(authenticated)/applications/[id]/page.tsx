@@ -11,7 +11,10 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useApplication, useApplicationMutations } from '@/hooks/use-applications';
+import {
+  useApplication,
+  useApplicationMutations,
+} from '@/hooks/use-applications';
 import { ApiError } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';

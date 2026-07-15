@@ -115,10 +115,7 @@ export function useApplicationMutations(): UseApplicationMutationsReturn {
 
   const createApplication = useCallback(
     async (data: ApplicationCreateRequest) => {
-      const result = await apiPost<ApplicationResponse>(
-        '/applications',
-        data,
-      );
+      const result = await apiPost<ApplicationResponse>('/applications', data);
       invalidateAll();
       return result;
     },

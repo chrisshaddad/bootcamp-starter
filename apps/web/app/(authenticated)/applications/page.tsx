@@ -183,8 +183,7 @@ export default function ApplicationsPage() {
               <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500">
                 <span className="flex items-center gap-1.5">
                   <Calendar className="h-3.5 w-3.5" />
-                  Applied{' '}
-                  {new Date(application.createdAt).toLocaleDateString()}
+                  Applied {new Date(application.createdAt).toLocaleDateString()}
                 </span>
                 {application.fitScore != null && (
                   <span className="flex items-center gap-1.5">

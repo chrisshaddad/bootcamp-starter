@@ -18,7 +18,9 @@ interface UseSkillGapReturn {
 /**
  * Hook for fetching skill gap analysis between an employee and an opportunity
  */
-export function useSkillGap(options: UseSkillGapOptions = {}): UseSkillGapReturn {
+export function useSkillGap(
+  options: UseSkillGapOptions = {},
+): UseSkillGapReturn {
   const { employeeId, opportunityId, enabled = true } = options;
 
   const shouldFetch = enabled && !!employeeId && !!opportunityId;

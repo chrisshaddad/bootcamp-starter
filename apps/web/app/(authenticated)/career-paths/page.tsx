@@ -11,7 +11,10 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useCareerPaths, useCareerPathMutations } from '@/hooks/use-career-paths';
+import {
+  useCareerPaths,
+  useCareerPathMutations,
+} from '@/hooks/use-career-paths';
 import { ApiError } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -155,10 +158,7 @@ export default function CareerPathsPage() {
       ) : (
         <div className="space-y-4">
           {careerPaths.map((path) => (
-            <Card
-              key={path.id}
-              className="gap-3 p-5 border-gray-200 shadow-sm"
-            >
+            <Card key={path.id} className="gap-3 p-5 border-gray-200 shadow-sm">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <Target className="h-4 w-4 text-gray-400" />
@@ -195,8 +195,7 @@ export default function CareerPathsPage() {
                 </span>
                 <span className="flex items-center gap-1.5">
                   <Calendar className="h-3.5 w-3.5" />
-                  Created{' '}
-                  {new Date(path.createdAt).toLocaleDateString()}
+                  Created {new Date(path.createdAt).toLocaleDateString()}
                 </span>
               </div>
 
