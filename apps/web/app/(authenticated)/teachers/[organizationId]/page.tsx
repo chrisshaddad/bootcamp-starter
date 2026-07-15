@@ -131,6 +131,10 @@ export default function TeachersOrganizationPage({
   }
 
   async function handleDeleteTeacher(teacherId: string) {
+    if (deletingTeacherId) {
+      return;
+    }
+
     if (confirmDeleteTeacherId !== teacherId) {
       setConfirmDeleteTeacherId(teacherId);
       return;
@@ -253,7 +257,8 @@ export default function TeachersOrganizationPage({
                           <button
                             type="button"
                             onClick={() => openUpdateModal(teacher)}
-                            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100"
+                            disabled={deletingTeacherId !== null}
+                            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             <Pencil className="h-3.5 w-3.5" />
                             Update
@@ -264,7 +269,7 @@ export default function TeachersOrganizationPage({
                           <button
                             type="button"
                             onClick={() => handleDeleteTeacher(teacher.id)}
-                            disabled={deletingTeacherId === teacher.id}
+                            disabled={deletingTeacherId !== null}
                             className="inline-flex items-center gap-2 rounded-lg border border-error/20 px-3 py-1.5 text-xs font-medium text-error hover:bg-error/10 disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             <Trash2 className="h-3.5 w-3.5" />

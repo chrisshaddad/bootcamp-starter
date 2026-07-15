@@ -139,6 +139,10 @@ export default function GradeStudentsPage({ params }: GradeStudentsPageProps) {
   }
 
   async function handleDeleteStudent(studentId: string) {
+    if (deletingStudentId) {
+      return;
+    }
+
     if (confirmDeleteStudentId !== studentId) {
       setConfirmDeleteStudentId(studentId);
       return;
@@ -266,7 +270,8 @@ export default function GradeStudentsPage({ params }: GradeStudentsPageProps) {
                           <button
                             type="button"
                             onClick={() => openUpdateModal(student)}
-                            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100"
+                            disabled={deletingStudentId !== null}
+                            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             <Pencil className="h-3.5 w-3.5" />
                             Update
@@ -277,7 +282,7 @@ export default function GradeStudentsPage({ params }: GradeStudentsPageProps) {
                           <button
                             type="button"
                             onClick={() => handleDeleteStudent(student.id)}
-                            disabled={deletingStudentId === student.id}
+                            disabled={deletingStudentId !== null}
                             className="inline-flex items-center gap-2 rounded-lg border border-error/20 px-3 py-1.5 text-xs font-medium text-error hover:bg-error/10 disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
