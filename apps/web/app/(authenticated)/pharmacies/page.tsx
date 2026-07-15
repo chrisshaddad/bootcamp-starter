@@ -246,7 +246,9 @@ export default function PharmaciesPage() {
           className="pointer-events-none absolute -bottom-24 right-24 h-44 w-44 rounded-full bg-white/10"
         />
         <div className="relative">
-          <h1 className="text-2xl font-bold sm:text-3xl">Pharmacies near you</h1>
+          <h1 className="text-2xl font-bold sm:text-3xl">
+            Pharmacies near you
+          </h1>
           <p className="mt-1 max-w-lg text-sm text-white/85">
             Browse pharmacies and see what each branch has in stock.
           </p>
