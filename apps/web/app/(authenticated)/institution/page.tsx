@@ -67,7 +67,7 @@ export default function InstitutionPage() {
 
   if (error || !institution) {
     return (
-      <div className="py-10 text-center text-red-500">
+      <div className="py-10 text-center text-error">
         Failed to load institution
       </div>
     );

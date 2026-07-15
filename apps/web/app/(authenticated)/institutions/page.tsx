@@ -267,7 +267,7 @@ export default function InstitutionsPage() {
               ))}
             </div>
           ) : error ? (
-            <div className="py-10 text-center text-red-500">
+            <div className="py-10 text-center text-error">
               Failed to load institutions
             </div>
           ) : !institutions?.length ? (

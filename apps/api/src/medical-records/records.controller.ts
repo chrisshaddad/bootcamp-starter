@@ -57,7 +57,7 @@ export class RecordsController {
   constructor(private readonly recordsService: MedicalRecordsService) {}
 
   @Get(':id')
-  @Roles('INSTITUTION_ADMIN', 'PROFESSIONAL', 'PATIENT')
+  @Roles('PROFESSIONAL', 'PATIENT')
   async findOne(
     @Param('id') id: string,
     @CurrentUser() user: User,
@@ -94,7 +94,7 @@ export class RecordsController {
   }
 
   @Get(':id/files/:fileId/download')
-  @Roles('INSTITUTION_ADMIN', 'PROFESSIONAL', 'PATIENT')
+  @Roles('PROFESSIONAL', 'PATIENT')
   async downloadFile(
     @Param('id') id: string,
     @Param('fileId') fileId: string,

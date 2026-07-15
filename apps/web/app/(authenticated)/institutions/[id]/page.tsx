@@ -125,7 +125,7 @@ export default function InstitutionDetailPage() {
   if (error) {
     return (
       <div className="py-10 text-center">
-        <div className="text-red-500 mb-4">Failed to load institution</div>
+        <div className="text-error mb-4">Failed to load institution</div>
         <Button variant="outline" onClick={() => router.back()}>
           Go Back
         </Button>
@@ -175,7 +175,7 @@ export default function InstitutionDetailPage() {
           <div className="flex gap-3">
             <Button
               variant="outline"
-              className="gap-2 text-red-600 border-red-200 hover:bg-red-50"
+              className="gap-2 text-error border-error-light hover:bg-error-light"
               onClick={() => setShowRejectDialog(true)}
             >
               <XCircle className="h-4 w-4" />

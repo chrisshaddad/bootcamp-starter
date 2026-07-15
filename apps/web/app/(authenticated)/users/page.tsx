@@ -306,7 +306,7 @@ function UserRowActions({ user }: { user: UserListItem }) {
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={toggleStatus}
-            className={user.isActive ? 'text-red-600 focus:text-red-600' : ''}
+            className={user.isActive ? 'text-error focus:text-error' : ''}
           >
             {user.isActive ? 'Deactivate' : 'Reactivate'}
           </DropdownMenuItem>
@@ -385,7 +385,7 @@ export default function UsersPage() {
               ))}
             </div>
           ) : error ? (
-            <div className="py-10 text-center text-red-500">
+            <div className="py-10 text-center text-error">
               Failed to load users
             </div>
           ) : !users?.length ? (

@@ -326,11 +326,6 @@ export class MedicalRecordsService {
     actor: User,
   ): Promise<void> {
     switch (actor.role) {
-      case 'INSTITUTION_ADMIN':
-        if (record.institutionId !== actor.institutionId) {
-          throw new NotFoundException(`Record with ID ${record.id} not found`);
-        }
-        return;
       case 'PROFESSIONAL':
         // Cross-institution records must look non-existent, not forbidden.
         if (record.institutionId !== actor.institutionId) {
@@ -352,7 +347,7 @@ export class MedicalRecordsService {
         }
         return;
       default:
-        // STAFF have no access to clinical records.
+        // STAFF and INSTITUTION_ADMIN have no access to clinical records.
         throw new ForbiddenException('Access denied');
     }
   }
@@ -362,13 +357,6 @@ export class MedicalRecordsService {
     actor: User,
   ): Promise<void> {
     switch (actor.role) {
-      case 'INSTITUTION_ADMIN':
-        if (patient.institutionId !== actor.institutionId) {
-          throw new NotFoundException(
-            `Patient with ID ${patient.id} not found`,
-          );
-        }
-        return;
       case 'PROFESSIONAL':
         // Cross-institution patients must look non-existent, not forbidden.
         if (patient.institutionId !== actor.institutionId) {
@@ -388,6 +376,7 @@ export class MedicalRecordsService {
         }
         return;
       default:
+        // STAFF and INSTITUTION_ADMIN have no access to clinical records.
         throw new ForbiddenException('Access denied');
     }
   }

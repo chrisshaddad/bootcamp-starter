@@ -67,7 +67,7 @@ export function RecordDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Record Details</DialogTitle>
         </DialogHeader>

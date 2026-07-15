@@ -103,13 +103,13 @@ unchanged.
 
 **Backend** (`apps/api/src/medical-records/`, `apps/api/src/files/`)
 
-| Method & path                             | Roles                                          | Notes                                                                                                                                                                                       |
-| ----------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `POST /patients/:patientId/records`       | Professional (assigned)                        | Body is a **zod discriminated union on `recordType`**; creates the record + matching detail row (+ Prescription/items) in a transaction; links the active assignment; notifies the patient. |
-| `GET /patients/:patientId/records`        | Admin, Professional (assigned), Patient (self) | Summaries sorted by `recordDate desc`; optional `recordType` filter. STAFF has no clinical access.                                                                                          |
-| `GET /records/:id`                        | Admin, Professional (assigned), Patient (self) | Full record + typed detail + attachments.                                                                                                                                                   |
-| `POST /records/:id/files`                 | Professional (assigned)                        | `multipart/form-data` (`file`); stored on local disk; creates `RecordFile`.                                                                                                                 |
-| `GET /records/:id/files/:fileId/download` | Admin, Professional (assigned), Patient (self) | Access-controlled stream (never a public static URL).                                                                                                                                       |
+| Method & path                             | Roles                                   | Notes                                                                                                                                                                                       |
+| ----------------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /patients/:patientId/records`       | Professional (assigned)                 | Body is a **zod discriminated union on `recordType`**; creates the record + matching detail row (+ Prescription/items) in a transaction; links the active assignment; notifies the patient. |
+| `GET /patients/:patientId/records`        | Professional (assigned), Patient (self) | Summaries sorted by `recordDate desc`; optional `recordType` filter. Neither STAFF nor INSTITUTION_ADMIN can view clinical records.                                                         |
+| `GET /records/:id`                        | Professional (assigned), Patient (self) | Full record + typed detail + attachments.                                                                                                                                                   |
+| `POST /records/:id/files`                 | Professional (assigned)                 | `multipart/form-data` (`file`); stored on local disk; creates `RecordFile`.                                                                                                                 |
+| `GET /records/:id/files/:fileId/download` | Professional (assigned), Patient (self) | Access-controlled stream (never a public static URL).                                                                                                                                       |
 
 All five record types are supported: Lab Result, Consultation, Prescription
 (with medication line items), Scan, Vaccination.

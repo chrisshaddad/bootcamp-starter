@@ -58,7 +58,7 @@ export default function NotificationsPage() {
               ))}
             </div>
           ) : error ? (
-            <div className="py-10 text-center text-red-500">
+            <div className="py-10 text-center text-error">
               Failed to load notifications
             </div>
           ) : !notifications?.length ? (

@@ -16,8 +16,10 @@ import { ZodValidationPipe } from '../common/pipes';
 export class PatientRecordsController {
   constructor(private readonly recordsService: MedicalRecordsService) {}
 
+  // Clinical records are visible only to the assigned professional and the
+  // patient themselves — not to institution admins or staff.
   @Get()
-  @Roles('INSTITUTION_ADMIN', 'PROFESSIONAL', 'PATIENT')
+  @Roles('PROFESSIONAL', 'PATIENT')
   async findForPatient(
     @Param('patientId') patientId: string,
     @Query(new ZodValidationPipe(recordListQuerySchema))

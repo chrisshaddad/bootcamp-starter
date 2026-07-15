@@ -155,7 +155,7 @@ export function CareTeamSection({ patient, canManage, onChange }: Props) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-gray-400 hover:text-red-600"
+                    className="h-8 w-8 text-gray-400 hover:text-error"
                     onClick={() => onRemove(member.assignmentId)}
                   >
                     <X className="h-4 w-4" />

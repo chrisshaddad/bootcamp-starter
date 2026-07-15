@@ -270,7 +270,7 @@ export function AddRecordDialog({ createRecord }: Props) {
           Add Record
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[85vh] overflow-y-auto">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Add Medical Record</DialogTitle>
         </DialogHeader>
@@ -559,7 +559,7 @@ export function AddRecordDialog({ createRecord }: Props) {
                           type="button"
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 text-gray-400 hover:text-red-600"
+                          className="h-7 w-7 text-gray-400 hover:text-error"
                           onClick={() =>
                             setLines(lines.filter((_, i) => i !== index))
                           }

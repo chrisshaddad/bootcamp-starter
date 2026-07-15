@@ -45,7 +45,7 @@ export default function PatientDetailPage() {
   if (error || !patient) {
     return (
       <div className="py-10 text-center">
-        <div className="mb-4 text-red-500">
+        <div className="mb-4 text-error">
           {error ? 'You cannot access this patient' : 'Patient not found'}
         </div>
         <Button variant="outline" onClick={() => router.push('/patients')}>
@@ -59,7 +59,9 @@ export default function PatientDetailPage() {
   const canEditClinical =
     role === 'INSTITUTION_ADMIN' || role === 'PROFESSIONAL';
   const canManageCareTeam = role === 'INSTITUTION_ADMIN' || role === 'STAFF';
-  const canViewRecords = role !== 'STAFF';
+  // Clinical records are only for the assigned professional and the patient —
+  // institution admins and staff cannot view them.
+  const canViewRecords = role === 'PROFESSIONAL' || role === 'PATIENT';
   const canAddRecords = role === 'PROFESSIONAL';
 
   return (
