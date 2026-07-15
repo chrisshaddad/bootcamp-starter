@@ -315,6 +315,7 @@ export class TeacherService {
       where: {
         id: submissionId,
         assignment: {
+          type: 'assignment',
           course: {
             organizationId,
           },
