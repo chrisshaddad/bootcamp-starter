@@ -1,21 +1,27 @@
-export interface TeacherAssignmentResponse {
-  id: string;
-  courseId: string;
-  createdById: string;
-  type: 'assignment';
-  title: string;
-  instructions: string | null;
-  maxScore: number;
-  startsAt: Date | null;
-  dueAt: Date | null;
-  endsAt: Date | null;
-  noteToStudents: string | null;
-  status: 'draft' | 'published' | 'closed';
-  createdAt: Date;
-  updatedAt: Date;
+import { z } from 'zod';
 
-  course: {
-    id: string;
-    title: string;
-  };
-}
+export const teacherAssignmentResponseSchema = z.object({
+  id: z.string(),
+  courseId: z.string(),
+  createdById: z.string(),
+  type: z.literal('assignment'),
+  title: z.string(),
+  instructions: z.string().nullable(),
+  maxScore: z.number(),
+  startsAt: z.date().nullable(),
+  dueAt: z.date().nullable(),
+  endsAt: z.date().nullable(),
+  noteToStudents: z.string().nullable(),
+  status: z.enum(['draft', 'published', 'closed']),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+
+  course: z.object({
+    id: z.string(),
+    title: z.string(),
+  }),
+});
+
+export type TeacherAssignmentResponse = z.infer<
+  typeof teacherAssignmentResponseSchema
+>;
