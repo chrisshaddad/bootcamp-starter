@@ -48,6 +48,7 @@ interface UsePublicEventReturn {
   event: PublicEventDetailResponse | undefined;
   isLoading: boolean;
   error: Error | undefined;
+  mutate: () => void;
 }
 
 export function usePublicEvent(
@@ -56,7 +57,7 @@ export function usePublicEvent(
 ): UsePublicEventReturn {
   const { enabled = true } = options;
 
-  const { data, error, isLoading } = useSWR<PublicEventDetailResponse>(
+  const { data, error, isLoading, mutate } = useSWR<PublicEventDetailResponse>(
     enabled && id ? `/public/events/${id}` : null,
   );
 
@@ -64,5 +65,6 @@ export function usePublicEvent(
     event: data,
     isLoading,
     error,
+    mutate,
   };
 }

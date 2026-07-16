@@ -171,7 +171,10 @@ function EventFormFields({
       <div className="flex gap-3">
         <Button
           type="submit"
-          disabled={isSubmitting}
+          disabled={
+            isSubmitting ||
+            (showOrganizationSelect && isSuperAdmin && !organizationId)
+          }
           className="bg-primary-base hover:bg-primary-base/90"
         >
           {isSubmitting ? submittingLabel : submitLabel}

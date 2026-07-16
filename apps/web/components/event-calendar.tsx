@@ -332,7 +332,7 @@ export function EventCalendar({
             </DialogTitle>
             <DialogDescription>
               {selectedEvents.length}{' '}
-              {selectedEvents.length === 1 ? 'event' : 'events'} scheduled
+              {selectedEvents.length === 1 ? 'event' : 'events'}
             </DialogDescription>
           </DialogHeader>
 

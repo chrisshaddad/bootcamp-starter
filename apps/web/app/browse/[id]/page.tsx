@@ -20,7 +20,7 @@ function formatDate(value: string | Date) {
 export default function BrowseEventDetailPage() {
   const params = useParams();
   const id = params.id as string;
-  const { event, isLoading, error } = usePublicEvent(id);
+  const { event, isLoading, error, mutate } = usePublicEvent(id);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary-100/40 via-white to-white">
@@ -49,7 +49,19 @@ export default function BrowseEventDetailPage() {
             <Skeleton className="h-10 w-2/3" />
             <Skeleton className="h-40 w-full rounded-xl" />
           </div>
-        ) : error || !event ? (
+        ) : error ? (
+          <div className="mt-16 text-center">
+            <h1 className="text-2xl font-bold text-gray-900">
+              Failed to load event
+            </h1>
+            <p className="mt-2 text-gray-500">
+              Something went wrong while loading this event. Please try again.
+            </p>
+            <Button className="mt-6" variant="outline" onClick={() => mutate()}>
+              Retry
+            </Button>
+          </div>
+        ) : !event ? (
           <div className="mt-16 text-center">
             <h1 className="text-2xl font-bold text-gray-900">
               Event not found

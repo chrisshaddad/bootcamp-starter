@@ -187,6 +187,12 @@ export function useEventAttendees(
         body,
       );
       await invalidateAll();
+      await mutate(
+        (key) =>
+          typeof key === 'string' && key.startsWith(`/stats/events/${eventId}`),
+        undefined,
+        { revalidate: true },
+      );
       return result;
     },
     [eventId, invalidateAll],
