@@ -802,14 +802,24 @@ export class ProjectsService {
       return target;
     }
 
+    // If a prior race between two uploads left current and target tied on
+    // sortOrder, a straight swap is a no-op (both writes carry the same
+    // value). Decrementing the target's new value guarantees it lands
+    // strictly below current's, so it always becomes the new cover.
+    const newCurrentSortOrder = target.sortOrder;
+    let newTargetSortOrder = current.sortOrder;
+    if (newCurrentSortOrder === newTargetSortOrder) {
+      newTargetSortOrder -= 1;
+    }
+
     const [, updatedTarget] = await this.prisma.$transaction([
       this.prisma.projectMedia.update({
         where: { id: current.id },
-        data: { sortOrder: target.sortOrder },
+        data: { sortOrder: newCurrentSortOrder },
       }),
       this.prisma.projectMedia.update({
         where: { id: target.id },
-        data: { sortOrder: current.sortOrder },
+        data: { sortOrder: newTargetSortOrder },
       }),
     ]);
 
