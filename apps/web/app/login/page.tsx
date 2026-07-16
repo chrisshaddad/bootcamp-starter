@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { magicLinkRequestSchema, type MagicLinkRequest } from '@repo/contracts';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
@@ -141,9 +142,9 @@ export default function LoginPage() {
             </p>
 
             <p className="text-center text-sm font-medium leading-[1.6]">
-              <a href="/browse" className="text-primary-base hover:underline">
+              <Link href="/browse" className="text-primary-base hover:underline">
                 Browse upcoming events
-              </a>
+              </Link>
               <span className="text-gray-500"> without an account</span>
             </p>
 
