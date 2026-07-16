@@ -56,14 +56,14 @@ function formatRelativeTime(value: string | Date, now: number) {
   return formatter.format(-Math.floor(days / 365), 'year');
 }
 
-function PublishedTime({ value }: { value: string | Date }) {
-  const [now, setNow] = useState(() => Date.now());
+function PublishedTime({
+  value,
+  now,
+}: {
+  value: string | Date;
+  now: number;
+}) {
   const exactTime = formatDate(value);
-
-  useEffect(() => {
-    const interval = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(interval);
-  }, []);
 
   return (
     <Tooltip>
@@ -155,6 +155,12 @@ export function AnnouncementList({
   deletingId,
 }: AnnouncementListProps) {
   const { user } = useUser({ redirectOnUnauthenticated: false });
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(interval);
+  }, []);
 
   return (
     <Card className="border-gray-200 bg-white shadow-sm">
@@ -225,7 +231,11 @@ export function AnnouncementList({
                           : announcement.authorName}
                       </span>
                       <span>
-                        • <PublishedTime value={announcement.createdAt} />
+                        •{' '}
+                        <PublishedTime
+                          value={announcement.createdAt}
+                          now={now}
+                        />
                       </span>
                     </p>
                   </div>
