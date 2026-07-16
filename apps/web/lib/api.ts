@@ -68,7 +68,7 @@ export async function apiPatch<T>(
   return res.json();
 }
 
-export async function apiDelete<T>(endpoint: string): Promise<T> {
+export async function apiDelete<T = void>(endpoint: string): Promise<T> {
   const res = await fetch(`${API_URL}${endpoint}`, {
     method: 'DELETE',
     credentials: 'include',
@@ -79,6 +79,10 @@ export async function apiDelete<T>(endpoint: string): Promise<T> {
       .json()
       .catch(() => ({ message: 'An error occurred' }));
     throw new ApiError(res.status, error.message || 'An error occurred');
+  }
+
+  if (res.status === 204) {
+    return undefined as T;
   }
 
   return res.json();

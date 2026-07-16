@@ -20,9 +20,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { EventCalendar } from '@/components/event-calendar';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Calendar, ShieldX } from 'lucide-react';
+import { Calendar, Plus, ShieldX } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 function ForbiddenPage() {
@@ -69,6 +70,7 @@ export default function EventsPage() {
   const { user, isLoading: userLoading } = useUser();
   const canAccess = canAccessEvents(user?.role);
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+  const isAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'ORG_ADMIN';
   const isAttendeeUser = user?.role === 'MEMBER';
   const isPresenter =
     user?.role === 'MEMBER' && user?.memberRole === 'PRESENTER';
@@ -109,7 +111,7 @@ export default function EventsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Events</h1>
           <p className="mt-1 text-sm text-gray-500">
@@ -122,19 +124,30 @@ export default function EventsPage() {
                   : 'Workshops, meetings, and camps in your organization'}
           </p>
         </div>
-        <Select
-          value={activeFilter}
-          onValueChange={(value) => setEventFilter(value as EventFilter)}
-        >
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder="Filter events" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Events</SelectItem>
-            <SelectItem value="upcoming">Upcoming</SelectItem>
-            <SelectItem value="past">Past</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-3">
+          {isAdmin && (
+            <Button
+              className="bg-primary-base hover:bg-primary-base/90 gap-2"
+              onClick={() => router.push('/events/new')}
+            >
+              <Plus className="h-4 w-4" />
+              Create event
+            </Button>
+          )}
+          <Select
+            value={activeFilter}
+            onValueChange={(value) => setEventFilter(value as EventFilter)}
+          >
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Filter events" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Events</SelectItem>
+              <SelectItem value="upcoming">Upcoming</SelectItem>
+              <SelectItem value="past">Past</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <Card>
@@ -182,6 +195,7 @@ export default function EventsPage() {
                 <TableRow>
                   <TableHead>Event Name</TableHead>
                   <TableHead>Starts</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead>Presenter</TableHead>
                   {isAttendeeUser && <TableHead>Your Status</TableHead>}
                   {isSuperAdmin && <TableHead>Organization ID</TableHead>}
@@ -215,6 +229,17 @@ export default function EventsPage() {
                     <TableCell className="text-sm text-gray-600">
                       {formatDate(event.startsAt)}
                     </TableCell>
+                    <TableCell>
+                      {event.status === 'CANCELLED' ? (
+                        <span className="inline-flex rounded-full bg-error/10 px-2.5 py-0.5 text-xs font-medium text-error">
+                          Cancelled
+                        </span>
+                      ) : (
+                        <span className="inline-flex rounded-full bg-primary-100 px-2.5 py-0.5 text-xs font-medium text-primary-base">
+                          Scheduled
+                        </span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-gray-600">
                       {event.presenter?.username ??
                         (event.presenterId
@@ -223,7 +248,11 @@ export default function EventsPage() {
                     </TableCell>
                     {isAttendeeUser && (
                       <TableCell>
-                        {event.isRegistered ? (
+                        {event.status === 'CANCELLED' ? (
+                          <span className="inline-flex rounded-full bg-error/10 px-2.5 py-0.5 text-xs font-medium text-error">
+                            Cancelled
+                          </span>
+                        ) : event.isRegistered ? (
                           <span className="inline-flex rounded-full bg-primary-100 px-2.5 py-0.5 text-xs font-medium text-primary-base">
                             Registered
                           </span>

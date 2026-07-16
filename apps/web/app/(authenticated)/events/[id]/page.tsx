@@ -8,6 +8,14 @@ import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
@@ -21,10 +29,13 @@ import {
   ArrowLeft,
   Calendar,
   Check,
+  Pencil,
   ShieldX,
+  Trash2,
   User,
   UserX,
   Users,
+  XCircle,
 } from 'lucide-react';
 import { ApiError } from '@/lib/api';
 import { formatRate } from '@/lib/format';
@@ -83,7 +94,12 @@ export default function EventDetailPage() {
   const { user, isLoading: userLoading } = useUser();
   const canAccess = canAccessEvents(user?.role);
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+  const isAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'ORG_ADMIN';
   const [isRegistering, setIsRegistering] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
 
   const {
@@ -91,6 +107,8 @@ export default function EventDetailPage() {
     isLoading: eventLoading,
     error,
     register,
+    cancel,
+    remove,
   } = useEvent(id, {
     enabled: canAccess && !!id,
   });
@@ -120,6 +138,41 @@ export default function EventDetailPage() {
       }
     } finally {
       setIsRegistering(false);
+    }
+  };
+
+  const handleCancel = async () => {
+    setIsCancelling(true);
+    try {
+      await cancel();
+      toast.success('Event cancelled');
+      setShowCancelDialog(false);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        toast.error(err.message);
+      } else {
+        toast.error('Failed to cancel event');
+      }
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await remove();
+      toast.success('Event deleted');
+      setShowDeleteDialog(false);
+      router.push('/events');
+    } catch (err) {
+      if (err instanceof ApiError) {
+        toast.error(err.message);
+      } else {
+        toast.error('Failed to delete event');
+      }
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -189,27 +242,74 @@ export default function EventDetailPage() {
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            {event.eventName}
-          </h1>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-2xl font-bold text-gray-900">
+              {event.eventName}
+            </h1>
+            {event.status === 'CANCELLED' ? (
+              <span className="inline-flex rounded-full bg-error/10 px-2.5 py-0.5 text-xs font-medium text-error">
+                Cancelled
+              </span>
+            ) : (
+              <span className="inline-flex rounded-full bg-primary-100 px-2.5 py-0.5 text-xs font-medium text-primary-base">
+                Scheduled
+              </span>
+            )}
+          </div>
           <p className="mt-1 text-sm text-gray-500">
-            {event.isUpcoming ? 'Upcoming event' : 'Past event'}
+            {event.status === 'CANCELLED'
+              ? 'This event has been cancelled'
+              : event.isUpcoming
+                ? 'Upcoming event'
+                : 'Past event'}
           </p>
         </div>
-        {event.canRegister && (
-          <Button
-            onClick={handleRegister}
-            disabled={isRegistering}
-            className="bg-primary-base hover:bg-primary-base/90"
-          >
-            {isRegistering ? 'Signing up...' : 'Sign up to attend'}
-          </Button>
-        )}
-        {event.isRegistered && (
-          <span className="inline-flex items-center rounded-full bg-primary-100 px-3 py-1 text-sm font-medium text-primary-base">
-            You are registered
-          </span>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {isAdmin && (
+            <>
+              <Button
+                variant="outline"
+                className="gap-2"
+                onClick={() => router.push(`/events/${id}/edit`)}
+              >
+                <Pencil className="h-4 w-4" />
+                Edit
+              </Button>
+              {event.status !== 'CANCELLED' && (
+                <Button
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => setShowCancelDialog(true)}
+                >
+                  <XCircle className="h-4 w-4" />
+                  Cancel event
+                </Button>
+              )}
+              <Button
+                variant="destructive"
+                className="gap-2"
+                onClick={() => setShowDeleteDialog(true)}
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete
+              </Button>
+            </>
+          )}
+          {event.canRegister && (
+            <Button
+              onClick={handleRegister}
+              disabled={isRegistering}
+              className="bg-primary-base hover:bg-primary-base/90"
+            >
+              {isRegistering ? 'Signing up...' : 'Sign up to attend'}
+            </Button>
+          )}
+          {event.isRegistered && (
+            <span className="inline-flex items-center rounded-full bg-primary-100 px-3 py-1 text-sm font-medium text-primary-base">
+              You are registered
+            </span>
+          )}
+        </div>
       </div>
 
       <Card className="border-gray-200 bg-white shadow-sm">
@@ -231,6 +331,12 @@ export default function EventDetailPage() {
               <dt className="text-sm font-medium text-gray-500">Starts</dt>
               <dd className="mt-1 text-sm text-gray-900">
                 {formatDate(event.startsAt)}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Status</dt>
+              <dd className="mt-1 text-sm text-gray-900">
+                {event.status === 'CANCELLED' ? 'Cancelled' : 'Scheduled'}
               </dd>
             </div>
             <div>
@@ -443,6 +549,62 @@ export default function EventDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel event</DialogTitle>
+            <DialogDescription>
+              Cancel <strong>{event.eventName}</strong>? The event will remain
+              visible but registration will be blocked.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowCancelDialog(false)}
+              disabled={isCancelling}
+            >
+              Keep scheduled
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleCancel}
+              disabled={isCancelling}
+            >
+              {isCancelling ? 'Cancelling...' : 'Cancel event'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete event</DialogTitle>
+            <DialogDescription>
+              Permanently delete <strong>{event.eventName}</strong>? Attendee
+              records for this event will also be removed.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteDialog(false)}
+              disabled={isDeleting}
+            >
+              Keep event
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

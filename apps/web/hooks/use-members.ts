@@ -5,6 +5,7 @@ import type { MemberListResponse } from '@repo/contracts';
 
 interface UseMembersOptions {
   enabled?: boolean;
+  organizationId?: string;
 }
 
 interface UseMembersReturn {
@@ -16,14 +17,19 @@ interface UseMembersReturn {
 }
 
 export function useMembers(options: UseMembersOptions = {}): UseMembersReturn {
-  const { enabled = true } = options;
+  const { enabled = true, organizationId } = options;
+
+  const params = new URLSearchParams();
+  if (organizationId) params.set('organizationId', organizationId);
+  const query = params.toString();
+  const endpoint = query ? `/members?${query}` : '/members';
 
   const {
     data,
     error,
     isLoading,
     mutate: swrMutate,
-  } = useSWR<MemberListResponse>(enabled ? '/members' : null);
+  } = useSWR<MemberListResponse>(enabled ? endpoint : null);
 
   return {
     members: data?.members,
