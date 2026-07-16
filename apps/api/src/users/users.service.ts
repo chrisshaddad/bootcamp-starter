@@ -94,7 +94,9 @@ export class UsersService {
         );
       }
 
-      this.logger.error(`Failed to create user ${email}`, error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+
+      this.logger.error('Failed to create user', errorStack);
       throw error;
     }
   }
@@ -122,8 +124,7 @@ export class UsersService {
       },
     });
 
-    this.logger.log(`Created Teacher/Admin user ${user.email}`);
-
+    this.logger.log(`Created Teacher/Admin user ${user.id}`);
     return {
       message:
         'Teacher/Admin created successfully. They can now log in using magic link.',
@@ -265,7 +266,7 @@ export class UsersService {
       };
     });
 
-    this.logger.log(`Created Student/User ${result.user.email}`);
+    this.logger.log(`Created Student/User ${result.user.id}`);
 
     return {
       message:
