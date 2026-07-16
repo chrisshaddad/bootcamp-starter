@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { projectResponseSchema } from './project.response';
 import { technologySchema } from '../technologies/technology.schema';
+import { projectMemberResponseSchema } from './project-member.response';
 
 export const projectMediaResponseSchema = z.object({
   id: z.string().uuid(),
@@ -37,6 +38,7 @@ export type ProjectTechnologyResponse = z.infer<
 export const projectByIdResponseSchema = projectResponseSchema.extend({
   media: z.array(projectMediaResponseSchema),
   technologies: z.array(projectTechnologyResponseSchema).default([]),
+  members: z.array(projectMemberResponseSchema).default([]),
 });
 
 export type ProjectByIdResponse = z.infer<typeof projectByIdResponseSchema>;

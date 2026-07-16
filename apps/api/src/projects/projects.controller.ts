@@ -40,6 +40,7 @@ import {
   projectMediaUploadSchema,
   projectMediaUpdateSchema,
   projectsExploreQuerySchema,
+  addProjectMemberSchema,
   projectBySlugResponseSchema,
   type CreateProjectRequest,
   type ImportGithubProjectRequest,
@@ -52,8 +53,13 @@ import {
   type ProjectBySlugResponse,
   type ProjectsExploreQuery,
   type ExploreProjectsResponse,
+  type AddProjectMemberRequest,
+  type ProjectMemberResponse,
 } from '@repo/contracts';
-import { importGithubProjectRequestSchema as importGithubProjectOpenApiRequestSchema } from '../common/swagger/schemas';
+import {
+  addProjectMemberRequestSchema as addProjectMemberOpenApiRequestSchema,
+  importGithubProjectRequestSchema as importGithubProjectOpenApiRequestSchema,
+} from '../common/swagger/schemas';
 
 const PROJECT_MEDIA_MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
 const PROJECT_MEDIA_ALLOWED_MIME_TYPES = [
@@ -63,6 +69,50 @@ const PROJECT_MEDIA_ALLOWED_MIME_TYPES = [
   'image/gif',
 ];
 const PROJECT_MEDIA_DIR = join(process.cwd(), 'uploads', 'project-media');
+
+type ProjectMemberForResponse = {
+  id: string;
+  role: 'OWNER' | 'EDITOR' | 'CONTRIBUTOR';
+  githubUsername: string | null;
+  contributionRoleLabel: string | null;
+  contributionSummary: string | null;
+  verificationStatus: 'PENDING' | 'VERIFIED' | 'UNVERIFIED';
+  createdAt: Date;
+  updatedAt: Date;
+  user: {
+    id: string;
+    developerProfile: {
+      displayName: string;
+      publicSlug: string;
+      profilePictureUrl: string | null;
+      githubUsername: string | null;
+    } | null;
+  } | null;
+};
+
+function mapProjectMember(
+  member: ProjectMemberForResponse,
+): ProjectMemberResponse {
+  return {
+    id: member.id,
+    role: member.role,
+    githubUsername: member.githubUsername,
+    contributionRoleLabel: member.contributionRoleLabel,
+    contributionSummary: member.contributionSummary,
+    verificationStatus: member.verificationStatus,
+    user: member.user?.developerProfile
+      ? {
+          id: member.user.id,
+          displayName: member.user.developerProfile.displayName,
+          publicSlug: member.user.developerProfile.publicSlug,
+          profilePictureUrl: member.user.developerProfile.profilePictureUrl,
+          githubUsername: member.user.developerProfile.githubUsername,
+        }
+      : null,
+    createdAt: member.createdAt.toISOString(),
+    updatedAt: member.updatedAt.toISOString(),
+  };
+}
 
 if (!existsSync(PROJECT_MEDIA_DIR)) {
   mkdirSync(PROJECT_MEDIA_DIR, { recursive: true });
@@ -202,6 +252,7 @@ export class ProjectsController {
           category: t.technology.category,
         },
       })),
+      members: (project.members ?? []).map(mapProjectMember),
     } as unknown as ProjectByIdResponse;
   }
 
@@ -259,6 +310,59 @@ export class ProjectsController {
       updatedAt: project.updatedAt.toISOString(),
       publishedAt: project.publishedAt?.toISOString() ?? null,
     };
+  }
+
+  @Post(':id/members')
+  @Roles(AccountType.DEVELOPER, AccountType.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Add a contributor to a project' })
+  @ApiBody({ schema: addProjectMemberOpenApiRequestSchema })
+  @ApiResponse({ status: 201, description: 'Contributor successfully added.' })
+  @ApiResponse({
+    status: 403,
+    description: 'Only the project owner can add contributors.',
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'Contributor is already on the project.',
+  })
+  async addProjectMember(
+    @CurrentUser() user: User,
+    @Param('id') projectId: string,
+    @Body(new ZodValidationPipe(addProjectMemberSchema))
+    body: AddProjectMemberRequest,
+  ): Promise<ProjectMemberResponse> {
+    const member = await this.projectsService.addProjectMember(
+      user,
+      projectId,
+      body,
+    );
+
+    return mapProjectMember(member);
+  }
+
+  @Delete(':id/members/:memberId')
+  @Roles(AccountType.DEVELOPER, AccountType.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Remove a contributor from a project' })
+  @ApiResponse({
+    status: 200,
+    description: 'Contributor successfully removed.',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'The project owner cannot be removed.',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Only the project owner can remove contributors.',
+  })
+  @ApiResponse({ status: 404, description: 'Contributor not found.' })
+  async removeProjectMember(
+    @CurrentUser() user: User,
+    @Param('id') projectId: string,
+    @Param('memberId') memberId: string,
+  ) {
+    await this.projectsService.removeProjectMember(user, projectId, memberId);
+    return { success: true };
   }
 
   @Post(':id/logo')
@@ -469,6 +573,7 @@ export class ProjectsController {
           category: t.technology.category,
         },
       })),
+      members: (project.members ?? []).map(mapProjectMember),
     };
 
     return projectBySlugResponseSchema.parse(result);

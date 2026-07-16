@@ -4,6 +4,7 @@ import {
   ConflictException,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -16,11 +17,13 @@ import {
   type ProjectMediaUploadRequest,
   type ProjectMediaUpdateRequest,
   type ProjectsExploreQuery,
+  type AddProjectMemberRequest,
 } from '@repo/contracts';
 import {
   ProjectStatus,
   ProjectRoleKey,
   VerificationStatus,
+  VerificationSource,
   AccountType,
   User,
   Prisma,
@@ -38,6 +41,22 @@ const REPOSITORY_PROJECT_CONFLICT_MESSAGE =
 const PROJECT_SLUG_CONFLICT_MESSAGE =
   'A project with this slug already exists.';
 
+const projectMemberInclude = {
+  user: {
+    select: {
+      id: true,
+      developerProfile: {
+        select: {
+          displayName: true,
+          publicSlug: true,
+          profilePictureUrl: true,
+          githubUsername: true,
+        },
+      },
+    },
+  },
+} satisfies Prisma.ProjectMemberInclude;
+
 @Injectable()
 export class ProjectsService {
   private readonly logger = new Logger(ProjectsService.name);
@@ -52,6 +71,29 @@ export class ProjectsService {
   ): ProjectStatus | undefined {
     if (!status) return undefined;
     return status as ProjectStatus;
+  }
+
+  private async getProjectForMemberManagement(user: User, projectId: string) {
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+      select: {
+        id: true,
+        createdByUserId: true,
+      },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    const isAdmin = user.accountType === AccountType.SUPER_ADMIN;
+    if (!isAdmin && project.createdByUserId !== user.id) {
+      throw new ForbiddenException(
+        'You are not authorized to manage project contributors',
+      );
+    }
+
+    return project;
   }
 
   async importGithubProject(
@@ -327,6 +369,10 @@ export class ProjectsService {
             technology: true,
           },
         },
+        members: {
+          include: projectMemberInclude,
+          orderBy: { createdAt: 'asc' },
+        },
       },
     });
 
@@ -536,6 +582,118 @@ export class ProjectsService {
     }
   }
 
+  async addProjectMember(
+    user: User,
+    projectId: string,
+    data: AddProjectMemberRequest,
+  ) {
+    const project = await this.getProjectForMemberManagement(user, projectId);
+
+    let memberUserId = data.userId ?? null;
+    let githubUsername = data.githubUsername?.trim() ?? null;
+
+    if (memberUserId) {
+      const memberUser = await this.prisma.user.findUnique({
+        where: { id: memberUserId },
+        select: {
+          id: true,
+          accountType: true,
+          developerProfile: {
+            select: { githubUsername: true },
+          },
+        },
+      });
+
+      if (!memberUser) {
+        throw new NotFoundException('Contributor user not found');
+      }
+
+      if (memberUser.accountType !== AccountType.DEVELOPER) {
+        throw new BadRequestException(
+          'Contributors must be developer accounts',
+        );
+      }
+
+      githubUsername = memberUser.developerProfile?.githubUsername ?? null;
+    } else if (githubUsername) {
+      const developerProfile = await this.prisma.developerProfile.findFirst({
+        where: {
+          githubUsername: {
+            equals: githubUsername,
+            mode: 'insensitive',
+          },
+        },
+        select: {
+          userId: true,
+          githubUsername: true,
+        },
+      });
+
+      if (developerProfile) {
+        memberUserId = developerProfile.userId;
+        githubUsername = developerProfile.githubUsername;
+      }
+    }
+
+    const duplicateMember = await this.prisma.projectMember.findFirst({
+      where: {
+        projectId,
+        OR: [
+          ...(memberUserId ? [{ userId: memberUserId }] : []),
+          ...(githubUsername
+            ? [
+                {
+                  githubUsername: {
+                    equals: githubUsername,
+                    mode: 'insensitive' as const,
+                  },
+                },
+              ]
+            : []),
+        ],
+      },
+      select: { id: true },
+    });
+
+    if (duplicateMember) {
+      throw new ConflictException('This contributor is already on the project');
+    }
+
+    return this.prisma.projectMember.create({
+      data: {
+        projectId: project.id,
+        userId: memberUserId,
+        githubUsername,
+        role: data.role as ProjectRoleKey,
+        contributionRoleLabel: data.contributionRoleLabel ?? null,
+        verificationStatus: VerificationStatus.PENDING,
+        verificationSource: VerificationSource.MANUAL_INVITE,
+        addedByUserId: user.id,
+      },
+      include: projectMemberInclude,
+    });
+  }
+
+  async removeProjectMember(user: User, projectId: string, memberId: string) {
+    const project = await this.getProjectForMemberManagement(user, projectId);
+    const member = await this.prisma.projectMember.findFirst({
+      where: { id: memberId, projectId },
+    });
+
+    if (!member) {
+      throw new NotFoundException('Contributor not found');
+    }
+
+    if (
+      member.role === ProjectRoleKey.OWNER &&
+      member.userId === project.createdByUserId
+    ) {
+      throw new BadRequestException('The project owner cannot be removed');
+    }
+
+    await this.prisma.projectMember.delete({ where: { id: member.id } });
+  }
+
   async uploadLogo(user: User, projectId: string, logoUrl: string) {
     const project = await this.prisma.project.findUnique({
       where: { id: projectId },
@@ -597,6 +755,10 @@ export class ProjectsService {
           include: {
             technology: true,
           },
+        },
+        members: {
+          include: projectMemberInclude,
+          orderBy: { createdAt: 'asc' },
         },
       },
     });

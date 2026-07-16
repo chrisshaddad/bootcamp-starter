@@ -9,6 +9,8 @@ describe('ProjectsController', () => {
 
   const projectsService = {
     importGithubProject: jest.fn(),
+    addProjectMember: jest.fn(),
+    removeProjectMember: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -53,6 +55,25 @@ describe('ProjectsController', () => {
       'user-id',
       request,
     );
+  });
+
+  it('allows developer and super admin accounts to manage contributors', () => {
+    const addMemberHandler: unknown = Object.getOwnPropertyDescriptor(
+      ProjectsController.prototype,
+      'addProjectMember',
+    )?.value;
+    const removeMemberHandler: unknown = Object.getOwnPropertyDescriptor(
+      ProjectsController.prototype,
+      'removeProjectMember',
+    )?.value;
+
+    expect(Reflect.getMetadata(ROLES_KEY, addMemberHandler as object)).toEqual([
+      AccountType.DEVELOPER,
+      AccountType.SUPER_ADMIN,
+    ]);
+    expect(
+      Reflect.getMetadata(ROLES_KEY, removeMemberHandler as object),
+    ).toEqual([AccountType.DEVELOPER, AccountType.SUPER_ADMIN]);
   });
 });
 
