@@ -1,15 +1,18 @@
 'use client';
 
-import { FormEvent, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
-import type {
-  AssignCourseGradeRequest,
-  AssignCourseGradeResponse,
-  StudentOrganizationGradesResponse,
-  TeacherOrganizationsResponse,
-  TeachersByOrganizationResponse,
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import {
+  AssignCourseGradeRequestSchema,
+  type AssignCourseGradeRequest,
+  type AssignCourseGradeResponse,
+  type StudentOrganizationGradesResponse,
+  type TeacherOrganizationsResponse,
+  type TeachersByOrganizationResponse,
 } from '@repo/contracts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ApiError, apiPost, fetcher } from '@/lib/api';
@@ -18,21 +21,37 @@ type OrganizationItem = TeacherOrganizationsResponse['organizations'][number];
 type TeacherItem = TeachersByOrganizationResponse['teachers'][number];
 type GradeItem = StudentOrganizationGradesResponse['grades'][number];
 
+const defaultValues: AssignCourseGradeRequest = {
+  organizationId: '',
+  teacherId: '',
+  gradeId: '',
+  title: '',
+  description: '',
+  status: 'draft',
+};
+
 export default function CreateCoursePage() {
   const [organizations, setOrganizations] = useState<OrganizationItem[]>([]);
   const [teachers, setTeachers] = useState<TeacherItem[]>([]);
   const [grades, setGrades] = useState<GradeItem[]>([]);
 
-  const [organizationId, setOrganizationId] = useState('');
-  const [teacherId, setTeacherId] = useState('');
-  const [gradeId, setGradeId] = useState('');
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [status, setStatus] = useState<'draft' | 'published'>('draft');
-
   const [isLoadingOrganizations, setIsLoadingOrganizations] = useState(true);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm<AssignCourseGradeRequest>({
+    resolver: zodResolver(AssignCourseGradeRequestSchema),
+    defaultValues,
+  });
+
+  const organizationId = watch('organizationId');
 
   useEffect(() => {
     async function loadOrganizations() {
@@ -63,15 +82,15 @@ export default function CreateCoursePage() {
     if (!organizationId) {
       setTeachers([]);
       setGrades([]);
-      setTeacherId('');
-      setGradeId('');
+      setValue('teacherId', '');
+      setValue('gradeId', '');
       return;
     }
 
     async function loadOrganizationDetails() {
       setIsLoadingDetails(true);
-      setTeacherId('');
-      setGradeId('');
+      setValue('teacherId', '');
+      setValue('gradeId', '');
 
       try {
         const [teacherData, gradeData] = await Promise.all([
@@ -98,25 +117,15 @@ export default function CreateCoursePage() {
     }
 
     loadOrganizationDetails();
-  }, [organizationId]);
+  }, [organizationId, setValue]);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (!organizationId || !teacherId || !gradeId || !title.trim()) {
-      toast.error('Please fill all required fields.');
-      return;
-    }
-
+  async function onSubmit(values: AssignCourseGradeRequest) {
     setIsSubmitting(true);
 
     const payload: AssignCourseGradeRequest = {
-      organizationId,
-      teacherId,
-      gradeId,
-      title: title.trim(),
-      description: description.trim() || undefined,
-      status,
+      ...values,
+      description: values.description?.trim() || undefined,
+      title: values.title.trim(),
     };
 
     try {
@@ -129,11 +138,9 @@ export default function CreateCoursePage() {
         `${result.createdCourseCount} course section(s) created successfully.`,
       );
 
-      setTeacherId('');
-      setGradeId('');
-      setTitle('');
-      setDescription('');
-      setStatus('draft');
+      reset(defaultValues);
+      setTeachers([]);
+      setGrades([]);
     } catch (error) {
       console.error('Failed to create course:', error);
       toast.error(
@@ -175,17 +182,16 @@ export default function CreateCoursePage() {
         </CardHeader>
 
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             <div>
               <label className="mb-2 block text-sm font-medium text-gray-700">
                 Organization
               </label>
+
               <select
-                value={organizationId}
-                onChange={(event) => setOrganizationId(event.target.value)}
+                {...register('organizationId')}
                 disabled={isLoadingOrganizations}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-200 disabled:cursor-not-allowed disabled:opacity-60"
-                required
               >
                 <option value="">
                   {isLoadingOrganizations
@@ -199,18 +205,23 @@ export default function CreateCoursePage() {
                   </option>
                 ))}
               </select>
+
+              {errors.organizationId?.message && (
+                <p className="mt-1 text-xs text-red-600">
+                  {errors.organizationId.message}
+                </p>
+              )}
             </div>
 
             <div>
               <label className="mb-2 block text-sm font-medium text-gray-700">
                 Teacher
               </label>
+
               <select
-                value={teacherId}
-                onChange={(event) => setTeacherId(event.target.value)}
+                {...register('teacherId')}
                 disabled={!organizationId || isLoadingDetails}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-200 disabled:cursor-not-allowed disabled:opacity-60"
-                required
               >
                 <option value="">
                   {isLoadingDetails ? 'Loading teachers...' : 'Select teacher'}
@@ -222,18 +233,23 @@ export default function CreateCoursePage() {
                   </option>
                 ))}
               </select>
+
+              {errors.teacherId?.message && (
+                <p className="mt-1 text-xs text-red-600">
+                  {errors.teacherId.message}
+                </p>
+              )}
             </div>
 
             <div>
               <label className="mb-2 block text-sm font-medium text-gray-700">
                 Grade
               </label>
+
               <select
-                value={gradeId}
-                onChange={(event) => setGradeId(event.target.value)}
+                {...register('gradeId')}
                 disabled={!organizationId || isLoadingDetails}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-200 disabled:cursor-not-allowed disabled:opacity-60"
-                required
               >
                 <option value="">
                   {isLoadingDetails ? 'Loading grades...' : 'Select grade'}
@@ -245,48 +261,69 @@ export default function CreateCoursePage() {
                   </option>
                 ))}
               </select>
+
+              {errors.gradeId?.message && (
+                <p className="mt-1 text-xs text-red-600">
+                  {errors.gradeId.message}
+                </p>
+              )}
             </div>
 
             <div>
               <label className="mb-2 block text-sm font-medium text-gray-700">
                 Course Title
               </label>
+
               <input
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
+                {...register('title')}
                 placeholder="Example: Math"
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-200"
-                required
               />
+
+              {errors.title?.message && (
+                <p className="mt-1 text-xs text-red-600">
+                  {errors.title.message}
+                </p>
+              )}
             </div>
 
             <div>
               <label className="mb-2 block text-sm font-medium text-gray-700">
                 Description
               </label>
+
               <textarea
-                value={description}
-                onChange={(event) => setDescription(event.target.value)}
+                {...register('description')}
                 placeholder="Optional course description"
                 rows={4}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-200"
               />
+
+              {errors.description?.message && (
+                <p className="mt-1 text-xs text-red-600">
+                  {errors.description.message}
+                </p>
+              )}
             </div>
 
             <div>
               <label className="mb-2 block text-sm font-medium text-gray-700">
                 Status
               </label>
+
               <select
-                value={status}
-                onChange={(event) =>
-                  setStatus(event.target.value as 'draft' | 'published')
-                }
+                {...register('status')}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-200"
               >
                 <option value="draft">Draft</option>
                 <option value="published">Published</option>
               </select>
+
+              {errors.status?.message && (
+                <p className="mt-1 text-xs text-red-600">
+                  {errors.status.message}
+                </p>
+              )}
             </div>
 
             <div className="flex items-center gap-3 pt-2">
