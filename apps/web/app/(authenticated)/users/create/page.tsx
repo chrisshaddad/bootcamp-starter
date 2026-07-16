@@ -6,7 +6,8 @@ import { useRef, useState } from 'react';
 import Link from 'next/link';
 import type { ChangeEvent } from 'react';
 import { useForm } from 'react-hook-form';
-import { apiPost } from '../../../../lib/api';
+import { toast } from 'sonner';
+import { ApiError, apiPost } from '@/lib/api';
 
 type ImportedStudent = CreateUserBody & {
   role: 'MEMBER';
@@ -120,15 +121,24 @@ function normalizeCreateUserPayload(values: CreateUserBody): CreateUserBody {
   return payload;
 }
 
+function getSubmitErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof ApiError) {
+    return error.message;
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return fallback;
+}
+
 export default function CreateUserPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
 
   const [successMessage, setSuccessMessage] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
-
   const [bulkSuccessMessage, setBulkSuccessMessage] = useState('');
-  const [bulkErrorMessage, setBulkErrorMessage] = useState('');
 
   const [selectedFileName, setSelectedFileName] = useState('');
   const [importedStudents, setImportedStudents] = useState<ImportedStudent[]>(
@@ -158,7 +168,6 @@ export default function CreateUserPage() {
   async function onSubmit(values: CreateUserBody) {
     setIsSubmitting(true);
     setSuccessMessage('');
-    setErrorMessage('');
 
     try {
       const payload = normalizeCreateUserPayload(values);
@@ -172,9 +181,7 @@ export default function CreateUserPage() {
 
       reset(defaultFormValues);
     } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : 'Something went wrong',
-      );
+      toast.error(getSubmitErrorMessage(error, 'Failed to create user.'));
     } finally {
       setIsSubmitting(false);
     }
@@ -214,7 +221,6 @@ export default function CreateUserPage() {
     const file = event.target.files?.[0];
 
     setBulkSuccessMessage('');
-    setBulkErrorMessage('');
     setImportedStudents([]);
 
     if (!file) {
@@ -235,7 +241,7 @@ export default function CreateUserPage() {
         .filter(Boolean);
 
       if (rows.length <= 1) {
-        setBulkErrorMessage('The uploaded file does not contain student rows.');
+        toast.error('The uploaded file does not contain student rows.');
         return;
       }
 
@@ -267,7 +273,7 @@ export default function CreateUserPage() {
       });
 
       if (students.length === 0) {
-        setBulkErrorMessage(
+        toast.error(
           failures.length > 0
             ? failures.join('\n')
             : 'No valid students were found in the file.',
@@ -281,12 +287,12 @@ export default function CreateUserPage() {
       );
 
       if (failures.length > 0) {
-        setBulkErrorMessage(failures.join('\n'));
+        toast.error(failures.join('\n'));
       }
     };
 
     reader.onerror = () => {
-      setBulkErrorMessage('Could not read the uploaded file.');
+      toast.error('Could not read the uploaded file.');
     };
 
     reader.readAsText(file);
@@ -294,13 +300,12 @@ export default function CreateUserPage() {
 
   async function handleImportStudents() {
     if (importedStudents.length === 0) {
-      setBulkErrorMessage('Please upload a valid student file first.');
+      toast.error('Please upload a valid student file first.');
       return;
     }
 
     setIsImporting(true);
     setBulkSuccessMessage('');
-    setBulkErrorMessage('');
 
     let successCount = 0;
     const failures: string[] = [];
@@ -325,9 +330,10 @@ export default function CreateUserPage() {
         successCount += 1;
       } catch (error) {
         failures.push(
-          `${studentLabel}: ${
-            error instanceof Error ? error.message : 'Failed to import student'
-          }`,
+          `${studentLabel}: ${getSubmitErrorMessage(
+            error,
+            'Failed to import student.',
+          )}`,
         );
         stillPending.push(student);
       }
@@ -340,7 +346,7 @@ export default function CreateUserPage() {
     }
 
     if (failures.length > 0) {
-      setBulkErrorMessage(failures.join('\n'));
+      toast.error(failures.join('\n'));
     }
 
     setImportedStudents(stillPending);
@@ -378,12 +384,6 @@ export default function CreateUserPage() {
         {successMessage && (
           <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
             {successMessage}
-          </div>
-        )}
-
-        {errorMessage && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {errorMessage}
           </div>
         )}
 
@@ -565,12 +565,6 @@ export default function CreateUserPage() {
           </div>
         )}
 
-        {bulkErrorMessage && (
-          <div className="whitespace-pre-line rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {bulkErrorMessage}
-          </div>
-        )}
-
         <div className="grid gap-4 md:grid-cols-2">
           <div className="rounded-lg border border-gray-200 p-4">
             <h3 className="text-sm font-semibold text-gray-900">
@@ -646,6 +640,7 @@ export default function CreateUserPage() {
                   </th>
                 </tr>
               </thead>
+
               <tbody className="divide-y divide-gray-100">
                 {importedStudents.map((student, index) => (
                   <tr key={`${student.email || student.name}-${index}`}>
