@@ -3,16 +3,24 @@ import type { NextRequest } from 'next/server';
 
 const SESSION_COOKIE_NAME = 'bootcamp_starter_session';
 
-// Public routes that don't require authentication
-const publicRoutes = ['/login', '/auth/verify'];
+// Auth entry pages — bounce authenticated users to the dashboard
+const authEntryRoutes = ['/login', '/auth/verify'];
 
-// Default landing page for authenticated users
+// Routes that do not require a session (includes auth entry + public browse)
+const publicRoutes = [...authEntryRoutes, '/browse'];
+
 const DEFAULT_AUTHENTICATED_ROUTE = '/dashboard';
 
+function matchesRoute(pathname: string, route: string): boolean {
+  return pathname === route || pathname.startsWith(`${route}/`);
+}
+
+function isAuthEntryRoute(pathname: string): boolean {
+  return authEntryRoutes.some((route) => matchesRoute(pathname, route));
+}
+
 function isPublicRoute(pathname: string): boolean {
-  return publicRoutes.some(
-    (route) => pathname === route || pathname.startsWith(`${route}/`),
-  );
+  return publicRoutes.some((route) => matchesRoute(pathname, route));
 }
 
 export function proxy(request: NextRequest) {
@@ -20,23 +28,19 @@ export function proxy(request: NextRequest) {
   const sessionCookie = request.cookies.get(SESSION_COOKIE_NAME);
   const isAuthenticated = !!sessionCookie?.value;
 
-  // Handle root path
   if (pathname === '/') {
     if (!isAuthenticated) {
-      return NextResponse.redirect(new URL('/login', request.url));
+      return NextResponse.redirect(new URL('/browse', request.url));
     }
-    // Redirect authenticated users to dashboard
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
-  // Redirect authenticated users away from public pages
-  if (isPublicRoute(pathname) && isAuthenticated) {
+  if (isAuthEntryRoute(pathname) && isAuthenticated) {
     return NextResponse.redirect(
       new URL(DEFAULT_AUTHENTICATED_ROUTE, request.url),
     );
   }
 
-  // Redirect unauthenticated users to login (all routes except public are protected)
   if (!isPublicRoute(pathname) && !isAuthenticated) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirect', pathname);

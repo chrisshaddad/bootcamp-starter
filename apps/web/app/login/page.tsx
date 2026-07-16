@@ -140,6 +140,13 @@ export default function LoginPage() {
               No password required.
             </p>
 
+            <p className="text-center text-sm font-medium leading-[1.6]">
+              <a href="/browse" className="text-primary-base hover:underline">
+                Browse upcoming events
+              </a>
+              <span className="text-gray-500"> without an account</span>
+            </p>
+
             {/* Register Link */}
             <p className="text-center text-sm font-medium leading-[1.6]">
               <span className="text-gray-500">
