@@ -23,6 +23,7 @@ import {
 } from '@/lib/status-maps';
 import { RequireRole } from '@/components/require-role';
 import { StatusBadge } from '@/components/status-badge';
+import { TablePagination } from '@/components/table-pagination';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -34,6 +35,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+
+// Fetch the member's full history (up to this cap) so the summary counts are
+// accurate, then paginate the tables on the client. A single member is very
+// unlikely to exceed this many records.
+const HISTORY_LIMIT = 500;
+const HISTORY_PAGE_SIZE = 10;
 
 export default function MemberDetailPage() {
   return (
@@ -70,12 +77,20 @@ function MemberDetail() {
 
   const { member, isLoading, error, mutate } = useLibraryMember(memberId);
   const { approve } = useLibraryMembers({ enabled: false });
-  const { rentals, isLoading: rentalsLoading } = useRentals({ memberId });
-  const { reservations, isLoading: reservationsLoading } = useReservations({
-    memberId,
-  });
+  const {
+    rentals,
+    total: rentalTotal,
+    isLoading: rentalsLoading,
+  } = useRentals({ memberId, limit: HISTORY_LIMIT });
+  const {
+    reservations,
+    total: reservationTotal,
+    isLoading: reservationsLoading,
+  } = useReservations({ memberId, limit: HISTORY_LIMIT });
 
   const [isApproving, setIsApproving] = useState(false);
+  const [rentalPage, setRentalPage] = useState(1);
+  const [reservationPage, setReservationPage] = useState(1);
 
   const handleApprove = async () => {
     setIsApproving(true);
@@ -117,6 +132,9 @@ function MemberDetail() {
     );
   }
 
+  // Summary stats are computed over the fetched history (capped at
+  // HISTORY_LIMIT); the total-count tiles use the API's `total` so they stay
+  // exact even if a member somehow exceeds the cap.
   const activeLoans =
     rentals?.filter((r) => r.status === 'ACTIVE' || r.status === 'OVERDUE')
       .length ?? 0;
@@ -124,6 +142,17 @@ function MemberDetail() {
     rentals
       ?.filter((r) => !r.finePaid)
       .reduce((sum, r) => sum + Number(r.fineAmount), 0) ?? 0;
+
+  const pagedRentals =
+    rentals?.slice(
+      (rentalPage - 1) * HISTORY_PAGE_SIZE,
+      rentalPage * HISTORY_PAGE_SIZE,
+    ) ?? [];
+  const pagedReservations =
+    reservations?.slice(
+      (reservationPage - 1) * HISTORY_PAGE_SIZE,
+      reservationPage * HISTORY_PAGE_SIZE,
+    ) ?? [];
 
   return (
     <div className="space-y-6">
@@ -198,11 +227,8 @@ function MemberDetail() {
               label="Outstanding fines"
               value={`$${outstandingFines.toFixed(2)}`}
             />
-            <InfoRow label="Total rentals" value={rentals?.length ?? 0} />
-            <InfoRow
-              label="Total reservations"
-              value={reservations?.length ?? 0}
-            />
+            <InfoRow label="Total rentals" value={rentalTotal ?? 0} />
+            <InfoRow label="Total reservations" value={reservationTotal ?? 0} />
           </CardContent>
         </Card>
       </div>
@@ -226,52 +252,60 @@ function MemberDetail() {
               No rentals yet
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Barcode</TableHead>
-                  <TableHead>Rented</TableHead>
-                  <TableHead>Due</TableHead>
-                  <TableHead>Returned</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Fine</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rentals.map((rental) => (
-                  <TableRow key={rental.id}>
-                    <TableCell className="font-medium text-foreground">
-                      {rental.bookCopy.book.title}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {rental.bookCopy.barcode}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {fmtDate(rental.rentedAt)}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {fmtDate(rental.dueDate)}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {fmtDate(rental.returnedAt)}
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge
-                        status={rental.status}
-                        labels={RENTAL_STATUS_LABELS}
-                        colors={RENTAL_STATUS_COLORS}
-                      />
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {Number(rental.fineAmount) > 0
-                        ? `$${rental.fineAmount}${rental.finePaid ? ' (paid)' : ''}`
-                        : '—'}
-                    </TableCell>
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Title</TableHead>
+                    <TableHead>Barcode</TableHead>
+                    <TableHead>Rented</TableHead>
+                    <TableHead>Due</TableHead>
+                    <TableHead>Returned</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Fine</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {pagedRentals.map((rental) => (
+                    <TableRow key={rental.id}>
+                      <TableCell className="font-medium text-foreground">
+                        {rental.bookCopy.book.title}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {rental.bookCopy.barcode}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {fmtDate(rental.rentedAt)}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {fmtDate(rental.dueDate)}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {fmtDate(rental.returnedAt)}
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge
+                          status={rental.status}
+                          labels={RENTAL_STATUS_LABELS}
+                          colors={RENTAL_STATUS_COLORS}
+                        />
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {Number(rental.fineAmount) > 0
+                          ? `$${rental.fineAmount}${rental.finePaid ? ' (paid)' : ''}`
+                          : '—'}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <TablePagination
+                page={rentalPage}
+                total={rentals?.length ?? 0}
+                limit={HISTORY_PAGE_SIZE}
+                onPageChange={setRentalPage}
+              />
+            </>
           )}
         </CardContent>
       </Card>
@@ -295,38 +329,46 @@ function MemberDetail() {
               No reservations yet
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Reserved</TableHead>
-                  <TableHead>Expires</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {reservations.map((reservation) => (
-                  <TableRow key={reservation.id}>
-                    <TableCell className="font-medium text-foreground">
-                      {reservation.book.title}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {fmtDate(reservation.reservedAt)}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {fmtDate(reservation.expiresAt)}
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge
-                        status={reservation.status}
-                        labels={RESERVATION_STATUS_LABELS}
-                        colors={RESERVATION_STATUS_COLORS}
-                      />
-                    </TableCell>
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Title</TableHead>
+                    <TableHead>Reserved</TableHead>
+                    <TableHead>Expires</TableHead>
+                    <TableHead>Status</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {pagedReservations.map((reservation) => (
+                    <TableRow key={reservation.id}>
+                      <TableCell className="font-medium text-foreground">
+                        {reservation.book.title}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {fmtDate(reservation.reservedAt)}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {fmtDate(reservation.expiresAt)}
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge
+                          status={reservation.status}
+                          labels={RESERVATION_STATUS_LABELS}
+                          colors={RESERVATION_STATUS_COLORS}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <TablePagination
+                page={reservationPage}
+                total={reservations?.length ?? 0}
+                limit={HISTORY_PAGE_SIZE}
+                onPageChange={setReservationPage}
+              />
+            </>
           )}
         </CardContent>
       </Card>
