@@ -69,6 +69,41 @@ const LIBRARY_MEMBERS: LibraryMemberSeed[] = [
   },
 ];
 
+// Extra walk-in members for TechCorp so the staff /members list has enough
+// rows to page past 20/page. Deterministic (no faker) to keep seeds
+// reproducible; statuses/types cycle so the list filters have data to match.
+const BULK_TECHCORP_MEMBER_COUNT = 30;
+const MEMBERSHIP_TYPE_CYCLE: LibraryMemberSeed['membershipType'][] = [
+  'STUDENT',
+  'ADULT',
+  'PREMIUM',
+];
+const MEMBERSHIP_STATUS_CYCLE: LibraryMemberSeed['membershipStatus'][] = [
+  'ACTIVE',
+  'EXPIRED',
+  'SUSPENDED',
+  'PENDING',
+  'CANCELLED',
+];
+
+for (let i = 1; i <= BULK_TECHCORP_MEMBER_COUNT; i++) {
+  const membershipStatus =
+    MEMBERSHIP_STATUS_CYCLE[i % MEMBERSHIP_STATUS_CYCLE.length];
+  LIBRARY_MEMBERS.push({
+    organizationSlug: 'techcorp-solutions',
+    libraryCardNumber: `TC-1${String(i).padStart(3, '0')}`, // TC-1001..TC-1030
+    membershipType: MEMBERSHIP_TYPE_CYCLE[i % MEMBERSHIP_TYPE_CYCLE.length],
+    membershipStatus,
+    membershipStartDate: new Date(2026, 0, 1 + i),
+    // Give the terminal statuses an end date for realism.
+    membershipEndDate:
+      membershipStatus === 'EXPIRED' || membershipStatus === 'CANCELLED'
+        ? new Date(2026, 5, 1 + i)
+        : undefined,
+    // Walk-in patrons: no linked login user.
+  });
+}
+
 export async function seedLibraryMembers(prisma: PrismaClient) {
   console.log('Seeding library members...');
 

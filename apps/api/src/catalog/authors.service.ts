@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { Prisma } from '@repo/db';
 import { PrismaService } from '../database/prisma.service';
 import type {
   AuthorResponse,
@@ -16,19 +21,23 @@ export class AuthorsService {
    */
   async findAll(
     organizationId: string,
-    options: { page?: number; limit?: number },
+    options: { page?: number; limit?: number; search?: string },
   ): Promise<AuthorListResponse> {
-    const { page = 1, limit = 20 } = options;
+    const { page = 1, limit = 20, search } = options;
     const skip = (page - 1) * limit;
+    const where: Prisma.AuthorWhereInput = {
+      organizationId,
+      ...(search ? { name: { contains: search, mode: 'insensitive' } } : {}),
+    };
 
     const [authors, total] = await Promise.all([
       this.prisma.author.findMany({
-        where: { organizationId },
+        where,
         skip,
         take: limit,
         orderBy: { name: 'asc' },
       }),
-      this.prisma.author.count({ where: { organizationId } }),
+      this.prisma.author.count({ where }),
     ]);
 
     return { authors, total };
@@ -85,5 +94,32 @@ export class AuthorsService {
       where: { id },
       data,
     });
+  }
+
+  /**
+   * Delete an author, scoped to the organization. Blocked (409) while the
+   * author is still linked to books, so deleting never silently unlinks a
+   * book (the BookAuthor join cascades at the DB level otherwise).
+   */
+  async remove(organizationId: string, id: string): Promise<void> {
+    const existing = await this.prisma.author.findFirst({
+      where: { id, organizationId },
+    });
+
+    if (!existing) {
+      throw new NotFoundException(`Author with ID ${id} not found`);
+    }
+
+    const linkedBooks = await this.prisma.bookAuthor.count({
+      where: { authorId: id, organizationId },
+    });
+
+    if (linkedBooks > 0) {
+      throw new ConflictException(
+        `Cannot delete author "${existing.name}" — it is linked to ${linkedBooks} book(s).`,
+      );
+    }
+
+    await this.prisma.author.delete({ where: { id } });
   }
 }

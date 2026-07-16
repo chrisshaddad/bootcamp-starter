@@ -33,11 +33,31 @@ export class LibraryMembersService {
       limit?: number;
       membershipStatus?: LibraryMemberStatus;
       membershipType?: LibraryMembershipType;
+      search?: string;
     },
   ): Promise<LibraryMemberListResponse> {
-    const { page = 1, limit = 20, membershipStatus, membershipType } = options;
+    const {
+      page = 1,
+      limit = 20,
+      membershipStatus,
+      membershipType,
+      search,
+    } = options;
     const skip = (page - 1) * limit;
-    const where = { organizationId, membershipStatus, membershipType };
+    const where: Prisma.LibraryMemberWhereInput = {
+      organizationId,
+      membershipStatus,
+      membershipType,
+      ...(search
+        ? {
+            OR: [
+              { libraryCardNumber: { contains: search, mode: 'insensitive' } },
+              { user: { name: { contains: search, mode: 'insensitive' } } },
+              { user: { email: { contains: search, mode: 'insensitive' } } },
+            ],
+          }
+        : {}),
+    };
 
     const [libraryMembers, total] = await Promise.all([
       this.prisma.libraryMember.findMany({
@@ -83,14 +103,59 @@ export class LibraryMembersService {
       await this.validateMemberUser(data.userId);
     }
 
+    const libraryCardNumber =
+      data.libraryCardNumber?.trim() ||
+      (await this.generateCardNumber(organizationId));
+
     try {
       return await this.prisma.libraryMember.create({
-        data: { ...data, organizationId },
+        data: { ...data, libraryCardNumber, organizationId },
         include: libraryMemberInclude,
       });
     } catch (error) {
-      throw this.mapConflictError(error, data.libraryCardNumber);
+      throw this.mapConflictError(error, libraryCardNumber);
     }
+  }
+
+  // Auto-issue a per-org card number when staff don't supply one. Prefix is
+  // derived from the org slug's initials; the numeric suffix starts past the
+  // current member count and skips any already-taken value (seeded/manual
+  // cards, or gaps from deletions) so we never hand out a duplicate.
+  private async generateCardNumber(organizationId: string): Promise<string> {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { slug: true },
+    });
+
+    const prefix =
+      org?.slug
+        .split('-')
+        .map((part) => part[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 3) || 'LIB';
+
+    const count = await this.prisma.libraryMember.count({
+      where: { organizationId },
+    });
+
+    let seq = count + 1;
+    for (let attempts = 0; attempts < 100; attempts++) {
+      const candidate = `${prefix}-${String(seq).padStart(4, '0')}`;
+      const existing = await this.prisma.libraryMember.findFirst({
+        where: { organizationId, libraryCardNumber: candidate },
+        select: { id: true },
+      });
+
+      if (!existing) {
+        return candidate;
+      }
+
+      seq++;
+    }
+
+    // Extremely unlikely fallback: guarantee uniqueness with a timestamp.
+    return `${prefix}-${Date.now()}`;
   }
 
   /**
@@ -125,6 +190,34 @@ export class LibraryMembersService {
         data.libraryCardNumber ?? existing.libraryCardNumber,
       );
     }
+  }
+
+  /**
+   * Delete a library member, scoped to the organization. Blocked (409) while
+   * any rental references them — the Rental→member FK is onDelete: Restrict,
+   * so the DB would reject it anyway; this returns a friendly message first.
+   * (Reservations cascade, so they don't block.)
+   */
+  async remove(organizationId: string, id: string): Promise<void> {
+    const existing = await this.prisma.libraryMember.findFirst({
+      where: { id, organizationId },
+    });
+
+    if (!existing) {
+      throw new NotFoundException(`Library member with ID ${id} not found`);
+    }
+
+    const rentals = await this.prisma.rental.count({
+      where: { memberId: id, organizationId },
+    });
+
+    if (rentals > 0) {
+      throw new ConflictException(
+        `Cannot delete member "${existing.libraryCardNumber}" — they have ${rentals} rental record(s).`,
+      );
+    }
+
+    await this.prisma.libraryMember.delete({ where: { id } });
   }
 
   // User.organizationId is null for MEMBER-role users (their org affiliation
