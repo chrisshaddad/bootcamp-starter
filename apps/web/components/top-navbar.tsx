@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Search, Settings, LogOut, ChevronDown } from 'lucide-react';
+import { Search, Settings, LogOut, ChevronDown, PanelLeft } from 'lucide-react';
 import { useAuth, useUser } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,11 +14,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { SidebarTrigger } from '@/components/ui/sidebar';
+import { useSidebar } from '@/components/ui/sidebar';
 
 export function TopNavbar() {
   const { user } = useUser({ redirectOnUnauthenticated: false });
   const { logout } = useAuth();
+  const { toggleSidebar } = useSidebar();
   const [searchQuery, setSearchQuery] = useState('');
 
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
@@ -44,8 +45,15 @@ export function TopNavbar() {
     <header className="flex h-16 items-center justify-between border-b border-gray-200 bg-white px-6">
       {/* Left Section - Sidebar Toggle & Search */}
       <div className="flex items-center gap-4">
-        <SidebarTrigger className="-ml-1 h-9 w-9 text-gray-500 hover:bg-gray-100 hover:text-gray-900" />
-
+        <button
+          type="button"
+          onClick={() => toggleSidebar()}
+          aria-label="Toggle sidebar"
+          title="Toggle sidebar"
+          className="-ml-1 flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-base"
+        >
+          <PanelLeft className="h-5 w-5" />
+        </button>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <Input
