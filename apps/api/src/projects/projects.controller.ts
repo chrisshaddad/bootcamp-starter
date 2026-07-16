@@ -455,6 +455,7 @@ export class ProjectsController {
       createdByUserId: project.createdByUserId,
       title: project.title,
       slug: project.slug,
+      logoUrl: project.logoUrl,
       shortDescription: project.shortDescription,
       fullDescription: project.fullDescription,
       deploymentUrl: project.deploymentUrl,
