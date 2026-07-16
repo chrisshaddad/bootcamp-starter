@@ -1,6 +1,6 @@
-// packages/contracts/src/projects/project-by-id.response.ts
 import { z } from 'zod';
 import { projectResponseSchema } from './project.response';
+import { technologySchema } from '../technologies/technology.schema';
 
 export const projectMediaResponseSchema = z.object({
   id: z.string().uuid(),
@@ -27,12 +27,7 @@ export const projectTechnologyResponseSchema = z.object({
   sortOrder: z.number().int(),
   createdAt: z.string(),
   updatedAt: z.string(),
-  technology: z.object({
-    id: z.string().uuid(),
-    name: z.string(),
-    slug: z.string(),
-    category: z.string(),
-  }),
+  technology: technologySchema,
 });
 
 export type ProjectTechnologyResponse = z.infer<

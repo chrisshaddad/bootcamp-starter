@@ -70,7 +70,6 @@ export default function EditProjectPage() {
 
     setIsSubmitting(true);
     try {
-      // Basic info modifications
       await updateProject(project.id, data);
 
       toast.success('Project updated successfully');
@@ -249,15 +248,15 @@ export default function EditProjectPage() {
               </div>
             )}
             <Card className="border-dashed">
-              <CardContent className="flex flex-col items-center gap-1.5 py-6 text-center">
+              <CardContent className="flex flex-col items-center justify-center gap-3 py-8 text-center">
                 <Input
                   type="file"
                   accept="image/jpeg, image/png, image/webp, image/gif"
                   onChange={handleUploadMedia}
                   disabled={isUploadingMedia}
-                  className="max-w-[250px]"
+                  className="h-10 w-full max-w-sm py-2 file:mr-3 file:h-auto"
                 />
-                <p className="text-muted-foreground text-xs mt-2">
+                <p className="text-xs text-muted-foreground">
                   {isUploadingMedia
                     ? 'Uploading...'
                     : 'Upload screenshots or architecture diagrams.'}

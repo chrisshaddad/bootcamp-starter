@@ -13,4 +13,3 @@ export * from './project-explore.response';
 export * from './project-public.response';
 export * from './project-slug.schema';
 export * from './project-member-add.request';
-export * from './project-technology-add.request';
