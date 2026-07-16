@@ -37,5 +37,6 @@ export const bookResponseSchema = z.object({
   publisher: bookPublisherSummarySchema.nullable(),
   authors: z.array(bookAuthorSummarySchema),
   categories: z.array(bookCategorySummarySchema),
+  availableCopies: z.number(),
 });
 export type BookResponse = z.infer<typeof bookResponseSchema>;

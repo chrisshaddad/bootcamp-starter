@@ -5,7 +5,13 @@ import { rentalStatusSchema } from './rental-status.schema';
 const rentalBookCopySummarySchema = z.object({
   id: z.uuid(),
   barcode: z.string(),
-  book: z.object({ id: z.uuid(), title: z.string() }),
+  book: z.object({
+    id: z.uuid(),
+    title: z.string(),
+    coverUrl: z.string().nullable(),
+    // Prisma Decimal serializes to a string over the wire (see BookResponse).
+    salePrice: z.string().nullable(),
+  }),
 });
 
 const rentalMemberSummarySchema = z.object({

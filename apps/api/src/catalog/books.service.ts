@@ -16,6 +16,7 @@ const bookInclude = {
   publisher: { select: { id: true, name: true } },
   authors: { include: { author: { select: { id: true, name: true } } } },
   categories: { include: { category: { select: { id: true, name: true } } } },
+  _count: { select: { copies: { where: { status: 'AVAILABLE' } } } },
 } satisfies Prisma.BookInclude;
 
 type BookWithRelations = Prisma.BookGetPayload<{ include: typeof bookInclude }>;
@@ -25,24 +26,42 @@ export class BooksService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * List books for an organization
+   * List books for an organization, optionally filtered by title search,
+   * category, or author - all applied server-side so filtering covers the
+   * full catalog, not just whichever page happened to load.
    */
   async findAll(
     organizationId: string,
-    options: { page?: number; limit?: number },
+    options: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      categoryId?: string;
+      authorId?: string;
+    },
   ): Promise<BookListResponse> {
-    const { page = 1, limit = 20 } = options;
+    const { page = 1, limit = 20, search, categoryId, authorId } = options;
     const skip = (page - 1) * limit;
+    const trimmedSearch = search?.trim();
+
+    const where: Prisma.BookWhereInput = {
+      organizationId,
+      ...(trimmedSearch
+        ? { title: { contains: trimmedSearch, mode: 'insensitive' } }
+        : {}),
+      ...(categoryId ? { categories: { some: { categoryId } } } : {}),
+      ...(authorId ? { authors: { some: { authorId } } } : {}),
+    };
 
     const [books, total] = await Promise.all([
       this.prisma.book.findMany({
-        where: { organizationId },
+        where,
         skip,
         take: limit,
         orderBy: { title: 'asc' },
         include: bookInclude,
       }),
-      this.prisma.book.count({ where: { organizationId } }),
+      this.prisma.book.count({ where }),
     ]);
 
     return { books: books.map((book) => this.toResponse(book)), total };
@@ -186,11 +205,14 @@ export class BooksService {
   }
 
   private toResponse(book: BookWithRelations): BookResponse {
+    const { _count, ...rest } = book;
+
     return {
-      ...book,
+      ...rest,
       salePrice: book.salePrice?.toString() ?? null,
       authors: book.authors.map(({ author }) => author),
       categories: book.categories.map(({ category }) => category),
+      availableCopies: _count.copies,
     };
   }
 

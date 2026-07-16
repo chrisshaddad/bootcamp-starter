@@ -25,7 +25,9 @@ const rentalInclude = {
     select: {
       id: true,
       barcode: true,
-      book: { select: { id: true, title: true } },
+      book: {
+        select: { id: true, title: true, coverUrl: true, salePrice: true },
+      },
     },
   },
   member: { select: { id: true, libraryCardNumber: true } },
@@ -283,6 +285,13 @@ export class RentalsService {
     return {
       ...rental,
       fineAmount: rental.fineAmount.toString(),
+      bookCopy: {
+        ...rental.bookCopy,
+        book: {
+          ...rental.bookCopy.book,
+          salePrice: rental.bookCopy.book.salePrice?.toString() ?? null,
+        },
+      },
     };
   }
 }

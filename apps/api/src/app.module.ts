@@ -9,6 +9,7 @@ import { OrganizationsModule } from './organizations/organizations.module';
 import { LibraryMembersModule } from './library-members/library-members.module';
 import { CirculationModule } from './circulation/circulation.module';
 import { CatalogModule } from './catalog/catalog.module';
+import { CommerceModule } from './commerce/commerce.module';
 import { PortalModule } from './portal/portal.module';
 import { DatabaseModule } from './database/database.module';
 
@@ -27,6 +28,7 @@ import { DatabaseModule } from './database/database.module';
     LibraryMembersModule,
     CirculationModule,
     CatalogModule,
+    CommerceModule,
     PortalModule,
   ],
   controllers: [AppController],

@@ -36,7 +36,7 @@ export default function DiscoverPage() {
   const { memberships, requestMembership } = usePortalMemberships();
   const [target, setTarget] = useState<DirectoryLibrary | null>(null);
   const [membershipType, setMembershipType] =
-    useState<LibraryMembershipType>('ADULT');
+    useState<LibraryMembershipType>('REGULAR');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const requestedSlugs = new Set(
@@ -151,7 +151,7 @@ export default function DiscoverPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="STUDENT">Student</SelectItem>
-                <SelectItem value="ADULT">Adult</SelectItem>
+                <SelectItem value="REGULAR">Regular</SelectItem>
                 <SelectItem value="PREMIUM">Premium</SelectItem>
               </SelectContent>
             </Select>

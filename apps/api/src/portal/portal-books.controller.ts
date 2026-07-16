@@ -19,12 +19,18 @@ export class PortalBooksController {
     @ActiveOrganizationId() activeOrganizationId: string | null,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('search') search?: string,
+    @Query('categoryId') categoryId?: string,
+    @Query('authorId') authorId?: string,
   ): Promise<BookListResponse> {
     return this.booksService.findAll(
       this.requireActiveOrganization(activeOrganizationId),
       {
         page: page ? parseInt(page, 10) : 1,
         limit: limit ? parseInt(limit, 10) : 20,
+        search,
+        categoryId,
+        authorId,
       },
     );
   }

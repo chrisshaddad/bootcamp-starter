@@ -3,7 +3,7 @@ import { PrismaClient } from '../../src/generated/prisma/client';
 interface LibraryMemberSeed {
   organizationSlug: string;
   libraryCardNumber: string;
-  membershipType: 'STUDENT' | 'ADULT' | 'PREMIUM';
+  membershipType: 'STUDENT' | 'REGULAR' | 'PREMIUM';
   membershipStatus:
     | 'ACTIVE'
     | 'EXPIRED'
@@ -22,7 +22,7 @@ const LIBRARY_MEMBERS: LibraryMemberSeed[] = [
   {
     organizationSlug: 'techcorp-solutions',
     libraryCardNumber: 'TC-0001',
-    membershipType: 'ADULT',
+    membershipType: 'REGULAR',
     membershipStatus: 'ACTIVE',
     membershipStartDate: new Date('2026-01-05'),
     user: {
@@ -55,14 +55,14 @@ const LIBRARY_MEMBERS: LibraryMemberSeed[] = [
   {
     organizationSlug: 'healthfirst-medical-group',
     libraryCardNumber: 'HF-0001',
-    membershipType: 'ADULT',
+    membershipType: 'REGULAR',
     membershipStatus: 'ACTIVE',
     membershipStartDate: new Date('2026-01-15'),
   },
   {
     organizationSlug: 'datasync-analytics',
     libraryCardNumber: 'DA-0001',
-    membershipType: 'ADULT',
+    membershipType: 'REGULAR',
     membershipStatus: 'SUSPENDED',
     membershipStartDate: new Date('2025-10-01'),
     membershipEndDate: new Date('2026-01-01'),

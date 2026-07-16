@@ -17,7 +17,19 @@ interface SendInvitationJobData {
   invitationLink: string;
 }
 
-type MailJobData = SendMagicLinkJobData | SendInvitationJobData;
+interface SendDueReminderJobData {
+  email: string;
+  userName?: string;
+  bookTitle: string;
+  // ISO string - job data must be JSON-serializable, so this isn't a Date.
+  dueDate: string;
+  reminderType: 'DUE_IN_5_DAYS' | 'DUE_TOMORROW' | 'DUE_TODAY';
+}
+
+type MailJobData =
+  | SendMagicLinkJobData
+  | SendInvitationJobData
+  | SendDueReminderJobData;
 
 @Processor(MAIL_QUEUE)
 export class MailProcessor extends WorkerHost {
@@ -36,6 +48,9 @@ export class MailProcessor extends WorkerHost {
         break;
       case MAIL_JOBS.SEND_INVITATION:
         await this.handleSendInvitation(job.data as SendInvitationJobData);
+        break;
+      case MAIL_JOBS.SEND_DUE_REMINDER:
+        await this.handleSendDueReminder(job.data as SendDueReminderJobData);
         break;
       default:
         this.logger.warn(`Unknown job type: ${job.name}`);
@@ -81,6 +96,46 @@ export class MailProcessor extends WorkerHost {
       this.logger.log(`Invitation email sent successfully to ${email}`);
     } else {
       this.logger.error(`Failed to send invitation email to ${email}`);
+      throw new Error(`Failed to send email to ${email}`);
+    }
+  }
+
+  private async handleSendDueReminder(
+    data: SendDueReminderJobData,
+  ): Promise<void> {
+    const { email, userName, bookTitle, dueDate, reminderType } = data;
+
+    const greeting = userName ? `Hello ${userName},` : 'Hello,';
+    const formattedDate = new Date(dueDate).toLocaleDateString();
+
+    const phraseByType: Record<SendDueReminderJobData['reminderType'], string> =
+      {
+        DUE_IN_5_DAYS: `is due in 5 days, on ${formattedDate}`,
+        DUE_TOMORROW: `is due tomorrow, ${formattedDate}`,
+        DUE_TODAY: `is due today, ${formattedDate}`,
+      };
+    const subjectByType: Record<
+      SendDueReminderJobData['reminderType'],
+      string
+    > = {
+      DUE_IN_5_DAYS: `Reminder: "${bookTitle}" is due in 5 days`,
+      DUE_TOMORROW: `Reminder: "${bookTitle}" is due tomorrow`,
+      DUE_TODAY: `Reminder: "${bookTitle}" is due today`,
+    };
+
+    const text = `${greeting}\n\nThis is a reminder that "${bookTitle}" ${phraseByType[reminderType]}. Please return it on time to avoid a late fee.\n\nIf you've already returned it, you can safely ignore this email.`;
+
+    const success = await this.mailService.sendEmail({
+      to: email,
+      from: 'no-reply@nextshelf.local',
+      subject: subjectByType[reminderType],
+      text,
+    });
+
+    if (success) {
+      this.logger.log(`Due reminder email sent successfully to ${email}`);
+    } else {
+      this.logger.error(`Failed to send due reminder email to ${email}`);
       throw new Error(`Failed to send email to ${email}`);
     }
   }

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { dateSchema } from '../common';
+import { bookCopyConditionSchema } from '../book-copies';
 import { reservationStatusSchema } from './reservation-status.schema';
 
 const reservationBookSummarySchema = z.object({
@@ -21,6 +22,7 @@ export const reservationResponseSchema = z.object({
   reservedAt: dateSchema,
   expiresAt: dateSchema.nullable(),
   status: reservationStatusSchema,
+  preferredCondition: bookCopyConditionSchema.nullable(),
   notifiedAt: dateSchema.nullable(),
   fulfilledAt: dateSchema.nullable(),
   cancelledAt: dateSchema.nullable(),

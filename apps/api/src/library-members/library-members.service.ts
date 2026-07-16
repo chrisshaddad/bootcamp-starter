@@ -292,6 +292,39 @@ export class LibraryMembersService {
     });
   }
 
+  /**
+   * A patron deactivating their own membership (ACTIVE -> SUSPENDED, mirrors
+   * OrganizationsService's reversible ACTIVE <-> SUSPENDED lifecycle - not
+   * CANCELLED, which this codebase reserves for terminal/rejected states).
+   * Scoped by userId only, not organizationId, matching findMyMemberships -
+   * this is "my own membership record", and membership id already pins the
+   * exact org.
+   */
+  async deactivate(
+    id: string,
+    userId: string,
+  ): Promise<LibraryMemberWithOrganizationResponse> {
+    const existing = await this.prisma.libraryMember.findFirst({
+      where: { id, userId },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('No membership found');
+    }
+
+    if (existing.membershipStatus !== 'ACTIVE') {
+      throw new BadRequestException(
+        `Only an ACTIVE membership can be deactivated (current status: ${existing.membershipStatus})`,
+      );
+    }
+
+    return this.prisma.libraryMember.update({
+      where: { id: existing.id },
+      data: { membershipStatus: 'SUSPENDED' },
+      include: libraryMemberWithOrganizationInclude,
+    });
+  }
+
   private async requirePending(id: string) {
     const existing = await this.prisma.libraryMember.findUnique({
       where: { id },

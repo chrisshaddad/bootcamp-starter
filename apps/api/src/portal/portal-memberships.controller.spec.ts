@@ -14,6 +14,7 @@ describe('PortalMembershipsController', () => {
           useValue: {
             findMyMemberships: jest.fn(),
             requestMembership: jest.fn(),
+            deactivate: jest.fn(),
           },
         },
       ],

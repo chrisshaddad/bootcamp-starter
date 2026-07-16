@@ -42,7 +42,7 @@ enum LibraryMemberStatus {
 
 enum LibraryMembershipType {
   STUDENT
-  ADULT
+  REGULAR
   PREMIUM
 
   @@schema("public")
@@ -54,6 +54,7 @@ enum BookCopyStatus {
   RESERVED
   LOST
   MAINTENANCE
+  SOLD
 
   @@schema("public")
 }
@@ -192,6 +193,9 @@ model Organization {
   bookCopies     BookCopy[]
   rentals        Rental[]
   reservations   Reservation[]
+  carts          Cart[]
+  cartItems      CartItem[]
+  purchases      Purchase[]
 
   @@index([approvedById])
   @@index([status])
@@ -214,6 +218,8 @@ model LibraryMember {
   user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
   rentals      Rental[]
   reservations Reservation[]
+  cart         Cart?
+  purchases    Purchase[]
 
   @@unique([organizationId, libraryCardNumber])
   @@unique([organizationId, userId])
@@ -297,6 +303,7 @@ model Book {
   categories   BookCategory[]
   copies       BookCopy[]
   reservations Reservation[]
+  cartItems    CartItem[]
 
   @@index([organizationId])
   @@index([publisherId])
@@ -351,6 +358,7 @@ model BookCopy {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   book         Book         @relation(fields: [bookId], references: [id], onDelete: Cascade)
   rentals      Rental[]
+  purchases    Purchase[]
 
   @@unique([organizationId, barcode])
   @@index([organizationId])
@@ -390,18 +398,19 @@ model Rental {
 }
 
 model Reservation {
-  id             String            @id @default(uuid())
-  organizationId String
-  bookId         String
-  memberId       String
-  reservedAt     DateTime          @default(now())
-  expiresAt      DateTime?
-  status         ReservationStatus @default(ACTIVE)
-  notifiedAt     DateTime?
-  fulfilledAt    DateTime?
-  cancelledAt    DateTime?
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
+  id                 String             @id @default(uuid())
+  organizationId     String
+  bookId             String
+  memberId           String
+  preferredCondition BookCopyCondition?
+  reservedAt         DateTime           @default(now())
+  expiresAt          DateTime?
+  status             ReservationStatus  @default(ACTIVE)
+  notifiedAt         DateTime?
+  fulfilledAt        DateTime?
+  cancelledAt        DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
 
   organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   book         Book          @relation(fields: [bookId], references: [id], onDelete: Cascade)
@@ -412,5 +421,58 @@ model Reservation {
   @@index([memberId])
   @@index([organizationId, status])
   @@index([organizationId, expiresAt])
+  @@schema("public")
+}
+
+model Cart {
+  id             String   @id @default(uuid())
+  organizationId String
+  memberId       String   @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  member       LibraryMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  items        CartItem[]
+
+  @@index([organizationId])
+  @@schema("public")
+}
+
+model CartItem {
+  id                 String             @id @default(uuid())
+  organizationId     String
+  cartId             String
+  bookId             String
+  preferredCondition BookCopyCondition?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  cart         Cart         @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  book         Book         @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([cartId])
+  @@index([bookId])
+  @@schema("public")
+}
+
+model Purchase {
+  id             String   @id @default(uuid())
+  organizationId String
+  bookCopyId     String
+  memberId       String
+  price          Decimal  @db.Decimal(10, 2)
+  purchasedAt    DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bookCopy     BookCopy      @relation(fields: [bookCopyId], references: [id], onDelete: Restrict)
+  member       LibraryMember @relation(fields: [memberId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId])
+  @@index([bookCopyId])
+  @@index([memberId])
   @@schema("public")
 }

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
 import { LibraryMembersService } from '../library-members/library-members.service';
 import { Roles, CurrentUser } from '../auth/decorators';
 import type { User } from '@repo/db';
@@ -29,5 +29,13 @@ export class PortalMembershipsController {
     body: PortalMembershipRequest,
   ): Promise<LibraryMemberWithOrganizationResponse> {
     return this.libraryMembersService.requestMembership(user.id, body);
+  }
+
+  @Patch(':id/deactivate')
+  async deactivate(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+  ): Promise<LibraryMemberWithOrganizationResponse> {
+    return this.libraryMembersService.deactivate(id, user.id);
   }
 }

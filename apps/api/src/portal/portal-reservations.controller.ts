@@ -84,6 +84,7 @@ export class PortalReservationsController {
     return this.reservationsService.create(organizationId, {
       bookId: body.bookId,
       memberId: member.id,
+      preferredCondition: body.preferredCondition,
     });
   }
 
