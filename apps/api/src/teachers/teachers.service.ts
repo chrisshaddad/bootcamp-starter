@@ -111,6 +111,7 @@ export class TeachersService {
   }
 
   async updateTeacher(
+    organizationId: string,
     teacherId: string,
     payload: UpdateTeacherRequest,
   ): Promise<UpdateTeacherResponse> {
@@ -118,6 +119,7 @@ export class TeachersService {
       where: {
         id: teacherId,
         role: 'ORG_ADMIN',
+        organizationId,
       },
       select: {
         id: true,
@@ -158,11 +160,15 @@ export class TeachersService {
     };
   }
 
-  async deleteTeacher(teacherId: string): Promise<TeacherActionResponse> {
+  async deleteTeacher(
+    organizationId: string,
+    teacherId: string,
+  ): Promise<TeacherActionResponse> {
     const teacher = await this.prisma.user.findFirst({
       where: {
         id: teacherId,
         role: 'ORG_ADMIN',
+        organizationId,
       },
       select: {
         id: true,

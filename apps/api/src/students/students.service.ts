@@ -225,19 +225,22 @@ export class StudentsService {
   }
 
   async updateStudent(
+    organizationId: string,
     studentProfileId: string,
     payload: UpdateStudentRequest,
   ): Promise<UpdateStudentResponse> {
-    const studentProfile = await this.prisma.studentProfile.findUnique({
+    const studentProfile = await this.prisma.studentProfile.findFirst({
       where: {
         id: studentProfileId,
+        user: {
+          organizationId,
+        },
       },
       select: {
         id: true,
         userId: true,
       },
     });
-
     if (!studentProfile) {
       throw new NotFoundException('Student not found');
     }
@@ -332,11 +335,15 @@ export class StudentsService {
   }
 
   async deleteStudent(
+    organizationId: string,
     studentProfileId: string,
   ): Promise<StudentActionResponse> {
-    const studentProfile = await this.prisma.studentProfile.findUnique({
+    const studentProfile = await this.prisma.studentProfile.findFirst({
       where: {
         id: studentProfileId,
+        user: {
+          organizationId,
+        },
       },
       select: {
         id: true,
@@ -353,6 +360,7 @@ export class StudentsService {
         id: studentProfile.userId,
       },
     });
+
     this.logger.log(`Deleted student ${studentProfileId}.`);
 
     return {

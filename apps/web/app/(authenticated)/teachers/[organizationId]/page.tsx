@@ -115,7 +115,7 @@ export default function TeachersOrganizationPage({
 
     try {
       const updatedTeacher = await apiPatch<UpdateTeacherResponse>(
-        `/teachers/${editingTeacher.id}`,
+        `/teachers/organizations/${organizationId}/teachers/${editingTeacher.id}`,
         payload,
       );
 
@@ -150,8 +150,9 @@ export default function TeachersOrganizationPage({
     setError(null);
 
     try {
-      await apiDelete<TeacherActionResponse>(`/teachers/${teacherId}`);
-
+      await apiDelete<TeacherActionResponse>(
+        `/teachers/organizations/${organizationId}/teachers/${teacherId}`,
+      );
       setTeachers((currentTeachers) =>
         currentTeachers.filter((teacher) => teacher.id !== teacherId),
       );

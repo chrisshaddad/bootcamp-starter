@@ -1,4 +1,12 @@
-import { Body, Controller, Delete, Get, Param, Patch } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  ParseUUIDPipe,
+} from '@nestjs/common';
 import type {
   TeacherActionResponse,
   TeacherOrganizationParams,
@@ -35,22 +43,31 @@ export class TeachersController {
       params.organizationId,
     );
   }
-
-  @Patch(':teacherId')
+  @Patch('organizations/:organizationId/teachers/:teacherId')
   @Roles('SUPER_ADMIN')
   async updateTeacher(
-    @Param('teacherId') teacherId: string,
+    @Param('organizationId', new ParseUUIDPipe({ version: '4' }))
+    organizationId: string,
+    @Param('teacherId', new ParseUUIDPipe({ version: '4' }))
+    teacherId: string,
     @Body(new ZodValidationPipe(UpdateTeacherRequestSchema))
     payload: UpdateTeacherRequest,
   ): Promise<UpdateTeacherResponse> {
-    return this.teachersService.updateTeacher(teacherId, payload);
+    return this.teachersService.updateTeacher(
+      organizationId,
+      teacherId,
+      payload,
+    );
   }
 
-  @Delete(':teacherId')
+  @Delete('organizations/:organizationId/teachers/:teacherId')
   @Roles('SUPER_ADMIN')
   async deleteTeacher(
-    @Param('teacherId') teacherId: string,
+    @Param('organizationId', new ParseUUIDPipe({ version: '4' }))
+    organizationId: string,
+    @Param('teacherId', new ParseUUIDPipe({ version: '4' }))
+    teacherId: string,
   ): Promise<TeacherActionResponse> {
-    return this.teachersService.deleteTeacher(teacherId);
+    return this.teachersService.deleteTeacher(organizationId, teacherId);
   }
 }
