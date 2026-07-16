@@ -93,6 +93,7 @@ export class ApplicationsService {
           fitScore: true,
           coverNote: true,
           managerApproved: true,
+          reviewerNotes: true,
           createdAt: true,
           updatedAt: true,
           opportunity: {
@@ -173,6 +174,7 @@ export class ApplicationsService {
           fitScore: true,
           coverNote: true,
           managerApproved: true,
+          reviewerNotes: true,
           createdAt: true,
           updatedAt: true,
           opportunity: {
@@ -232,6 +234,7 @@ export class ApplicationsService {
         fitScore: true,
         coverNote: true,
         managerApproved: true,
+        reviewerNotes: true,
         createdAt: true,
         updatedAt: true,
         opportunity: {
@@ -332,6 +335,7 @@ export class ApplicationsService {
         fitScore: true,
         coverNote: true,
         managerApproved: true,
+        reviewerNotes: true,
         createdAt: true,
         updatedAt: true,
         opportunity: {

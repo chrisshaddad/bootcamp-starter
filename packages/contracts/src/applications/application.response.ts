@@ -16,6 +16,7 @@ export const applicationResponseSchema = z.object({
   fitScore: z.number().nullable(),
   coverNote: z.string().nullable(),
   managerApproved: z.boolean().nullable(),
+  reviewerNotes: z.string().nullable(),
   opportunity: applicationOpportunitySchema,
   createdAt: dateSchema,
   updatedAt: dateSchema,
