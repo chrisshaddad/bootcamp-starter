@@ -32,8 +32,10 @@ export default function MyLibrariesPage() {
   const router = useRouter();
   const { user } = useUser();
   const { setActiveOrganization } = useAuth();
-  const { memberships, isLoading, error } = usePortalMemberships();
+  const { memberships, isLoading, error, deactivateMembership } =
+    usePortalMemberships();
   const [activatingId, setActivatingId] = useState<string | null>(null);
+  const [deactivatingId, setDeactivatingId] = useState<string | null>(null);
 
   const handleActivate = async (organizationId: string) => {
     setActivatingId(organizationId);
@@ -49,6 +51,22 @@ export default function MyLibrariesPage() {
       }
     } finally {
       setActivatingId(null);
+    }
+  };
+
+  const handleDeactivate = async (membershipId: string) => {
+    setDeactivatingId(membershipId);
+    try {
+      await deactivateMembership(membershipId);
+      toast.success('Membership deactivated');
+    } catch (err) {
+      if (err instanceof ApiError) {
+        toast.error(err.message);
+      } else {
+        toast.error('Failed to deactivate membership');
+      }
+    } finally {
+      setDeactivatingId(null);
     }
   };
 
@@ -105,23 +123,36 @@ export default function MyLibrariesPage() {
                       colors={STATUS_COLORS}
                     />
                     {membership.membershipStatus === 'ACTIVE' && (
-                      <Button
-                        size="sm"
-                        variant={isActiveHere ? 'outline' : 'default'}
-                        disabled={
-                          isActiveHere ||
-                          activatingId === membership.organizationId
-                        }
-                        onClick={() =>
-                          handleActivate(membership.organizationId)
-                        }
-                      >
-                        {isActiveHere
-                          ? 'Currently Active'
-                          : activatingId === membership.organizationId
-                            ? 'Activating...'
-                            : 'Activate'}
-                      </Button>
+                      <>
+                        <Button
+                          size="sm"
+                          variant={isActiveHere ? 'outline' : 'default'}
+                          disabled={
+                            isActiveHere ||
+                            activatingId === membership.organizationId
+                          }
+                          onClick={() =>
+                            handleActivate(membership.organizationId)
+                          }
+                        >
+                          {isActiveHere
+                            ? 'Currently Active'
+                            : activatingId === membership.organizationId
+                              ? 'Activating...'
+                              : 'Activate'}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-error border-error/30 hover:bg-error-light"
+                          disabled={deactivatingId === membership.id}
+                          onClick={() => handleDeactivate(membership.id)}
+                        >
+                          {deactivatingId === membership.id
+                            ? 'Deactivating...'
+                            : 'Deactivate'}
+                        </Button>
+                      </>
                     )}
                   </div>
                 </CardContent>

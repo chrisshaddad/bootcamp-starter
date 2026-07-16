@@ -2,7 +2,7 @@
 
 import useSWR from 'swr';
 import { useCallback } from 'react';
-import { apiPost } from '@/lib/api';
+import { apiPost, apiPatch } from '@/lib/api';
 import { invalidateByPrefix } from '@/lib/swr';
 import type {
   LibraryMemberWithOrganizationListResponse,
@@ -35,12 +35,24 @@ export function usePortalMemberships() {
     [swrMutate],
   );
 
+  const deactivateMembership = useCallback(
+    async (id: string) => {
+      const result = await apiPatch<LibraryMemberWithOrganizationResponse>(
+        `/portal/memberships/${id}/deactivate`,
+      );
+      swrMutate();
+      return result;
+    },
+    [swrMutate],
+  );
+
   return {
     memberships: data?.libraryMembers,
     total: data?.total,
     isLoading,
     error,
     requestMembership,
+    deactivateMembership,
     mutate: swrMutate,
   };
 }

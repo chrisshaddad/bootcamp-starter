@@ -9,6 +9,8 @@ import { PortalBookCopiesController } from './portal-book-copies.controller';
 import { PortalRentalsController } from './portal-rentals.controller';
 import { PortalReservationsController } from './portal-reservations.controller';
 import { PortalCartController } from './portal-cart.controller';
+import { PortalCategoriesController } from './portal-categories.controller';
+import { PortalAuthorsController } from './portal-authors.controller';
 
 @Module({
   imports: [
@@ -24,6 +26,8 @@ import { PortalCartController } from './portal-cart.controller';
     PortalRentalsController,
     PortalReservationsController,
     PortalCartController,
+    PortalCategoriesController,
+    PortalAuthorsController,
   ],
 })
 export class PortalModule {}

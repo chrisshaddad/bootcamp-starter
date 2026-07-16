@@ -15,6 +15,7 @@ import {
   BookOpen,
   Clock,
   Bookmark,
+  ShoppingCart,
 } from 'lucide-react';
 import { useAuth, useUser } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
@@ -64,6 +65,11 @@ const patronNavItems: NavItem[] = [
     title: 'Browse Books',
     url: '/browse',
     icon: BookOpen,
+  },
+  {
+    title: 'Cart',
+    url: '/cart',
+    icon: ShoppingCart,
   },
   {
     title: 'My Rentals',

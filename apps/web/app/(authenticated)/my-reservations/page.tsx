@@ -19,6 +19,14 @@ import { StatusBadge } from '@/components/status-badge';
 import { Bookmark } from 'lucide-react';
 import { ApiError } from '@/lib/api';
 
+const CONDITION_LABELS: Record<string, string> = {
+  NEW: 'New',
+  GOOD: 'Good',
+  FAIR: 'Fair',
+  POOR: 'Poor',
+  DAMAGED: 'Damaged',
+};
+
 const STATUS_LABELS: Record<string, string> = {
   ACTIVE: 'Waiting',
   READY_FOR_PICKUP: 'Ready for Pickup',
@@ -121,6 +129,7 @@ export default function MyReservationsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Book</TableHead>
+                  <TableHead>Preferred Condition</TableHead>
                   <TableHead>Reserved</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead />
@@ -134,8 +143,20 @@ export default function MyReservationsPage() {
 
                   return (
                     <TableRow key={reservation.id}>
-                      <TableCell className="font-medium text-foreground">
-                        {reservation.book.title}
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-library-primary-100">
+                            <Bookmark className="h-4 w-4 text-library-primary-600" />
+                          </div>
+                          <span className="font-medium text-foreground">
+                            {reservation.book.title}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {reservation.preferredCondition
+                          ? CONDITION_LABELS[reservation.preferredCondition]
+                          : 'No preference'}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {new Date(reservation.reservedAt).toLocaleDateString()}
