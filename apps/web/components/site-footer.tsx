@@ -1,13 +1,12 @@
 'use client';
 
-import { Github, Linkedin, Twitter } from 'lucide-react';
+import { Github, Linkedin } from 'lucide-react';
 import { toast } from 'sonner';
 
 const LEGAL_LINKS = ['Privacy Policy', 'Terms of Service'];
 const SOCIAL_LINKS = [
   { label: 'GitHub', icon: Github },
   { label: 'LinkedIn', icon: Linkedin },
-  { label: 'X', icon: Twitter },
 ];
 
 function notifyComingSoon(label: string) {

@@ -64,16 +64,26 @@ export function ProjectShowcase({ project, onSave }: ProjectShowcaseProps) {
   return (
     <>
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight">
-              {project.title}
-            </h1>
-            <span
-              className={`rounded-full px-2.5 py-0.5 text-xs font-bold tracking-wide uppercase ${PROJECT_STATUS_COLORS[project.status]}`}
-            >
-              {PROJECT_STATUS_LABELS[project.status]}
-            </span>
+        <div className="flex items-center gap-4">
+          {project.logoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={project.logoUrl}
+              alt={`${project.title} logo`}
+              className="h-16 w-16 flex-shrink-0 rounded-xl border object-cover"
+            />
+          )}
+          <div>
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-2xl font-bold tracking-tight">
+                {project.title}
+              </h1>
+              <span
+                className={`rounded-full px-2.5 py-0.5 text-xs font-bold tracking-wide uppercase ${PROJECT_STATUS_COLORS[project.status]}`}
+              >
+                {PROJECT_STATUS_LABELS[project.status]}
+              </span>
+            </div>
           </div>
         </div>
         <div className="flex flex-shrink-0 gap-2">

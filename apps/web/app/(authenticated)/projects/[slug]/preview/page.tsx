@@ -17,7 +17,7 @@ export default function ProjectPreviewPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
+      <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
         <Link
           href="/projects"
           className="text-muted-foreground inline-flex items-center gap-1.5 text-sm hover:text-foreground"
@@ -35,20 +35,28 @@ export default function ProjectPreviewPage() {
         )}
       </div>
 
-      <div className="rounded-lg border border-dashed px-4 py-2 text-center text-xs text-muted-foreground">
+      <div className="mx-auto max-w-5xl rounded-lg border border-dashed px-4 py-2 text-center text-xs text-muted-foreground">
         Preview — this is how the project will look on its public page.
       </div>
 
-      {isLoading ? (
-        <div className="space-y-6">
-          <Skeleton className="h-8 w-64" />
-          <Skeleton className="h-48 w-full" />
+      {/* -m-6 cancels the dashboard shell's `p-6` so the gradient bleeds
+          edge-to-edge, matching the public page's full-bleed `<main>`. */}
+      <div className="relative -m-6 overflow-hidden px-6 py-10 sm:px-10">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(47,120,238,0.25),transparent_60%)]" />
+
+        <div className="relative mx-auto max-w-5xl">
+          {isLoading ? (
+            <div className="space-y-6">
+              <Skeleton className="h-8 w-64" />
+              <Skeleton className="h-48 w-full" />
+            </div>
+          ) : error || !project ? (
+            <p className="text-muted-foreground text-sm">Project not found.</p>
+          ) : (
+            <ProjectShowcase project={project} />
+          )}
         </div>
-      ) : error || !project ? (
-        <p className="text-muted-foreground text-sm">Project not found.</p>
-      ) : (
-        <ProjectShowcase project={project} />
-      )}
+      </div>
     </div>
   );
 }

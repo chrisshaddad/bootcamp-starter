@@ -108,26 +108,27 @@ export default function ProjectsPage() {
                     >
                       {PROJECT_STATUS_LABELS[project.status]}
                     </span>
+                  </div>
 
+                  <div className="flex flex-1 gap-3 px-4 pt-3">
                     {project.logoUrl && (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={project.logoUrl}
                         alt={`${project.title} logo`}
-                        className="absolute bottom-2 left-2 h-8 w-8 rounded-lg border-2 border-white object-cover shadow-md"
+                        className="h-12 w-12 flex-shrink-0 rounded-lg border object-cover"
                       />
                     )}
-                  </div>
-
-                  <div className="flex flex-1 flex-col gap-2 px-4 pt-3">
-                    <p className="text-sm font-semibold hover:text-primary">
-                      {project.title}
-                    </p>
-                    {project.shortDescription && (
-                      <p className="line-clamp-2 text-muted-foreground text-xs">
-                        {project.shortDescription}
+                    <div className="flex flex-1 flex-col gap-2">
+                      <p className="text-sm font-semibold hover:text-primary">
+                        {project.title}
                       </p>
-                    )}
+                      {project.shortDescription && (
+                        <p className="line-clamp-2 text-muted-foreground text-xs">
+                          {project.shortDescription}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </Link>
 
