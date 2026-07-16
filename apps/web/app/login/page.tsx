@@ -142,7 +142,10 @@ export default function LoginPage() {
             </p>
 
             <p className="text-center text-sm font-medium leading-[1.6]">
-              <Link href="/browse" className="text-primary-base hover:underline">
+              <Link
+                href="/browse"
+                className="text-primary-base hover:underline"
+              >
                 Browse upcoming events
               </Link>
               <span className="text-gray-500"> without an account</span>
