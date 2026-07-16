@@ -72,7 +72,7 @@ const STATUS_OPTIONS: LibraryMemberStatus[] = [
   'PENDING',
   'CANCELLED',
 ];
-const TYPE_OPTIONS: LibraryMembershipType[] = ['STUDENT', 'ADULT', 'PREMIUM'];
+const TYPE_OPTIONS: LibraryMembershipType[] = ['STUDENT', 'REGULAR', 'PREMIUM'];
 
 // membershipStartDate/EndDate coerce dates → input type diverges from output.
 type MemberFormInput = z.input<typeof libraryMemberCreateRequestSchema>;
@@ -412,7 +412,7 @@ function MemberDialog({
       // undefined (not '') so the optional schema passes when left blank —
       // '' would fail .min(1) and block the auto-generation path.
       libraryCardNumber: undefined,
-      membershipType: 'ADULT',
+      membershipType: 'REGULAR',
       membershipStatus: 'ACTIVE',
     },
   });
@@ -421,7 +421,7 @@ function MemberDialog({
     if (!open) return;
     form.reset({
       libraryCardNumber: member?.libraryCardNumber ?? undefined,
-      membershipType: member?.membershipType ?? 'ADULT',
+      membershipType: member?.membershipType ?? 'REGULAR',
       membershipStatus: member?.membershipStatus ?? 'ACTIVE',
       membershipStartDate: member?.membershipStartDate
         ? new Date(member.membershipStartDate)

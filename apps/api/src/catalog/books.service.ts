@@ -48,24 +48,15 @@ export class BooksService {
     const where: Prisma.BookWhereInput = {
       organizationId,
       ...(trimmedSearch
-        ? { title: { contains: trimmedSearch, mode: 'insensitive' } }
-        : {}),
-      ...(categoryId ? { categories: { some: { categoryId } } } : {}),
-      ...(authorId ? { authors: { some: { authorId } } } : {}),
-    options: { page?: number; limit?: number; search?: string },
-  ): Promise<BookListResponse> {
-    const { page = 1, limit = 20, search } = options;
-    const skip = (page - 1) * limit;
-    const where: Prisma.BookWhereInput = {
-      organizationId,
-      ...(search
         ? {
             OR: [
-              { title: { contains: search, mode: 'insensitive' } },
-              { isbn: { contains: search, mode: 'insensitive' } },
+              { title: { contains: trimmedSearch, mode: 'insensitive' } },
+              { isbn: { contains: trimmedSearch, mode: 'insensitive' } },
             ],
           }
         : {}),
+      ...(categoryId ? { categories: { some: { categoryId } } } : {}),
+      ...(authorId ? { authors: { some: { authorId } } } : {}),
     };
 
     const [books, total] = await Promise.all([

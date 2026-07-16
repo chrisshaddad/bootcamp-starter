@@ -19,7 +19,7 @@ export const MEMBER_STATUS_COLORS: Record<string, string> = {
 
 export const MEMBERSHIP_TYPE_LABELS: Record<string, string> = {
   STUDENT: 'Student',
-  ADULT: 'Adult',
+  REGULAR: 'Regular',
   PREMIUM: 'Premium',
 };
 

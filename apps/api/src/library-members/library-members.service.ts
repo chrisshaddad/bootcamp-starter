@@ -262,7 +262,9 @@ export class LibraryMembersService {
           data: {
             organizationId: organization.id,
             userId,
-            libraryCardNumber: this.generateCardNumber(organization.slug),
+            libraryCardNumber: this.generateSelfServiceCardNumber(
+              organization.slug,
+            ),
             membershipType: dto.membershipType,
             membershipStatus: 'PENDING',
           },
@@ -408,10 +410,16 @@ export class LibraryMembersService {
     return existing;
   }
 
-  private generateCardNumber(slug: string): string {
+  // Used only by requestMembership()'s patron self-service flow, which
+  // retries on a card-number collision - unlike generateCardNumber() above
+  // (staff-created members), a random suffix needs that retry loop.
+  private generateSelfServiceCardNumber(slug: string): string {
     const prefix = slug.slice(0, 3).toUpperCase();
     const suffix = Math.floor(100000 + Math.random() * 900000);
     return `${prefix}-${suffix}`;
+  }
+
+  /**
    * Delete a library member, scoped to the organization. Blocked (409) while
    * any rental references them — the Rental→member FK is onDelete: Restrict,
    * so the DB would reject it anyway; this returns a friendly message first.

@@ -10,14 +10,13 @@ import {
   Settings,
   LogOut,
   Building2,
+  Building,
   Compass,
   Library,
   BookOpen,
   Clock,
   Bookmark,
   ShoppingCart,
-  Building,
-  BookOpen,
   Feather,
   Tags,
   BookUp,
@@ -49,8 +48,6 @@ interface NavItem {
   disabled?: boolean;
 }
 
-// Navigation items for ORG_ADMIN and LIBRARIAN roles
-const orgNavItems: NavItem[] = [
 interface NavGroup {
   label: string;
   items: NavItem[];
@@ -62,47 +59,12 @@ const superAdminNavGroups: NavGroup[] = [
     label: 'Administration',
     items: [
       { title: 'Organizations', url: '/organizations', icon: Building2 },
+      { title: 'Patrons', url: '/patrons', icon: Users },
       { title: 'Users', url: '/users', icon: Users, disabled: true },
     ],
   },
 ];
 
-// Navigation items for the MEMBER (patron) role
-const patronNavItems: NavItem[] = [
-  {
-    title: 'Discover',
-    url: '/discover',
-    icon: Compass,
-  },
-  {
-    title: 'My Libraries',
-    url: '/my-libraries',
-    icon: Library,
-  },
-  {
-    title: 'Browse Books',
-    url: '/browse',
-    icon: BookOpen,
-  },
-  {
-    title: 'Cart',
-    url: '/cart',
-    icon: ShoppingCart,
-  },
-  {
-    title: 'My Rentals',
-    url: '/my-rentals',
-    icon: Clock,
-  },
-  {
-    title: 'My Reservations',
-    url: '/my-reservations',
-    icon: Bookmark,
-  },
-];
-
-// Navigation items for SUPER_ADMIN role
-const superAdminNavItems: NavItem[] = [
 // STAFF (ORG_ADMIN + LIBRARIAN): daily library operations. Catalog + Members
 // (reqs 2.2–2.6) are live; Circulation (2.7–2.9) is still "Soon".
 const staffNavGroups: NavGroup[] = [
@@ -111,15 +73,6 @@ const staffNavGroups: NavGroup[] = [
     items: [{ title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard }],
   },
   {
-    title: 'Patrons',
-    url: '/patrons',
-    icon: Users,
-  },
-  {
-    title: 'Users',
-    url: '/users',
-    icon: Users,
-    disabled: true, // Placeholder for future implementation
     label: 'Catalog',
     items: [
       { title: 'Books', url: '/books', icon: BookOpen },
@@ -161,15 +114,6 @@ const staffNavGroups: NavGroup[] = [
   },
 ];
 
-const patronSecondaryNavItems: NavItem[] = [
-  {
-    title: 'Settings',
-    url: '/settings',
-    icon: Settings,
-  },
-];
-
-const superAdminSecondaryNavItems: NavItem[] = [
 // ORG_ADMIN only: staff management + library settings/branding (req 2.10).
 const orgAdminNavGroup: NavGroup = {
   label: 'Administration',
@@ -184,7 +128,23 @@ const orgAdminNavGroup: NavGroup = {
   ],
 };
 
-// Members (and any other role) get a minimal shell; their real portal is Phase 3.
+// MEMBER (patron): self-service portal - discover libraries, browse/buy/
+// reserve books, manage rentals and holds.
+const patronNavGroups: NavGroup[] = [
+  {
+    label: 'Main',
+    items: [
+      { title: 'Discover', url: '/discover', icon: Compass },
+      { title: 'My Libraries', url: '/my-libraries', icon: Library },
+      { title: 'Browse Books', url: '/browse', icon: BookOpen },
+      { title: 'Cart', url: '/cart', icon: ShoppingCart },
+      { title: 'My Rentals', url: '/my-rentals', icon: Clock },
+      { title: 'My Reservations', url: '/my-reservations', icon: Bookmark },
+    ],
+  },
+];
+
+// Fallback shell for any role without a dedicated nav above.
 const minimalNavGroups: NavGroup[] = [
   {
     label: 'Main',
@@ -200,6 +160,7 @@ function navGroupsForRole(role: string | undefined): NavGroup[] {
   if (role === 'SUPER_ADMIN') return superAdminNavGroups;
   if (role === 'ORG_ADMIN') return [...staffNavGroups, orgAdminNavGroup];
   if (role === 'LIBRARIAN') return staffNavGroups;
+  if (role === 'MEMBER') return patronNavGroups;
   return minimalNavGroups;
 }
 
@@ -208,18 +169,6 @@ export function AppSidebar() {
   const { logout } = useAuth();
   const { user } = useUser({ redirectOnUnauthenticated: false });
 
-  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
-  const isPatron = user?.role === 'MEMBER';
-  const mainNavItems = isSuperAdmin
-    ? superAdminNavItems
-    : isPatron
-      ? patronNavItems
-      : orgNavItems;
-  const secondaryNavItems = isSuperAdmin
-    ? superAdminSecondaryNavItems
-    : isPatron
-      ? patronSecondaryNavItems
-      : orgSecondaryNavItems;
   const navGroups = navGroupsForRole(user?.role);
 
   const isActive = (url: string) => {

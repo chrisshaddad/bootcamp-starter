@@ -75,7 +75,7 @@ const LIBRARY_MEMBERS: LibraryMemberSeed[] = [
 const BULK_TECHCORP_MEMBER_COUNT = 30;
 const MEMBERSHIP_TYPE_CYCLE: LibraryMemberSeed['membershipType'][] = [
   'STUDENT',
-  'ADULT',
+  'REGULAR',
   'PREMIUM',
 ];
 const MEMBERSHIP_STATUS_CYCLE: LibraryMemberSeed['membershipStatus'][] = [
