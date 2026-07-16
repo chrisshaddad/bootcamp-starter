@@ -409,7 +409,9 @@ function MemberDialog({
   const form = useForm<MemberFormInput, unknown, LibraryMemberCreateRequest>({
     resolver: zodResolver(libraryMemberCreateRequestSchema),
     defaultValues: {
-      libraryCardNumber: '',
+      // undefined (not '') so the optional schema passes when left blank —
+      // '' would fail .min(1) and block the auto-generation path.
+      libraryCardNumber: undefined,
       membershipType: 'ADULT',
       membershipStatus: 'ACTIVE',
     },
@@ -418,10 +420,9 @@ function MemberDialog({
   useEffect(() => {
     if (!open) return;
     form.reset({
-      libraryCardNumber: member?.libraryCardNumber ?? '',
+      libraryCardNumber: member?.libraryCardNumber ?? undefined,
       membershipType: member?.membershipType ?? 'ADULT',
       membershipStatus: member?.membershipStatus ?? 'ACTIVE',
-      userId: member?.userId ?? undefined,
       membershipStartDate: member?.membershipStartDate
         ? new Date(member.membershipStartDate)
         : undefined,
@@ -433,10 +434,10 @@ function MemberDialog({
 
   const onSubmit = async (values: LibraryMemberCreateRequest) => {
     const payload: LibraryMemberCreateRequest = {
-      libraryCardNumber: values.libraryCardNumber.trim(),
+      // Blank ⇒ the API auto-generates a per-org card number.
+      libraryCardNumber: values.libraryCardNumber?.trim() || undefined,
       membershipType: values.membershipType,
       membershipStatus: values.membershipStatus,
-      userId: values.userId?.trim() || undefined,
       membershipStartDate: values.membershipStartDate,
       membershipEndDate: values.membershipEndDate,
     };
@@ -465,7 +466,7 @@ function MemberDialog({
           <DialogDescription>
             {member
               ? "Update this member's details."
-              : 'Register a new patron. Leave the user ID blank for a walk-in member.'}
+              : 'Register a new patron. A card number is generated automatically if you leave it blank.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -477,7 +478,14 @@ function MemberDialog({
                 <FormItem>
                   <FormLabel>Library card number</FormLabel>
                   <FormControl>
-                    <Input placeholder="LIB-0001" {...field} />
+                    <Input
+                      placeholder="Auto-generated if left blank"
+                      {...field}
+                      value={field.value ?? ''}
+                      onChange={(e) =>
+                        field.onChange(e.target.value || undefined)
+                      }
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -581,25 +589,6 @@ function MemberDialog({
                 )}
               />
             </div>
-            <FormField
-              control={form.control}
-              name="userId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Linked user ID (optional)</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="UUID of an existing login user"
-                      value={field.value ?? ''}
-                      onChange={(e) =>
-                        field.onChange(e.target.value || undefined)
-                      }
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
             <DialogFooter>
               <Button
                 type="button"

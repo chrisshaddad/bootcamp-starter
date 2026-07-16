@@ -7,7 +7,12 @@ export const libraryMemberCreateRequestSchema = z.object({
   // Optional: a library card can belong to a walk-in patron with no login
   // account. When present, must reference a MEMBER-role User.
   userId: z.uuid().optional(),
-  libraryCardNumber: z.string().min(1, 'Library card number is required'),
+  // Optional: the API auto-generates a per-org card number when omitted
+  // (staff can still supply one explicitly). Empty strings are rejected.
+  libraryCardNumber: z
+    .string()
+    .min(1, 'Library card number is required')
+    .optional(),
   // No DB default for either field (unlike BookCopy's status/condition) -
   // the schema requires staff to explicitly choose both at signup time.
   membershipType: libraryMembershipTypeSchema,
