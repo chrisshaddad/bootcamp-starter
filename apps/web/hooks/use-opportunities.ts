@@ -70,6 +70,43 @@ interface UseOpportunityMutationsReturn {
  * Hook for creating/updating/deleting opportunities. Invalidates every
  * cached `/opportunities` list (any status/mine filter) after each mutation.
  */
+interface UseOpportunityOptions {
+  enabled?: boolean;
+}
+
+interface UseOpportunityReturn {
+  opportunity: OpportunityResponse | undefined;
+  isLoading: boolean;
+  error: Error | undefined;
+  mutate: () => void;
+}
+
+/**
+ * Hook for fetching a single opportunity by ID
+ */
+export function useOpportunity(
+  id: string,
+  options: UseOpportunityOptions = {},
+): UseOpportunityReturn {
+  const { enabled = true } = options;
+
+  const {
+    data,
+    error,
+    isLoading,
+    mutate: swrMutate,
+  } = useSWR<OpportunityResponse>(
+    enabled && id ? `/opportunities/${id}` : null,
+  );
+
+  return {
+    opportunity: data,
+    isLoading,
+    error,
+    mutate: swrMutate,
+  };
+}
+
 export function useOpportunityMutations(): UseOpportunityMutationsReturn {
   const invalidateAll = useCallback(() => {
     mutate(
