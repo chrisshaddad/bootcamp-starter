@@ -19,6 +19,9 @@ import type {
   EventListResponse,
   EventRegisterResponse,
   EventUpdateRequest,
+  PublicEventDetailResponse,
+  PublicEventListQuery,
+  PublicEventListResponse,
 } from '@repo/contracts';
 
 type EventStatusValue = 'SCHEDULED' | 'CANCELLED';
@@ -353,6 +356,103 @@ export class EventsService {
     });
 
     return new Set(registrations.map((registration) => registration.eventId));
+  }
+
+  async findPublicAll(
+    query: PublicEventListQuery,
+  ): Promise<PublicEventListResponse> {
+    const { page = 1, limit = 20, organizationId } = query;
+    const skip = (page - 1) * limit;
+    const now = new Date();
+
+    const where = {
+      status: 'SCHEDULED' as const,
+      startsAt: { gt: now },
+      ...(organizationId ? { organizationId } : {}),
+    };
+
+    const [rows, total] = await Promise.all([
+      this.prisma.event.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { startsAt: 'asc' },
+        select: {
+          id: true,
+          eventName: true,
+          startsAt: true,
+          organizationId: true,
+          organization: {
+            select: {
+              name: true,
+            },
+          },
+          presenter: {
+            select: {
+              id: true,
+              username: true,
+            },
+          },
+        },
+      }),
+      this.prisma.event.count({ where }),
+    ]);
+
+    this.logger.log(`Listed ${rows.length} public events (total: ${total})`);
+
+    return {
+      events: rows.map(({ organization, presenter, ...event }) => ({
+        ...event,
+        organizationName: organization.name,
+        presenter: presenter ?? null,
+      })),
+      total,
+    };
+  }
+
+  async findPublicOne(id: string): Promise<PublicEventDetailResponse> {
+    const event = await this.prisma.event.findFirst({
+      where: {
+        id,
+        status: 'SCHEDULED',
+        startsAt: { gt: new Date() },
+      },
+      select: {
+        id: true,
+        eventName: true,
+        startsAt: true,
+        organizationId: true,
+        organization: {
+          select: {
+            name: true,
+          },
+        },
+        presenter: {
+          select: {
+            id: true,
+            username: true,
+          },
+        },
+        _count: {
+          select: {
+            attendees: true,
+          },
+        },
+      },
+    });
+
+    if (!event) {
+      throw new NotFoundException(`Event with ID ${id} not found`);
+    }
+
+    const { organization, presenter, _count, ...rest } = event;
+
+    return {
+      ...rest,
+      organizationName: organization.name,
+      presenter: presenter ?? null,
+      attendeeCount: _count.attendees,
+    };
   }
 
   async findAll(query: EventListQuery, user: User): Promise<EventListResponse> {
