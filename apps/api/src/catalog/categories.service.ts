@@ -21,19 +21,23 @@ export class CategoriesService {
    */
   async findAll(
     organizationId: string,
-    options: { page?: number; limit?: number },
+    options: { page?: number; limit?: number; search?: string },
   ): Promise<CategoryListResponse> {
-    const { page = 1, limit = 20 } = options;
+    const { page = 1, limit = 20, search } = options;
     const skip = (page - 1) * limit;
+    const where: Prisma.CategoryWhereInput = {
+      organizationId,
+      ...(search ? { name: { contains: search, mode: 'insensitive' } } : {}),
+    };
 
     const [categories, total] = await Promise.all([
       this.prisma.category.findMany({
-        where: { organizationId },
+        where,
         skip,
         take: limit,
         orderBy: { name: 'asc' },
       }),
-      this.prisma.category.count({ where: { organizationId } }),
+      this.prisma.category.count({ where }),
     ]);
 
     return { categories, total };
@@ -98,6 +102,32 @@ export class CategoriesService {
     } catch (error) {
       throw this.mapDuplicateNameError(error, data.name ?? existing.name);
     }
+  }
+
+  /**
+   * Delete a category, scoped to the organization. Blocked (409) while it is
+   * still linked to books (the BookCategory join cascades otherwise).
+   */
+  async remove(organizationId: string, id: string): Promise<void> {
+    const existing = await this.prisma.category.findFirst({
+      where: { id, organizationId },
+    });
+
+    if (!existing) {
+      throw new NotFoundException(`Category with ID ${id} not found`);
+    }
+
+    const linkedBooks = await this.prisma.bookCategory.count({
+      where: { categoryId: id, organizationId },
+    });
+
+    if (linkedBooks > 0) {
+      throw new ConflictException(
+        `Cannot delete category "${existing.name}" — it is linked to ${linkedBooks} book(s).`,
+      );
+    }
+
+    await this.prisma.category.delete({ where: { id } });
   }
 
   // Category.name is unique per organization (@@unique([organizationId, name])),

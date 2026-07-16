@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { Prisma } from '@repo/db';
 import { PrismaService } from '../database/prisma.service';
 import type {
   PublisherResponse,
@@ -16,19 +21,23 @@ export class PublishersService {
    */
   async findAll(
     organizationId: string,
-    options: { page?: number; limit?: number },
+    options: { page?: number; limit?: number; search?: string },
   ): Promise<PublisherListResponse> {
-    const { page = 1, limit = 20 } = options;
+    const { page = 1, limit = 20, search } = options;
     const skip = (page - 1) * limit;
+    const where: Prisma.PublisherWhereInput = {
+      organizationId,
+      ...(search ? { name: { contains: search, mode: 'insensitive' } } : {}),
+    };
 
     const [publishers, total] = await Promise.all([
       this.prisma.publisher.findMany({
-        where: { organizationId },
+        where,
         skip,
         take: limit,
         orderBy: { name: 'asc' },
       }),
-      this.prisma.publisher.count({ where: { organizationId } }),
+      this.prisma.publisher.count({ where }),
     ]);
 
     return { publishers, total };
@@ -88,5 +97,32 @@ export class PublishersService {
       where: { id },
       data,
     });
+  }
+
+  /**
+   * Delete a publisher, scoped to the organization. Blocked (409) while books
+   * still reference it, so deleting never silently nulls a book's publisher
+   * (the relation is onDelete: SetNull at the DB level otherwise).
+   */
+  async remove(organizationId: string, id: string): Promise<void> {
+    const existing = await this.prisma.publisher.findFirst({
+      where: { id, organizationId },
+    });
+
+    if (!existing) {
+      throw new NotFoundException(`Publisher with ID ${id} not found`);
+    }
+
+    const linkedBooks = await this.prisma.book.count({
+      where: { publisherId: id, organizationId },
+    });
+
+    if (linkedBooks > 0) {
+      throw new ConflictException(
+        `Cannot delete publisher "${existing.name}" — it is referenced by ${linkedBooks} book(s).`,
+      );
+    }
+
+    await this.prisma.publisher.delete({ where: { id } });
   }
 }

@@ -3,10 +3,12 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Param,
   Query,
   Body,
   BadRequestException,
+  HttpCode,
 } from '@nestjs/common';
 import { LibraryMembersService } from './library-members.service';
 import { Roles, OrganizationId } from '../auth/decorators';
@@ -36,6 +38,7 @@ export class LibraryMembersController {
     @Query('limit') limit?: string,
     @Query('membershipStatus') membershipStatus?: string,
     @Query('membershipType') membershipType?: string,
+    @Query('search') search?: string,
   ): Promise<LibraryMemberListResponse> {
     return this.libraryMembersService.findAll(organizationId, {
       page: page ? parseInt(page, 10) : 1,
@@ -46,6 +49,7 @@ export class LibraryMembersController {
       membershipType: membershipType
         ? this.parseType(membershipType)
         : undefined,
+      search,
     });
   }
 
@@ -74,6 +78,15 @@ export class LibraryMembersController {
     body: LibraryMemberUpdateRequest,
   ): Promise<LibraryMemberResponse> {
     return this.libraryMembersService.update(organizationId, id, body);
+  }
+
+  @Delete(':id')
+  @HttpCode(204)
+  async remove(
+    @OrganizationId() organizationId: string,
+    @Param('id') id: string,
+  ): Promise<void> {
+    return this.libraryMembersService.remove(organizationId, id);
   }
 
   private parseStatus(status: string): LibraryMemberStatus {

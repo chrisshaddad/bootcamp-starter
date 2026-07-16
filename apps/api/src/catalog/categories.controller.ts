@@ -3,9 +3,11 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Param,
   Query,
   Body,
+  HttpCode,
 } from '@nestjs/common';
 import { CategoriesService } from './categories.service';
 import { Roles, OrganizationId } from '../auth/decorators';
@@ -29,10 +31,12 @@ export class CategoriesController {
     @OrganizationId() organizationId: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('search') search?: string,
   ): Promise<CategoryListResponse> {
     return this.categoriesService.findAll(organizationId, {
       page: page ? parseInt(page, 10) : 1,
       limit: limit ? parseInt(limit, 10) : 20,
+      search,
     });
   }
 
@@ -61,5 +65,14 @@ export class CategoriesController {
     body: CategoryUpdateRequest,
   ): Promise<CategoryResponse> {
     return this.categoriesService.update(organizationId, id, body);
+  }
+
+  @Delete(':id')
+  @HttpCode(204)
+  async remove(
+    @OrganizationId() organizationId: string,
+    @Param('id') id: string,
+  ): Promise<void> {
+    return this.categoriesService.remove(organizationId, id);
   }
 }

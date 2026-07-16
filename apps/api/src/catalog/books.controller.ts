@@ -3,9 +3,11 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Param,
   Query,
   Body,
+  HttpCode,
 } from '@nestjs/common';
 import { BooksService } from './books.service';
 import { Roles, OrganizationId } from '../auth/decorators';
@@ -29,10 +31,12 @@ export class BooksController {
     @OrganizationId() organizationId: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('search') search?: string,
   ): Promise<BookListResponse> {
     return this.booksService.findAll(organizationId, {
       page: page ? parseInt(page, 10) : 1,
       limit: limit ? parseInt(limit, 10) : 20,
+      search,
     });
   }
 
@@ -61,5 +65,14 @@ export class BooksController {
     body: BookUpdateRequest,
   ): Promise<BookResponse> {
     return this.booksService.update(organizationId, id, body);
+  }
+
+  @Delete(':id')
+  @HttpCode(204)
+  async remove(
+    @OrganizationId() organizationId: string,
+    @Param('id') id: string,
+  ): Promise<void> {
+    return this.booksService.remove(organizationId, id);
   }
 }

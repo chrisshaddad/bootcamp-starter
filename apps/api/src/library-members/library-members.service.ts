@@ -33,11 +33,31 @@ export class LibraryMembersService {
       limit?: number;
       membershipStatus?: LibraryMemberStatus;
       membershipType?: LibraryMembershipType;
+      search?: string;
     },
   ): Promise<LibraryMemberListResponse> {
-    const { page = 1, limit = 20, membershipStatus, membershipType } = options;
+    const {
+      page = 1,
+      limit = 20,
+      membershipStatus,
+      membershipType,
+      search,
+    } = options;
     const skip = (page - 1) * limit;
-    const where = { organizationId, membershipStatus, membershipType };
+    const where: Prisma.LibraryMemberWhereInput = {
+      organizationId,
+      membershipStatus,
+      membershipType,
+      ...(search
+        ? {
+            OR: [
+              { libraryCardNumber: { contains: search, mode: 'insensitive' } },
+              { user: { name: { contains: search, mode: 'insensitive' } } },
+              { user: { email: { contains: search, mode: 'insensitive' } } },
+            ],
+          }
+        : {}),
+    };
 
     const [libraryMembers, total] = await Promise.all([
       this.prisma.libraryMember.findMany({
@@ -125,6 +145,34 @@ export class LibraryMembersService {
         data.libraryCardNumber ?? existing.libraryCardNumber,
       );
     }
+  }
+
+  /**
+   * Delete a library member, scoped to the organization. Blocked (409) while
+   * any rental references them — the Rental→member FK is onDelete: Restrict,
+   * so the DB would reject it anyway; this returns a friendly message first.
+   * (Reservations cascade, so they don't block.)
+   */
+  async remove(organizationId: string, id: string): Promise<void> {
+    const existing = await this.prisma.libraryMember.findFirst({
+      where: { id, organizationId },
+    });
+
+    if (!existing) {
+      throw new NotFoundException(`Library member with ID ${id} not found`);
+    }
+
+    const rentals = await this.prisma.rental.count({
+      where: { memberId: id, organizationId },
+    });
+
+    if (rentals > 0) {
+      throw new ConflictException(
+        `Cannot delete member "${existing.libraryCardNumber}" — they have ${rentals} rental record(s).`,
+      );
+    }
+
+    await this.prisma.libraryMember.delete({ where: { id } });
   }
 
   // User.organizationId is null for MEMBER-role users (their org affiliation

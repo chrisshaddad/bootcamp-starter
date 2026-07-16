@@ -59,8 +59,8 @@ const superAdminNavGroups: NavGroup[] = [
   },
 ];
 
-// STAFF (ORG_ADMIN + LIBRARIAN): daily library operations. Feature pages arrive
-// in reqs 2.2–2.9, so their items are disabled ("Soon") until then.
+// STAFF (ORG_ADMIN + LIBRARIAN): daily library operations. Catalog + Members
+// (reqs 2.2–2.6) are live; Circulation (2.7–2.9) is still "Soon".
 const staffNavGroups: NavGroup[] = [
   {
     label: 'Main',
@@ -69,20 +69,19 @@ const staffNavGroups: NavGroup[] = [
   {
     label: 'Catalog',
     items: [
-      { title: 'Books', url: '/books', icon: BookOpen, disabled: true },
-      { title: 'Authors', url: '/authors', icon: Feather, disabled: true },
-      { title: 'Categories', url: '/categories', icon: Tags, disabled: true },
+      { title: 'Books', url: '/books', icon: BookOpen },
+      { title: 'Authors', url: '/authors', icon: Feather },
+      { title: 'Categories', url: '/categories', icon: Tags },
       {
         title: 'Publishers',
         url: '/publishers',
         icon: Building,
-        disabled: true,
       },
     ],
   },
   {
     label: 'Members',
-    items: [{ title: 'Members', url: '/members', icon: Users, disabled: true }],
+    items: [{ title: 'Members', url: '/members', icon: Users }],
   },
   {
     label: 'Circulation',
