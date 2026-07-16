@@ -54,6 +54,9 @@ export function useEmployee(
 
   const updateSkills = useCallback(
     async (data: EmployeeSkillsUpdateRequest) => {
+      if (!id) {
+        throw new Error('Cannot update skills before the employee is loaded');
+      }
       const result = await apiPatch<EmployeeResponse>(
         `/employees/${id}/skills`,
         data,
@@ -66,6 +69,9 @@ export function useEmployee(
 
   const updateProfile = useCallback(
     async (data: EmployeeProfileUpdateRequest) => {
+      if (!id) {
+        throw new Error('Cannot update profile before the employee is loaded');
+      }
       const result = await apiPatch<EmployeeResponse>(
         `/employees/${id}/profile`,
         data,
