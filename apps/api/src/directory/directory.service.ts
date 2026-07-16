@@ -33,6 +33,19 @@ export class DirectoryService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
+   * Today at 00:00 UTC — the sellable-batch expiry cutoff. Expiry is a pure
+   * calendar date (@db.Date, UTC midnight), so bounding at today 00:00 UTC lets
+   * a batch expiring today still count as in-stock. Shared by list() and
+   * detail() so both use the identical boundary.
+   */
+  private todayStartUtc(): Date {
+    const now = new Date();
+    return new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+    );
+  }
+
+  /**
    * Public pharmacy directory: every branch, optionally filtered by a name /
    * address search. Ordered nearest-first from the caller's origin (an explicit
    * lat/lng override, else their saved location); when no origin is known, falls
@@ -61,6 +74,28 @@ export class DirectoryService {
       select: BRANCH_SELECT,
     });
 
+    // Distinct in-stock, non-expired medicines per branch, in one grouped query.
+    // Same "sellable batch" filter as detail(): quantity > 0 and not expired
+    // (expiry bound at today 00:00 UTC — a batch expiring today still counts).
+    // Grouping by (branchId, medicineId) yields one row per medicine a branch
+    // carries; counting those rows per branch gives the distinct-medicine total.
+    const todayStart = this.todayStartUtc();
+    const stockGroups = await this.prisma.stockBatch.groupBy({
+      by: ['branchId', 'medicineId'],
+      where: {
+        branchId: { in: branches.map((branch) => branch.id) },
+        quantity: { gt: 0 },
+        expiryDate: { gte: todayStart },
+      },
+    });
+    const stockCountByBranch = new Map<string, number>();
+    for (const group of stockGroups) {
+      stockCountByBranch.set(
+        group.branchId,
+        (stockCountByBranch.get(group.branchId) ?? 0) + 1,
+      );
+    }
+
     const lat =
       query.lat ?? (actor.latitude === null ? null : actor.latitude.toNumber());
     const lng =
@@ -69,7 +104,12 @@ export class DirectoryService {
     const hasOrigin = lat !== null && lng !== null;
 
     const rows: DirectoryBranch[] = branches.map((branch) =>
-      this.toDirectoryBranch(branch, lat, lng),
+      this.toDirectoryBranch(
+        branch,
+        lat,
+        lng,
+        stockCountByBranch.get(branch.id) ?? 0,
+      ),
     );
     if (hasOrigin) {
       rows.sort((a, b) => (a.distanceKm ?? 0) - (b.distanceKm ?? 0));
@@ -99,10 +139,7 @@ export class DirectoryService {
     // In-stock rollup per medicine at this branch: total quantity + nearest
     // expiry. Exclude expired batches (unsellable) — bound expiry at today
     // 00:00 UTC (@db.Date), so a batch expiring today still counts.
-    const now = new Date();
-    const todayStart = new Date(
-      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
-    );
+    const todayStart = this.todayStartUtc();
     const grouped = await this.prisma.stockBatch.groupBy({
       by: ['medicineId'],
       where: {
@@ -166,6 +203,7 @@ export class DirectoryService {
     branch: BranchRow,
     originLat: number | null,
     originLng: number | null,
+    stockedMedicineCount: number,
   ): DirectoryBranch {
     const latitude = branch.latitude.toNumber();
     const longitude = branch.longitude.toNumber();
@@ -184,6 +222,7 @@ export class DirectoryService {
               haversineKm(originLat, originLng, latitude, longitude) * 10,
             ) / 10
           : null,
+      stockedMedicineCount,
     };
   }
 }
