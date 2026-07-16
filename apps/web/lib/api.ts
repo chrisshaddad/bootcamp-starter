@@ -55,7 +55,22 @@ export async function apiPost<T>(endpoint: string, data?: unknown): Promise<T> {
 
   return res.json();
 }
+export async function apiDelete<T>(endpoint: string): Promise<T> {
+  const res = await fetch(`${API_URL}${endpoint}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  });
 
+  if (!res.ok) {
+    const error = await res
+      .json()
+      .catch(() => ({ message: 'An error occurred' }));
+
+    throw new ApiError(res.status, error.message || 'An error occurred');
+  }
+
+  return res.json();
+}
 export async function apiPatch<T>(
   endpoint: string,
   data?: unknown,
@@ -67,19 +82,6 @@ export async function apiPatch<T>(
     },
     credentials: 'include',
     body: data ? JSON.stringify(data) : undefined,
-  });
-
-  if (!res.ok) {
-    throw new ApiError(res.status, await parseErrorMessage(res));
-  }
-
-  return res.json();
-}
-
-export async function apiDelete<T>(endpoint: string): Promise<T> {
-  const res = await fetch(`${API_URL}${endpoint}`, {
-    method: 'DELETE',
-    credentials: 'include',
   });
 
   if (!res.ok) {
