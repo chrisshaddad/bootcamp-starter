@@ -5,15 +5,26 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import {
+  type Announcement,
   announcementCreateRequestSchema,
+  announcementUpdateRequestSchema,
   type AnnouncementAudience,
   type AnnouncementCreateRequest,
   type AnnouncementScope,
+  type AnnouncementUpdateRequest,
 } from '@repo/contracts';
 import { AnnouncementList } from '@/components/announcement-list';
 import { RichTextEditor } from '@/components/rich-text-editor';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -93,6 +104,11 @@ export default function AnnouncementsPage() {
   const [eventSearch, setEventSearch] = useState('');
   const [eventDropdownOpen, setEventDropdownOpen] = useState(false);
   const eventComboboxRef = useRef<HTMLDivElement>(null);
+  const [editingAnnouncement, setEditingAnnouncement] =
+    useState<Announcement | null>(null);
+  const [deletingAnnouncement, setDeletingAnnouncement] =
+    useState<Announcement | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
@@ -120,6 +136,23 @@ export default function AnnouncementsPage() {
     !scope ||
     !hasBodyContent(bodyHtml) ||
     (scope === 'EVENT' && (!audience || !eventId));
+  const {
+    register: registerEdit,
+    handleSubmit: handleEditSubmit,
+    reset: resetEdit,
+    setValue: setEditValue,
+    watch: watchEdit,
+    formState: { errors: editErrors, isSubmitting: isUpdating },
+  } = useForm<AnnouncementUpdateRequest>({
+    resolver: zodResolver(announcementUpdateRequestSchema),
+    defaultValues: {
+      title: '',
+      bodyHtml: '',
+    },
+  });
+  const editTitle = watchEdit('title');
+  const editBodyHtml = watchEdit('bodyHtml');
+  const isEditIncomplete = !editTitle?.trim() || !hasBodyContent(editBodyHtml);
 
   const {
     announcements,
@@ -127,6 +160,8 @@ export default function AnnouncementsPage() {
     isLoading: announcementsLoading,
     error,
     create,
+    update,
+    remove,
   } = useAnnouncements({ enabled: canAccess });
   const { events, isLoading: eventsLoading } = useEvents({
     enabled: canCreate && scope === 'EVENT',
@@ -233,6 +268,81 @@ export default function AnnouncementsPage() {
       } else {
         toast.error('Failed to post announcement');
       }
+    }
+  };
+
+  const canManageAnnouncement = (announcement: Announcement) => {
+    if (!user) {
+      return false;
+    }
+
+    if (user.role === 'SUPER_ADMIN') {
+      return announcement.scope === 'SITE';
+    }
+
+    if (user.role === 'ORG_ADMIN') {
+      return (
+        (announcement.scope === 'ORG' || announcement.scope === 'EVENT') &&
+        announcement.organizationId === user.organizationId
+      );
+    }
+
+    return (
+      user.role === 'MEMBER' &&
+      user.memberRole === 'PRESENTER' &&
+      announcement.scope === 'EVENT' &&
+      announcement.authorId === user.id
+    );
+  };
+
+  const openEditDialog = (announcement: Announcement) => {
+    setEditingAnnouncement(announcement);
+    resetEdit({
+      title: announcement.title,
+      bodyHtml: announcement.bodyHtml,
+    });
+  };
+
+  const onUpdate = async (data: AnnouncementUpdateRequest) => {
+    if (!editingAnnouncement) {
+      return;
+    }
+
+    try {
+      await update(editingAnnouncement.id, data);
+      toast.success('Announcement updated');
+      setEditingAnnouncement(null);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        toast.error(err.message);
+      } else {
+        toast.error('Failed to update announcement');
+      }
+    }
+  };
+
+  const onDelete = (announcement: Announcement) => {
+    setDeletingAnnouncement(announcement);
+  };
+
+  const confirmDelete = async () => {
+    if (!deletingAnnouncement) {
+      return;
+    }
+
+    setDeletingId(deletingAnnouncement.id);
+    try {
+      await remove(deletingAnnouncement.id);
+      toast.success('Announcement deleted');
+      setDeletingAnnouncement(null);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        toast.error(err.message);
+      } else {
+        toast.error('Failed to delete announcement');
+      }
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -489,8 +599,112 @@ export default function AnnouncementsPage() {
           announcements={announcements}
           isLoading={announcementsLoading}
           error={error}
+          canManage={canManageAnnouncement}
+          onEdit={openEditDialog}
+          onDelete={onDelete}
+          deletingId={deletingId}
         />
       </div>
+
+      <Dialog
+        open={!!editingAnnouncement}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditingAnnouncement(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit announcement</DialogTitle>
+            <DialogDescription>
+              Update the title and message for this announcement.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleEditSubmit(onUpdate)} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-announcement-title">Title</Label>
+              <Input
+                id="edit-announcement-title"
+                maxLength={140}
+                aria-invalid={!!editErrors.title}
+                {...registerEdit('title')}
+              />
+              {editErrors.title && (
+                <p className="text-sm text-error">{editErrors.title.message}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label>Message</Label>
+              <RichTextEditor
+                value={editBodyHtml}
+                onChange={(value) =>
+                  setEditValue('bodyHtml', value, { shouldValidate: true })
+                }
+              />
+              {editErrors.bodyHtml && (
+                <p className="text-sm text-error">
+                  {editErrors.bodyHtml.message}
+                </p>
+              )}
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditingAnnouncement(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isUpdating || isEditIncomplete}
+                className="bg-primary-base hover:bg-primary-base/90"
+              >
+                {isUpdating ? 'Saving...' : 'Save changes'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!deletingAnnouncement}
+        onOpenChange={(open) => {
+          if (!open && !deletingId) {
+            setDeletingAnnouncement(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete announcement</DialogTitle>
+            <DialogDescription>
+              This will permanently delete &quot;
+              {deletingAnnouncement?.title}
+              &quot;.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeletingAnnouncement(null)}
+              disabled={!!deletingId}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={!!deletingId}
+            >
+              {deletingId ? 'Deleting...' : 'Delete announcement'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

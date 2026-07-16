@@ -5,12 +5,19 @@ import { useEffect, useState } from 'react';
 import type { Announcement } from '@repo/contracts';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useUser } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
 import {
   Bell,
@@ -20,6 +27,9 @@ import {
   Globe,
   LockKeyhole,
   Megaphone,
+  MoreVertical,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -127,6 +137,10 @@ interface AnnouncementListProps {
   error?: Error;
   compact?: boolean;
   showViewAll?: boolean;
+  canManage?: (announcement: Announcement) => boolean;
+  onEdit?: (announcement: Announcement) => void;
+  onDelete?: (announcement: Announcement) => void;
+  deletingId?: string | null;
 }
 
 export function AnnouncementList({
@@ -135,7 +149,13 @@ export function AnnouncementList({
   error,
   compact = false,
   showViewAll = false,
+  canManage,
+  onEdit,
+  onDelete,
+  deletingId,
 }: AnnouncementListProps) {
+  const { user } = useUser({ redirectOnUnauthenticated: false });
+
   return (
     <Card className="border-gray-200 bg-white shadow-sm">
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -177,8 +197,8 @@ export function AnnouncementList({
                 key={announcement.id}
                 className="rounded-lg border border-gray-200 p-3 sm:p-4"
               >
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
                     <h3 className="break-words text-sm font-semibold text-gray-900 sm:text-base">
                       {announcement.title}
                     </h3>
@@ -198,12 +218,54 @@ export function AnnouncementList({
                       {announcement.eventName && !announcement.eventId && (
                         <span>• {announcement.eventName}</span>
                       )}
-                      <span>• {announcement.authorName}</span>
+                      <span>
+                        •{' '}
+                        {announcement.authorId === user?.id
+                          ? 'YOU'
+                          : announcement.authorName}
+                      </span>
                       <span>
                         • <PublishedTime value={announcement.createdAt} />
                       </span>
                     </p>
                   </div>
+                  {canManage?.(announcement) && (onEdit || onDelete) && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label="Announcement actions"
+                          disabled={deletingId === announcement.id}
+                          className="shrink-0"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {onEdit && (
+                          <DropdownMenuItem
+                            onSelect={() => onEdit(announcement)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                        )}
+                        {onDelete && (
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onSelect={() => onDelete(announcement)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            {deletingId === announcement.id
+                              ? 'Deleting...'
+                              : 'Delete'}
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </div>
                 <div
                   className={cn(
