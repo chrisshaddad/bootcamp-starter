@@ -7,6 +7,7 @@ import type {
   UpdateTeacherResponse,
 } from '@repo/contracts';
 import { PrismaService } from '../database/prisma.service';
+
 @Injectable()
 export class TeachersService {
   private readonly logger = new Logger(TeachersService.name);
@@ -100,7 +101,7 @@ export class TeachersService {
       organizationId,
       teachers: teachers.map((teacher) => ({
         id: teacher.id,
-        name: teacher.name,
+        name: teacher.name ?? teacher.email,
         email: teacher.email,
         role: teacher.role,
         status: teacher.isConfirmed ? 'Active' : 'Pending',
@@ -110,13 +111,15 @@ export class TeachersService {
   }
 
   async updateTeacher(
+    organizationId: string,
     teacherId: string,
     payload: UpdateTeacherRequest,
-  ): Promise<TeacherActionResponse> {
+  ): Promise<UpdateTeacherResponse> {
     const teacher = await this.prisma.user.findFirst({
       where: {
         id: teacherId,
         role: 'ORG_ADMIN',
+        organizationId,
       },
       select: {
         id: true,
@@ -149,7 +152,7 @@ export class TeachersService {
 
     return {
       id: updatedTeacher.id,
-      name: updatedTeacher.name || updatedTeacher.email.split('@')[0],
+      name: updatedTeacher.name ?? updatedTeacher.email,
       email: updatedTeacher.email,
       role: updatedTeacher.role,
       status: updatedTeacher.isConfirmed ? 'Active' : 'Pending',
@@ -157,11 +160,15 @@ export class TeachersService {
     };
   }
 
-  async deleteTeacher(teacherId: string): Promise<TeacherActionResponse> {
+  async deleteTeacher(
+    organizationId: string,
+    teacherId: string,
+  ): Promise<TeacherActionResponse> {
     const teacher = await this.prisma.user.findFirst({
       where: {
         id: teacherId,
         role: 'ORG_ADMIN',
+        organizationId,
       },
       select: {
         id: true,

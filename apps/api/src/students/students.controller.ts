@@ -19,6 +19,7 @@ import { UpdateStudentRequestSchema } from '@repo/contracts';
 import { Roles } from '../auth/decorators';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { StudentsService } from './students.service';
+
 @Controller('students')
 export class StudentsController {
   constructor(private readonly studentsService: StudentsService) {}
@@ -51,24 +52,31 @@ export class StudentsController {
       gradeId,
     );
   }
-
-  @Patch(':studentProfileId')
+  @Patch('organizations/:organizationId/students/:studentProfileId')
   @Roles('SUPER_ADMIN')
   async updateStudent(
+    @Param('organizationId', new ParseUUIDPipe({ version: '4' }))
+    organizationId: string,
     @Param('studentProfileId', new ParseUUIDPipe({ version: '4' }))
     studentProfileId: string,
     @Body(new ZodValidationPipe(UpdateStudentRequestSchema))
     payload: UpdateStudentRequest,
   ): Promise<UpdateStudentResponse> {
-    return this.studentsService.updateStudent(studentProfileId, payload);
+    return this.studentsService.updateStudent(
+      organizationId,
+      studentProfileId,
+      payload,
+    );
   }
 
-  @Delete(':studentProfileId')
+  @Delete('organizations/:organizationId/students/:studentProfileId')
   @Roles('SUPER_ADMIN')
   async deleteStudent(
+    @Param('organizationId', new ParseUUIDPipe({ version: '4' }))
+    organizationId: string,
     @Param('studentProfileId', new ParseUUIDPipe({ version: '4' }))
     studentProfileId: string,
-  ): Promise<UpdateStudentResponse> {
-    return this.studentsService.deleteStudent(studentProfileId);
+  ): Promise<StudentActionResponse> {
+    return this.studentsService.deleteStudent(organizationId, studentProfileId);
   }
 }

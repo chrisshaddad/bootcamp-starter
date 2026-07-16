@@ -221,7 +221,7 @@ model Organization {
   approvedAt   DateTime? // When super admin approved
 
   createdBy  User     @relation("OrganizationCreator", fields: [createdById], references: [id])
-  approvedBy User?    @relation("OrganizationApprover", fields: [approvedById], references: [id])
+  approvedBy User?    @relation("OrganizationApprover", fields: [approvedById], references: [id], onDelete: SetNull)
   users      User[]   @relation("OrganizationMembers")
   courses    Course[]
 
@@ -447,10 +447,11 @@ model Grade {
 
   submission  Submission?  @relation(fields: [submissionId], references: [id], onDelete: Cascade)
   quizAttempt QuizAttempt? @relation(fields: [quizAttemptId], references: [id], onDelete: Cascade)
-  gradedBy    User?        @relation("GraderGrades", fields: [gradedById], references: [id])
+  gradedBy    User?        @relation("GraderGrades", fields: [gradedById], references: [id], onDelete: SetNull)
 
   @@index([submissionId])
   @@index([quizAttemptId])
+  @@index([gradedById])
   @@schema("public")
 }
 
@@ -571,7 +572,7 @@ model ActivityLog {
   metadata  Json?
   createdAt DateTime @default(now())
 
-  user User? @relation(fields: [userId], references: [id])
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([userId, createdAt])
   @@index([eventType, createdAt])

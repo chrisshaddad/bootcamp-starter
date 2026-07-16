@@ -1,30 +1,42 @@
-export interface TeacherCourseResponse {
-  id: string;
-  title: string;
-  description: string | null;
-  status: 'draft' | 'published' | 'archived';
-  joinCode: string | null;
-  createdAt: Date;
+import { z } from 'zod';
 
-  subject: {
-    id: string;
-    name: string;
-    code: string | null;
-  };
+export const teacherCourseResponseSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  description: z.string().nullable(),
+  status: z.enum(['draft', 'published', 'archived']),
+  joinCode: z.string().nullable(),
+  createdAt: z.date(),
 
-  section: {
-    id: string;
-    name: string;
-    gradeLevel: {
-      id: string;
-      name: string;
-    };
-  } | null;
+  subject: z.object({
+    id: z.string(),
+    name: z.string(),
+    code: z.string().nullable(),
+  }),
 
-  _count: {
-    enrollments: number;
-    assignments: number;
-  };
-}
+  section: z
+    .object({
+      id: z.string(),
+      name: z.string(),
+      gradeLevel: z.object({
+        id: z.string(),
+        name: z.string(),
+      }),
+    })
+    .nullable(),
 
-export type TeacherCourseListResponse = TeacherCourseResponse[];
+  _count: z.object({
+    enrollments: z.number(),
+    assignments: z.number(),
+  }),
+});
+
+export const teacherCourseListResponseSchema = z.array(
+  teacherCourseResponseSchema,
+);
+
+export type TeacherCourseResponse = z.infer<typeof teacherCourseResponseSchema>;
+
+export type TeacherCourseListResponse = z.infer<
+  typeof teacherCourseListResponseSchema
+>;

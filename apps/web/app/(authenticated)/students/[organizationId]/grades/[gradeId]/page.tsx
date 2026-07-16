@@ -123,7 +123,7 @@ export default function GradeStudentsPage({ params }: GradeStudentsPageProps) {
 
     try {
       const updatedStudent = await apiPatch<UpdateStudentResponse>(
-        `/students/${editingStudent.id}`,
+        `/students/organizations/${organizationId}/students/${editingStudent.id}`,
         payload,
       );
 
@@ -158,7 +158,9 @@ export default function GradeStudentsPage({ params }: GradeStudentsPageProps) {
     setError(null);
 
     try {
-      await apiDelete<StudentActionResponse>(`/students/${studentId}`);
+      await apiDelete<StudentActionResponse>(
+        `/students/organizations/${organizationId}/students/${studentId}`,
+      );
 
       setStudents((currentStudents) =>
         currentStudents.filter((student) => student.id !== studentId),

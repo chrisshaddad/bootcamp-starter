@@ -1,9 +1,21 @@
-import type { TeacherAssignmentResponse } from './teacher-assignment.response';
+import { z } from 'zod';
+import { teacherAssignmentResponseSchema } from './teacher-assignment.response';
 
-export interface TeacherAssignmentListItemResponse extends TeacherAssignmentResponse {
-  _count: {
-    submissions: number;
-  };
-}
+export const teacherAssignmentListItemResponseSchema =
+  teacherAssignmentResponseSchema.extend({
+    _count: z.object({
+      submissions: z.number(),
+    }),
+  });
 
-export type TeacherAssignmentListResponse = TeacherAssignmentListItemResponse[];
+export const teacherAssignmentListResponseSchema = z.array(
+  teacherAssignmentListItemResponseSchema,
+);
+
+export type TeacherAssignmentListItemResponse = z.infer<
+  typeof teacherAssignmentListItemResponseSchema
+>;
+
+export type TeacherAssignmentListResponse = z.infer<
+  typeof teacherAssignmentListResponseSchema
+>;
