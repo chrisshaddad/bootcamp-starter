@@ -15,13 +15,11 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import type {
   ProjectResponse,
   PublicProjectMediaResponse,
+  ProjectTechnologyResponse,
+  TechnologyResponse,
 } from '@repo/contracts';
-import {
-  MOCK_CONTRIBUTORS,
-  MOCK_TECHNOLOGIES,
-  TECHNOLOGY_CATEGORY_LABELS,
-  type TechnologyCategory,
-} from '@/lib/mock-projects';
+import { MOCK_CONTRIBUTORS } from '@/lib/mock-projects';
+import { TECHNOLOGY_CATEGORY_LABELS } from '@/lib/technology-labels';
 import {
   PROJECT_STATUS_COLORS,
   PROJECT_STATUS_LABELS,
@@ -33,7 +31,10 @@ import {
 // actually see. Both routes' responses carry a superset of
 // PublicProjectMediaResponse, so that's the shape this component needs.
 interface ProjectShowcaseProps {
-  project: ProjectResponse & { media: PublicProjectMediaResponse[] };
+  project: ProjectResponse & {
+    media: PublicProjectMediaResponse[];
+    technologies: ProjectTechnologyResponse[];
+  };
   onSave?: () => void;
 }
 
@@ -53,11 +54,10 @@ export function ProjectShowcase({ project, onSave }: ProjectShowcaseProps) {
       current === null ? current : (current + 1) % project.media.length,
     );
 
-  // mock: ProjectTechnology has no endpoint — reuse the fixture list so the
-  // "Built with" panel isn't empty while real data isn't available.
-  const technologiesByCategory = MOCK_TECHNOLOGIES.reduce<
-    Partial<Record<TechnologyCategory, typeof MOCK_TECHNOLOGIES>>
-  >((acc, tech) => {
+  const technologiesByCategory = project.technologies.reduce<
+    Partial<Record<TechnologyResponse['category'], TechnologyResponse[]>>
+  >((acc, projectTechnology) => {
+    const tech = projectTechnology.technology;
     (acc[tech.category] ??= []).push(tech);
     return acc;
   }, {});
@@ -153,28 +153,34 @@ export function ProjectShowcase({ project, onSave }: ProjectShowcaseProps) {
               <h3 className="text-muted-foreground text-xs font-bold tracking-wide uppercase">
                 Built with
               </h3>
-              {Object.entries(technologiesByCategory).map(
-                ([category, techs]) => (
-                  <div key={category}>
-                    <p className="text-muted-foreground mb-1 text-xs font-medium">
-                      {
-                        TECHNOLOGY_CATEGORY_LABELS[
-                          category as TechnologyCategory
-                        ]
-                      }
-                    </p>
-                    <div className="flex flex-wrap gap-1">
-                      {techs?.map((tech) => (
-                        <span
-                          key={tech.id}
-                          className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-medium text-accent-foreground"
-                        >
-                          {tech.name}
-                        </span>
-                      ))}
+              {project.technologies.length > 0 ? (
+                Object.entries(technologiesByCategory).map(
+                  ([category, techs]) => (
+                    <div key={category}>
+                      <p className="text-muted-foreground mb-1 text-xs font-medium">
+                        {
+                          TECHNOLOGY_CATEGORY_LABELS[
+                            category as TechnologyResponse['category']
+                          ]
+                        }
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        {techs?.map((tech) => (
+                          <span
+                            key={tech.id}
+                            className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-medium text-accent-foreground"
+                          >
+                            {tech.name}
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ),
+                  ),
+                )
+              ) : (
+                <p className="text-muted-foreground text-xs">
+                  No technologies added yet.
+                </p>
               )}
             </CardContent>
           </Card>

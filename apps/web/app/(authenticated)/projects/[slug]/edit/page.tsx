@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useForm, Controller } from 'react-hook-form';
@@ -10,6 +10,7 @@ import { ArrowLeft, ImageIcon, Loader2, Star, X } from 'lucide-react';
 import {
   updateProjectRequestSchema,
   type UpdateProjectRequest,
+  type TechnologyResponse,
 } from '@repo/contracts';
 import {
   useProject,
@@ -19,9 +20,11 @@ import {
   useUpdateProjectMedia,
   useDeleteProjectMedia,
   useUploadProjectLogo,
+  useAddProjectTechnology,
+  useRemoveProjectTechnology,
 } from '@/hooks/use-projects';
+import { useTechnologies } from '@/hooks/use-technologies';
 import { ApiError } from '@/lib/api';
-import type { MockTechnology } from '@/lib/mock-projects';
 import { TechPicker } from '@/components/tech-picker';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,6 +64,9 @@ export default function EditProjectPage() {
   const updateMedia = useUpdateProjectMedia();
   const deleteMedia = useDeleteProjectMedia();
   const uploadLogo = useUploadProjectLogo();
+  const addProjectTechnology = useAddProjectTechnology();
+  const removeProjectTechnology = useRemoveProjectTechnology();
+  const { technologies: technologySuggestions } = useTechnologies();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -68,10 +74,39 @@ export default function EditProjectPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [deletingMediaId, setDeletingMediaId] = useState<string | null>(null);
-  const [settingCoverMediaId, setSettingCoverMediaId] = useState<
-    string | null
-  >(null);
-  const [technologies, setTechnologies] = useState<MockTechnology[]>([]);
+  const [settingCoverMediaId, setSettingCoverMediaId] = useState<string | null>(
+    null,
+  );
+  const [isSavingTechnology, setIsSavingTechnology] = useState(false);
+
+  // project.technologies/media change (and give `project` a new object
+  // reference) independently of these fields — memoizing on the scalars
+  // keeps this reference stable across those unrelated updates, so a tech
+  // toggle doesn't force-reset the whole form (Radix Select included).
+  const formValues = useMemo(
+    () =>
+      project
+        ? {
+            title: project.title,
+            slug: project.slug,
+            shortDescription: project.shortDescription,
+            fullDescription: project.fullDescription,
+            deploymentUrl: project.deploymentUrl,
+            status: project.status,
+          }
+        : undefined,
+    // Deliberately depending on the scalar fields, not `project` itself —
+    // see the comment above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      project?.title,
+      project?.slug,
+      project?.shortDescription,
+      project?.fullDescription,
+      project?.deploymentUrl,
+      project?.status,
+    ],
+  );
 
   const {
     register,
@@ -84,16 +119,7 @@ export default function EditProjectPage() {
     // sync with `project` from the very first render — using `reset()`
     // here left the Radix Select mounting one tick with an undefined
     // value, which made it get stuck displaying blank.
-    values: project
-      ? {
-          title: project.title,
-          slug: project.slug,
-          shortDescription: project.shortDescription,
-          fullDescription: project.fullDescription,
-          deploymentUrl: project.deploymentUrl,
-          status: project.status,
-        }
-      : undefined,
+    values: formValues,
   });
 
   const onSubmit = async (data: UpdateProjectRequest) => {
@@ -181,9 +207,7 @@ export default function EditProjectPage() {
     }
   };
 
-  const handleLogoSelected = async (
-    e: React.ChangeEvent<HTMLInputElement>,
-  ) => {
+  const handleLogoSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file || !project || isUploadingLogo) return;
@@ -197,6 +221,39 @@ export default function EditProjectPage() {
       );
     } finally {
       setIsUploadingLogo(false);
+    }
+  };
+
+  // TechPicker reports the whole next selection, not which chip was
+  // toggled — the project already exists here (unlike the create form), so
+  // diff against its current technologies and persist immediately.
+  const handleTechnologiesChange = async (next: TechnologyResponse[]) => {
+    if (!project || isSavingTechnology) return;
+
+    const current = project.technologies.map((pt) => pt.technology);
+    const added = next.find((t) => !current.some((c) => c.id === t.id));
+    const removed = current.find((c) => !next.some((t) => t.id === c.id));
+    if (!added && !removed) return;
+
+    setIsSavingTechnology(true);
+    try {
+      if (added) {
+        await addProjectTechnology(project.id, {
+          technologyId: added.id,
+          isPrimary: false,
+        });
+      }
+      if (removed) {
+        await removeProjectTechnology(project.id, removed.id);
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof ApiError
+          ? error.message
+          : 'Unable to update tech stack',
+      );
+    } finally {
+      setIsSavingTechnology(false);
     }
   };
 
@@ -319,8 +376,8 @@ export default function EditProjectPage() {
                 className="hidden"
               />
               <p className="text-muted-foreground text-xs">
-                Square image works best — shown as a small badge on the
-                project card. Click to {project.logoUrl ? 'replace' : 'add'}.
+                Square image works best — shown as a small badge on the project
+                card. Click to {project.logoUrl ? 'replace' : 'add'}.
               </p>
             </div>
           </div>
@@ -425,7 +482,11 @@ export default function EditProjectPage() {
 
           <div className="space-y-2">
             <Label>Tech stack</Label>
-            <TechPicker selected={technologies} onChange={setTechnologies} />
+            <TechPicker
+              selected={project.technologies.map((pt) => pt.technology)}
+              onChange={handleTechnologiesChange}
+              suggestions={technologySuggestions}
+            />
           </div>
         </div>
 

@@ -40,6 +40,7 @@ import {
   projectMediaUploadSchema,
   projectMediaUpdateSchema,
   projectsExploreQuerySchema,
+  addProjectTechnologySchema,
   type CreateProjectRequest,
   type ImportGithubProjectRequest,
   type ImportGithubProjectResponse,
@@ -51,6 +52,8 @@ import {
   type ProjectBySlugResponse,
   type ProjectsExploreQuery,
   type ExploreProjectsResponse,
+  type AddProjectTechnologyRequest,
+  type ProjectTechnologyResponse,
 } from '@repo/contracts';
 import { importGithubProjectRequestSchema as importGithubProjectOpenApiRequestSchema } from '../common/swagger/schemas';
 
@@ -135,6 +138,17 @@ export class ProjectsController {
         createdAt: m.createdAt.toISOString(),
         updatedAt: m.updatedAt.toISOString(),
       })),
+      technologies: project.technologies.map((pt) => ({
+        id: pt.id,
+        projectId: pt.projectId,
+        technologyId: pt.technologyId,
+        technology: pt.technology,
+        source: pt.source,
+        isPrimary: pt.isPrimary,
+        sortOrder: pt.sortOrder,
+        createdAt: pt.createdAt.toISOString(),
+        updatedAt: pt.updatedAt.toISOString(),
+      })),
     }));
   }
 
@@ -197,6 +211,17 @@ export class ProjectsController {
         sortOrder: m.sortOrder,
         createdAt: m.createdAt.toISOString(),
         updatedAt: m.updatedAt.toISOString(),
+      })),
+      technologies: (project.technologies ?? []).map((pt) => ({
+        id: pt.id,
+        projectId: pt.projectId,
+        technologyId: pt.technologyId,
+        technology: pt.technology,
+        source: pt.source,
+        isPrimary: pt.isPrimary,
+        sortOrder: pt.sortOrder,
+        createdAt: pt.createdAt.toISOString(),
+        updatedAt: pt.updatedAt.toISOString(),
       })),
     };
   }
@@ -440,6 +465,17 @@ export class ProjectsController {
         createdAt: m.createdAt.toISOString(),
         updatedAt: m.updatedAt.toISOString(),
       })),
+      technologies: (project.technologies ?? []).map((pt) => ({
+        id: pt.id,
+        projectId: pt.projectId,
+        technologyId: pt.technologyId,
+        technology: pt.technology,
+        source: pt.source,
+        isPrimary: pt.isPrimary,
+        sortOrder: pt.sortOrder,
+        createdAt: pt.createdAt.toISOString(),
+        updatedAt: pt.updatedAt.toISOString(),
+      })),
     };
   }
 
@@ -571,5 +607,64 @@ export class ProjectsController {
     }
 
     return { success: true };
+  }
+
+  @Post(':id/technologies')
+  @Roles(AccountType.DEVELOPER, AccountType.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Add a technology to a project' })
+  @ApiResponse({ status: 201, description: 'Technology successfully added.' })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden if the user does not own the project.',
+  })
+  @ApiResponse({ status: 404, description: 'Project or technology not found.' })
+  @ApiResponse({
+    status: 409,
+    description: 'Conflict if the technology is already on the project.',
+  })
+  async addProjectTechnology(
+    @CurrentUser() user: User,
+    @Param('id') projectId: string,
+    @Body(new ZodValidationPipe(addProjectTechnologySchema))
+    body: AddProjectTechnologyRequest,
+  ): Promise<ProjectTechnologyResponse> {
+    const projectTechnology = await this.projectsService.addProjectTechnology(
+      user,
+      projectId,
+      body,
+    );
+
+    return {
+      ...projectTechnology,
+      createdAt: projectTechnology.createdAt.toISOString(),
+      updatedAt: projectTechnology.updatedAt.toISOString(),
+    };
+  }
+
+  @Delete(':id/technologies/:technologyId')
+  @Roles(AccountType.DEVELOPER, AccountType.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Remove a technology from a project' })
+  @ApiResponse({
+    status: 200,
+    description: 'Technology successfully removed.',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden if the user does not own the project.',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Technology not found on this project.',
+  })
+  async removeProjectTechnology(
+    @CurrentUser() user: User,
+    @Param('id') projectId: string,
+    @Param('technologyId') technologyId: string,
+  ) {
+    return this.projectsService.removeProjectTechnology(
+      user,
+      projectId,
+      technologyId,
+    );
   }
 }

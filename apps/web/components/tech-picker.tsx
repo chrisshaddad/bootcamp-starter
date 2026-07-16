@@ -1,36 +1,30 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import {
-  MOCK_TECHNOLOGIES,
-  TECHNOLOGY_CATEGORY_LABELS,
-  type MockTechnology,
-  type TechnologyCategory,
-} from '@/lib/mock-projects';
+import { TECHNOLOGY_CATEGORY_LABELS } from '@/lib/technology-labels';
+import type { TechnologyResponse } from '@repo/contracts';
 
 interface TechPickerProps {
-  selected: MockTechnology[];
-  onChange: (technologies: MockTechnology[]) => void;
-  // Suggestion list to offer below the selected chips. Defaults to the
-  // fixture list; pass [] to hide suggestions entirely — e.g. once
-  // technologies were populated from a real GitHub language fetch, the
-  // fixed mock stack (TypeScript/NestJS/etc.) has nothing to do with that
-  // repo and would be misleading to offer alongside it.
-  suggestions?: MockTechnology[];
+  selected: TechnologyResponse[];
+  onChange: (technologies: TechnologyResponse[]) => void;
+  // Suggestion list to offer below the selected chips — e.g. pass [] once
+  // technologies were populated from a real GitHub language fetch, since
+  // the global catalog has nothing to do with that repo and would be
+  // misleading to offer alongside it.
+  suggestions: TechnologyResponse[];
 }
 
-// mock: Technology/ProjectTechnology have no API endpoints yet, so
-// suggestions default to the fixture list in lib/mock-projects.ts.
-// Selections aren't persisted anywhere — swap the data source and add a
-// save call once the endpoints exist.
+// real: suggestions come from GET /technologies (see useTechnologies).
+// mock: ProjectTechnology still has no add/remove endpoint, so selections
+// made here aren't persisted anywhere yet.
 export function TechPicker({
   selected,
   onChange,
-  suggestions = MOCK_TECHNOLOGIES,
+  suggestions,
 }: TechPickerProps) {
   const selectedIds = new Set(selected.map((t) => t.id));
 
-  const toggle = (tech: MockTechnology) => {
+  const toggle = (tech: TechnologyResponse) => {
     if (selectedIds.has(tech.id)) {
       onChange(selected.filter((t) => t.id !== tech.id));
     } else {
@@ -39,7 +33,7 @@ export function TechPicker({
   };
 
   const byCategory = suggestions.reduce<
-    Partial<Record<TechnologyCategory, MockTechnology[]>>
+    Partial<Record<TechnologyResponse['category'], TechnologyResponse[]>>
   >((acc, tech) => {
     (acc[tech.category] ??= []).push(tech);
     return acc;
@@ -66,7 +60,11 @@ export function TechPicker({
       {Object.entries(byCategory).map(([category, techs]) => (
         <div key={category} className="space-y-1">
           <p className="text-xs font-medium text-muted-foreground">
-            {TECHNOLOGY_CATEGORY_LABELS[category as TechnologyCategory]}
+            {
+              TECHNOLOGY_CATEGORY_LABELS[
+                category as TechnologyResponse['category']
+              ]
+            }
           </p>
           <div className="flex flex-wrap gap-1.5">
             {techs

@@ -19,17 +19,17 @@ import {
   createProjectRequestSchema,
   type CreateProjectRequest,
   type GithubRepositoryPreviewResponse,
+  type TechnologyResponse,
 } from '@repo/contracts';
 import {
   useCreateProject,
   useUploadProjectMedia,
   useUploadProjectLogo,
+  useAddProjectTechnology,
 } from '@/hooks/use-projects';
+import { useTechnologies } from '@/hooks/use-technologies';
 import { apiPost, ApiError } from '@/lib/api';
-import {
-  KNOWN_SEEDED_REPOSITORIES,
-  type MockTechnology,
-} from '@/lib/mock-projects';
+import { KNOWN_SEEDED_REPOSITORIES } from '@/lib/mock-projects';
 import { TechPicker } from '@/components/tech-picker';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -62,6 +62,8 @@ export default function NewProjectPage() {
   const createProject = useCreateProject();
   const uploadMedia = useUploadProjectMedia();
   const uploadLogo = useUploadProjectLogo();
+  const addProjectTechnology = useAddProjectTechnology();
+  const { technologies: technologySuggestions } = useTechnologies();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   // Tracks every blob URL ever created for pendingMedia/pendingLogo previews,
@@ -71,9 +73,10 @@ export default function NewProjectPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pendingMedia, setPendingMedia] = useState<PendingMedia[]>([]);
   const [pendingLogo, setPendingLogo] = useState<PendingMedia | null>(null);
-  // mock: no Technology/ProjectTechnology endpoint yet — selections here are
-  // local-only, not sent on submit.
-  const [technologies, setTechnologies] = useState<MockTechnology[]>([]);
+  // Staged locally the same way pendingMedia/pendingLogo are — a technology
+  // can't be attached until the project exists, so selections here are sent
+  // right after creation succeeds (see onSubmit).
+  const [technologies, setTechnologies] = useState<TechnologyResponse[]>([]);
 
   const [repositoryUrl, setRepositoryUrl] = useState('');
   const [isFetchingPreview, setIsFetchingPreview] = useState(false);
@@ -135,8 +138,33 @@ export default function NewProjectPage() {
         }
       }
 
+      // GitHub-fetched language tags (see handleFetchPreview) aren't real
+      // catalog entries — only persist picks that came from the real
+      // GET /technologies suggestion list.
+      const persistableTechnologies = technologies.filter(
+        (tech) => !tech.id.startsWith('github-lang-'),
+      );
+      if (persistableTechnologies.length > 0) {
+        const results = await Promise.allSettled(
+          persistableTechnologies.map((tech) =>
+            addProjectTechnology(project.id, {
+              technologyId: tech.id,
+              isPrimary: false,
+            }),
+          ),
+        );
+        const failedCount = results.filter(
+          (r) => r.status === 'rejected',
+        ).length;
+        if (failedCount > 0) {
+          toast.error(
+            `Project created, but ${failedCount} technolog${failedCount > 1 ? 'ies' : 'y'} failed to save — you can retry from the edit page.`,
+          );
+        }
+      }
+
       toast.success('Project created');
-      router.push(`/projects/${project.id}/edit`);
+      router.push('/projects');
     } catch (error) {
       if (error instanceof ApiError && error.status === 404) {
         toast.error('Repository not found — check the repository ID');
@@ -180,10 +208,10 @@ export default function NewProjectPage() {
       }
 
       // real: GitHub's actual reported languages for this repo — used
-      // directly as tags rather than matched against the fixed mock
-      // technology list, which only covers 7 stack items and would miss
-      // almost everything a real repo reports (e.g. EJS, CSS, Ruby).
-      const fetchedTechnologies: MockTechnology[] = data.languages
+      // directly as tags rather than matched against the global technology
+      // catalog, since a repo's languages won't reliably line up with
+      // catalog entries (e.g. EJS, CSS, Ruby may not exist there yet).
+      const fetchedTechnologies: TechnologyResponse[] = data.languages
         .slice()
         .sort((a, b) => b.bytes - a.bytes)
         .map((lang) => ({
@@ -455,8 +483,8 @@ export default function NewProjectPage() {
                 className="hidden"
               />
               <p className="text-muted-foreground text-xs">
-                Square image works best — shown as a small badge on the
-                project card. Uploaded once you create the project.
+                Square image works best — shown as a small badge on the project
+                card. Uploaded once you create the project.
               </p>
             </div>
           </div>
@@ -549,7 +577,7 @@ export default function NewProjectPage() {
             <TechPicker
               selected={technologies}
               onChange={setTechnologies}
-              suggestions={preview ? [] : undefined}
+              suggestions={preview ? [] : technologySuggestions}
             />
             {preview && (
               <p className="text-muted-foreground text-xs">
