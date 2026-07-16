@@ -56,13 +56,7 @@ function formatRelativeTime(value: string | Date, now: number) {
   return formatter.format(-Math.floor(days / 365), 'year');
 }
 
-function PublishedTime({
-  value,
-  now,
-}: {
-  value: string | Date;
-  now: number;
-}) {
+function PublishedTime({ value, now }: { value: string | Date; now: number }) {
   const exactTime = formatDate(value);
 
   return (

@@ -36,3 +36,6 @@ yarn-error.log*
 # Misc
 .DS_Store
 *.pem
+docs/01-admin-event-crud.md
+docs/02-groups.md
+docs/03-member-attendance-history.md
