@@ -14,3 +14,6 @@ export class PrismaService extends PrismaClient {
     });
   }
 }
+
+@Injectable()
+export class DatabaseService extends PrismaService {}

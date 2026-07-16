@@ -16,7 +16,6 @@ import {
   type ProjectMediaUploadRequest,
   type ProjectMediaUpdateRequest,
   type ProjectsExploreQuery,
-  type AddProjectTechnologyRequest,
 } from '@repo/contracts';
 import {
   ProjectStatus,
@@ -656,13 +655,14 @@ export class ProjectsService {
         : {}),
     };
 
-    let orderBy: Prisma.ProjectOrderByWithRelationInput = {
-      publishedAt: 'desc',
-    };
+    let orderBy: Prisma.ProjectOrderByWithRelationInput[] = [
+      { publishedAt: 'desc' },
+      { id: 'asc' },
+    ];
     if (query.sort === 'oldest') {
-      orderBy = { publishedAt: 'asc' };
+      orderBy = [{ publishedAt: 'asc' }, { id: 'asc' }];
     } else if (query.sort === 'alphabetical') {
-      orderBy = { title: 'asc' };
+      orderBy = [{ title: 'asc' }, { id: 'asc' }];
     }
 
     const [totalItems, projects] = await Promise.all([
@@ -802,93 +802,6 @@ export class ProjectsService {
     });
 
     return { storageKey: media.storageKey };
-  }
-
-  async addProjectTechnology(
-    user: User,
-    projectId: string,
-    data: AddProjectTechnologyRequest,
-  ) {
-    const project = await this.prisma.project.findUnique({
-      where: { id: projectId },
-    });
-
-    if (!project) throw new NotFoundException('Project not found');
-
-    const isAdmin = user.accountType === AccountType.SUPER_ADMIN;
-    const isCreator = project.createdByUserId === user.id;
-
-    if (!isAdmin && !isCreator) {
-      throw new ForbiddenException(
-        'You are not authorized to edit this project',
-      );
-    }
-
-    const technology = await this.prisma.technology.findUnique({
-      where: { id: data.technologyId },
-    });
-
-    if (!technology) {
-      throw new NotFoundException('Technology not found');
-    }
-
-    try {
-      return await this.prisma.projectTechnology.create({
-        data: {
-          projectId,
-          technologyId: data.technologyId,
-          source: ProjectTechnologySource.MANUAL,
-          isPrimary: data.isPrimary,
-          addedByUserId: user.id,
-        },
-        include: { technology: true },
-      });
-    } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
-        throw new ConflictException(
-          'This technology is already added to the project.',
-        );
-      }
-      throw error;
-    }
-  }
-
-  async removeProjectTechnology(
-    user: User,
-    projectId: string,
-    technologyId: string,
-  ) {
-    const project = await this.prisma.project.findUnique({
-      where: { id: projectId },
-    });
-
-    if (!project) throw new NotFoundException('Project not found');
-
-    const isAdmin = user.accountType === AccountType.SUPER_ADMIN;
-    const isCreator = project.createdByUserId === user.id;
-
-    if (!isAdmin && !isCreator) {
-      throw new ForbiddenException(
-        'You are not authorized to edit this project',
-      );
-    }
-
-    const projectTechnology = await this.prisma.projectTechnology.findUnique({
-      where: { projectId_technologyId: { projectId, technologyId } },
-    });
-
-    if (!projectTechnology) {
-      throw new NotFoundException('Technology not found on this project');
-    }
-
-    await this.prisma.projectTechnology.delete({
-      where: { id: projectTechnology.id },
-    });
-
-    return { success: true };
   }
 
   async deleteProject(user: User, projectId: string) {

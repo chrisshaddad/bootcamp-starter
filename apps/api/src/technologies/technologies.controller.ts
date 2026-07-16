@@ -5,8 +5,10 @@ import { Public } from '../auth/decorators';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import {
   technologyExploreQuerySchema,
+  technologySchema,
   type TechnologyExploreQuery,
 } from '@repo/contracts';
+import { z } from 'zod';
 
 @ApiTags('technologies')
 @Controller('technologies')
@@ -28,12 +30,7 @@ export class TechnologiesController {
   ) {
     const results = await this.techService.explore(query);
 
-    // Select strictly necessary public properties avoiding raw DB fields like createdAt/updatedAt
-    return results.map((tech) => ({
-      id: tech.id,
-      name: tech.name,
-      slug: tech.slug,
-      category: tech.category,
-    }));
+    // Enforces public response shape by stripping extra DB columns (such as createdAt/updatedAt)
+    return z.array(technologySchema).parse(results);
   }
 }

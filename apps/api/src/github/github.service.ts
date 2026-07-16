@@ -3,14 +3,21 @@ import {
   Logger,
   NotFoundException,
   ServiceUnavailableException,
+  BadRequestException,
 } from '@nestjs/common';
-import type { GithubRepositoryPreviewResponse } from '@repo/contracts';
+import {
+  type GithubRepositoryPreviewResponse,
+  githubRepositoryListSchema,
+  type GithubRepository,
+} from '@repo/contracts';
+import { DatabaseService } from '../database/prisma.service';
 import { parseGithubRepositoryUrl } from './github-url.parser';
 import type {
   NormalizedGithubLanguage,
   NormalizedGithubRepository,
   ParsedGithubRepository,
 } from './github.types';
+import { randomUUID } from 'crypto';
 
 const GITHUB_API_BASE_URL = 'https://api.github.com';
 const GITHUB_API_VERSION = '2022-11-28';
@@ -29,16 +36,316 @@ export class GithubRequestTimeoutException extends ServiceUnavailableException {
   }
 }
 
+interface GithubRepoResponse {
+  id: number;
+  name: string;
+  full_name: string;
+  private: boolean;
+  html_url: string;
+  updated_at: string;
+  description: string | null;
+  language: string | null;
+}
+
+function getNextPageUrl(linkHeader: string | null): string | null {
+  if (!linkHeader) return null;
+  const links = linkHeader.split(',');
+  for (const link of links) {
+    const match = link.match(/<([^>]+)>;\s*rel="next"/);
+    if (match) {
+      return match[1] ?? null;
+    }
+  }
+  return null;
+}
+
 @Injectable()
 export class GithubService {
   private readonly logger = new Logger(GithubService.name);
 
-  /**
-   * Validates a browser GitHub repository URL and returns a read-only preview.
-   *
-   * A successful preview proves only that GitHub metadata can be scanned; it
-   * does not prove ownership, contribution, or permission to publish a project.
-   */
+  constructor(private readonly db: DatabaseService) {}
+
+  // ==========================================
+  // OAUTH & REPOSITORY FETCHING
+  // ==========================================
+
+  async getOAuthConnectUrl(userId: string): Promise<string> {
+    const clientId = process.env.GITHUB_CLIENT_ID;
+    if (!clientId) {
+      throw new ServiceUnavailableException(
+        'GitHub OAuth is not configured on the server',
+      );
+    }
+    const apiUrl = process.env.API_URL ?? 'http://localhost:3001';
+    const redirectUri = encodeURIComponent(`${apiUrl}/github/callback`);
+
+    const state = randomUUID();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    await this.db.connectedAccount.upsert({
+      where: { userId },
+      create: {
+        userId,
+        oauthState: state,
+        oauthStateExpiresAt: expiresAt,
+      },
+      update: {
+        oauthState: state,
+        oauthStateExpiresAt: expiresAt,
+      },
+    });
+
+    return `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=repo&state=${state}`;
+  }
+
+  async handleOAuthCallback(
+    userId: string,
+    code: string,
+    state: string,
+  ): Promise<void> {
+    if (!process.env.GITHUB_CLIENT_ID || !process.env.GITHUB_CLIENT_SECRET) {
+      throw new ServiceUnavailableException('GitHub OAuth is not configured');
+    }
+
+    if (!state) {
+      throw new BadRequestException('State parameter is missing');
+    }
+
+    const connectedAccount = await this.db.connectedAccount.findUnique({
+      where: { userId },
+    });
+
+    if (
+      !connectedAccount ||
+      connectedAccount.oauthState !== state ||
+      !connectedAccount.oauthStateExpiresAt ||
+      connectedAccount.oauthStateExpiresAt < new Date()
+    ) {
+      throw new BadRequestException('Invalid or expired state parameter');
+    }
+
+    // 1. Exchange code for access token
+    let tokenResponse: Response;
+    try {
+      tokenResponse = await fetch(
+        'https://github.com/login/oauth/access_token',
+        {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            client_id: process.env.GITHUB_CLIENT_ID,
+            client_secret: process.env.GITHUB_CLIENT_SECRET,
+            code,
+          }),
+          signal: AbortSignal.timeout(10_000),
+        },
+      );
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'TimeoutError') {
+        throw new GithubRequestTimeoutException();
+      }
+      throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+    }
+
+    if (!tokenResponse.ok) {
+      throw new BadRequestException('Failed to obtain GitHub access token');
+    }
+
+    let tokenData: { access_token?: string };
+    try {
+      tokenData = (await tokenResponse.json()) as { access_token?: string };
+    } catch {
+      throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+    }
+
+    const accessToken = tokenData.access_token;
+    if (!accessToken) {
+      this.logger.error('Failed to obtain GitHub access token:', tokenData);
+      throw new BadRequestException('Failed to obtain GitHub access token');
+    }
+
+    // 2. Fetch the user's GitHub profile
+    let userResponse: Response;
+    try {
+      userResponse = await fetch('https://api.github.com/user', {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/vnd.github+json',
+          'User-Agent': GITHUB_USER_AGENT,
+        },
+        signal: AbortSignal.timeout(10_000),
+      });
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'TimeoutError') {
+        throw new GithubRequestTimeoutException();
+      }
+      throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+    }
+
+    if (!userResponse.ok) {
+      throw new BadRequestException('Failed to fetch GitHub profile');
+    }
+
+    let githubUser: { id: number; login: string };
+    try {
+      githubUser = (await userResponse.json()) as { id: number; login: string };
+    } catch {
+      throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+    }
+
+    // 3. Save to database
+    await this.db.$transaction([
+      this.db.developerProfile.update({
+        where: { userId },
+        data: {
+          githubUserId: BigInt(githubUser.id),
+          githubUsername: githubUser.login,
+          githubConnectedAt: new Date(),
+        },
+      }),
+      this.db.connectedAccount.update({
+        where: { userId },
+        data: {
+          githubAccessToken: accessToken ?? null,
+          oauthState: null,
+          oauthStateExpiresAt: null,
+        },
+      }),
+    ]);
+  }
+
+  async connectUsingEnvToken(userId: string): Promise<void> {
+    const token = process.env.GITHUB_TOKEN?.trim();
+    if (!token) {
+      throw new BadRequestException(
+        'GITHUB_TOKEN is not configured in your backend .env file.',
+      );
+    }
+
+    let response: Response;
+    try {
+      response = await fetch('https://api.github.com/user', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/vnd.github+json',
+          'User-Agent': GITHUB_USER_AGENT,
+        },
+        signal: AbortSignal.timeout(10_000),
+      });
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'TimeoutError') {
+        throw new GithubRequestTimeoutException();
+      }
+      throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+    }
+
+    if (!response.ok) {
+      throw new BadRequestException(
+        'Failed to validate the GITHUB_TOKEN. Make sure it has "repo" permissions.',
+      );
+    }
+
+    let githubUser: { id: number; login: string };
+    try {
+      githubUser = (await response.json()) as { id: number; login: string };
+    } catch {
+      throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+    }
+
+    await this.db.$transaction([
+      this.db.developerProfile.update({
+        where: { userId },
+        data: {
+          githubUserId: BigInt(githubUser.id),
+          githubUsername: githubUser.login,
+          githubConnectedAt: new Date(),
+        },
+      }),
+      this.db.connectedAccount.upsert({
+        where: { userId },
+        create: {
+          userId,
+          githubAccessToken: token ?? null,
+        },
+        update: {
+          githubAccessToken: token ?? null,
+        },
+      }),
+    ]);
+  }
+
+  async getUserRepositories(userId: string): Promise<GithubRepository[]> {
+    const profile = await this.db.connectedAccount.findUnique({
+      where: { userId },
+      select: { githubAccessToken: true },
+    });
+
+    if (!profile || !profile.githubAccessToken) {
+      throw new BadRequestException('GitHub account not connected');
+    }
+
+    const accumulatedRepos: GithubRepoResponse[] = [];
+    let nextUrl: string | null =
+      'https://api.github.com/user/repos?sort=updated&per_page=100';
+
+    while (nextUrl) {
+      let response: Response;
+      try {
+        response = await fetch(nextUrl, {
+          headers: {
+            Authorization: `Bearer ${profile.githubAccessToken}`,
+            Accept: 'application/vnd.github+json',
+            'User-Agent': GITHUB_USER_AGENT,
+          },
+          signal: AbortSignal.timeout(10_000),
+        });
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'TimeoutError') {
+          throw new GithubRequestTimeoutException();
+        }
+        throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+      }
+
+      if (!response.ok) {
+        throw new ServiceUnavailableException(
+          'Failed to fetch repositories from GitHub',
+        );
+      }
+
+      let repos: GithubRepoResponse[];
+      try {
+        repos = (await response.json()) as GithubRepoResponse[];
+      } catch {
+        throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+      }
+
+      accumulatedRepos.push(...repos);
+
+      const linkHeader = response.headers.get('link');
+      nextUrl = getNextPageUrl(linkHeader);
+    }
+
+    const validated = accumulatedRepos.map((repo) => ({
+      id: repo.id.toString(),
+      name: repo.name,
+      fullName: repo.full_name,
+      isPrivate: repo.private,
+      url: repo.html_url,
+      updatedAt: repo.updated_at,
+      description: repo.description,
+      language: repo.language,
+    }));
+
+    return githubRepositoryListSchema.parse(validated);
+  }
+
+  // ==========================================
+  // PREVIEW AND ANALYSIS
+  // ==========================================
+
   async previewRepository(
     repositoryUrl: string,
   ): Promise<GithubRepositoryPreviewResponse> {
@@ -46,12 +353,6 @@ export class GithubService {
     return this.fetchRepositoryPreview(repository);
   }
 
-  /**
-   * Fetches normalized repository metadata and language byte counts.
-   *
-   * This method stays reusable for a future ProjectsService import flow while
-   * keeping persistence and ownership verification outside the GitHub client.
-   */
   async fetchRepositoryPreview(
     repository: ParsedGithubRepository,
   ): Promise<GithubRepositoryPreviewResponse> {
@@ -77,15 +378,6 @@ export class GithubService {
     };
   }
 
-  /**
-   * Fetches GitHub's language byte-count summary for a public repository.
-   *
-   * This uses GitHub's REST API endpoint, not a browser URL:
-   * GET /repos/{owner}/{repo}/languages
-   *
-   * The returned byte counts are kept raw so later scanner/search logic can
-   * calculate language percentages without re-fetching the repository.
-   */
   async fetchRepositoryLanguages(
     repository: ParsedGithubRepository,
   ): Promise<NormalizedGithubLanguage[]> {
@@ -98,7 +390,6 @@ export class GithubService {
     return this.normalizeLanguages(apiLanguages);
   }
 
-  /** Returns file paths reported by GitHub for a repository directory. */
   async fetchRepositoryDirectoryFilePaths(
     repository: ParsedGithubRepository,
     directoryPath: string,
@@ -308,13 +599,6 @@ export class GithubService {
     return decoded.toString('utf8');
   }
 
-  /**
-   * Converts GitHub's raw repository payload into the API preview shape.
-   *
-   * Private or non-public repositories are reported with the same safe 404
-   * wording used for inaccessible repositories so the API does not imply
-   * whether a private repository exists.
-   */
   private normalizeRepository(
     apiRepository: unknown,
   ): NormalizedGithubRepository {

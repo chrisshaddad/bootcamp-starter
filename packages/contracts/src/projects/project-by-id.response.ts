@@ -1,3 +1,4 @@
+// packages/contracts/src/projects/project-by-id.response.ts
 import { z } from 'zod';
 import { projectResponseSchema } from './project.response';
 import { projectTechnologyResponseSchema } from './project-technology.response';
@@ -19,7 +20,7 @@ export type ProjectMediaResponse = z.infer<typeof projectMediaResponseSchema>;
 
 export const projectByIdResponseSchema = projectResponseSchema.extend({
   media: z.array(projectMediaResponseSchema),
-  technologies: z.array(projectTechnologyResponseSchema),
+  technologies: z.array(projectTechnologyResponseSchema).default([]),
 });
 
 export type ProjectByIdResponse = z.infer<typeof projectByIdResponseSchema>;

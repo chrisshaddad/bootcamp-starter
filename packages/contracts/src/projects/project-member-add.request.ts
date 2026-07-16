@@ -9,12 +9,11 @@ export const addProjectMemberSchema = z
   })
   .refine(
     (data) => {
-      const hasUserId = !!data.userId;
-      const hasGithub = !!data.githubUsername;
-      return (hasUserId || hasGithub) && !(hasUserId && hasGithub);
+      return Boolean(data.userId) !== Boolean(data.githubUsername);
     },
     {
       message: 'Must provide exactly one of userId or githubUsername',
+      path: ['userId'],
     },
   );
 

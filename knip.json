@@ -1,0 +1,10 @@
+{
+  "ignore": [
+    "**/.next/**",
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/.turbo/**",
+    "**/coverage/**"
+  ]
+}

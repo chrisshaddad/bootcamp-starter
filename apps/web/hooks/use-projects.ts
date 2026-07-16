@@ -1,3 +1,4 @@
+// apps/web/hooks/use-projects.ts
 'use client';
 
 import useSWR, { mutate as globalMutate } from 'swr';
@@ -12,8 +13,6 @@ import type {
   ProjectMediaUpdateRequest,
   ProjectMediaUploadRequest,
   ProjectMediaResponse,
-  AddProjectTechnologyRequest,
-  ProjectTechnologyResponse,
 } from '@repo/contracts';
 
 const PROJECTS_KEY = '/projects';
@@ -142,32 +141,6 @@ export function useDeleteProjectMedia() {
   return useCallback(async (projectId: string, mediaId: string) => {
     await apiDelete<{ success: true }>(
       `/projects/${projectId}/media/${mediaId}`,
-    );
-    await globalMutate(projectKey(projectId));
-  }, []);
-}
-
-// projectId is a call-time argument for the same reason as
-// useUploadProjectMedia above — the new-project form saves technologies
-// right after creation, before any component has rendered with that id yet.
-export function useAddProjectTechnology() {
-  return useCallback(
-    async (projectId: string, data: AddProjectTechnologyRequest) => {
-      const projectTechnology = await apiPost<ProjectTechnologyResponse>(
-        `/projects/${projectId}/technologies`,
-        data,
-      );
-      await globalMutate(projectKey(projectId));
-      return projectTechnology;
-    },
-    [],
-  );
-}
-
-export function useRemoveProjectTechnology() {
-  return useCallback(async (projectId: string, technologyId: string) => {
-    await apiDelete<{ success: true }>(
-      `/projects/${projectId}/technologies/${technologyId}`,
     );
     await globalMutate(projectKey(projectId));
   }, []);

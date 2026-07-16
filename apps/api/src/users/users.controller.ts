@@ -40,22 +40,7 @@ export class UsersController {
     const result = await this.usersService.exploreUsers(query);
 
     return exploreUsersResponseSchema.parse({
-      data: result.data.map((user) => ({
-        id: user.id,
-        accountType: user.accountType as 'DEVELOPER' | 'HIRING' | 'SUPER_ADMIN',
-        developerProfile: user.developerProfile
-          ? { ...user.developerProfile }
-          : null,
-        hiringProfile: user.hiringProfile
-          ? {
-              ...user.hiringProfile,
-              organizationType: user.hiringProfile
-                .organizationType as NonNullable<
-                ExploreUsersResponse['data'][number]['hiringProfile']
-              >['organizationType'],
-            }
-          : null,
-      })),
+      data: result.data,
       meta: result.meta,
     });
   }

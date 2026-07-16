@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 'use client';
 
 import { useMemo, useRef, useState } from 'react';
@@ -10,7 +11,6 @@ import { ArrowLeft, ImageIcon, Loader2, Star, X } from 'lucide-react';
 import {
   updateProjectRequestSchema,
   type UpdateProjectRequest,
-  type TechnologyResponse,
 } from '@repo/contracts';
 import {
   useProject,
@@ -20,12 +20,8 @@ import {
   useUpdateProjectMedia,
   useDeleteProjectMedia,
   useUploadProjectLogo,
-  useAddProjectTechnology,
-  useRemoveProjectTechnology,
 } from '@/hooks/use-projects';
-import { useTechnologies } from '@/hooks/use-technologies';
 import { ApiError } from '@/lib/api';
-import { TechPicker } from '@/components/tech-picker';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -52,9 +48,6 @@ import {
 } from '@/components/ui/alert-dialog';
 
 export default function EditProjectPage() {
-  // Route folder is named [slug] to satisfy Next.js's constraint that
-  // sibling dynamic routes under /projects share one param name — the value
-  // passed here is actually the project id, not a URL slug.
   const params = useParams<{ slug: string }>();
   const router = useRouter();
   const { project, isLoading } = useProject(params.slug);
@@ -64,9 +57,6 @@ export default function EditProjectPage() {
   const updateMedia = useUpdateProjectMedia();
   const deleteMedia = useDeleteProjectMedia();
   const uploadLogo = useUploadProjectLogo();
-  const addProjectTechnology = useAddProjectTechnology();
-  const removeProjectTechnology = useRemoveProjectTechnology();
-  const { technologies: technologySuggestions } = useTechnologies();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -77,12 +67,11 @@ export default function EditProjectPage() {
   const [settingCoverMediaId, setSettingCoverMediaId] = useState<string | null>(
     null,
   );
-  const [isSavingTechnology, setIsSavingTechnology] = useState(false);
 
-  // project.technologies/media change (and give `project` a new object
-  // reference) independently of these fields — memoizing on the scalars
-  // keeps this reference stable across those unrelated updates, so a tech
-  // toggle doesn't force-reset the whole form (Radix Select included).
+  // project.media changes (and gives `project` a new object reference)
+  // independently of these fields — memoizing on the scalars keeps this
+  // reference stable across those unrelated updates, so an unrelated
+  // mutation doesn't force-reset the whole form (Radix Select included).
   const formValues = useMemo(
     () =>
       project
@@ -127,8 +116,10 @@ export default function EditProjectPage() {
 
     setIsSubmitting(true);
     try {
+      // Basic info modifications
       await updateProject(project.id, data);
-      toast.success('Project updated');
+
+      toast.success('Project updated successfully');
       router.push('/projects');
     } catch (error) {
       if (error instanceof ApiError && error.status === 403) {
@@ -221,39 +212,6 @@ export default function EditProjectPage() {
       );
     } finally {
       setIsUploadingLogo(false);
-    }
-  };
-
-  // TechPicker reports the whole next selection, not which chip was
-  // toggled — the project already exists here (unlike the create form), so
-  // diff against its current technologies and persist immediately.
-  const handleTechnologiesChange = async (next: TechnologyResponse[]) => {
-    if (!project || isSavingTechnology) return;
-
-    const current = project.technologies.map((pt) => pt.technology);
-    const added = next.find((t) => !current.some((c) => c.id === t.id));
-    const removed = current.find((c) => !next.some((t) => t.id === c.id));
-    if (!added && !removed) return;
-
-    setIsSavingTechnology(true);
-    try {
-      if (added) {
-        await addProjectTechnology(project.id, {
-          technologyId: added.id,
-          isPrimary: false,
-        });
-      }
-      if (removed) {
-        await removeProjectTechnology(project.id, removed.id);
-      }
-    } catch (error) {
-      toast.error(
-        error instanceof ApiError
-          ? error.message
-          : 'Unable to update tech stack',
-      );
-    } finally {
-      setIsSavingTechnology(false);
     }
   };
 
@@ -358,7 +316,6 @@ export default function EditProjectPage() {
                 {isUploadingLogo ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
                 ) : project.logoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={project.logoUrl}
                     alt="Project logo"
@@ -406,7 +363,6 @@ export default function EditProjectPage() {
 
                   return (
                     <div key={media.id} className="group relative">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={media.publicUrl}
                         alt={media.caption ?? project.title}
@@ -478,15 +434,6 @@ export default function EditProjectPage() {
                 </CardContent>
               </Card>
             </button>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Tech stack</Label>
-            <TechPicker
-              selected={project.technologies.map((pt) => pt.technology)}
-              onChange={handleTechnologiesChange}
-              suggestions={technologySuggestions}
-            />
           </div>
         </div>
 

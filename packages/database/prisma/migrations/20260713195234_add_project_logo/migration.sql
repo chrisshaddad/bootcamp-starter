@@ -1,10 +1,3 @@
-/*
-  Warnings:
-
-  - Added the required column `updatedAt` to the `ProjectMedia` table without a default value. This is not possible if the table is not empty.
-  - Added the required column `updatedAt` to the `SavedProject` table without a default value. This is not possible if the table is not empty.
-
-*/
 -- AlterTable
 ALTER TABLE "Project" ADD COLUMN     "logoUrl" TEXT;
 

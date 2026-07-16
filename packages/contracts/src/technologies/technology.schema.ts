@@ -16,12 +16,4 @@ export const technologySchema = z.object({
   ]),
 });
 
-export const technologyExploreQuerySchema = z.object({
-  search: z.string().optional(),
-  category: technologySchema.shape.category.optional(),
-});
-
 export type TechnologyResponse = z.infer<typeof technologySchema>;
-export type TechnologyExploreQuery = z.infer<
-  typeof technologyExploreQuerySchema
->;

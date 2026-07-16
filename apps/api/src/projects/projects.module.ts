@@ -1,12 +1,11 @@
 import { Module } from '@nestjs/common';
-import { ProjectsService } from './projects.service';
 import { ProjectsController } from './projects.controller';
+import { ProjectsService } from './projects.service';
 import { DatabaseModule } from '../database/database.module';
-import { AuthModule } from '../auth/auth.module';
-import { GithubModule } from '../github/github.module';
+import { GithubModule } from '../github/github.module'; // Imported GithubModule
 
 @Module({
-  imports: [DatabaseModule, AuthModule, GithubModule],
+  imports: [DatabaseModule, GithubModule], // Added GithubModule
   controllers: [ProjectsController],
   providers: [ProjectsService],
   exports: [ProjectsService],

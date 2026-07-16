@@ -12,6 +12,8 @@
         "NODE_ENV",
         "NEXT_PUBLIC_API_URL",
         "API_URL",
+        "GITHUB_CLIENT_ID",
+        "GITHUB_CLIENT_SECRET",
         "GITHUB_TOKEN"
       ]
     },

@@ -40,7 +40,7 @@ import {
   projectMediaUploadSchema,
   projectMediaUpdateSchema,
   projectsExploreQuerySchema,
-  addProjectTechnologySchema,
+  projectBySlugResponseSchema,
   type CreateProjectRequest,
   type ImportGithubProjectRequest,
   type ImportGithubProjectResponse,
@@ -52,8 +52,6 @@ import {
   type ProjectBySlugResponse,
   type ProjectsExploreQuery,
   type ExploreProjectsResponse,
-  type AddProjectTechnologyRequest,
-  type ProjectTechnologyResponse,
 } from '@repo/contracts';
 import { importGithubProjectRequestSchema as importGithubProjectOpenApiRequestSchema } from '../common/swagger/schemas';
 
@@ -218,6 +216,7 @@ export class ProjectsController {
         technologyId: pt.technologyId,
         technology: pt.technology,
         source: pt.source,
+        evidence: pt.evidence,
         isPrimary: pt.isPrimary,
         sortOrder: pt.sortOrder,
         createdAt: pt.createdAt.toISOString(),
@@ -450,8 +449,16 @@ export class ProjectsController {
   ): Promise<ProjectBySlugResponse> {
     const project = await this.projectsService.getProjectBySlug(slug);
 
-    return {
-      ...project,
+    const result = {
+      id: project.id,
+      repositoryId: project.repositoryId,
+      createdByUserId: project.createdByUserId,
+      title: project.title,
+      slug: project.slug,
+      shortDescription: project.shortDescription,
+      fullDescription: project.fullDescription,
+      deploymentUrl: project.deploymentUrl,
+      status: project.status,
       createdAt: project.createdAt.toISOString(),
       updatedAt: project.updatedAt.toISOString(),
       publishedAt: project.publishedAt?.toISOString() ?? null,
@@ -471,16 +478,43 @@ export class ProjectsController {
         technologyId: pt.technologyId,
         technology: pt.technology,
         source: pt.source,
+        evidence: pt.evidence,
         isPrimary: pt.isPrimary,
         sortOrder: pt.sortOrder,
         createdAt: pt.createdAt.toISOString(),
         updatedAt: pt.updatedAt.toISOString(),
       })),
     };
+
+    return projectBySlugResponseSchema.parse(result);
   }
 
   @Post(':id/media')
   @Roles(AccountType.DEVELOPER, AccountType.SUPER_ADMIN)
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['file'],
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+        mediaType: {
+          type: 'string',
+          enum: ['IMAGE', 'GIF', 'ARCHITECTURE_DIAGRAM'],
+          default: 'IMAGE',
+        },
+        caption: {
+          type: 'string',
+        },
+        sortOrder: {
+          type: 'integer',
+          default: 0,
+        },
+      },
+    },
+  })
   @ApiOperation({ summary: 'Upload media for a project' })
   @ApiConsumes('multipart/form-data')
   @ApiResponse({ status: 201, description: 'Media successfully uploaded.' })
@@ -564,6 +598,20 @@ export class ProjectsController {
   @Patch(':id/media/:mediaId')
   @Roles(AccountType.DEVELOPER, AccountType.SUPER_ADMIN)
   @ApiOperation({ summary: 'Update media details (caption, order)' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        caption: {
+          type: 'string',
+          nullable: true,
+        },
+        sortOrder: {
+          type: 'integer',
+        },
+      },
+    },
+  })
   @ApiResponse({ status: 200, description: 'Media successfully updated.' })
   async updateProjectMedia(
     @CurrentUser() user: User,
@@ -607,64 +655,5 @@ export class ProjectsController {
     }
 
     return { success: true };
-  }
-
-  @Post(':id/technologies')
-  @Roles(AccountType.DEVELOPER, AccountType.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Add a technology to a project' })
-  @ApiResponse({ status: 201, description: 'Technology successfully added.' })
-  @ApiResponse({
-    status: 403,
-    description: 'Forbidden if the user does not own the project.',
-  })
-  @ApiResponse({ status: 404, description: 'Project or technology not found.' })
-  @ApiResponse({
-    status: 409,
-    description: 'Conflict if the technology is already on the project.',
-  })
-  async addProjectTechnology(
-    @CurrentUser() user: User,
-    @Param('id') projectId: string,
-    @Body(new ZodValidationPipe(addProjectTechnologySchema))
-    body: AddProjectTechnologyRequest,
-  ): Promise<ProjectTechnologyResponse> {
-    const projectTechnology = await this.projectsService.addProjectTechnology(
-      user,
-      projectId,
-      body,
-    );
-
-    return {
-      ...projectTechnology,
-      createdAt: projectTechnology.createdAt.toISOString(),
-      updatedAt: projectTechnology.updatedAt.toISOString(),
-    };
-  }
-
-  @Delete(':id/technologies/:technologyId')
-  @Roles(AccountType.DEVELOPER, AccountType.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Remove a technology from a project' })
-  @ApiResponse({
-    status: 200,
-    description: 'Technology successfully removed.',
-  })
-  @ApiResponse({
-    status: 403,
-    description: 'Forbidden if the user does not own the project.',
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'Technology not found on this project.',
-  })
-  async removeProjectTechnology(
-    @CurrentUser() user: User,
-    @Param('id') projectId: string,
-    @Param('technologyId') technologyId: string,
-  ) {
-    return this.projectsService.removeProjectTechnology(
-      user,
-      projectId,
-      technologyId,
-    );
   }
 }
