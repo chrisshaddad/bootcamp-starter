@@ -1,4 +1,3 @@
-// packages/contracts/src/projects/project-by-id.response.ts
 import { z } from 'zod';
 import { projectResponseSchema } from './project.response';
 import { projectTechnologyResponseSchema } from './project-technology.response';

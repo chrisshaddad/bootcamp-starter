@@ -116,7 +116,6 @@ export default function EditProjectPage() {
 
     setIsSubmitting(true);
     try {
-      // Basic info modifications
       await updateProject(project.id, data);
 
       toast.success('Project updated successfully');
