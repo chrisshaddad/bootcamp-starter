@@ -773,6 +773,49 @@ export class ProjectsService {
     });
   }
 
+  async setCoverMedia(user: User, projectId: string, mediaId: string) {
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+    });
+
+    if (!project) throw new NotFoundException('Project not found');
+
+    const isAdmin = user.accountType === AccountType.SUPER_ADMIN;
+    const isCreator = project.createdByUserId === user.id;
+
+    if (!isAdmin && !isCreator) {
+      throw new ForbiddenException(
+        'You are not authorized to edit this project',
+      );
+    }
+
+    const media = await this.prisma.projectMedia.findMany({
+      where: { projectId },
+      orderBy: { sortOrder: 'asc' },
+    });
+
+    const target = media.find((m) => m.id === mediaId);
+    if (!target) throw new NotFoundException('Media not found');
+
+    const current = media[0];
+    if (!current || current.id === target.id) {
+      return target;
+    }
+
+    const [, updatedTarget] = await this.prisma.$transaction([
+      this.prisma.projectMedia.update({
+        where: { id: current.id },
+        data: { sortOrder: target.sortOrder },
+      }),
+      this.prisma.projectMedia.update({
+        where: { id: target.id },
+        data: { sortOrder: current.sortOrder },
+      }),
+    ]);
+
+    return updatedTarget;
+  }
+
   async deleteMedia(user: User, projectId: string, mediaId: string) {
     const project = await this.prisma.project.findUnique({
       where: { id: projectId },

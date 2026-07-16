@@ -142,6 +142,7 @@ export class ProjectsController {
         technologyId: pt.technologyId,
         technology: pt.technology,
         source: pt.source,
+        evidence: pt.evidence,
         isPrimary: pt.isPrimary,
         sortOrder: pt.sortOrder,
         createdAt: pt.createdAt.toISOString(),
@@ -626,6 +627,29 @@ export class ProjectsController {
       projectId,
       mediaId,
       body,
+    );
+    return {
+      ...media,
+      createdAt: media.createdAt.toISOString(),
+      updatedAt: media.updatedAt.toISOString(),
+    };
+  }
+
+  @Patch(':id/media/:mediaId/set-cover')
+  @Roles(AccountType.DEVELOPER, AccountType.SUPER_ADMIN)
+  @ApiOperation({
+    summary: 'Atomically set a media item as the project cover (sortOrder 0)',
+  })
+  @ApiResponse({ status: 200, description: 'Cover media successfully set.' })
+  async setCoverProjectMedia(
+    @CurrentUser() user: User,
+    @Param('id') projectId: string,
+    @Param('mediaId') mediaId: string,
+  ) {
+    const media = await this.projectsService.setCoverMedia(
+      user,
+      projectId,
+      mediaId,
     );
     return {
       ...media,

@@ -137,6 +137,16 @@ export function useUpdateProjectMedia() {
   );
 }
 
+export function useSetCoverProjectMedia() {
+  return useCallback(async (projectId: string, mediaId: string) => {
+    const media = await apiPatch<ProjectMediaResponse>(
+      `/projects/${projectId}/media/${mediaId}/set-cover`,
+    );
+    await globalMutate(projectKey(projectId));
+    return media;
+  }, []);
+}
+
 export function useDeleteProjectMedia() {
   return useCallback(async (projectId: string, mediaId: string) => {
     await apiDelete<{ success: true }>(

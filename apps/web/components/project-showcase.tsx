@@ -18,7 +18,6 @@ import type {
   ProjectTechnologyResponse,
   TechnologyResponse,
 } from '@repo/contracts';
-import { MOCK_CONTRIBUTORS } from '@/lib/mock-projects';
 import { TECHNOLOGY_CATEGORY_LABELS } from '@/lib/technology-labels';
 import {
   PROJECT_STATUS_COLORS,
@@ -194,27 +193,6 @@ export function ProjectShowcase({ project, onSave }: ProjectShowcaseProps) {
                 <Github className="h-3.5 w-3.5" />
                 {project.repositoryId}
               </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="space-y-3 pt-4">
-              <h3 className="text-muted-foreground text-xs font-bold tracking-wide uppercase">
-                Contributors
-              </h3>
-              {MOCK_CONTRIBUTORS.map((member) => (
-                <div key={member.id} className="flex items-center gap-2">
-                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-xs font-semibold">
-                    {member.name.charAt(0)}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">{member.name}</p>
-                    <p className="text-muted-foreground text-xs">
-                      {member.role} · {member.verificationStatus}
-                    </p>
-                  </div>
-                </div>
-              ))}
             </CardContent>
           </Card>
         </div>

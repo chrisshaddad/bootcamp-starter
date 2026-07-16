@@ -122,26 +122,3 @@ export const MOCK_PROJECTS: MockProjectCard[] = [
     isMock: true,
   },
 ];
-
-export interface MockContributor {
-  id: string;
-  name: string;
-  role: 'OWNER' | 'EDITOR' | 'CONTRIBUTOR';
-  verificationStatus: 'PENDING' | 'VERIFIED' | 'UNVERIFIED';
-}
-
-// mock: ProjectMember has no list endpoint yet.
-export const MOCK_CONTRIBUTORS: MockContributor[] = [
-  {
-    id: 'member-1',
-    name: 'Sarah Chen',
-    role: 'OWNER',
-    verificationStatus: 'VERIFIED',
-  },
-  {
-    id: 'member-2',
-    name: 'Alex Koval',
-    role: 'CONTRIBUTOR',
-    verificationStatus: 'PENDING',
-  },
-];

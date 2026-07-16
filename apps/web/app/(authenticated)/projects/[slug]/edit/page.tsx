@@ -17,7 +17,7 @@ import {
   useUpdateProject,
   useDeleteProject,
   useUploadProjectMedia,
-  useUpdateProjectMedia,
+  useSetCoverProjectMedia,
   useDeleteProjectMedia,
   useUploadProjectLogo,
 } from '@/hooks/use-projects';
@@ -54,7 +54,7 @@ export default function EditProjectPage() {
   const updateProject = useUpdateProject();
   const deleteProject = useDeleteProject();
   const uploadMedia = useUploadProjectMedia();
-  const updateMedia = useUpdateProjectMedia();
+  const setCoverMedia = useSetCoverProjectMedia();
   const deleteMedia = useDeleteProjectMedia();
   const uploadLogo = useUploadProjectLogo();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -146,7 +146,9 @@ export default function EditProjectPage() {
 
     setIsUploading(true);
     try {
-      await uploadMedia(project.id, file, { sortOrder: project.media.length });
+      const nextSortOrder =
+        Math.max(-1, ...project.media.map((m) => m.sortOrder)) + 1;
+      await uploadMedia(project.id, file, { sortOrder: nextSortOrder });
     } catch (error) {
       toast.error(
         error instanceof ApiError ? error.message : 'Unable to upload media',
@@ -172,22 +174,18 @@ export default function EditProjectPage() {
   };
 
   // Card grid shows project.media[0] as the cover, so "use as cover" just
-  // needs to make the clicked screenshot sort first — swap sortOrder with
-  // whichever screenshot currently holds that spot instead of renumbering
-  // every item in the gallery.
+  // needs to make the clicked screenshot sort first. The swap with whichever
+  // screenshot currently holds that spot happens server-side in one
+  // transaction so a failure or interleaved click can't leave sortOrder
+  // inconsistent between the two rows.
   const handleSetCover = async (mediaId: string) => {
-    if (!project) return;
+    if (!project || settingCoverMediaId) return;
     const current = project.media[0];
     if (!current || current.id === mediaId) return;
-    const target = project.media.find((m) => m.id === mediaId);
-    if (!target) return;
 
     setSettingCoverMediaId(mediaId);
     try {
-      await Promise.all([
-        updateMedia(project.id, target.id, { sortOrder: current.sortOrder }),
-        updateMedia(project.id, current.id, { sortOrder: target.sortOrder }),
-      ]);
+      await setCoverMedia(project.id, mediaId);
     } catch (error) {
       toast.error(
         error instanceof ApiError ? error.message : 'Unable to set cover photo',
@@ -389,7 +387,7 @@ export default function EditProjectPage() {
                         <button
                           type="button"
                           onClick={() => handleSetCover(media.id)}
-                          disabled={isSettingCover}
+                          disabled={settingCoverMediaId !== null}
                           className="bg-background/90 text-foreground absolute bottom-1 left-1 inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 disabled:cursor-not-allowed"
                         >
                           {isSettingCover ? (

@@ -158,7 +158,7 @@ export default function NewProjectPage() {
                         size="sm"
                         variant="secondary"
                         onClick={() => handleImport(repo.url)}
-                        disabled={importingUrl === repo.url}
+                        disabled={importingUrl !== null}
                       >
                         {importingUrl === repo.url ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
