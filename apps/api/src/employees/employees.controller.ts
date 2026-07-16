@@ -6,10 +6,12 @@ import type { User } from '@repo/db';
 import {
   employeeListQuerySchema,
   employeeSkillsUpdateRequestSchema,
+  employeeProfileUpdateRequestSchema,
   type EmployeeListQuery,
   type EmployeeListResponse,
   type EmployeeResponse,
   type EmployeeSkillsUpdateRequest,
+  type EmployeeProfileUpdateRequest,
 } from '@repo/contracts';
 
 @Controller('employees')
@@ -41,5 +43,15 @@ export class EmployeesController {
     body: EmployeeSkillsUpdateRequest,
   ): Promise<EmployeeResponse> {
     return this.employeesService.updateSkills(id, body, user);
+  }
+
+  @Patch(':id/profile')
+  async updateProfile(
+    @Param('id') id: string,
+    @CurrentUser() user: User,
+    @Body(new ZodValidationPipe(employeeProfileUpdateRequestSchema))
+    body: EmployeeProfileUpdateRequest,
+  ): Promise<EmployeeResponse> {
+    return this.employeesService.updateProfile(id, body, user);
   }
 }
