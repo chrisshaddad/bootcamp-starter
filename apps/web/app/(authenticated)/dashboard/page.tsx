@@ -229,6 +229,7 @@ export default function DashboardPage() {
               Your Profile
             </CardTitle>
           </CardHeader>
+
           <CardContent>
             <dl className="grid gap-4 sm:grid-cols-3">
               <div>
