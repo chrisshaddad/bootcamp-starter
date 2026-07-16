@@ -11,8 +11,12 @@ export class ApiError extends Error {
 }
 
 export async function fetcher<T>(endpoint: string): Promise<T> {
+  // no-store: SWR revalidation re-requests the exact same URL right after a
+  // mutation - without this, the browser's HTTP cache can serve the
+  // pre-mutation response instead of hitting the network again.
   const res = await fetch(`${API_URL}${endpoint}`, {
     credentials: 'include',
+    cache: 'no-store',
   });
 
   if (!res.ok) {
@@ -32,6 +36,7 @@ export async function apiPost<T>(endpoint: string, data?: unknown): Promise<T> {
       'Content-Type': 'application/json',
     },
     credentials: 'include',
+    cache: 'no-store',
     body: data ? JSON.stringify(data) : undefined,
   });
 
@@ -55,6 +60,7 @@ export async function apiPatch<T>(
       'Content-Type': 'application/json',
     },
     credentials: 'include',
+    cache: 'no-store',
     body: data ? JSON.stringify(data) : undefined,
   });
 
@@ -74,6 +80,7 @@ export async function apiDelete<T = void>(endpoint: string): Promise<T> {
   const res = await fetch(`${API_URL}${endpoint}`, {
     method: 'DELETE',
     credentials: 'include',
+    cache: 'no-store',
   });
 
   if (!res.ok) {

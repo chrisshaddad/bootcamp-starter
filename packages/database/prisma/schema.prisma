@@ -141,6 +141,7 @@ model UserProfile {
   userId      String    @unique
   dateOfBirth DateTime?
   bio         String?   @db.Text
+  careerGoal  String?   @db.Text
   phoneNumber String?
 
   // Address fields

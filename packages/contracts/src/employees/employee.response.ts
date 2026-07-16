@@ -14,6 +14,7 @@ const employeeManagerSchema = z.object({
 
 const employeeProfileSchema = z.object({
   bio: z.string().nullable(),
+  careerGoal: z.string().nullable(),
   phoneNumber: z.string().nullable(),
   city: z.string().nullable(),
   state: z.string().nullable(),

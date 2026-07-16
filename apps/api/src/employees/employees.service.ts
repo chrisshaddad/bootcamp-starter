@@ -13,6 +13,7 @@ import type {
   EmployeeListQuery,
   EmployeeListResponse,
   EmployeeSkillsUpdateRequest,
+  EmployeeProfileUpdateRequest,
 } from '@repo/contracts';
 
 @Injectable()
@@ -59,6 +60,7 @@ export class EmployeesService {
         profile: {
           select: {
             bio: true,
+            careerGoal: true,
             phoneNumber: true,
             city: true,
             state: true,
@@ -149,6 +151,7 @@ export class EmployeesService {
           profile: {
             select: {
               bio: true,
+              careerGoal: true,
               phoneNumber: true,
               city: true,
               state: true,
@@ -250,6 +253,42 @@ export class EmployeesService {
     ]);
 
     // Return updated employee with skills
+    return this.findOne(id, currentUser);
+  }
+
+  async updateProfile(
+    id: string,
+    data: EmployeeProfileUpdateRequest,
+    currentUser: User,
+  ): Promise<EmployeeResponse> {
+    if (currentUser.role !== 'SUPER_ADMIN' && !currentUser.organizationId) {
+      this.logger.warn(`User ${currentUser.id} has no organization`);
+      throw new ForbiddenException('Organization membership is required');
+    }
+
+    // Check if user can update this employee's profile
+    if (currentUser.role === 'EMPLOYEE' && currentUser.id !== id) {
+      throw new ForbiddenException('You can only update your own profile');
+    }
+
+    // Verify employee exists and belongs to org
+    const employee = await this.prisma.user.findFirst({
+      where:
+        currentUser.role === 'SUPER_ADMIN'
+          ? { id }
+          : { id, organizationId: currentUser.organizationId as string },
+    });
+
+    if (!employee) {
+      throw new NotFoundException(`Employee with ID ${id} not found`);
+    }
+
+    await this.prisma.userProfile.upsert({
+      where: { userId: id },
+      create: { userId: id, ...data },
+      update: data,
+    });
+
     return this.findOne(id, currentUser);
   }
 }
