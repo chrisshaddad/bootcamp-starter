@@ -32,11 +32,17 @@ export class BookCopiesService {
       limit?: number;
       bookId?: string;
       status?: BookCopyStatus;
+      search?: string;
     },
   ): Promise<BookCopyListResponse> {
-    const { page = 1, limit = 20, bookId, status } = options;
+    const { page = 1, limit = 20, bookId, status, search } = options;
     const skip = (page - 1) * limit;
-    const where = { organizationId, bookId, status };
+    const where: Prisma.BookCopyWhereInput = {
+      organizationId,
+      bookId,
+      status,
+      ...(search ? { barcode: { contains: search, mode: 'insensitive' } } : {}),
+    };
 
     const [bookCopies, total] = await Promise.all([
       this.prisma.bookCopy.findMany({
@@ -119,6 +125,33 @@ export class BookCopiesService {
         data.barcode ?? existing.barcode,
       );
     }
+  }
+
+  /**
+   * Delete a book copy, scoped to the organization. Blocked (409) while any
+   * rental references it — the Rental→BookCopy FK is onDelete: Restrict, so
+   * the DB would reject it anyway; this returns a friendly message first.
+   */
+  async remove(organizationId: string, id: string): Promise<void> {
+    const existing = await this.prisma.bookCopy.findFirst({
+      where: { id, organizationId },
+    });
+
+    if (!existing) {
+      throw new NotFoundException(`Book copy with ID ${id} not found`);
+    }
+
+    const rentals = await this.prisma.rental.count({
+      where: { bookCopyId: id, organizationId },
+    });
+
+    if (rentals > 0) {
+      throw new ConflictException(
+        `Cannot delete copy "${existing.barcode}" — it has ${rentals} rental record(s).`,
+      );
+    }
+
+    await this.prisma.bookCopy.delete({ where: { id } });
   }
 
   // bookId is a globally-unique UUID, so the FK insert would succeed even if

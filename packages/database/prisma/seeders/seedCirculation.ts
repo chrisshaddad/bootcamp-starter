@@ -131,6 +131,102 @@ const RESERVATIONS: ReservationSeed[] = [
   },
 ];
 
+// Volume of extra history to give TechCorp member TC-0001 so its member-detail
+// rental/reservation tables page past 10/row in the staff UI.
+const BULK_RENTAL_COUNT = 18;
+const BULK_RESERVATION_COUNT = 18;
+const BULK_RESERVATION_STATUS_CYCLE: ReservationSeed['status'][] = [
+  'FULFILLED',
+  'EXPIRED',
+  'CANCELLED',
+  'ACTIVE',
+  'READY_FOR_PICKUP',
+];
+
+// Fatten TC-0001's history. Rentals are all RETURNED (historical), so reusing
+// the org's copies never trips the "one open rental per copy" rule; a few
+// carry an unpaid fine so the member's "Outstanding fines" tile is non-zero.
+async function seedTechCorpMemberHistory(
+  prisma: PrismaClient,
+): Promise<{ rentals: number; reservations: number }> {
+  const organization = await prisma.organization.findUnique({
+    where: { slug: 'techcorp-solutions' },
+  });
+  if (!organization) return { rentals: 0, reservations: 0 };
+
+  const [member, staff, copies, books] = await Promise.all([
+    prisma.libraryMember.findFirst({
+      where: { organizationId: organization.id, libraryCardNumber: 'TC-0001' },
+    }),
+    prisma.user.findFirst({
+      where: {
+        organizationId: organization.id,
+        role: { in: ['ORG_ADMIN', 'LIBRARIAN'] },
+      },
+    }),
+    prisma.bookCopy.findMany({
+      where: { organizationId: organization.id },
+      select: { id: true },
+    }),
+    prisma.book.findMany({
+      where: { organizationId: organization.id },
+      select: { id: true },
+    }),
+  ]);
+
+  let rentals = 0;
+  let reservations = 0;
+
+  if (member && staff && copies.length > 0) {
+    for (let i = 0; i < BULK_RENTAL_COUNT; i++) {
+      const offset = 20 + i * 7;
+      const hasFine = i % 5 === 0;
+      await prisma.rental.create({
+        data: {
+          organizationId: organization.id,
+          bookCopyId: copies[i % copies.length].id,
+          memberId: member.id,
+          staffId: staff.id,
+          rentedAt: daysFromNow(-offset),
+          dueDate: daysFromNow(-offset + 14),
+          returnedAt: daysFromNow(-offset + 12),
+          status: 'RETURNED',
+          fineAmount: hasFine ? '3.50' : '0.00',
+          finePaid: !hasFine,
+        },
+      });
+      rentals += 1;
+    }
+  }
+
+  if (member && books.length > 0) {
+    for (let i = 0; i < BULK_RESERVATION_COUNT; i++) {
+      const status =
+        BULK_RESERVATION_STATUS_CYCLE[i % BULK_RESERVATION_STATUS_CYCLE.length];
+      const reservedAt = daysFromNow(-(5 + i * 6));
+      await prisma.reservation.create({
+        data: {
+          organizationId: organization.id,
+          bookId: books[i % books.length].id,
+          memberId: member.id,
+          reservedAt,
+          expiresAt: daysFromNow(-(5 + i * 6) + 7),
+          status,
+          notifiedAt:
+            status === 'READY_FOR_PICKUP' || status === 'FULFILLED'
+              ? reservedAt
+              : undefined,
+          fulfilledAt: status === 'FULFILLED' ? reservedAt : undefined,
+          cancelledAt: status === 'CANCELLED' ? reservedAt : undefined,
+        },
+      });
+      reservations += 1;
+    }
+  }
+
+  return { rentals, reservations };
+}
+
 export async function seedCirculation(prisma: PrismaClient) {
   console.log('Seeding circulation...');
 
@@ -251,6 +347,15 @@ export async function seedCirculation(prisma: PrismaClient) {
     seededReservations += 1;
     console.log(
       `  Created reservation: ${reservation.bookTitle} (${reservation.status}) - Member: ${reservation.memberCardNumber}`,
+    );
+  }
+
+  const bulk = await seedTechCorpMemberHistory(prisma);
+  seededRentals += bulk.rentals;
+  seededReservations += bulk.reservations;
+  if (bulk.rentals || bulk.reservations) {
+    console.log(
+      `  Added TC-0001 history volume: ${bulk.rentals} rentals, ${bulk.reservations} reservations`,
     );
   }
 

@@ -3,15 +3,15 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Param,
   Query,
   Body,
   BadRequestException,
-  ForbiddenException,
+  HttpCode,
 } from '@nestjs/common';
 import { BookCopiesService } from './book-copies.service';
-import { Roles, CurrentUser } from '../auth/decorators';
-import type { User } from '@repo/db';
+import { Roles, OrganizationId } from '../auth/decorators';
 import {
   bookCopyCreateRequestSchema,
   bookCopyUpdateRequestSchema,
@@ -31,60 +31,56 @@ export class BookCopiesController {
 
   @Get()
   async findAll(
-    @CurrentUser() user: User,
+    @OrganizationId() organizationId: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('bookId') bookId?: string,
     @Query('status') status?: string,
+    @Query('search') search?: string,
   ): Promise<BookCopyListResponse> {
-    return this.bookCopiesService.findAll(this.requireOrganizationId(user), {
+    return this.bookCopiesService.findAll(organizationId, {
       page: page ? parseInt(page, 10) : 1,
       limit: limit ? parseInt(limit, 10) : 20,
       bookId,
       status: status ? this.parseStatus(status) : undefined,
+      search,
     });
   }
 
   @Get(':id')
   async findOne(
-    @CurrentUser() user: User,
+    @OrganizationId() organizationId: string,
     @Param('id') id: string,
   ): Promise<BookCopyResponse> {
-    return this.bookCopiesService.findOne(this.requireOrganizationId(user), id);
+    return this.bookCopiesService.findOne(organizationId, id);
   }
 
   @Post()
   async create(
-    @CurrentUser() user: User,
+    @OrganizationId() organizationId: string,
     @Body(new ZodValidationPipe(bookCopyCreateRequestSchema))
     body: BookCopyCreateRequest,
   ): Promise<BookCopyResponse> {
-    return this.bookCopiesService.create(
-      this.requireOrganizationId(user),
-      body,
-    );
+    return this.bookCopiesService.create(organizationId, body);
   }
 
   @Patch(':id')
   async update(
-    @CurrentUser() user: User,
+    @OrganizationId() organizationId: string,
     @Param('id') id: string,
     @Body(new ZodValidationPipe(bookCopyUpdateRequestSchema))
     body: BookCopyUpdateRequest,
   ): Promise<BookCopyResponse> {
-    return this.bookCopiesService.update(
-      this.requireOrganizationId(user),
-      id,
-      body,
-    );
+    return this.bookCopiesService.update(organizationId, id, body);
   }
 
-  private requireOrganizationId(user: User): string {
-    if (!user.organizationId) {
-      throw new ForbiddenException('User is not scoped to an organization');
-    }
-
-    return user.organizationId;
+  @Delete(':id')
+  @HttpCode(204)
+  async remove(
+    @OrganizationId() organizationId: string,
+    @Param('id') id: string,
+  ): Promise<void> {
+    return this.bookCopiesService.remove(organizationId, id);
   }
 
   private parseStatus(status: string): BookCopyStatus {

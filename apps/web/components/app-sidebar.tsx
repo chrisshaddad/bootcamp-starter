@@ -16,6 +16,15 @@ import {
   Clock,
   Bookmark,
   ShoppingCart,
+  Building,
+  BookOpen,
+  Feather,
+  Tags,
+  BookUp,
+  BookDown,
+  CalendarClock,
+  UserCog,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { useAuth, useUser } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
@@ -42,10 +51,19 @@ interface NavItem {
 
 // Navigation items for ORG_ADMIN and LIBRARIAN roles
 const orgNavItems: NavItem[] = [
+interface NavGroup {
+  label: string;
+  items: NavItem[];
+}
+
+// SUPER_ADMIN: platform administration.
+const superAdminNavGroups: NavGroup[] = [
   {
-    title: 'Dashboard',
-    url: '/dashboard',
-    icon: LayoutDashboard,
+    label: 'Administration',
+    items: [
+      { title: 'Organizations', url: '/organizations', icon: Building2 },
+      { title: 'Users', url: '/users', icon: Users, disabled: true },
+    ],
   },
 ];
 
@@ -85,10 +103,12 @@ const patronNavItems: NavItem[] = [
 
 // Navigation items for SUPER_ADMIN role
 const superAdminNavItems: NavItem[] = [
+// STAFF (ORG_ADMIN + LIBRARIAN): daily library operations. Catalog + Members
+// (reqs 2.2–2.6) are live; Circulation (2.7–2.9) is still "Soon".
+const staffNavGroups: NavGroup[] = [
   {
-    title: 'Organizations',
-    url: '/organizations',
-    icon: Building2,
+    label: 'Main',
+    items: [{ title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard }],
   },
   {
     title: 'Patrons',
@@ -100,14 +120,44 @@ const superAdminNavItems: NavItem[] = [
     url: '/users',
     icon: Users,
     disabled: true, // Placeholder for future implementation
+    label: 'Catalog',
+    items: [
+      { title: 'Books', url: '/books', icon: BookOpen },
+      { title: 'Authors', url: '/authors', icon: Feather },
+      { title: 'Categories', url: '/categories', icon: Tags },
+      {
+        title: 'Publishers',
+        url: '/publishers',
+        icon: Building,
+      },
+    ],
   },
-];
-
-const orgSecondaryNavItems: NavItem[] = [
   {
-    title: 'Settings',
-    url: '/settings',
-    icon: Settings,
+    label: 'Members',
+    items: [{ title: 'Members', url: '/members', icon: Users }],
+  },
+  {
+    label: 'Circulation',
+    items: [
+      {
+        title: 'Check-out',
+        url: '/circulation/check-out',
+        icon: BookUp,
+        disabled: true,
+      },
+      {
+        title: 'Check-in',
+        url: '/circulation/check-in',
+        icon: BookDown,
+        disabled: true,
+      },
+      {
+        title: 'Overdue',
+        url: '/circulation/overdue',
+        icon: CalendarClock,
+        disabled: true,
+      },
+    ],
   },
 ];
 
@@ -120,12 +170,38 @@ const patronSecondaryNavItems: NavItem[] = [
 ];
 
 const superAdminSecondaryNavItems: NavItem[] = [
+// ORG_ADMIN only: staff management + library settings/branding (req 2.10).
+const orgAdminNavGroup: NavGroup = {
+  label: 'Administration',
+  items: [
+    { title: 'Staff', url: '/staff', icon: UserCog, disabled: true },
+    {
+      title: 'Library Settings',
+      url: '/library-settings',
+      icon: SlidersHorizontal,
+      disabled: true,
+    },
+  ],
+};
+
+// Members (and any other role) get a minimal shell; their real portal is Phase 3.
+const minimalNavGroups: NavGroup[] = [
   {
-    title: 'Settings',
-    url: '/settings',
-    icon: Settings,
+    label: 'Main',
+    items: [{ title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard }],
   },
 ];
+
+const secondaryNavItems: NavItem[] = [
+  { title: 'Settings', url: '/settings', icon: Settings },
+];
+
+function navGroupsForRole(role: string | undefined): NavGroup[] {
+  if (role === 'SUPER_ADMIN') return superAdminNavGroups;
+  if (role === 'ORG_ADMIN') return [...staffNavGroups, orgAdminNavGroup];
+  if (role === 'LIBRARIAN') return staffNavGroups;
+  return minimalNavGroups;
+}
 
 export function AppSidebar() {
   const pathname = usePathname();
@@ -144,6 +220,7 @@ export function AppSidebar() {
     : isPatron
       ? patronSecondaryNavItems
       : orgSecondaryNavItems;
+  const navGroups = navGroupsForRole(user?.role);
 
   const isActive = (url: string) => {
     if (url === '/dashboard') {
@@ -151,6 +228,38 @@ export function AppSidebar() {
     }
     return pathname.startsWith(url);
   };
+
+  const renderItem = (item: NavItem) => (
+    <SidebarMenuItem key={item.title}>
+      <SidebarMenuButton
+        asChild={!item.disabled}
+        isActive={isActive(item.url)}
+        disabled={item.disabled}
+        className={cn(
+          'h-11 gap-3 rounded-lg px-3 text-sm font-medium transition-colors',
+          item.disabled && 'cursor-not-allowed opacity-50',
+          isActive(item.url)
+            ? 'bg-library-primary-100 text-library-primary-900 hover:bg-library-primary-200'
+            : 'text-sidebar-foreground/70 hover:bg-library-primary-50 hover:text-sidebar-foreground',
+        )}
+      >
+        {item.disabled ? (
+          <div className="flex items-center gap-3">
+            <item.icon className="h-5 w-5 text-muted-foreground/60" />
+            <span>{item.title}</span>
+            <span className="ml-auto rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+              Soon
+            </span>
+          </div>
+        ) : (
+          <Link href={item.url}>
+            <item.icon className="h-5 w-5" />
+            <span>{item.title}</span>
+          </Link>
+        )}
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  );
 
   return (
     <Sidebar className="border-r border-sidebar-border bg-sidebar">
@@ -172,47 +281,16 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="overflow-x-hidden px-3">
-        {/* Main Navigation */}
-        <SidebarGroup>
-          <SidebarGroupLabel className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            {isSuperAdmin ? 'Administration' : 'Main'}
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {mainNavItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild={!item.disabled}
-                    isActive={isActive(item.url)}
-                    disabled={item.disabled}
-                    className={cn(
-                      'h-11 gap-3 rounded-lg px-3 text-sm font-medium transition-colors',
-                      item.disabled && 'cursor-not-allowed opacity-50',
-                      isActive(item.url)
-                        ? 'bg-library-primary-100 text-library-primary-900 hover:bg-library-primary-200'
-                        : 'text-sidebar-foreground/70 hover:bg-library-primary-50 hover:text-sidebar-foreground',
-                    )}
-                  >
-                    {item.disabled ? (
-                      <div className="flex items-center gap-3">
-                        <item.icon className="h-5 w-5 text-muted-foreground/60" />
-                        <span>{item.title}</span>
-                        <span className="ml-auto text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded">
-                          Soon
-                        </span>
-                      </div>
-                    ) : (
-                      <Link href={item.url}>
-                        <item.icon className="h-5 w-5" />
-                        <span>{item.title}</span>
-                      </Link>
-                    )}
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {navGroups.map((group) => (
+          <SidebarGroup key={group.label}>
+            <SidebarGroupLabel className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              {group.label}
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>{group.items.map(renderItem)}</SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
 
         <SidebarSeparator className="my-4" />
 
@@ -222,27 +300,7 @@ export function AppSidebar() {
             Support
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
-              {secondaryNavItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive(item.url)}
-                    className={cn(
-                      'h-11 gap-3 rounded-lg px-3 text-sm font-medium transition-colors',
-                      isActive(item.url)
-                        ? 'bg-library-primary-100 text-library-primary-900 hover:bg-library-primary-200'
-                        : 'text-sidebar-foreground/70 hover:bg-library-primary-50 hover:text-sidebar-foreground',
-                    )}
-                  >
-                    <Link href={item.url}>
-                      <item.icon className="h-5 w-5" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
+            <SidebarMenu>{secondaryNavItems.map(renderItem)}</SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>

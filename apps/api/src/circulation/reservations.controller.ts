@@ -7,10 +7,9 @@ import {
   Query,
   Body,
   BadRequestException,
-  ForbiddenException,
 } from '@nestjs/common';
 import { ReservationsService } from './reservations.service';
-import { Roles, CurrentUser } from '../auth/decorators';
+import { Roles, CurrentUser, OrganizationId } from '../auth/decorators';
 import type { User } from '@repo/db';
 import {
   reservationCreateRequestSchema,
@@ -34,14 +33,14 @@ export class ReservationsController {
 
   @Get()
   async findAll(
-    @CurrentUser() user: User,
+    @OrganizationId() organizationId: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('memberId') memberId?: string,
     @Query('bookId') bookId?: string,
     @Query('status') status?: string,
   ): Promise<ReservationListResponse> {
-    return this.reservationsService.findAll(this.requireOrganizationId(user), {
+    return this.reservationsService.findAll(organizationId, {
       page: page ? parseInt(page, 10) : 1,
       limit: limit ? parseInt(limit, 10) : 20,
       memberId,
@@ -52,36 +51,30 @@ export class ReservationsController {
 
   @Get(':id')
   async findOne(
-    @CurrentUser() user: User,
+    @OrganizationId() organizationId: string,
     @Param('id') id: string,
   ): Promise<ReservationResponse> {
-    return this.reservationsService.findOne(
-      this.requireOrganizationId(user),
-      id,
-    );
+    return this.reservationsService.findOne(organizationId, id);
   }
 
   @Post()
   async create(
-    @CurrentUser() user: User,
+    @OrganizationId() organizationId: string,
     @Body(new ZodValidationPipe(reservationCreateRequestSchema))
     body: ReservationCreateRequest,
   ): Promise<ReservationResponse> {
-    return this.reservationsService.create(
-      this.requireOrganizationId(user),
-      body,
-    );
+    return this.reservationsService.create(organizationId, body);
   }
 
   @Patch(':id/ready')
   async markReady(
-    @CurrentUser() user: User,
+    @OrganizationId() organizationId: string,
     @Param('id') id: string,
     @Body(new ZodValidationPipe(reservationReadyRequestSchema))
     body: ReservationReadyRequest,
   ): Promise<ReservationActionResponse> {
     const reservation = await this.reservationsService.markReady(
-      this.requireOrganizationId(user),
+      organizationId,
       id,
       body,
     );
@@ -91,13 +84,14 @@ export class ReservationsController {
 
   @Patch(':id/fulfill')
   async fulfill(
+    @OrganizationId() organizationId: string,
     @CurrentUser() user: User,
     @Param('id') id: string,
     @Body(new ZodValidationPipe(reservationFulfillRequestSchema))
     body: ReservationFulfillRequest,
   ): Promise<ReservationActionResponse> {
     const reservation = await this.reservationsService.fulfill(
-      this.requireOrganizationId(user),
+      organizationId,
       id,
       user.id,
       body,
@@ -108,23 +102,15 @@ export class ReservationsController {
 
   @Patch(':id/cancel')
   async cancel(
-    @CurrentUser() user: User,
+    @OrganizationId() organizationId: string,
     @Param('id') id: string,
   ): Promise<ReservationActionResponse> {
     const reservation = await this.reservationsService.cancel(
-      this.requireOrganizationId(user),
+      organizationId,
       id,
     );
 
     return { message: 'Reservation cancelled', reservation };
-  }
-
-  private requireOrganizationId(user: User): string {
-    if (!user.organizationId) {
-      throw new ForbiddenException('User is not scoped to an organization');
-    }
-
-    return user.organizationId;
   }
 
   private parseStatus(status: string): ReservationStatus {

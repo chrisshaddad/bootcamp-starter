@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -51,6 +52,20 @@ export class BooksService {
         : {}),
       ...(categoryId ? { categories: { some: { categoryId } } } : {}),
       ...(authorId ? { authors: { some: { authorId } } } : {}),
+    options: { page?: number; limit?: number; search?: string },
+  ): Promise<BookListResponse> {
+    const { page = 1, limit = 20, search } = options;
+    const skip = (page - 1) * limit;
+    const where: Prisma.BookWhereInput = {
+      organizationId,
+      ...(search
+        ? {
+            OR: [
+              { title: { contains: search, mode: 'insensitive' } },
+              { isbn: { contains: search, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
     };
 
     const [books, total] = await Promise.all([
@@ -202,6 +217,48 @@ export class BooksService {
     });
 
     return this.findOne(organizationId, id);
+  }
+
+  /**
+   * Delete a book, scoped to the organization. Blocked (409) while it still
+   * has copies in inventory or open reservations, so deleting never silently
+   * cascades away physical copies / member holds. The BookAuthor/BookCategory
+   * join rows cascade at the DB level once those blockers are clear.
+   */
+  async remove(organizationId: string, id: string): Promise<void> {
+    const existing = await this.prisma.book.findFirst({
+      where: { id, organizationId },
+    });
+
+    if (!existing) {
+      throw new NotFoundException(`Book with ID ${id} not found`);
+    }
+
+    const copies = await this.prisma.bookCopy.count({
+      where: { bookId: id, organizationId },
+    });
+
+    if (copies > 0) {
+      throw new ConflictException(
+        `Cannot delete "${existing.title}" — it still has ${copies} copy/copies in inventory.`,
+      );
+    }
+
+    const openReservations = await this.prisma.reservation.count({
+      where: {
+        bookId: id,
+        organizationId,
+        status: { in: ['ACTIVE', 'READY_FOR_PICKUP'] },
+      },
+    });
+
+    if (openReservations > 0) {
+      throw new ConflictException(
+        `Cannot delete "${existing.title}" — it has ${openReservations} open reservation(s).`,
+      );
+    }
+
+    await this.prisma.book.delete({ where: { id } });
   }
 
   private toResponse(book: BookWithRelations): BookResponse {
