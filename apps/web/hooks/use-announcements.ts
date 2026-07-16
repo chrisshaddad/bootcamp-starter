@@ -2,11 +2,12 @@
 
 import useSWR, { mutate } from 'swr';
 import { useCallback } from 'react';
-import { apiPost } from '@/lib/api';
+import { apiDelete, apiPatch, apiPost } from '@/lib/api';
 import type {
   Announcement,
   AnnouncementCreateRequest,
   AnnouncementListResponse,
+  AnnouncementUpdateRequest,
 } from '@repo/contracts';
 
 interface UseAnnouncementsOptions {
@@ -20,6 +21,11 @@ interface UseAnnouncementsReturn {
   isLoading: boolean;
   error: Error | undefined;
   create: (data: AnnouncementCreateRequest) => Promise<Announcement>;
+  update: (
+    id: string,
+    data: AnnouncementUpdateRequest,
+  ) => Promise<Announcement>;
+  remove: (id: string) => Promise<Announcement>;
   mutate: () => void;
 }
 
@@ -54,12 +60,32 @@ export function useAnnouncements(
     [invalidateAll],
   );
 
+  const update = useCallback(
+    async (id: string, body: AnnouncementUpdateRequest) => {
+      const result = await apiPatch<Announcement>(`/announcements/${id}`, body);
+      invalidateAll();
+      return result;
+    },
+    [invalidateAll],
+  );
+
+  const remove = useCallback(
+    async (id: string) => {
+      const result = await apiDelete<Announcement>(`/announcements/${id}`);
+      invalidateAll();
+      return result;
+    },
+    [invalidateAll],
+  );
+
   return {
     announcements: data?.announcements,
     total: data?.total,
     isLoading,
     error,
     create,
+    update,
+    remove,
     mutate: swrMutate,
   };
 }
