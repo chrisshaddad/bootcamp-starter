@@ -12,12 +12,9 @@ import { mutate } from 'swr';
 import {
   updateProjectRequestSchema,
   type UpdateProjectRequest,
-  type TechnologyResponse,
 } from '@repo/contracts';
 import { useProject, useUpdateProject } from '@/hooks/use-projects';
-import { useTechnologies } from '@/hooks/use-technologies'; // Imported catalog hook
 import { ApiError, apiUpload, apiDelete } from '@/lib/api';
-import { TechPicker } from '@/components/tech-picker';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -37,14 +34,10 @@ export default function EditProjectPage() {
   const router = useRouter();
   const { project, isLoading } = useProject(params.slug);
   const updateProject = useUpdateProject();
-  const { technologies: allTechnologies, isLoading: isTechsLoading } =
-    useTechnologies(); // Loaded SWR catalog
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploadingMedia, setIsUploadingMedia] = useState(false);
 
-  const [technologies, setTechnologies] = useState<TechnologyResponse[]>([]); // Typed as TechnologyResponse[]
-  const [isTechInitialized, setIsTechInitialized] = useState(false);
   const [isFormInitialized, setIsFormInitialized] = useState(false);
 
   const {
@@ -72,26 +65,13 @@ export default function EditProjectPage() {
     }
   }, [project, isFormInitialized, reset]);
 
-  // Initialize technologies EXACTLY ONCE upon initial load
-  useEffect(() => {
-    if (project?.technologies && !isTechInitialized) {
-      setTechnologies(
-        project.technologies.map((t) => t.technology as TechnologyResponse),
-      );
-      setIsTechInitialized(true);
-    }
-  }, [project, isTechInitialized]);
-
   const onSubmit = async (data: UpdateProjectRequest) => {
     if (!project) return;
 
     setIsSubmitting(true);
     try {
-      // Basic info and tech stack modifications executed in a single atomic transaction
-      await updateProject(project.id, {
-        ...data,
-        technologies: technologies.map((t) => ({ id: t.id })),
-      } as UpdateProjectRequest);
+      // Basic info modifications
+      await updateProject(project.id, data);
 
       toast.success('Project updated successfully');
       router.push('/projects');
@@ -284,19 +264,6 @@ export default function EditProjectPage() {
                 </p>
               </CardContent>
             </Card>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Tech stack</Label>
-            {isTechsLoading ? (
-              <Skeleton className="h-24 w-full" />
-            ) : (
-              <TechPicker
-                selected={technologies}
-                onChange={setTechnologies}
-                suggestions={allTechnologies || []}
-              />
-            )}
           </div>
         </div>
 
