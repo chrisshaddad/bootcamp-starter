@@ -1,11 +1,14 @@
 import {
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
   Post,
   Query,
   Body,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { EventsService } from './events.service';
 import { Roles, CurrentUser } from '../auth/decorators';
@@ -13,14 +16,18 @@ import { ZodValidationPipe } from '../common/pipes';
 import type { User } from '@repo/db';
 import {
   eventAttendanceUpdateRequestSchema,
+  eventCreateRequestSchema,
   eventListQuerySchema,
+  eventUpdateRequestSchema,
   type EventAttendanceUpdateRequest,
   type EventAttendanceUpdateResponse,
   type EventAttendeeListResponse,
+  type EventCreateRequest,
   type EventDetailResponse,
   type EventListQuery,
   type EventListResponse,
   type EventRegisterResponse,
+  type EventUpdateRequest,
 } from '@repo/contracts';
 
 @Controller('events')
@@ -35,6 +42,16 @@ export class EventsController {
     @CurrentUser() user: User,
   ): Promise<EventListResponse> {
     return this.eventsService.findAll(query, user);
+  }
+
+  @Post()
+  @Roles('SUPER_ADMIN', 'ORG_ADMIN')
+  async create(
+    @Body(new ZodValidationPipe<EventCreateRequest>(eventCreateRequestSchema))
+    body: EventCreateRequest,
+    @CurrentUser() user: User,
+  ): Promise<EventDetailResponse> {
+    return this.eventsService.create(body, user);
   }
 
   @Get(':id/attendees')
@@ -69,6 +86,36 @@ export class EventsController {
     @CurrentUser() user: User,
   ): Promise<EventDetailResponse> {
     return this.eventsService.findOne(id, user);
+  }
+
+  @Patch(':id')
+  @Roles('SUPER_ADMIN', 'ORG_ADMIN')
+  async update(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe<EventUpdateRequest>(eventUpdateRequestSchema))
+    body: EventUpdateRequest,
+    @CurrentUser() user: User,
+  ): Promise<EventDetailResponse> {
+    return this.eventsService.update(id, body, user);
+  }
+
+  @Post(':id/cancel')
+  @Roles('SUPER_ADMIN', 'ORG_ADMIN')
+  async cancel(
+    @Param('id') id: string,
+    @CurrentUser() user: User,
+  ): Promise<EventDetailResponse> {
+    return this.eventsService.cancel(id, user);
+  }
+
+  @Delete(':id')
+  @Roles('SUPER_ADMIN', 'ORG_ADMIN')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async remove(
+    @Param('id') id: string,
+    @CurrentUser() user: User,
+  ): Promise<void> {
+    return this.eventsService.remove(id, user);
   }
 
   @Post(':id/register')
