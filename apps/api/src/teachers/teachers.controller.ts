@@ -4,10 +4,13 @@ import {
   Delete,
   Get,
   Param,
-  Patch,
   ParseUUIDPipe,
+  Patch,
+  Post,
 } from '@nestjs/common';
 import type {
+  AssignCourseGradeRequest,
+  AssignCourseGradeResponse,
   TeacherActionResponse,
   TeacherOrganizationParams,
   TeacherOrganizationsResponse,
@@ -16,6 +19,7 @@ import type {
   UpdateTeacherResponse,
 } from '@repo/contracts';
 import {
+  AssignCourseGradeRequestSchema,
   TeacherOrganizationParamsSchema,
   UpdateTeacherRequestSchema,
 } from '@repo/contracts';
@@ -69,5 +73,14 @@ export class TeachersController {
     teacherId: string,
   ): Promise<TeacherActionResponse> {
     return this.teachersService.deleteTeacher(organizationId, teacherId);
+  }
+
+  @Post('course-grade-assignments')
+  @Roles('SUPER_ADMIN')
+  async assignCourseToTeacherAndGrade(
+    @Body(new ZodValidationPipe(AssignCourseGradeRequestSchema))
+    payload: AssignCourseGradeRequest,
+  ): Promise<AssignCourseGradeResponse> {
+    return this.teachersService.assignCourseToTeacherAndGrade(payload);
   }
 }

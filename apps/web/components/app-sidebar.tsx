@@ -10,6 +10,7 @@ import {
   LogOut,
   Building2,
   ClipboardList,
+  BookOpen,
 } from 'lucide-react';
 import { useAuth, useUser } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
@@ -74,6 +75,11 @@ const superAdminSecondaryNavItems: NavItem[] = [
     title: 'Create User',
     url: '/users/create',
     icon: Users,
+  },
+  {
+    title: 'Create Course',
+    url: '/courses/create',
+    icon: BookOpen,
   },
   {
     title: 'Settings',

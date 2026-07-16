@@ -1,5 +1,12 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import type {
+  AssignCourseGradeRequest,
+  AssignCourseGradeResponse,
   TeacherActionResponse,
   TeacherOrganizationsResponse,
   TeachersByOrganizationResponse,
@@ -189,6 +196,121 @@ export class TeachersService {
 
     return {
       id: teacherId,
+    };
+  }
+
+  async assignCourseToTeacherAndGrade(
+    payload: AssignCourseGradeRequest,
+  ): Promise<AssignCourseGradeResponse> {
+    const teacher = await this.prisma.user.findFirst({
+      where: {
+        id: payload.teacherId,
+        organizationId: payload.organizationId,
+        role: 'ORG_ADMIN',
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!teacher) {
+      throw new NotFoundException('Teacher not found');
+    }
+
+    const grade = await this.prisma.gradeLevel.findUnique({
+      where: {
+        id: payload.gradeId,
+      },
+      select: {
+        id: true,
+        sections: {
+          select: {
+            id: true,
+          },
+        },
+      },
+    });
+
+    if (!grade) {
+      throw new NotFoundException('Grade not found');
+    }
+
+    if (grade.sections.length === 0) {
+      throw new BadRequestException(
+        'This grade does not have any sections. Create at least one section first.',
+      );
+    }
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const subject = await tx.subject.upsert({
+        where: {
+          name: payload.title,
+        },
+        update: {},
+        create: {
+          name: payload.title,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      const existingCourses = await tx.course.findMany({
+        where: {
+          teacherId: payload.teacherId,
+          subjectId: subject.id,
+          organizationId: payload.organizationId,
+          sectionId: {
+            in: grade.sections.map((section) => section.id),
+          },
+        },
+        select: {
+          sectionId: true,
+        },
+      });
+
+      const existingSectionIds = new Set(
+        existingCourses
+          .map((course) => course.sectionId)
+          .filter((sectionId): sectionId is string => Boolean(sectionId)),
+      );
+
+      const sectionsToCreate = grade.sections.filter(
+        (section) => !existingSectionIds.has(section.id),
+      );
+
+      const createdCourses = await Promise.all(
+        sectionsToCreate.map((section) =>
+          tx.course.create({
+            data: {
+              teacherId: payload.teacherId,
+              subjectId: subject.id,
+              sectionId: section.id,
+              organizationId: payload.organizationId,
+              title: payload.title,
+              description: payload.description || null,
+              status: payload.status || 'draft',
+            },
+            select: {
+              id: true,
+            },
+          }),
+        ),
+      );
+
+      return createdCourses;
+    });
+
+    this.logger.log(
+      `Assigned course ${payload.title} to teacher ${payload.teacherId} for grade ${payload.gradeId}.`,
+    );
+
+    return {
+      teacherId: payload.teacherId,
+      gradeId: payload.gradeId,
+      title: payload.title,
+      createdCourseCount: result.length,
+      courseIds: result.map((course) => course.id),
     };
   }
 }

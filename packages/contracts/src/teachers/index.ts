@@ -5,3 +5,5 @@ export * from './update-teacher.request';
 export * from './teacher-action.response';
 export * from './update-teacher.request';
 export * from './teacher-action.response';
+export * from './assign-course-grade.request';
+export * from './assign-course-grade.response';
