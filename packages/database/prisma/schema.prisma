@@ -447,7 +447,7 @@ model Grade {
 
   submission  Submission?  @relation(fields: [submissionId], references: [id], onDelete: Cascade)
   quizAttempt QuizAttempt? @relation(fields: [quizAttemptId], references: [id], onDelete: Cascade)
-  gradedBy    User?        @relation("GraderGrades", fields: [gradedById], references: [id])
+  gradedBy    User?        @relation("GraderGrades", fields: [gradedById], references: [id], onDelete: SetNull)
 
   @@index([submissionId])
   @@index([quizAttemptId])
