@@ -5,7 +5,6 @@ import {
   Github,
   ExternalLink,
   Bookmark,
-  ImageIcon,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
