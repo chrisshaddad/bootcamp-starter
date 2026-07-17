@@ -18,11 +18,15 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Pagination } from '@/components/pagination';
+
+const PAGE_SIZE = 9;
 
 export default function NewProjectPage() {
   const { user, isLoading: isAuthLoading } = useUser();
   const router = useRouter();
   const [importingUrl, setImportingUrl] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
 
   const isConnected = !!user?.developerProfile?.githubUsername;
 
@@ -33,6 +37,14 @@ export default function NewProjectPage() {
   } = useSWR<GithubRepository[]>(
     isConnected ? '/github/my-repositories' : null,
     fetcher,
+  );
+
+  const totalPages = repositories
+    ? Math.ceil(repositories.length / PAGE_SIZE)
+    : 0;
+  const pageRepositories = repositories?.slice(
+    (page - 1) * PAGE_SIZE,
+    page * PAGE_SIZE,
   );
 
   const handleConnectGithub = () => {
@@ -119,58 +131,66 @@ export default function NewProjectPage() {
           )}
 
           {repositories && (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {repositories.map((repo) => (
-                <Card
-                  key={repo.id}
-                  className="flex flex-col overflow-hidden transition-colors hover:border-primary/50"
-                >
-                  <CardHeader className="flex-1 pb-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <CardTitle
-                        className="truncate text-base font-semibold"
-                        title={repo.fullName}
-                      >
-                        {repo.name}
-                      </CardTitle>
-                      <Globe className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                    </div>
-                    {repo.description && (
-                      <CardDescription className="line-clamp-2 mt-1.5 text-xs">
-                        {repo.description}
-                      </CardDescription>
-                    )}
-                  </CardHeader>
-                  <CardContent className="border-t bg-muted/20 px-6 py-4 flex items-center justify-between">
-                    <span className="text-xs font-medium text-muted-foreground">
-                      {repo.language || 'Unknown'}
-                    </span>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => handleImport(repo.url)}
-                      disabled={repo.isImported || importingUrl !== null}
-                    >
-                      {repo.isImported ? (
-                        'Already imported'
-                      ) : importingUrl === repo.url ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <>
-                          <PlusCircle className="mr-2 h-4 w-4" />
-                          Import
-                        </>
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {pageRepositories?.map((repo) => (
+                  <Card
+                    key={repo.id}
+                    className="flex flex-col overflow-hidden transition-colors hover:border-primary/50"
+                  >
+                    <CardHeader className="flex-1 pb-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <CardTitle
+                          className="truncate text-base font-semibold"
+                          title={repo.fullName}
+                        >
+                          {repo.name}
+                        </CardTitle>
+                        <Globe className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                      </div>
+                      {repo.description && (
+                        <CardDescription className="line-clamp-2 mt-1.5 text-xs">
+                          {repo.description}
+                        </CardDescription>
                       )}
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardHeader>
+                    <CardContent className="border-t bg-muted/20 px-6 py-4 flex items-center justify-between">
+                      <span className="text-xs font-medium text-muted-foreground">
+                        {repo.language || 'Unknown'}
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => handleImport(repo.url)}
+                        disabled={repo.isImported || importingUrl !== null}
+                      >
+                        {repo.isImported ? (
+                          'Already imported'
+                        ) : importingUrl === repo.url ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <>
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Import
+                          </>
+                        )}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
 
-              {repositories.length === 0 && (
-                <div className="col-span-full py-12 text-center text-muted-foreground">
-                  No repositories found on this GitHub account.
-                </div>
-              )}
+                {repositories.length === 0 && (
+                  <div className="col-span-full py-12 text-center text-muted-foreground">
+                    No repositories found on this GitHub account.
+                  </div>
+                )}
+              </div>
+
+              <Pagination
+                page={page}
+                totalPages={totalPages}
+                onPageChange={setPage}
+              />
             </div>
           )}
         </div>
