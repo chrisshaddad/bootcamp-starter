@@ -124,9 +124,9 @@ export function ProjectShowcase({ project, onSave }: ProjectShowcaseProps) {
             </section>
           )}
 
-          <section>
-            <h2 className="mb-3 text-sm font-bold">Screenshots</h2>
-            {project.media.length > 0 ? (
+          {project.media.length > 0 && (
+            <section>
+              <h2 className="mb-3 text-sm font-bold">Screenshots</h2>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {project.media.map((media, index) => (
                   <button
@@ -144,17 +144,8 @@ export function ProjectShowcase({ project, onSave }: ProjectShowcaseProps) {
                   </button>
                 ))}
               </div>
-            ) : (
-              <Card className="border-dashed">
-                <CardContent className="flex flex-col items-center gap-1.5 py-8 text-center">
-                  <ImageIcon className="h-5 w-5 text-muted-foreground" />
-                  <p className="text-muted-foreground text-xs">
-                    No screenshots yet.
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-          </section>
+            </section>
+          )}
         </div>
 
         <div className="space-y-4">
