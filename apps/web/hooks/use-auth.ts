@@ -7,6 +7,8 @@ import { apiPost, ApiError } from '@/lib/api';
 import type {
   MagicLinkRequest,
   MagicLinkVerifyRequest,
+  MemberInvitationAcceptRequest,
+  MemberInvitationAcceptResponse,
   UserResponse,
 } from '@repo/contracts';
 
@@ -23,7 +25,7 @@ interface UseUserReturn {
 }
 
 // Routes where we should NOT redirect on 401
-const AUTH_ROUTES = ['/login', '/auth'];
+const AUTH_ROUTES = ['/login', '/auth', '/invite'];
 
 function isAuthRoute(pathname: string): boolean {
   return AUTH_ROUTES.some(
@@ -80,6 +82,18 @@ export function useAuth() {
     [mutate],
   );
 
+  const acceptMemberInvitation = useCallback(
+    async (data: MemberInvitationAcceptRequest) => {
+      const result = await apiPost<MemberInvitationAcceptResponse>(
+        '/members/invitations/accept',
+        data,
+      );
+      mutate();
+      return result;
+    },
+    [mutate],
+  );
+
   const logout = useCallback(async () => {
     await apiPost<{ success: boolean }>('/auth/logout');
     mutate();
@@ -88,6 +102,7 @@ export function useAuth() {
   return {
     requestMagicLink,
     verifyMagicLink,
+    acceptMemberInvitation,
     logout,
   };
 }
