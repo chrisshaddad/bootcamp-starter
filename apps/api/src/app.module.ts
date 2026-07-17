@@ -11,6 +11,8 @@ import { UsersModule } from './users/users.module';
 import { TeacherModule } from './teacher/teacher.module';
 import { StudentsModule } from './students/students.module';
 import { TeachersModule } from './teachers/teachers.module';
+import { CoursesModule } from './courses/courses.module';
+import { CoursesService } from './courses/courses.service';
 
 @Module({
   imports: [
@@ -28,6 +30,7 @@ import { TeachersModule } from './teachers/teachers.module';
     TeacherModule,
     StudentsModule,
     TeachersModule,
+    CoursesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
