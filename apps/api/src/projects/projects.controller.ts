@@ -26,7 +26,10 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { diskStorage } from 'multer';
-import { ProjectsService } from './projects.service';
+import {
+  ProjectsService,
+  type ProjectMemberWithPublicUser,
+} from './projects.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Public } from '../auth/decorators';
@@ -41,7 +44,10 @@ import {
   projectMediaUpdateSchema,
   projectsExploreQuerySchema,
   addProjectMemberSchema,
+  projectByIdResponseSchema,
   projectBySlugResponseSchema,
+  projectMemberResponseSchema,
+  removeProjectMemberResponseSchema,
   type CreateProjectRequest,
   type ImportGithubProjectRequest,
   type ImportGithubProjectResponse,
@@ -55,10 +61,13 @@ import {
   type ExploreProjectsResponse,
   type AddProjectMemberRequest,
   type ProjectMemberResponse,
+  type RemoveProjectMemberResponse,
 } from '@repo/contracts';
 import {
   addProjectMemberRequestSchema as addProjectMemberOpenApiRequestSchema,
   importGithubProjectRequestSchema as importGithubProjectOpenApiRequestSchema,
+  projectMemberResponseSchema as projectMemberOpenApiResponseSchema,
+  removeProjectMemberResponseSchema as removeProjectMemberOpenApiResponseSchema,
 } from '../common/swagger/schemas';
 
 const PROJECT_MEDIA_MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
@@ -70,30 +79,10 @@ const PROJECT_MEDIA_ALLOWED_MIME_TYPES = [
 ];
 const PROJECT_MEDIA_DIR = join(process.cwd(), 'uploads', 'project-media');
 
-type ProjectMemberForResponse = {
-  id: string;
-  role: 'OWNER' | 'EDITOR' | 'CONTRIBUTOR';
-  githubUsername: string | null;
-  contributionRoleLabel: string | null;
-  contributionSummary: string | null;
-  verificationStatus: 'PENDING' | 'VERIFIED' | 'UNVERIFIED';
-  createdAt: Date;
-  updatedAt: Date;
-  user: {
-    id: string;
-    developerProfile: {
-      displayName: string;
-      publicSlug: string;
-      profilePictureUrl: string | null;
-      githubUsername: string | null;
-    } | null;
-  } | null;
-};
-
 function mapProjectMember(
-  member: ProjectMemberForResponse,
+  member: ProjectMemberWithPublicUser,
 ): ProjectMemberResponse {
-  return {
+  return projectMemberResponseSchema.parse({
     id: member.id,
     role: member.role,
     githubUsername: member.githubUsername,
@@ -111,7 +100,7 @@ function mapProjectMember(
       : null,
     createdAt: member.createdAt.toISOString(),
     updatedAt: member.updatedAt.toISOString(),
-  };
+  });
 }
 
 if (!existsSync(PROJECT_MEDIA_DIR)) {
@@ -169,37 +158,39 @@ export class ProjectsController {
   ): Promise<ProjectByIdResponse[]> {
     const projects = await this.projectsService.getMyProjects(user);
 
-    return projects.map((project) => ({
-      ...project,
-      createdAt: project.createdAt.toISOString(),
-      updatedAt: project.updatedAt.toISOString(),
-      publishedAt: project.publishedAt?.toISOString() ?? null,
-      media: project.media.map((m) => ({
-        id: m.id,
-        projectId: m.projectId,
-        uploadedByUserId: m.uploadedByUserId,
-        mediaType: m.mediaType as 'IMAGE' | 'GIF' | 'ARCHITECTURE_DIAGRAM',
-        storageKey: m.storageKey,
-        publicUrl: m.publicUrl,
-        caption: m.caption,
-        sortOrder: m.sortOrder,
-        createdAt: m.createdAt.toISOString(),
-        updatedAt: m.updatedAt.toISOString(),
-      })),
-      technologies: project.technologies.map((pt) => ({
-        id: pt.id,
-        projectId: pt.projectId,
-        technologyId: pt.technologyId,
-        technology: pt.technology,
-        source: pt.source,
-        evidence: pt.evidence,
-        isPrimary: pt.isPrimary,
-        sortOrder: pt.sortOrder,
-        createdAt: pt.createdAt.toISOString(),
-        updatedAt: pt.updatedAt.toISOString(),
-      })),
-      members: (project.members ?? []).map(mapProjectMember),
-    }));
+    return projects.map((project) =>
+      projectByIdResponseSchema.parse({
+        ...project,
+        createdAt: project.createdAt.toISOString(),
+        updatedAt: project.updatedAt.toISOString(),
+        publishedAt: project.publishedAt?.toISOString() ?? null,
+        media: project.media.map((m) => ({
+          id: m.id,
+          projectId: m.projectId,
+          uploadedByUserId: m.uploadedByUserId,
+          mediaType: m.mediaType as 'IMAGE' | 'GIF' | 'ARCHITECTURE_DIAGRAM',
+          storageKey: m.storageKey,
+          publicUrl: m.publicUrl,
+          caption: m.caption,
+          sortOrder: m.sortOrder,
+          createdAt: m.createdAt.toISOString(),
+          updatedAt: m.updatedAt.toISOString(),
+        })),
+        technologies: project.technologies.map((pt) => ({
+          id: pt.id,
+          projectId: pt.projectId,
+          technologyId: pt.technologyId,
+          technology: pt.technology,
+          source: pt.source,
+          evidence: pt.evidence,
+          isPrimary: pt.isPrimary,
+          sortOrder: pt.sortOrder,
+          createdAt: pt.createdAt.toISOString(),
+          updatedAt: pt.updatedAt.toISOString(),
+        })),
+        members: (project.members ?? []).map(mapProjectMember),
+      }),
+    );
   }
 
   @Get('explore')
@@ -245,7 +236,7 @@ export class ProjectsController {
   ): Promise<ProjectByIdResponse> {
     const project = await this.projectsService.getProjectById(user, projectId);
 
-    return {
+    return projectByIdResponseSchema.parse({
       ...project,
       createdAt: project.createdAt.toISOString(),
       updatedAt: project.updatedAt.toISOString(),
@@ -275,7 +266,7 @@ export class ProjectsController {
         updatedAt: pt.updatedAt.toISOString(),
       })),
       members: (project.members ?? []).map(mapProjectMember),
-    } as unknown as ProjectByIdResponse;
+    });
   }
 
   @Post()
@@ -338,7 +329,11 @@ export class ProjectsController {
   @Roles(AccountType.DEVELOPER, AccountType.SUPER_ADMIN)
   @ApiOperation({ summary: 'Add a contributor to a project' })
   @ApiBody({ schema: addProjectMemberOpenApiRequestSchema })
-  @ApiResponse({ status: 201, description: 'Contributor successfully added.' })
+  @ApiResponse({
+    status: 201,
+    description: 'Contributor successfully added.',
+    schema: projectMemberOpenApiResponseSchema,
+  })
   @ApiResponse({
     status: 403,
     description: 'Only the project owner can add contributors.',
@@ -368,6 +363,7 @@ export class ProjectsController {
   @ApiResponse({
     status: 200,
     description: 'Contributor successfully removed.',
+    schema: removeProjectMemberOpenApiResponseSchema,
   })
   @ApiResponse({
     status: 400,
@@ -382,9 +378,9 @@ export class ProjectsController {
     @CurrentUser() user: User,
     @Param('id') projectId: string,
     @Param('memberId') memberId: string,
-  ) {
+  ): Promise<RemoveProjectMemberResponse> {
     await this.projectsService.removeProjectMember(user, projectId, memberId);
-    return { success: true };
+    return removeProjectMemberResponseSchema.parse({ success: true });
   }
 
   @Post(':id/logo')

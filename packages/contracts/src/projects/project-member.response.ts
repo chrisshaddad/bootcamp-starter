@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { dateSchema } from '../common';
 
 export const projectMemberUserResponseSchema = z.object({
   id: z.string().uuid(),
@@ -17,8 +16,8 @@ export const projectMemberResponseSchema = z.object({
   contributionSummary: z.string().nullable().optional(),
   verificationStatus: z.enum(['PENDING', 'VERIFIED', 'UNVERIFIED']),
   user: projectMemberUserResponseSchema.nullable().optional(),
-  createdAt: dateSchema,
-  updatedAt: dateSchema,
+  createdAt: z.iso.datetime(),
+  updatedAt: z.iso.datetime(),
 });
 
 export type ProjectMemberResponse = z.infer<typeof projectMemberResponseSchema>;

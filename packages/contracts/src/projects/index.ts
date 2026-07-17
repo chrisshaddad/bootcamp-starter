@@ -14,4 +14,5 @@ export * from './project-explore.response';
 export * from './project-slug.schema';
 export * from './project-member-add.request';
 export * from './project-member.response';
+export * from './project-member-remove.response';
 export * from './project-technology.response';

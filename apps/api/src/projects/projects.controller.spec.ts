@@ -75,6 +75,49 @@ describe('ProjectsController', () => {
       Reflect.getMetadata(ROLES_KEY, removeMemberHandler as object),
     ).toEqual([AccountType.DEVELOPER, AccountType.SUPER_ADMIN]);
   });
+
+  it('maps added contributors through the shared response contract', async () => {
+    projectsService.addProjectMember.mockResolvedValue({
+      id: '00000000-0000-4000-8000-000000000004',
+      role: 'CONTRIBUTOR',
+      githubUsername: 'octocat',
+      contributionRoleLabel: 'Frontend developer',
+      contributionSummary: null,
+      verificationStatus: 'PENDING',
+      createdAt: new Date('2026-07-17T10:00:00.000Z'),
+      updatedAt: new Date('2026-07-17T10:00:00.000Z'),
+      user: null,
+    });
+
+    await expect(
+      controller.addProjectMember({ id: 'owner-id' } as never, 'project-id', {
+        githubUsername: 'octocat',
+        role: 'CONTRIBUTOR',
+      }),
+    ).resolves.toEqual({
+      id: '00000000-0000-4000-8000-000000000004',
+      role: 'CONTRIBUTOR',
+      githubUsername: 'octocat',
+      contributionRoleLabel: 'Frontend developer',
+      contributionSummary: null,
+      verificationStatus: 'PENDING',
+      createdAt: '2026-07-17T10:00:00.000Z',
+      updatedAt: '2026-07-17T10:00:00.000Z',
+      user: null,
+    });
+  });
+
+  it('returns the shared removal response contract', async () => {
+    projectsService.removeProjectMember.mockResolvedValue(undefined);
+
+    await expect(
+      controller.removeProjectMember(
+        { id: 'owner-id' } as never,
+        'project-id',
+        'member-id',
+      ),
+    ).resolves.toEqual({ success: true });
+  });
 });
 
 function createImportResponse() {

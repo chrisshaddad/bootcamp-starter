@@ -57,6 +57,10 @@ const projectMemberInclude = {
   },
 } satisfies Prisma.ProjectMemberInclude;
 
+export type ProjectMemberWithPublicUser = Prisma.ProjectMemberGetPayload<{
+  include: typeof projectMemberInclude;
+}>;
+
 @Injectable()
 export class ProjectsService {
   private readonly logger = new Logger(ProjectsService.name);

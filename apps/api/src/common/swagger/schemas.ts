@@ -3,6 +3,8 @@ import {
   githubRepositoryPreviewRequestSchema as githubRepositoryPreviewRequestContractSchema,
   importGithubProjectRequestSchema as importGithubProjectRequestContractSchema,
   addProjectMemberSchema as addProjectMemberRequestContractSchema,
+  projectMemberResponseSchema as projectMemberResponseContractSchema,
+  removeProjectMemberResponseSchema as removeProjectMemberResponseContractSchema,
   loginRequestSchema as loginRequestContractSchema,
   magicLinkRequestSchema,
   magicLinkVerifyRequestSchema as magicLinkVerifyRequestContractSchema,
@@ -129,4 +131,12 @@ export const addProjectMemberRequestSchema: ApiBodySchema = withExample(
     role: 'CONTRIBUTOR',
     contributionRoleLabel: 'Frontend developer',
   },
+);
+
+export const projectMemberResponseSchema: ApiBodySchema = toOpenApiSchema(
+  projectMemberResponseContractSchema,
+);
+
+export const removeProjectMemberResponseSchema: ApiBodySchema = toOpenApiSchema(
+  removeProjectMemberResponseContractSchema,
 );
