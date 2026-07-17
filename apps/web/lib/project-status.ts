@@ -7,6 +7,6 @@ export const PROJECT_STATUS_LABELS: Record<string, string> = {
 
 export const PROJECT_STATUS_COLORS: Record<string, string> = {
   DRAFT: 'bg-muted text-muted-foreground',
-  PUBLISHED: 'bg-green-500/15 text-green-300',
-  ARCHIVED: 'bg-red-500/15 text-red-300',
+  PUBLISHED: 'bg-success/15 text-success-dark',
+  ARCHIVED: 'bg-error/15 text-error-dark',
 };

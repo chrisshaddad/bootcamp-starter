@@ -42,9 +42,10 @@ export default function NewProjectPage() {
   const totalPages = repositories
     ? Math.ceil(repositories.length / PAGE_SIZE)
     : 0;
+  const currentPage = Math.min(page, Math.max(totalPages, 1));
   const pageRepositories = repositories?.slice(
-    (page - 1) * PAGE_SIZE,
-    page * PAGE_SIZE,
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE,
   );
 
   const handleConnectGithub = () => {
@@ -187,7 +188,7 @@ export default function NewProjectPage() {
               </div>
 
               <Pagination
-                page={page}
+                page={currentPage}
                 totalPages={totalPages}
                 onPageChange={setPage}
               />

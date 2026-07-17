@@ -37,7 +37,11 @@ export default function ProjectsPage() {
   const [page, setPage] = useState(1);
 
   const totalPages = Math.ceil(projects.length / PAGE_SIZE);
-  const pageProjects = projects.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const currentPage = Math.min(page, Math.max(totalPages, 1));
+  const pageProjects = projects.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE,
+  );
 
   return (
     <div className="space-y-6">
@@ -168,7 +172,7 @@ export default function ProjectsPage() {
           </div>
 
           <Pagination
-            page={page}
+            page={currentPage}
             totalPages={totalPages}
             onPageChange={setPage}
           />

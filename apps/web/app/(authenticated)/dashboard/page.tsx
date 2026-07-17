@@ -141,8 +141,13 @@ function SetupChecklist({ steps }: { steps: SetupStep[] }) {
 }
 
 export default function DashboardPage() {
-  const { user, isLoading: isUserLoading } = useUser();
-  const { projects, isLoading: isProjectsLoading, error } = useProjects();
+  const { user, isLoading: isUserLoading, error: userError } = useUser();
+  const {
+    projects,
+    isLoading: isProjectsLoading,
+    error: projectsError,
+  } = useProjects();
+  const error = userError ?? projectsError;
 
   if (isUserLoading || isProjectsLoading) {
     return <DashboardSkeleton />;
@@ -241,7 +246,13 @@ export default function DashboardPage() {
           icon={FolderKanban}
           label="Total projects"
           value={projects.length}
-          sub={draftCount > 0 ? `${draftCount} in draft` : 'All published'}
+          sub={
+            projects.length === 0
+              ? 'No projects yet'
+              : draftCount > 0
+                ? `${draftCount} in draft`
+                : 'All published'
+          }
           iconClassName="bg-primary-100 text-primary-base"
         />
         <StatCard
