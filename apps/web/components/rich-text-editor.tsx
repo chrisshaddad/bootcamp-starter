@@ -10,9 +10,14 @@ import { Bold, Italic, List, ListOrdered, Redo2, Undo2 } from 'lucide-react';
 interface RichTextEditorProps {
   value: string;
   onChange: (value: string) => void;
+  className?: string;
 }
 
-export function RichTextEditor({ value, onChange }: RichTextEditorProps) {
+export function RichTextEditor({
+  value,
+  onChange,
+  className,
+}: RichTextEditorProps) {
   const editor = useEditor({
     extensions: [StarterKit],
     content: value,
@@ -38,7 +43,7 @@ export function RichTextEditor({ value, onChange }: RichTextEditorProps) {
     cn(active && 'bg-primary-100 text-primary-base');
 
   return (
-    <div>
+    <div className={className}>
       <div className="flex flex-wrap gap-1 rounded-t-md border border-gray-200 bg-gray-50 p-2">
         <Button
           type="button"
