@@ -14,12 +14,14 @@ function getStatusClasses(
 ) {
   switch (status) {
     case 'published':
-      return 'border-emerald-200 bg-emerald-50 text-emerald-700';
+      return 'border-primary-200 bg-primary-100 text-primary-base';
+
     case 'closed':
       return 'border-gray-300 bg-gray-100 text-gray-700';
+
     case 'draft':
     default:
-      return 'border-amber-200 bg-amber-50 text-amber-700';
+      return 'border-gray-300 bg-gray-50 text-gray-700';
   }
 }
 
@@ -85,7 +87,7 @@ export default function TeacherAssignmentsPage() {
       {!isLoading && error && (
         <Card>
           <CardContent className="p-6">
-            <p className="text-sm text-red-600">{error}</p>
+            <p className="text-sm text-error">{error}</p>
           </CardContent>
         </Card>
       )}
@@ -112,9 +114,9 @@ export default function TeacherAssignmentsPage() {
             <Link
               key={assignment.id}
               href={`/teacher/assignments/${assignment.id}`}
-              className="block rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+              className="block rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-base focus:ring-offset-2"
             >
-              <Card className="h-full border-gray-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md">
+              <Card className="h-full border-gray-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-primary-200 hover:shadow-md">
                 <CardHeader>
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">

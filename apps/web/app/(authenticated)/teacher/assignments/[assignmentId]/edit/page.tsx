@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import {
   type TeacherAssignmentResponse,
   type TeacherCourseListResponse,
-  updateTeacherAssignmentRequestSchema,
+  type UpdateTeacherAssignmentRequest,
 } from '@repo/contracts';
 import { ArrowLeft, Loader2, Save } from 'lucide-react';
 import { useForm } from 'react-hook-form';
@@ -19,13 +19,33 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ApiError, apiPatch, fetcher } from '@/lib/api';
 
-type UpdateAssignmentFormInput = z.input<
-  typeof updateTeacherAssignmentRequestSchema
->;
+const editAssignmentFormSchema = z.object({
+  courseId: z.uuid(),
 
-type UpdateAssignmentFormOutput = z.output<
-  typeof updateTeacherAssignmentRequestSchema
->;
+  title: z
+    .string()
+    .trim()
+    .min(3, 'Title must contain at least 3 characters')
+    .max(150, 'Title cannot exceed 150 characters'),
+
+  instructions: z
+    .string()
+    .max(5000, 'Instructions cannot exceed 5000 characters'),
+
+  maxScore: z
+    .number()
+    .positive('Maximum score must be greater than zero')
+    .max(1000, 'Maximum score cannot exceed 1000'),
+
+  startsAt: z.string().nullable().optional(),
+  dueAt: z.string().nullable().optional(),
+  endsAt: z.string().nullable().optional(),
+
+  noteToStudents: z.string().max(2000, 'Note cannot exceed 2000 characters'),
+
+  status: z.enum(['draft', 'published', 'closed']),
+});
+type EditAssignmentFormValues = z.infer<typeof editAssignmentFormSchema>;
 
 function toDateTimeLocal(value: Date | string | null) {
   if (!value) {
@@ -55,8 +75,8 @@ function nullableTrimmedString(value: unknown) {
   return trimmed || null;
 }
 
-function nullableIsoDate(value: unknown) {
-  if (typeof value !== 'string' || !value) {
+function nullableIsoDate(value: string | null | undefined) {
+  if (!value) {
     return null;
   }
 
@@ -83,8 +103,8 @@ export default function EditTeacherAssignmentPage() {
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
-  } = useForm<UpdateAssignmentFormInput, unknown, UpdateAssignmentFormOutput>({
-    resolver: zodResolver(updateTeacherAssignmentRequestSchema),
+  } = useForm<EditAssignmentFormValues>({
+    resolver: zodResolver(editAssignmentFormSchema),
   });
 
   useEffect(() => {
@@ -129,11 +149,20 @@ export default function EditTeacherAssignmentPage() {
     }
   }, [assignmentId, reset]);
 
-  async function onSubmit(data: UpdateAssignmentFormOutput) {
+  async function onSubmit(data: EditAssignmentFormValues) {
+    const requestBody: UpdateTeacherAssignmentRequest = {
+      ...data,
+      instructions: nullableTrimmedString(data.instructions),
+      noteToStudents: nullableTrimmedString(data.noteToStudents),
+      startsAt: nullableIsoDate(data.startsAt),
+      dueAt: nullableIsoDate(data.dueAt),
+      endsAt: nullableIsoDate(data.endsAt),
+    };
+
     try {
       await apiPatch<TeacherAssignmentResponse>(
         `/teacher/assignments/${assignmentId}`,
-        data,
+        requestBody,
       );
 
       toast.success('Assignment updated successfully.');
@@ -151,7 +180,7 @@ export default function EditTeacherAssignmentPage() {
   if (isLoadingPage) {
     return (
       <div className="flex min-h-64 items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary-base" />
       </div>
     );
   }
@@ -169,7 +198,7 @@ export default function EditTeacherAssignmentPage() {
 
         <Card>
           <CardContent className="p-6">
-            <p className="text-sm text-red-600">{loadError}</p>
+            <p className="text-sm text-error">{loadError}</p>
           </CardContent>
         </Card>
       </div>
@@ -212,7 +241,7 @@ export default function EditTeacherAssignmentPage() {
                 <select
                   id="courseId"
                   aria-invalid={Boolean(errors.courseId)}
-                  className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                  className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm outline-none focus:border-primary-base focus:ring-2 focus:ring-primary-100"
                   {...register('courseId')}
                 >
                   {courses.map((course) => (
@@ -223,7 +252,7 @@ export default function EditTeacherAssignmentPage() {
                 </select>
 
                 {errors.courseId?.message && (
-                  <p className="text-sm text-red-600">
+                  <p className="text-sm text-error">
                     {errors.courseId.message}
                   </p>
                 )}
@@ -240,7 +269,7 @@ export default function EditTeacherAssignmentPage() {
                 />
 
                 {errors.title?.message && (
-                  <p className="text-sm text-red-600">{errors.title.message}</p>
+                  <p className="text-sm text-error">{errors.title.message}</p>
                 )}
               </div>
 
@@ -251,14 +280,12 @@ export default function EditTeacherAssignmentPage() {
                   id="instructions"
                   rows={6}
                   aria-invalid={Boolean(errors.instructions)}
-                  className="w-full resize-y rounded-md border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
-                  {...register('instructions', {
-                    setValueAs: nullableTrimmedString,
-                  })}
+                  className="w-full resize-y rounded-md border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-primary-base focus:ring-2 focus:ring-primary-100"
+                  {...register('instructions')}
                 />
 
                 {errors.instructions?.message && (
-                  <p className="text-sm text-red-600">
+                  <p className="text-sm text-error">
                     {errors.instructions.message}
                   </p>
                 )}
@@ -280,7 +307,7 @@ export default function EditTeacherAssignmentPage() {
                 />
 
                 {errors.maxScore?.message && (
-                  <p className="text-sm text-red-600">
+                  <p className="text-sm text-error">
                     {errors.maxScore.message}
                   </p>
                 )}
@@ -292,7 +319,7 @@ export default function EditTeacherAssignmentPage() {
                 <select
                   id="status"
                   aria-invalid={Boolean(errors.status)}
-                  className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                  className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm outline-none focus:border-primary-base focus:ring-2 focus:ring-primary-100"
                   {...register('status')}
                 >
                   <option value="draft">Draft</option>
@@ -301,9 +328,7 @@ export default function EditTeacherAssignmentPage() {
                 </select>
 
                 {errors.status?.message && (
-                  <p className="text-sm text-red-600">
-                    {errors.status.message}
-                  </p>
+                  <p className="text-sm text-error">{errors.status.message}</p>
                 )}
               </div>
 
@@ -314,13 +339,11 @@ export default function EditTeacherAssignmentPage() {
                   id="startsAt"
                   type="datetime-local"
                   aria-invalid={Boolean(errors.startsAt)}
-                  {...register('startsAt', {
-                    setValueAs: nullableIsoDate,
-                  })}
+                  {...register('startsAt')}
                 />
 
                 {errors.startsAt?.message && (
-                  <p className="text-sm text-red-600">
+                  <p className="text-sm text-error">
                     {errors.startsAt.message}
                   </p>
                 )}
@@ -333,13 +356,11 @@ export default function EditTeacherAssignmentPage() {
                   id="dueAt"
                   type="datetime-local"
                   aria-invalid={Boolean(errors.dueAt)}
-                  {...register('dueAt', {
-                    setValueAs: nullableIsoDate,
-                  })}
+                  {...register('dueAt')}
                 />
 
                 {errors.dueAt?.message && (
-                  <p className="text-sm text-red-600">{errors.dueAt.message}</p>
+                  <p className="text-sm text-error">{errors.dueAt.message}</p>
                 )}
               </div>
 
@@ -350,15 +371,11 @@ export default function EditTeacherAssignmentPage() {
                   id="endsAt"
                   type="datetime-local"
                   aria-invalid={Boolean(errors.endsAt)}
-                  {...register('endsAt', {
-                    setValueAs: nullableIsoDate,
-                  })}
+                  {...register('endsAt')}
                 />
 
                 {errors.endsAt?.message && (
-                  <p className="text-sm text-red-600">
-                    {errors.endsAt.message}
-                  </p>
+                  <p className="text-sm text-error">{errors.endsAt.message}</p>
                 )}
               </div>
 
@@ -369,14 +386,12 @@ export default function EditTeacherAssignmentPage() {
                   id="noteToStudents"
                   rows={3}
                   aria-invalid={Boolean(errors.noteToStudents)}
-                  className="w-full resize-y rounded-md border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
-                  {...register('noteToStudents', {
-                    setValueAs: nullableTrimmedString,
-                  })}
+                  className="w-full resize-y rounded-md border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-primary-base focus:ring-2 focus:ring-primary-100"
+                  {...register('noteToStudents')}
                 />
 
                 {errors.noteToStudents?.message && (
-                  <p className="text-sm text-red-600">
+                  <p className="text-sm text-error">
                     {errors.noteToStudents.message}
                   </p>
                 )}

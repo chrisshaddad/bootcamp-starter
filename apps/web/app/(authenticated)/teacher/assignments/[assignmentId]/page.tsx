@@ -3,7 +3,10 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import type { TeacherAssignmentResponse } from '@repo/contracts';
+import type {
+  DeleteTeacherAssignmentResponse,
+  TeacherAssignmentResponse,
+} from '@repo/contracts';
 import {
   ArrowLeft,
   CalendarDays,
@@ -16,10 +19,6 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ApiError, apiDelete, fetcher } from '@/lib/api';
-
-type DeleteAssignmentResponse = {
-  message: string;
-};
 
 function formatDate(value: Date | string | null) {
   if (!value) {
@@ -41,12 +40,14 @@ function formatDate(value: Date | string | null) {
 function getStatusClasses(status: TeacherAssignmentResponse['status']) {
   switch (status) {
     case 'published':
-      return 'border-emerald-200 bg-emerald-50 text-emerald-700';
+      return 'border-primary-200 bg-primary-100 text-primary-base';
+
     case 'closed':
       return 'border-gray-300 bg-gray-100 text-gray-700';
+
     case 'draft':
     default:
-      return 'border-amber-200 bg-amber-50 text-amber-700';
+      return 'border-gray-300 bg-gray-50 text-gray-700';
   }
 }
 
@@ -104,7 +105,7 @@ export default function TeacherAssignmentDetailsPage() {
     setIsDeleting(true);
 
     try {
-      const response = await apiDelete<DeleteAssignmentResponse>(
+      const response = await apiDelete<DeleteTeacherAssignmentResponse>(
         `/teacher/assignments/${assignment.id}`,
       );
 
@@ -125,7 +126,7 @@ export default function TeacherAssignmentDetailsPage() {
   if (isLoading) {
     return (
       <div className="flex min-h-64 items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary-base" />
       </div>
     );
   }
@@ -143,7 +144,7 @@ export default function TeacherAssignmentDetailsPage() {
 
         <Card>
           <CardContent className="p-6">
-            <p className="text-sm text-red-600">
+            <p className="text-sm text-error">
               {error ?? 'Assignment was not found.'}
             </p>
           </CardContent>
@@ -256,6 +257,7 @@ export default function TeacherAssignmentDetailsPage() {
 
             <CardContent>
               <p className="text-sm text-gray-500">Maximum score</p>
+
               <p className="mt-1 text-2xl font-semibold text-gray-900">
                 {assignment.maxScore}
               </p>
@@ -275,6 +277,7 @@ export default function TeacherAssignmentDetailsPage() {
                 <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
                   Starts
                 </p>
+
                 <p className="mt-1 text-sm text-gray-900">
                   {formatDate(assignment.startsAt)}
                 </p>
@@ -284,6 +287,7 @@ export default function TeacherAssignmentDetailsPage() {
                 <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
                   Due
                 </p>
+
                 <p className="mt-1 text-sm text-gray-900">
                   {formatDate(assignment.dueAt)}
                 </p>
@@ -293,6 +297,7 @@ export default function TeacherAssignmentDetailsPage() {
                 <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
                   Ends
                 </p>
+
                 <p className="mt-1 text-sm text-gray-900">
                   {formatDate(assignment.endsAt)}
                 </p>

@@ -44,12 +44,14 @@ function formatDate(value: string) {
 function getStatusClasses(status: TeacherSubmissionListItemResponse['status']) {
   switch (status) {
     case 'graded':
-      return 'border-emerald-200 bg-emerald-50 text-emerald-700';
+      return 'border-primary-200 bg-primary-100 text-primary-base';
+
     case 'late':
-      return 'border-red-200 bg-red-50 text-red-700';
+      return 'border-error bg-error-light text-error';
+
     case 'submitted':
     default:
-      return 'border-blue-200 bg-blue-50 text-blue-700';
+      return 'border-gray-300 bg-gray-100 text-gray-700';
   }
 }
 
@@ -158,7 +160,7 @@ function SubmissionGradeForm({
         />
 
         {errors.score?.message && (
-          <p className="text-sm text-red-600">{errors.score.message}</p>
+          <p className="text-sm text-error">{errors.score.message}</p>
         )}
       </div>
 
@@ -171,7 +173,7 @@ function SubmissionGradeForm({
           maxLength={3000}
           aria-invalid={Boolean(errors.feedbackText)}
           placeholder="Add feedback for this student..."
-          className="w-full resize-y rounded-md border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+          className="w-full resize-y rounded-md border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-primary-base focus:ring-2 focus:ring-primary-100"
           {...register('feedbackText', {
             setValueAs: (value: unknown) => {
               if (typeof value !== 'string') {
@@ -179,13 +181,14 @@ function SubmissionGradeForm({
               }
 
               const trimmed = value.trim();
+
               return trimmed || undefined;
             },
           })}
         />
 
         {errors.feedbackText?.message && (
-          <p className="text-sm text-red-600">{errors.feedbackText.message}</p>
+          <p className="text-sm text-error">{errors.feedbackText.message}</p>
         )}
       </div>
 
@@ -256,7 +259,7 @@ export default function TeacherAssignmentSubmissionsPage() {
   if (isLoading) {
     return (
       <div className="flex min-h-64 items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary-base" />
       </div>
     );
   }
@@ -274,7 +277,7 @@ export default function TeacherAssignmentSubmissionsPage() {
 
         <Card>
           <CardContent className="p-6">
-            <p className="text-sm text-red-600">
+            <p className="text-sm text-error">
               {error ?? 'Assignment was not found.'}
             </p>
           </CardContent>
@@ -282,6 +285,12 @@ export default function TeacherAssignmentSubmissionsPage() {
       </div>
     );
   }
+
+  const gradedCount = submissions.filter(
+    (submission) => submission.status === 'graded',
+  ).length;
+
+  const awaitingReviewCount = submissions.length - gradedCount;
 
   return (
     <div className="space-y-6">
@@ -299,7 +308,9 @@ export default function TeacherAssignmentSubmissionsPage() {
         </h1>
 
         <p className="mt-1 text-sm text-gray-500">
-          {assignment.title} · {assignment.course.title}
+          {assignment.title}
+          {' · '}
+          {assignment.course.title}
         </p>
       </div>
 
@@ -307,6 +318,7 @@ export default function TeacherAssignmentSubmissionsPage() {
         <Card>
           <CardContent className="p-5">
             <p className="text-sm text-gray-500">Total submissions</p>
+
             <p className="mt-1 text-2xl font-semibold text-gray-900">
               {submissions.length}
             </p>
@@ -316,12 +328,9 @@ export default function TeacherAssignmentSubmissionsPage() {
         <Card>
           <CardContent className="p-5">
             <p className="text-sm text-gray-500">Graded</p>
+
             <p className="mt-1 text-2xl font-semibold text-gray-900">
-              {
-                submissions.filter(
-                  (submission) => submission.status === 'graded',
-                ).length
-              }
+              {gradedCount}
             </p>
           </CardContent>
         </Card>
@@ -329,12 +338,9 @@ export default function TeacherAssignmentSubmissionsPage() {
         <Card>
           <CardContent className="p-5">
             <p className="text-sm text-gray-500">Awaiting review</p>
+
             <p className="mt-1 text-2xl font-semibold text-gray-900">
-              {
-                submissions.filter(
-                  (submission) => submission.status !== 'graded',
-                ).length
-              }
+              {awaitingReviewCount}
             </p>
           </CardContent>
         </Card>
@@ -364,8 +370,8 @@ export default function TeacherAssignmentSubmissionsPage() {
             <CardHeader className="border-b">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-50">
-                    <UserRound className="h-5 w-5 text-emerald-700" />
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-100">
+                    <UserRound className="h-5 w-5 text-primary-base" />
                   </div>
 
                   <div>
@@ -427,7 +433,7 @@ export default function TeacherAssignmentSubmissionsPage() {
                       href={submission.fileUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="mt-2 inline-flex items-center gap-2 text-sm font-medium text-emerald-700 hover:text-emerald-800"
+                      className="mt-2 inline-flex items-center gap-2 text-sm font-medium text-primary-base hover:underline"
                     >
                       <ExternalLink className="h-4 w-4" />
                       Open submitted file
@@ -440,16 +446,16 @@ export default function TeacherAssignmentSubmissionsPage() {
                 </div>
 
                 {submission.grade && (
-                  <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
-                    <p className="text-sm font-medium text-emerald-900">
+                  <div className="rounded-lg border border-primary-200 bg-primary-100 p-4">
+                    <p className="text-sm font-medium text-primary-base">
                       Current grade
                     </p>
 
-                    <p className="mt-1 text-xl font-semibold text-emerald-900">
+                    <p className="mt-1 text-xl font-semibold text-gray-900">
                       {submission.grade.score} / {assignment.maxScore}
                     </p>
 
-                    <p className="mt-2 text-xs text-emerald-700">
+                    <p className="mt-2 text-xs text-gray-600">
                       Graded {formatDate(submission.grade.gradedAt)}
                     </p>
                   </div>

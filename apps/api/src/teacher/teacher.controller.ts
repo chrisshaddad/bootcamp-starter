@@ -12,14 +12,15 @@ import {
   createTeacherAssignmentRequestSchema,
   gradeSubmissionRequestSchema,
   type CreateTeacherAssignmentRequest,
+  type DeleteTeacherAssignmentResponse,
   type GradeSubmissionRequest,
   type GradeSubmissionResponse,
   type TeacherAssignmentListResponse,
   type TeacherAssignmentResponse,
   type TeacherCourseListResponse,
   type TeacherSubmissionListResponse,
-  updateTeacherAssignmentRequestSchema,
   type UpdateTeacherAssignmentRequest,
+  updateTeacherAssignmentRequestSchema,
 } from '@repo/contracts';
 import { CurrentUser, Roles } from '../auth/decorators';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
@@ -111,7 +112,7 @@ export class TeacherController {
   async deleteAssignment(
     @CurrentUser() user: User,
     @Param('assignmentId') assignmentId: string,
-  ): Promise<{ message: string }> {
+  ): Promise<DeleteTeacherAssignmentResponse> {
     return this.teacherService.deleteAssignment(
       user.id,
       user.organizationId,

@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import type {
   CreateTeacherAssignmentRequest,
+  DeleteTeacherAssignmentResponse,
   GradeSubmissionRequest,
   GradeSubmissionResponse,
   TeacherAssignmentListResponse,
@@ -598,7 +599,7 @@ export class TeacherService {
     teacherId: string,
     organizationId: string | null,
     assignmentId: string,
-  ): Promise<{ message: string }> {
+  ): Promise<DeleteTeacherAssignmentResponse> {
     if (!organizationId) {
       throw new ForbiddenException(
         'Teacher account is not assigned to an organization',

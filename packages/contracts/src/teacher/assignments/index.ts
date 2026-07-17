@@ -5,3 +5,4 @@ export * from './teacher-submission-list.response';
 export * from './grade-submission.request';
 export * from './grade-submission.response';
 export * from './update-assignment.request';
+export * from './delete-assignment.response';
