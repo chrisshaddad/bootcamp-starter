@@ -104,6 +104,9 @@ export default function EditProjectPage() {
     formState: { errors },
   } = useForm<UpdateProjectRequest>({
     resolver: zodResolver(updateProjectRequestSchema),
+    defaultValues: {
+      status: 'DRAFT',
+    },
     // `values` (not a one-time `reset()` in an effect) keeps the form in
     // sync with `project` from the very first render — using `reset()`
     // here left the Radix Select mounting one tick with an undefined

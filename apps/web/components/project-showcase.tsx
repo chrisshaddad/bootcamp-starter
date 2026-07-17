@@ -31,6 +31,7 @@ import {
 // PublicProjectMediaResponse, so that's the shape this component needs.
 interface ProjectShowcaseProps {
   project: ProjectResponse & {
+    repositoryUrl: string;
     media: PublicProjectMediaResponse[];
     technologies: ProjectTechnologyResponse[];
   };
@@ -195,14 +196,30 @@ export function ProjectShowcase({ project, onSave }: ProjectShowcaseProps) {
           </Card>
 
           <Card>
-            <CardContent className="space-y-2 pt-4">
+            <CardContent className="space-y-3 pt-4">
               <h3 className="text-muted-foreground text-xs font-bold tracking-wide uppercase">
                 Repository
               </h3>
-              <p className="inline-flex items-center gap-1.5 text-sm font-medium">
-                <Github className="h-3.5 w-3.5" />
-                {project.repositoryId}
-              </p>
+              <a
+                href={project.repositoryUrl}
+                target="_blank"
+                rel="noreferrer"
+                aria-label={`Open repository ${project.repositoryUrl} in a new tab`}
+                className="group flex items-start gap-3 rounded-lg border border-border/70 bg-muted/30 px-3 py-2.5 text-sm font-medium transition-colors hover:border-border hover:bg-muted/60"
+              >
+                <span className="mt-0.5 rounded-md bg-background p-1.5 text-muted-foreground transition-colors group-hover:text-foreground">
+                  <Github className="h-3.5 w-3.5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Open repository
+                  </span>
+                  <span className="mt-0.5 block break-all text-foreground">
+                    {project.repositoryUrl}
+                  </span>
+                </span>
+                <ExternalLink className="mt-1 h-3.5 w-3.5 flex-shrink-0 text-muted-foreground transition-colors group-hover:text-foreground" />
+              </a>
             </CardContent>
           </Card>
         </div>

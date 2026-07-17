@@ -119,36 +119,41 @@ export class ProjectsController {
   ): Promise<ProjectByIdResponse[]> {
     const projects = await this.projectsService.getMyProjects(user);
 
-    return projects.map((project) => ({
-      ...project,
-      createdAt: project.createdAt.toISOString(),
-      updatedAt: project.updatedAt.toISOString(),
-      publishedAt: project.publishedAt?.toISOString() ?? null,
-      media: project.media.map((m) => ({
-        id: m.id,
-        projectId: m.projectId,
-        uploadedByUserId: m.uploadedByUserId,
-        mediaType: m.mediaType as 'IMAGE' | 'GIF' | 'ARCHITECTURE_DIAGRAM',
-        storageKey: m.storageKey,
-        publicUrl: m.publicUrl,
-        caption: m.caption,
-        sortOrder: m.sortOrder,
-        createdAt: m.createdAt.toISOString(),
-        updatedAt: m.updatedAt.toISOString(),
-      })),
-      technologies: project.technologies.map((pt) => ({
-        id: pt.id,
-        projectId: pt.projectId,
-        technologyId: pt.technologyId,
-        technology: pt.technology,
-        source: pt.source,
-        evidence: pt.evidence,
-        isPrimary: pt.isPrimary,
-        sortOrder: pt.sortOrder,
-        createdAt: pt.createdAt.toISOString(),
-        updatedAt: pt.updatedAt.toISOString(),
-      })),
-    }));
+    return projects.map((project) => {
+      const { repository, ...projectFields } = project;
+
+      return {
+        ...projectFields,
+        repositoryUrl: repository.htmlUrl,
+        createdAt: project.createdAt.toISOString(),
+        updatedAt: project.updatedAt.toISOString(),
+        publishedAt: project.publishedAt?.toISOString() ?? null,
+        media: project.media.map((m) => ({
+          id: m.id,
+          projectId: m.projectId,
+          uploadedByUserId: m.uploadedByUserId,
+          mediaType: m.mediaType as 'IMAGE' | 'GIF' | 'ARCHITECTURE_DIAGRAM',
+          storageKey: m.storageKey,
+          publicUrl: m.publicUrl,
+          caption: m.caption,
+          sortOrder: m.sortOrder,
+          createdAt: m.createdAt.toISOString(),
+          updatedAt: m.updatedAt.toISOString(),
+        })),
+        technologies: project.technologies.map((pt) => ({
+          id: pt.id,
+          projectId: pt.projectId,
+          technologyId: pt.technologyId,
+          technology: pt.technology,
+          source: pt.source,
+          evidence: pt.evidence,
+          isPrimary: pt.isPrimary,
+          sortOrder: pt.sortOrder,
+          createdAt: pt.createdAt.toISOString(),
+          updatedAt: pt.updatedAt.toISOString(),
+        })),
+      };
+    });
   }
 
   @Get('explore')
@@ -193,9 +198,11 @@ export class ProjectsController {
     @Param('id') projectId: string,
   ): Promise<ProjectByIdResponse> {
     const project = await this.projectsService.getProjectById(user, projectId);
+    const { repository, ...projectFields } = project;
 
     return {
-      ...project,
+      ...projectFields,
+      repositoryUrl: repository.htmlUrl,
       createdAt: project.createdAt.toISOString(),
       updatedAt: project.updatedAt.toISOString(),
       publishedAt: project.publishedAt?.toISOString() ?? null,
@@ -453,6 +460,7 @@ export class ProjectsController {
     const result = {
       id: project.id,
       repositoryId: project.repositoryId,
+      repositoryUrl: project.repository.htmlUrl,
       createdByUserId: project.createdByUserId,
       title: project.title,
       slug: project.slug,

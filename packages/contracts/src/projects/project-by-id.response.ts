@@ -18,6 +18,7 @@ export const projectMediaResponseSchema = z.object({
 export type ProjectMediaResponse = z.infer<typeof projectMediaResponseSchema>;
 
 export const projectByIdResponseSchema = projectResponseSchema.extend({
+  repositoryUrl: z.string().url(),
   media: z.array(projectMediaResponseSchema),
   technologies: z.array(projectTechnologyResponseSchema).default([]),
 });
