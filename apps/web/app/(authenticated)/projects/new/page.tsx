@@ -9,8 +9,6 @@ import { fetcher, apiPost, ApiError } from '@/lib/api';
 import { useUser } from '@/hooks/use-auth';
 import { type GithubRepository } from '@repo/contracts';
 
-import { SiteHeader } from '@/components/site-header';
-import { SiteFooter } from '@/components/site-footer';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -69,131 +67,122 @@ export default function NewProjectPage() {
 
   if (isAuthLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex items-center justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
-      <SiteHeader />
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-foreground text-2xl font-bold">Import a project</h1>
+        <p className="mt-1 text-muted-foreground text-sm">
+          Select a repository from your GitHub account to import.
+        </p>
+      </div>
 
-      <main className="flex-1 px-6 py-10 sm:px-10">
-        <div className="mx-auto max-w-5xl">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold tracking-tight">
-              Import a Project
-            </h1>
-            <p className="mt-2 text-muted-foreground">
-              Select a repository from your GitHub account to import.
+      {!isConnected ? (
+        <Card className="border-dashed py-12">
+          <CardContent className="flex flex-col items-center justify-center text-center">
+            <Github className="mb-4 h-12 w-12 text-muted-foreground" />
+            <h2 className="mb-2 text-xl font-semibold">
+              Connect your GitHub Account
+            </h2>
+            <p className="mb-6 max-w-sm text-sm text-muted-foreground">
+              To import projects seamlessly, connect your GitHub account. We
+              will fetch your repositories automatically.
             </p>
-          </div>
+            <Button onClick={handleConnectGithub}>
+              <Github className="mr-2 h-4 w-4" />
+              Connect GitHub
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-6">
+          {reposLoading && (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <Skeleton key={i} className="h-[140px] w-full rounded-xl" />
+              ))}
+            </div>
+          )}
 
-          {!isConnected ? (
-            <Card className="border-dashed py-12">
-              <CardContent className="flex flex-col items-center justify-center text-center">
-                <Github className="mb-4 h-12 w-12 text-muted-foreground" />
-                <h2 className="mb-2 text-xl font-semibold">
-                  Connect your GitHub Account
-                </h2>
-                <p className="mb-6 max-w-sm text-sm text-muted-foreground">
-                  To import projects seamlessly, connect your GitHub account. We
-                  will fetch your repositories automatically.
-                </p>
-                <Button onClick={handleConnectGithub}>
-                  <Github className="mr-2 h-4 w-4" />
-                  Connect GitHub
-                </Button>
+          {reposError && (
+            <Card className="border-destructive">
+              <CardContent className="py-6 text-center text-destructive">
+                Failed to fetch repositories. Please try reconnecting your
+                account.
               </CardContent>
             </Card>
-          ) : (
-            <div className="space-y-6">
-              {reposLoading && (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {[1, 2, 3, 4, 5, 6].map((i) => (
-                    <Skeleton key={i} className="h-[140px] w-full rounded-xl" />
-                  ))}
-                </div>
-              )}
+          )}
 
-              {reposError && (
-                <Card className="border-destructive">
-                  <CardContent className="py-6 text-center text-destructive">
-                    Failed to fetch repositories. Please try reconnecting your
-                    account.
+          {repositories && (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {repositories.map((repo) => (
+                <Card
+                  key={repo.id}
+                  className="flex flex-col overflow-hidden transition-colors hover:border-primary/50"
+                >
+                  <CardHeader className="flex-1 pb-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <CardTitle
+                        className="truncate text-base font-semibold"
+                        title={repo.fullName}
+                      >
+                        {repo.name}
+                      </CardTitle>
+                      {repo.isPrivate ? (
+                        <Lock className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                      ) : (
+                        <Globe className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                      )}
+                    </div>
+                    {repo.description && (
+                      <CardDescription className="line-clamp-2 mt-1.5 text-xs">
+                        {repo.description}
+                      </CardDescription>
+                    )}
+                  </CardHeader>
+                  <CardContent className="border-t bg-muted/20 px-6 py-4 flex items-center justify-between">
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {repo.language || 'Unknown'}
+                    </span>
+                    {repo.isPrivate ? (
+                      <span className="text-xs text-muted-foreground italic">
+                        Private (imports unavailable)
+                      </span>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => handleImport(repo.url)}
+                        disabled={importingUrl !== null}
+                      >
+                        {importingUrl === repo.url ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <>
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Import
+                          </>
+                        )}
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
-              )}
+              ))}
 
-              {repositories && (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {repositories.map((repo) => (
-                    <Card
-                      key={repo.id}
-                      className="flex flex-col overflow-hidden transition-colors hover:border-primary/50"
-                    >
-                      <CardHeader className="flex-1 pb-4">
-                        <div className="flex items-start justify-between gap-4">
-                          <CardTitle
-                            className="truncate text-base font-semibold"
-                            title={repo.fullName}
-                          >
-                            {repo.name}
-                          </CardTitle>
-                          {repo.isPrivate ? (
-                            <Lock className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                          ) : (
-                            <Globe className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                          )}
-                        </div>
-                        {repo.description && (
-                          <CardDescription className="line-clamp-2 mt-1.5 text-xs">
-                            {repo.description}
-                          </CardDescription>
-                        )}
-                      </CardHeader>
-                      <CardContent className="border-t bg-muted/20 px-6 py-4 flex items-center justify-between">
-                        <span className="text-xs font-medium text-muted-foreground">
-                          {repo.language || 'Unknown'}
-                        </span>
-                        {repo.isPrivate ? (
-                          <span className="text-xs text-muted-foreground italic">
-                            Private (imports unavailable)
-                          </span>
-                        ) : (
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => handleImport(repo.url)}
-                            disabled={importingUrl === repo.url}
-                          >
-                            {importingUrl === repo.url ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <>
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                Import
-                              </>
-                            )}
-                          </Button>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
-
-                  {repositories.length === 0 && (
-                    <div className="col-span-full py-12 text-center text-muted-foreground">
-                      No repositories found on this GitHub account.
-                    </div>
-                  )}
+              {repositories.length === 0 && (
+                <div className="col-span-full py-12 text-center text-muted-foreground">
+                  No repositories found on this GitHub account.
                 </div>
               )}
             </div>
           )}
         </div>
-      </main>
-      <SiteFooter />
+      )}
     </div>
   );
 }

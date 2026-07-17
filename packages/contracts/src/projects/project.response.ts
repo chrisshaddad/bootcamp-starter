@@ -7,6 +7,7 @@ export const projectResponseSchema = z.object({
   createdByUserId: z.string(),
   title: z.string(),
   slug: z.string(),
+  logoUrl: z.string().nullable(),
   shortDescription: z.string().nullable(),
   fullDescription: z.string().nullable(),
   deploymentUrl: z.string().nullable(),
