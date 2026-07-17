@@ -5,6 +5,7 @@ export const githubRepositorySchema = z.object({
   name: z.string(),
   fullName: z.string(),
   isPrivate: z.boolean(),
+  isImported: z.boolean(),
   url: z.string(),
   updatedAt: z.string(),
   description: z.string().nullable(),

@@ -24,6 +24,7 @@ describe('GithubService', () => {
       update: jest.Mock<unknown, [ConnectedAccountUpdateArgs]>;
     };
     developerProfile: { update: jest.Mock };
+    repository: { findMany: jest.Mock };
     $transaction: jest.Mock;
   };
 
@@ -35,6 +36,7 @@ describe('GithubService', () => {
         update: jest.fn<unknown, [ConnectedAccountUpdateArgs]>(),
       },
       developerProfile: { update: jest.fn() },
+      repository: { findMany: jest.fn().mockResolvedValue([]) },
       $transaction: jest.fn(),
     };
     service = new GithubService(db as unknown as DatabaseService);
@@ -95,6 +97,37 @@ describe('GithubService', () => {
     expect(getFetchHeaders(fetchMock).Authorization).toBe(
       'Bearer user-specific-token',
     );
+  });
+
+  it('filters private repositories and marks repositories already imported', async () => {
+    const encryptedToken = (
+      service as unknown as {
+        encryptGithubAccessToken: (token: string) => string;
+      }
+    ).encryptGithubAccessToken('user-specific-token');
+    db.connectedAccount.findUnique.mockResolvedValue({
+      githubAccessToken: encryptedToken,
+    });
+    db.repository.findMany.mockResolvedValue([{ githubRepoId: 101n }]);
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse([
+        githubRepository({ id: 101, name: 'imported', private: false }),
+        githubRepository({ id: 102, name: 'available', private: false }),
+        githubRepository({ id: 103, name: 'private', private: true }),
+      ]),
+    );
+
+    await expect(service.getUserRepositories('user-id')).resolves.toEqual([
+      expect.objectContaining({ id: '101', isImported: true }),
+      expect.objectContaining({ id: '102', isImported: false }),
+    ]);
+    expect(db.repository.findMany).toHaveBeenCalledWith({
+      where: {
+        githubRepoId: { in: [101n, 102n] },
+        project: { isNot: null },
+      },
+      select: { githubRepoId: true },
+    });
   });
 
   it('returns a conflict when a GitHub account is connected to another user', async () => {
@@ -498,6 +531,27 @@ function jsonResponse(
     status,
     headers,
   });
+}
+
+function githubRepository({
+  id,
+  name,
+  private: isPrivate,
+}: {
+  id: number;
+  name: string;
+  private: boolean;
+}) {
+  return {
+    id,
+    name,
+    full_name: `owner/${name}`,
+    private: isPrivate,
+    html_url: `https://github.com/owner/${name}`,
+    updated_at: '2026-07-17T00:00:00Z',
+    description: null,
+    language: 'TypeScript',
+  };
 }
 
 function mockOAuthState(db: {

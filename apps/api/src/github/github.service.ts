@@ -291,11 +291,28 @@ export class GithubService {
       nextUrl = getNextPageUrl(linkHeader);
     }
 
-    const validated = accumulatedRepos.map((repo) => ({
+    const publicRepos = accumulatedRepos.filter((repo) => !repo.private);
+    const importedRepositories = publicRepos.length
+      ? await this.db.repository.findMany({
+          where: {
+            githubRepoId: { in: publicRepos.map((repo) => BigInt(repo.id)) },
+            project: { isNot: null },
+          },
+          select: { githubRepoId: true },
+        })
+      : [];
+    const importedRepositoryIds = new Set(
+      importedRepositories.map((repository) =>
+        repository.githubRepoId.toString(),
+      ),
+    );
+
+    const validated = publicRepos.map((repo) => ({
       id: repo.id.toString(),
       name: repo.name,
       fullName: repo.full_name,
       isPrivate: repo.private,
+      isImported: importedRepositoryIds.has(repo.id.toString()),
       url: repo.html_url,
       updatedAt: repo.updated_at,
       description: repo.description,
