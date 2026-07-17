@@ -40,12 +40,12 @@ export class GithubController {
   @Get('connect')
   @Roles('DEVELOPER', 'SUPER_ADMIN')
   @ApiOperation({
-    summary: 'Instantly connects GitHub using the server GITHUB_TOKEN',
+    summary: 'Starts the GitHub OAuth connection flow',
   })
   async connectGithub(@CurrentUser('id') userId: string, @Res() res: Response) {
-    await this.githubService.connectUsingEnvToken(userId);
-    const appUrl = process.env.APP_URL || 'http://localhost:3000';
-    return res.redirect(`${appUrl}/projects/new`);
+    const authorizationUrl =
+      await this.githubService.getOAuthConnectUrl(userId);
+    return res.redirect(authorizationUrl);
   }
 
   @Get('callback')

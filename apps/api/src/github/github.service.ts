@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   Injectable,
   Logger,
   NotFoundException,
@@ -17,7 +18,12 @@ import type {
   NormalizedGithubRepository,
   ParsedGithubRepository,
 } from './github.types';
-import { randomUUID } from 'crypto';
+import {
+  createCipheriv,
+  createDecipheriv,
+  randomBytes,
+  randomUUID,
+} from 'crypto';
 
 const GITHUB_API_BASE_URL = 'https://api.github.com';
 const GITHUB_API_VERSION = '2022-11-28';
@@ -29,6 +35,9 @@ const GITHUB_API_UNAVAILABLE_MESSAGE =
 const GITHUB_RATE_LIMIT_MESSAGE =
   'GitHub API rate limit exceeded. Please try again later.';
 const MAX_REPOSITORY_FILE_BYTES = 200_000;
+const TOKEN_ENCRYPTION_ALGORITHM = 'aes-256-gcm';
+const TOKEN_ENCRYPTION_VERSION = 'v1';
+const TOKEN_ENCRYPTION_KEY_BYTES = 32;
 
 export class GithubRequestTimeoutException extends ServiceUnavailableException {
   constructor() {
@@ -196,85 +205,36 @@ export class GithubService {
       throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
     }
 
+    const encryptedAccessToken = this.encryptGithubAccessToken(accessToken);
+
     // 3. Save to database
-    await this.db.$transaction([
-      this.db.developerProfile.update({
-        where: { userId },
-        data: {
-          githubUserId: BigInt(githubUser.id),
-          githubUsername: githubUser.login,
-          githubConnectedAt: new Date(),
-        },
-      }),
-      this.db.connectedAccount.update({
-        where: { userId },
-        data: {
-          githubAccessToken: accessToken ?? null,
-          oauthState: null,
-          oauthStateExpiresAt: null,
-        },
-      }),
-    ]);
-  }
-
-  async connectUsingEnvToken(userId: string): Promise<void> {
-    const token = process.env.GITHUB_TOKEN?.trim();
-    if (!token) {
-      throw new BadRequestException(
-        'GITHUB_TOKEN is not configured in your backend .env file.',
-      );
-    }
-
-    let response: Response;
     try {
-      response = await fetch('https://api.github.com/user', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: 'application/vnd.github+json',
-          'User-Agent': GITHUB_USER_AGENT,
-        },
-        signal: AbortSignal.timeout(10_000),
-      });
+      await this.db.$transaction([
+        this.db.developerProfile.update({
+          where: { userId },
+          data: {
+            githubUserId: BigInt(githubUser.id),
+            githubUsername: githubUser.login,
+            githubConnectedAt: new Date(),
+          },
+        }),
+        this.db.connectedAccount.update({
+          where: { userId },
+          data: {
+            githubAccessToken: encryptedAccessToken,
+            oauthState: null,
+            oauthStateExpiresAt: null,
+          },
+        }),
+      ]);
     } catch (error) {
-      if (error instanceof DOMException && error.name === 'TimeoutError') {
-        throw new GithubRequestTimeoutException();
+      if (isPrismaUniqueConstraintError(error)) {
+        throw new ConflictException(
+          'This GitHub account is already connected to another user.',
+        );
       }
-      throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+      throw error;
     }
-
-    if (!response.ok) {
-      throw new BadRequestException(
-        'Failed to validate the GITHUB_TOKEN. Make sure it has "repo" permissions.',
-      );
-    }
-
-    let githubUser: { id: number; login: string };
-    try {
-      githubUser = (await response.json()) as { id: number; login: string };
-    } catch {
-      throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
-    }
-
-    await this.db.$transaction([
-      this.db.developerProfile.update({
-        where: { userId },
-        data: {
-          githubUserId: BigInt(githubUser.id),
-          githubUsername: githubUser.login,
-          githubConnectedAt: new Date(),
-        },
-      }),
-      this.db.connectedAccount.upsert({
-        where: { userId },
-        create: {
-          userId,
-          githubAccessToken: token ?? null,
-        },
-        update: {
-          githubAccessToken: token ?? null,
-        },
-      }),
-    ]);
   }
 
   async getUserRepositories(userId: string): Promise<GithubRepository[]> {
@@ -287,6 +247,9 @@ export class GithubService {
       throw new BadRequestException('GitHub account not connected');
     }
 
+    const githubAccessToken = this.decryptGithubAccessToken(
+      profile.githubAccessToken,
+    );
     const accumulatedRepos: GithubRepoResponse[] = [];
     let nextUrl: string | null =
       'https://api.github.com/user/repos?sort=updated&per_page=100';
@@ -296,7 +259,7 @@ export class GithubService {
       try {
         response = await fetch(nextUrl, {
           headers: {
-            Authorization: `Bearer ${profile.githubAccessToken}`,
+            Authorization: `Bearer ${githubAccessToken}`,
             Accept: 'application/vnd.github+json',
             'User-Agent': GITHUB_USER_AGENT,
           },
@@ -328,11 +291,28 @@ export class GithubService {
       nextUrl = getNextPageUrl(linkHeader);
     }
 
-    const validated = accumulatedRepos.map((repo) => ({
+    const publicRepos = accumulatedRepos.filter((repo) => !repo.private);
+    const importedRepositories = publicRepos.length
+      ? await this.db.repository.findMany({
+          where: {
+            githubRepoId: { in: publicRepos.map((repo) => BigInt(repo.id)) },
+            project: { isNot: null },
+          },
+          select: { githubRepoId: true },
+        })
+      : [];
+    const importedRepositoryIds = new Set(
+      importedRepositories.map((repository) =>
+        repository.githubRepoId.toString(),
+      ),
+    );
+
+    const validated = publicRepos.map((repo) => ({
       id: repo.id.toString(),
       name: repo.name,
       fullName: repo.full_name,
       isPrivate: repo.private,
+      isImported: importedRepositoryIds.has(repo.id.toString()),
       url: repo.html_url,
       updatedAt: repo.updated_at,
       description: repo.description,
@@ -537,6 +517,85 @@ export class GithubService {
     return headers;
   }
 
+  private encryptGithubAccessToken(accessToken: string): string {
+    const key = this.getTokenEncryptionKey();
+    const initializationVector = randomBytes(12);
+    const cipher = createCipheriv(
+      TOKEN_ENCRYPTION_ALGORITHM,
+      key,
+      initializationVector,
+    );
+    const ciphertext = Buffer.concat([
+      cipher.update(accessToken, 'utf8'),
+      cipher.final(),
+    ]);
+
+    return [
+      TOKEN_ENCRYPTION_VERSION,
+      initializationVector.toString('base64url'),
+      cipher.getAuthTag().toString('base64url'),
+      ciphertext.toString('base64url'),
+    ].join(':');
+  }
+
+  private decryptGithubAccessToken(encryptedAccessToken: string): string {
+    const [version, initializationVector, authTag, ciphertext, ...extraParts] =
+      encryptedAccessToken.split(':');
+
+    if (
+      version !== TOKEN_ENCRYPTION_VERSION ||
+      !initializationVector ||
+      !authTag ||
+      !ciphertext ||
+      extraParts.length > 0
+    ) {
+      throw new BadRequestException(
+        'Your GitHub connection needs to be reconnected.',
+      );
+    }
+
+    try {
+      const decipher = createDecipheriv(
+        TOKEN_ENCRYPTION_ALGORITHM,
+        this.getTokenEncryptionKey(),
+        Buffer.from(initializationVector, 'base64url'),
+      );
+      decipher.setAuthTag(Buffer.from(authTag, 'base64url'));
+
+      return Buffer.concat([
+        decipher.update(Buffer.from(ciphertext, 'base64url')),
+        decipher.final(),
+      ]).toString('utf8');
+    } catch (error) {
+      if (error instanceof ServiceUnavailableException) {
+        throw error;
+      }
+
+      this.logger.warn('Failed to decrypt a GitHub access token.');
+      throw new BadRequestException(
+        'Your GitHub connection needs to be reconnected.',
+      );
+    }
+  }
+
+  private getTokenEncryptionKey(): Buffer {
+    const configuredKey = process.env.GITHUB_TOKEN_ENCRYPTION_KEY;
+    if (!configuredKey) {
+      throw new ServiceUnavailableException(
+        'GitHub token encryption is not configured on the server.',
+      );
+    }
+
+    const key = Buffer.from(configuredKey, 'base64');
+    if (key.byteLength !== TOKEN_ENCRYPTION_KEY_BYTES) {
+      throw new ServiceUnavailableException(
+        'GitHub token encryption is not configured on the server.',
+      );
+    }
+
+    return key;
+  }
+
   private isRateLimited(response: Response): boolean {
     return response.headers.get('x-ratelimit-remaining') === '0';
   }
@@ -635,6 +694,10 @@ export class GithubService {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isPrismaUniqueConstraintError(error: unknown): boolean {
+  return isRecord(error) && error.code === 'P2002';
 }
 
 function getRequiredString(value: unknown): string {

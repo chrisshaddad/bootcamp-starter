@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Github, Loader2, PlusCircle, Lock, Globe } from 'lucide-react';
+import { Github, Loader2, PlusCircle, Globe } from 'lucide-react';
 import { toast } from 'sonner';
 import useSWR from 'swr';
 import { fetcher, apiPost, ApiError } from '@/lib/api';
@@ -133,11 +133,7 @@ export default function NewProjectPage() {
                       >
                         {repo.name}
                       </CardTitle>
-                      {repo.isPrivate ? (
-                        <Lock className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                      ) : (
-                        <Globe className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                      )}
+                      <Globe className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
                     </div>
                     {repo.description && (
                       <CardDescription className="line-clamp-2 mt-1.5 text-xs">
@@ -149,27 +145,23 @@ export default function NewProjectPage() {
                     <span className="text-xs font-medium text-muted-foreground">
                       {repo.language || 'Unknown'}
                     </span>
-                    {repo.isPrivate ? (
-                      <span className="text-xs text-muted-foreground italic">
-                        Private (imports unavailable)
-                      </span>
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => handleImport(repo.url)}
-                        disabled={importingUrl !== null}
-                      >
-                        {importingUrl === repo.url ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <>
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Import
-                          </>
-                        )}
-                      </Button>
-                    )}
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => handleImport(repo.url)}
+                      disabled={repo.isImported || importingUrl !== null}
+                    >
+                      {repo.isImported ? (
+                        'Already imported'
+                      ) : importingUrl === repo.url ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <>
+                          <PlusCircle className="mr-2 h-4 w-4" />
+                          Import
+                        </>
+                      )}
+                    </Button>
                   </CardContent>
                 </Card>
               ))}

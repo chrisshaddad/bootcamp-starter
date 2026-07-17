@@ -1,21 +1,53 @@
 import {
+  ConflictException,
   Logger,
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import type { DatabaseService } from '../database/prisma.service';
 import { GithubRequestTimeoutException, GithubService } from './github.service';
 
 const originalFetch = global.fetch;
 
+type ConnectedAccountUpdateArgs = {
+  where: { userId: string };
+  data: { githubAccessToken?: string };
+};
+
 describe('GithubService', () => {
   let service: GithubService;
   let fetchMock: jest.MockedFunction<typeof fetch>;
+  let db: {
+    connectedAccount: {
+      findUnique: jest.Mock;
+      upsert: jest.Mock;
+      update: jest.Mock<unknown, [ConnectedAccountUpdateArgs]>;
+    };
+    developerProfile: { update: jest.Mock };
+    repository: { findMany: jest.Mock };
+    $transaction: jest.Mock;
+  };
 
   beforeEach(() => {
-    service = new GithubService({} as never);
+    db = {
+      connectedAccount: {
+        findUnique: jest.fn(),
+        upsert: jest.fn(),
+        update: jest.fn<unknown, [ConnectedAccountUpdateArgs]>(),
+      },
+      developerProfile: { update: jest.fn() },
+      repository: { findMany: jest.fn().mockResolvedValue([]) },
+      $transaction: jest.fn(),
+    };
+    service = new GithubService(db as unknown as DatabaseService);
     fetchMock = jest.fn() as jest.MockedFunction<typeof fetch>;
     global.fetch = fetchMock;
     delete process.env.GITHUB_TOKEN;
+    process.env.GITHUB_CLIENT_ID = 'client-id';
+    process.env.GITHUB_CLIENT_SECRET = 'client-secret';
+    process.env.GITHUB_TOKEN_ENCRYPTION_KEY = Buffer.alloc(32, 7).toString(
+      'base64',
+    );
   });
 
   afterAll(() => {
@@ -24,6 +56,105 @@ describe('GithubService', () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
+    delete process.env.GITHUB_CLIENT_ID;
+    delete process.env.GITHUB_CLIENT_SECRET;
+    delete process.env.GITHUB_TOKEN_ENCRYPTION_KEY;
+  });
+
+  it('encrypts an OAuth token before saving it', async () => {
+    mockOAuthState(db);
+    mockSuccessfulGithubOAuth(fetchMock);
+    db.developerProfile.update.mockReturnValue({});
+    db.connectedAccount.update.mockReturnValue({});
+    db.$transaction.mockResolvedValue([]);
+
+    await service.handleOAuthCallback('user-id', 'authorization-code', 'state');
+
+    const savedToken =
+      db.connectedAccount.update.mock.calls[0]?.[0]?.data.githubAccessToken;
+    expect(typeof savedToken).toBe('string');
+    if (typeof savedToken !== 'string') {
+      throw new Error('Expected the GitHub token to be saved as a string.');
+    }
+
+    expect(savedToken).toMatch(/^v1:/);
+    expect(savedToken).not.toContain('oauth-access-token');
+  });
+
+  it("uses the current user's decrypted token for repository requests", async () => {
+    const encryptedToken = (
+      service as unknown as {
+        encryptGithubAccessToken: (token: string) => string;
+      }
+    ).encryptGithubAccessToken('user-specific-token');
+    db.connectedAccount.findUnique.mockResolvedValue({
+      githubAccessToken: encryptedToken,
+    });
+    fetchMock.mockResolvedValueOnce(jsonResponse([]));
+
+    await service.getUserRepositories('user-id');
+
+    expect(getFetchHeaders(fetchMock).Authorization).toBe(
+      'Bearer user-specific-token',
+    );
+  });
+
+  it('filters private repositories and marks repositories already imported', async () => {
+    const encryptedToken = (
+      service as unknown as {
+        encryptGithubAccessToken: (token: string) => string;
+      }
+    ).encryptGithubAccessToken('user-specific-token');
+    db.connectedAccount.findUnique.mockResolvedValue({
+      githubAccessToken: encryptedToken,
+    });
+    db.repository.findMany.mockResolvedValue([{ githubRepoId: 101n }]);
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse([
+        githubRepository({ id: 101, name: 'imported', private: false }),
+        githubRepository({ id: 102, name: 'available', private: false }),
+        githubRepository({ id: 103, name: 'private', private: true }),
+      ]),
+    );
+
+    await expect(service.getUserRepositories('user-id')).resolves.toEqual([
+      expect.objectContaining({ id: '101', isImported: true }),
+      expect.objectContaining({ id: '102', isImported: false }),
+    ]);
+    expect(db.repository.findMany).toHaveBeenCalledWith({
+      where: {
+        githubRepoId: { in: [101n, 102n] },
+        project: { isNot: null },
+      },
+      select: { githubRepoId: true },
+    });
+  });
+
+  it('returns a conflict when a GitHub account is connected to another user', async () => {
+    mockOAuthState(db);
+    mockSuccessfulGithubOAuth(fetchMock);
+    db.developerProfile.update.mockReturnValue({});
+    db.connectedAccount.update.mockReturnValue({});
+    db.$transaction.mockRejectedValue(
+      Object.assign(new Error('Duplicate'), {
+        code: 'P2002',
+      }),
+    );
+
+    try {
+      await service.handleOAuthCallback(
+        'user-id',
+        'authorization-code',
+        'state',
+      );
+      fail('Expected the OAuth callback to throw a conflict.');
+    } catch (error) {
+      expect(error).toBeInstanceOf(ConflictException);
+      expect(error).toHaveProperty(
+        'message',
+        'This GitHub account is already connected to another user.',
+      );
+    }
   });
 
   it('normalizes repository metadata and language byte counts', async () => {
@@ -400,6 +531,44 @@ function jsonResponse(
     status,
     headers,
   });
+}
+
+function githubRepository({
+  id,
+  name,
+  private: isPrivate,
+}: {
+  id: number;
+  name: string;
+  private: boolean;
+}) {
+  return {
+    id,
+    name,
+    full_name: `owner/${name}`,
+    private: isPrivate,
+    html_url: `https://github.com/owner/${name}`,
+    updated_at: '2026-07-17T00:00:00Z',
+    description: null,
+    language: 'TypeScript',
+  };
+}
+
+function mockOAuthState(db: {
+  connectedAccount: { findUnique: jest.Mock };
+}): void {
+  db.connectedAccount.findUnique.mockResolvedValue({
+    oauthState: 'state',
+    oauthStateExpiresAt: new Date(Date.now() + 60_000),
+  });
+}
+
+function mockSuccessfulGithubOAuth(
+  fetchMock: jest.MockedFunction<typeof fetch>,
+): void {
+  fetchMock
+    .mockResolvedValueOnce(jsonResponse({ access_token: 'oauth-access-token' }))
+    .mockResolvedValueOnce(jsonResponse({ id: 123, login: 'octocat' }));
 }
 
 function getFetchHeaders(
