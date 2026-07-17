@@ -13,6 +13,7 @@ import type {
   ProjectMediaUpdateRequest,
   ProjectMediaUploadRequest,
   ProjectMediaResponse,
+  ExploreProjectsResponse,
 } from '@repo/contracts';
 
 const PROJECTS_KEY = '/projects';
@@ -154,4 +155,19 @@ export function useDeleteProjectMedia() {
     );
     await globalMutate(projectKey(projectId));
   }, []);
+}
+// New hook added for fetching Explore Projects
+export function useExploreProjects(query?: { page?: number; limit?: number; search?: string; sort?: 'latest' | 'oldest' | 'alphabetical' }) {
+  const params = new URLSearchParams();
+  if (query?.page) params.append('page', query.page.toString());
+  if (query?.limit) params.append('limit', query.limit.toString());
+  if (query?.search) params.append('search', query.search);
+  if (query?.sort) params.append('sort', query.sort);
+  
+  const queryString = params.toString() ? `?${params.toString()}` : '';
+  const { data, error, isLoading } = useSWR<ExploreProjectsResponse>(
+    `/projects/explore${queryString}`
+  );
+
+  return { projects: data?.data ?? [], meta: data?.meta, error, isLoading };
 }

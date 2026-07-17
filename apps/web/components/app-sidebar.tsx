@@ -10,6 +10,7 @@ import {
   Building2,
   UserCog,
   FolderGit2,
+  Compass, // <-- 1. Import Compass here
 } from 'lucide-react';
 import { useUser } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
@@ -41,6 +42,11 @@ const orgNavItems: NavItem[] = [
     icon: LayoutDashboard,
   },
   {
+    title: 'Explore', // <-- 2. Added Explore for normal users
+    url: '/explore',
+    icon: Compass,
+  },
+  {
     title: 'Projects',
     url: '/projects',
     icon: FolderGit2,
@@ -58,6 +64,11 @@ const superAdminNavItems: NavItem[] = [
     title: 'Organizations',
     url: '/organizations',
     icon: Building2,
+  },
+  {
+    title: 'Explore', // <-- 3. Fixed title and icon for super admins
+    url: '/explore',
+    icon: Compass,
   },
   {
     title: 'Projects',
