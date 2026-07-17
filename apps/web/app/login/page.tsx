@@ -57,8 +57,12 @@ function RandomProjects() {
   if (randomProjects.length === 0) {
     return (
       <div className="space-y-4 w-full text-center lg:text-left">
-        <h3 className="text-xl font-semibold mb-6 text-foreground">Discover Projects</h3>
-        <p className="text-muted-foreground text-sm">No projects to discover yet.</p>
+        <h3 className="text-xl font-semibold mb-6 text-foreground">
+          Discover Projects
+        </h3>
+        <p className="text-muted-foreground text-sm">
+          No projects to discover yet.
+        </p>
       </div>
     );
   }
@@ -70,14 +74,20 @@ function RandomProjects() {
       </h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         {randomProjects.map((project, index) => (
-          <Link key={project.id} href={`/projects/${project.slug}`} className="block h-full">
+          <Link
+            key={project.id}
+            href={`/projects/${project.slug}`}
+            className="block h-full"
+          >
             <Card className="flex flex-col overflow-hidden py-0 border-white/10 shadow-[0_0_60px_-15px_rgba(47,120,238,0.15)] hover:border-primary/50 transition-colors h-full">
               <div
                 className={`relative flex h-12 shrink-0 items-center bg-gradient-to-br px-4 ${THUMB_GRADIENTS[index % THUMB_GRADIENTS.length]}`}
               />
 
               <div className="flex flex-1 flex-col gap-1.5 px-4 pt-3 pb-4">
-                <h4 className="text-sm font-semibold line-clamp-1">{project.title}</h4>
+                <h4 className="text-sm font-semibold line-clamp-1">
+                  {project.title}
+                </h4>
                 {project.shortDescription && (
                   <p className="line-clamp-2 text-muted-foreground text-xs">
                     {project.shortDescription}

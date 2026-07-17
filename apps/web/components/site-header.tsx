@@ -1,13 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { toast } from 'sonner';
+//import { toast } from 'sonner';
 
 //const NAV_LINKS = ['Home', 'Projects'];
-
-function notifyComingSoon(label: string) {
-  toast.info(`${label}: this feature isn't implemented yet.`);
-}
 
 export function SiteHeader() {
   return (
@@ -18,8 +14,6 @@ export function SiteHeader() {
           Deployfolio
         </span>
       </Link>
-
-   
     </header>
   );
 }

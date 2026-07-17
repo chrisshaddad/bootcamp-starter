@@ -1,7 +1,7 @@
 'use client';
 
 import { Github, Linkedin, X } from 'lucide-react';
-import { toast } from 'sonner';
+//import { toast } from 'sonner';
 
 const LEGAL_LINKS = [
   {
@@ -10,14 +10,12 @@ const LEGAL_LINKS = [
       window.open(
         'https://mohamadbakawi.github.io/ForwardMena-Project-Privacy-Policy/',
         '_blank',
-        'noopener,noreferrer'
+        'noopener,noreferrer',
       ),
   },
-
 ];
 
 const SOCIAL_LINKS = [
-
   {
     label: 'GitHub',
     icon: Github,
@@ -25,34 +23,22 @@ const SOCIAL_LINKS = [
       window.open(
         'https://github.com/chrisshaddad/bootcamp-starter/tree/mhmdfarhat-mhmdali-amir',
         '_blank',
-        'noopener,noreferrer'
+        'noopener,noreferrer',
       ),
   },
   {
     label: 'LinkedIn',
     icon: Linkedin,
     onClick: () =>
-      window.open(
-        'https://www.linkedin.com/',
-        '_blank',
-        'noopener,noreferrer'
-      ),
+      window.open('https://www.linkedin.com/', '_blank', 'noopener,noreferrer'),
   },
   {
     label: 'X',
     icon: X,
     onClick: () =>
-      window.open(
-        'https://x.com/',
-        '_blank',
-        'noopener,noreferrer'
-      ),
+      window.open('https://x.com/', '_blank', 'noopener,noreferrer'),
   },
 ];
-
-function notifyComingSoon(label: string) {
-  toast.info(`${label}: this feature isn't implemented yet.`);
-}
 
 export function SiteFooter() {
   return (

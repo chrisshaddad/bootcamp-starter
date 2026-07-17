@@ -2,7 +2,13 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Search, Compass, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  Search,
+  Compass,
+  ExternalLink,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -30,7 +36,9 @@ export default function ExplorePage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
-  const [sort, setSort] = useState<'latest' | 'oldest' | 'alphabetical'>('latest');
+  const [sort, setSort] = useState<'latest' | 'oldest' | 'alphabetical'>(
+    'latest',
+  );
 
   const { projects, meta, isLoading, error } = useExploreProjects({
     page,
@@ -50,7 +58,8 @@ export default function ExplorePage() {
       <div>
         <h1 className="text-foreground text-2xl font-bold">Explore Projects</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          Discover community projects and explore work published by other developers.
+          Discover community projects and explore work published by other
+          developers.
         </p>
       </div>
 
@@ -88,7 +97,9 @@ export default function ExplorePage() {
         <Card className="flex flex-col items-center gap-2 border-dashed py-16 text-center">
           <p className="font-medium">Unable to load projects</p>
           <p className="text-muted-foreground max-w-xs text-sm">
-            {error instanceof ApiError ? error.message : 'Something went wrong.'}
+            {error instanceof ApiError
+              ? error.message
+              : 'Something went wrong.'}
           </p>
         </Card>
       ) : isLoading ? (
@@ -98,66 +109,84 @@ export default function ExplorePage() {
           <Compass className="h-8 w-8 text-muted-foreground" />
           <p className="font-medium">No projects found</p>
           <p className="text-muted-foreground max-w-xs text-sm">
-            {search ? 'Try adjusting your search filters.' : 'Be the first to publish a project!'}
+            {search
+              ? 'Try adjusting your search filters.'
+              : 'Be the first to publish a project!'}
           </p>
         </Card>
       ) : (
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {projects.map((project, index) => (
-              <Card
-                key={project.id}
-                className="flex flex-col overflow-hidden py-0 border-white/10 shadow-sm hover:border-primary/50 transition-colors"
-              >
-                <div
-                  className={`relative flex h-20 shrink-0 items-center bg-gradient-to-br px-4 ${
-                    THUMB_GRADIENTS[index % THUMB_GRADIENTS.length]
-                  }`}
-                />
+            {projects.map((project, index) => {
+              //const cover = project.media?.[0];
 
-                <div className="flex flex-1 flex-col gap-2 px-4 pt-3">
+              return (
+                <Card
+                  key={project.id}
+                  className="group relative flex flex-col overflow-hidden py-0 shadow-sm hover:border-primary/50 transition-colors"
+                >
                   <Link
                     href={`/projects/${project.slug}`}
-                    className="text-base font-semibold hover:text-primary transition-colors line-clamp-1"
+                    className="flex flex-1 flex-col"
                   >
-                    {project.title}
+                    <div className="flex flex-1 gap-3 px-4 pt-3">
+                      {project.logoUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={project.logoUrl}
+                          alt={`${project.title} logo`}
+                          className="h-12 w-12 flex-shrink-0 rounded-lg border object-cover"
+                        />
+                      )}
+                      <div className="flex flex-1 flex-col gap-2">
+                        <p className="text-sm font-semibold hover:text-primary transition-colors line-clamp-1">
+                          {project.title}
+                        </p>
+                        {project.shortDescription && (
+                          <p className="line-clamp-2 text-muted-foreground text-xs">
+                            {project.shortDescription}
+                          </p>
+                        )}
+                      </div>
+                    </div>
                   </Link>
-                  {project.shortDescription && (
-                    <p className="line-clamp-2 text-muted-foreground text-xs">
-                      {project.shortDescription}
-                    </p>
-                  )}
-                </div>
 
-                <div className="mt-3 flex items-center justify-between border-t px-4 py-2.5">
-                  <div className="flex items-center gap-3 text-muted-foreground">
-                    {project.deploymentUrl && (
-                      <a
-                        href={project.deploymentUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 text-xs hover:text-primary"
-                      >
-                        <ExternalLink className="h-3.5 w-3.5" />
-                        Demo
-                      </a>
-                    )}
+                  <div className="mt-3 flex items-center justify-between border-t px-4 py-2.5">
+                    <div className="flex items-center gap-3 text-muted-foreground">
+                      {project.deploymentUrl && (
+                        <a
+                          href={project.deploymentUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-xs hover:text-primary"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" />
+                          Demo
+                        </a>
+                      )}
+                    </div>
+                    <Button
+                      asChild
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 px-2 text-xs"
+                    >
+                      <Link href={`/projects/${project.slug}`}>
+                        View project
+                      </Link>
+                    </Button>
                   </div>
-                  <Button asChild size="sm" variant="ghost" className="h-7 px-2 text-xs">
-                    <Link href={`/projects/${project.slug}`}>
-                      View project
-                    </Link>
-                  </Button>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              );
+            })}
           </div>
 
           {/* Pagination Controls */}
           {meta && meta.totalPages > 1 && (
             <div className="flex items-center justify-between pt-4">
               <p className="text-sm text-muted-foreground">
-                Page {meta.currentPage} of {meta.totalPages} ({meta.totalItems} total projects)
+                Page {meta.currentPage} of {meta.totalPages} ({meta.totalItems}{' '}
+                total projects)
               </p>
               <div className="flex items-center gap-2">
                 <Button
