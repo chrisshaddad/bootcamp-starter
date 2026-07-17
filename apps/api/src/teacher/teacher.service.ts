@@ -7,16 +7,52 @@ import {
 } from '@nestjs/common';
 import type {
   CreateTeacherAssignmentRequest,
+  DeleteTeacherAssignmentResponse,
   GradeSubmissionRequest,
   GradeSubmissionResponse,
   TeacherAssignmentListResponse,
   TeacherAssignmentResponse,
   TeacherCourseListResponse,
   TeacherSubmissionListResponse,
+  UpdateTeacherAssignmentRequest,
 } from '@repo/contracts';
 import { PrismaService } from '../database/prisma.service';
 @Injectable()
 export class TeacherService {
+  private async requireOwnedAssignment(
+    teacherId: string,
+    organizationId: string,
+    assignmentId: string,
+  ) {
+    const assignment = await this.prisma.assignment.findFirst({
+      where: {
+        id: assignmentId,
+        type: 'assignment',
+        createdById: teacherId,
+        course: {
+          organizationId,
+        },
+      },
+      select: {
+        id: true,
+        courseId: true,
+        status: true,
+        _count: {
+          select: {
+            submissions: true,
+          },
+        },
+      },
+    });
+
+    if (!assignment) {
+      throw new NotFoundException(
+        `Assignment with ID ${assignmentId} was not found`,
+      );
+    }
+
+    return assignment;
+  }
   private readonly logger = new Logger(TeacherService.name);
 
   constructor(private readonly prisma: PrismaService) {}
@@ -450,6 +486,146 @@ export class TeacherService {
       ...assignment,
       type: 'assignment',
       maxScore: assignment.maxScore.toNumber(),
+    };
+  }
+  async updateAssignment(
+    teacherId: string,
+    organizationId: string | null,
+    assignmentId: string,
+    input: UpdateTeacherAssignmentRequest,
+  ): Promise<TeacherAssignmentResponse> {
+    if (!organizationId) {
+      throw new ForbiddenException(
+        'Teacher account is not assigned to an organization',
+      );
+    }
+
+    const existingAssignment = await this.requireOwnedAssignment(
+      teacherId,
+      organizationId,
+      assignmentId,
+    );
+
+    if (input.courseId && input.courseId !== existingAssignment.courseId) {
+      const course = await this.prisma.course.findFirst({
+        where: {
+          id: input.courseId,
+          teacherId,
+          organizationId,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      if (!course) {
+        throw new ForbiddenException(
+          'You cannot move this assignment to the selected course',
+        );
+      }
+
+      if (existingAssignment._count.submissions > 0) {
+        throw new BadRequestException(
+          'An assignment with submissions cannot be moved to another course',
+        );
+      }
+    }
+
+    const assignment = await this.prisma.assignment.update({
+      where: {
+        id: assignmentId,
+      },
+      data: {
+        ...(input.courseId !== undefined && {
+          courseId: input.courseId,
+        }),
+        ...(input.title !== undefined && {
+          title: input.title,
+        }),
+        ...(input.instructions !== undefined && {
+          instructions: input.instructions,
+        }),
+        ...(input.maxScore !== undefined && {
+          maxScore: input.maxScore,
+        }),
+        ...(input.startsAt !== undefined && {
+          startsAt: input.startsAt ? new Date(input.startsAt) : null,
+        }),
+        ...(input.dueAt !== undefined && {
+          dueAt: input.dueAt ? new Date(input.dueAt) : null,
+        }),
+        ...(input.endsAt !== undefined && {
+          endsAt: input.endsAt ? new Date(input.endsAt) : null,
+        }),
+        ...(input.noteToStudents !== undefined && {
+          noteToStudents: input.noteToStudents,
+        }),
+        ...(input.status !== undefined && {
+          status: input.status,
+        }),
+      },
+      select: {
+        id: true,
+        courseId: true,
+        createdById: true,
+        type: true,
+        title: true,
+        instructions: true,
+        maxScore: true,
+        startsAt: true,
+        dueAt: true,
+        endsAt: true,
+        noteToStudents: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+        course: {
+          select: {
+            id: true,
+            title: true,
+          },
+        },
+      },
+    });
+
+    return {
+      ...assignment,
+      type: 'assignment',
+      maxScore: assignment.maxScore.toNumber(),
+    };
+  }
+
+  async deleteAssignment(
+    teacherId: string,
+    organizationId: string | null,
+    assignmentId: string,
+  ): Promise<DeleteTeacherAssignmentResponse> {
+    if (!organizationId) {
+      throw new ForbiddenException(
+        'Teacher account is not assigned to an organization',
+      );
+    }
+
+    const assignment = await this.requireOwnedAssignment(
+      teacherId,
+      organizationId,
+      assignmentId,
+    );
+
+    if (assignment._count.submissions > 0) {
+      throw new BadRequestException(
+        'Assignments with submissions cannot be deleted',
+      );
+    }
+
+    await this.prisma.assignment.delete({
+      where: {
+        id: assignmentId,
+      },
+    });
+
+    return {
+      message: 'Assignment deleted successfully',
     };
   }
 }

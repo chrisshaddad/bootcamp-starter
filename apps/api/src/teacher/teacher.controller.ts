@@ -1,15 +1,26 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+} from '@nestjs/common';
 import type { User } from '@repo/db';
 import {
   createTeacherAssignmentRequestSchema,
   gradeSubmissionRequestSchema,
   type CreateTeacherAssignmentRequest,
+  type DeleteTeacherAssignmentResponse,
   type GradeSubmissionRequest,
   type GradeSubmissionResponse,
   type TeacherAssignmentListResponse,
   type TeacherAssignmentResponse,
   type TeacherCourseListResponse,
   type TeacherSubmissionListResponse,
+  type UpdateTeacherAssignmentRequest,
+  updateTeacherAssignmentRequestSchema,
 } from '@repo/contracts';
 import { CurrentUser, Roles } from '../auth/decorators';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
@@ -80,6 +91,32 @@ export class TeacherController {
       user.organizationId,
       submissionId,
       body,
+    );
+  }
+  @Patch('assignments/:assignmentId')
+  async updateAssignment(
+    @CurrentUser() user: User,
+    @Param('assignmentId') assignmentId: string,
+    @Body(new ZodValidationPipe(updateTeacherAssignmentRequestSchema))
+    body: UpdateTeacherAssignmentRequest,
+  ): Promise<TeacherAssignmentResponse> {
+    return this.teacherService.updateAssignment(
+      user.id,
+      user.organizationId,
+      assignmentId,
+      body,
+    );
+  }
+
+  @Delete('assignments/:assignmentId')
+  async deleteAssignment(
+    @CurrentUser() user: User,
+    @Param('assignmentId') assignmentId: string,
+  ): Promise<DeleteTeacherAssignmentResponse> {
+    return this.teacherService.deleteAssignment(
+      user.id,
+      user.organizationId,
+      assignmentId,
     );
   }
 }
