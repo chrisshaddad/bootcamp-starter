@@ -11,7 +11,9 @@
         "REDIS_URL",
         "NODE_ENV",
         "NEXT_PUBLIC_API_URL",
-        "GEOCODING_CONTACT"
+        "GEOCODING_CONTACT",
+        "ANTHROPIC_API_KEY",
+        "ANTHROPIC_MODEL"
       ]
     },
     "lint": {
@@ -31,7 +33,9 @@
         "MAILPIT_URL",
         "APP_URL",
         "NEXT_PUBLIC_API_URL",
-        "GEOCODING_CONTACT"
+        "GEOCODING_CONTACT",
+        "ANTHROPIC_API_KEY",
+        "ANTHROPIC_MODEL"
       ]
     },
     "db:generate": {

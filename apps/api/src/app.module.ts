@@ -16,6 +16,7 @@ import { StockModule } from './stock/stock.module';
 import { InquiriesModule } from './inquiries/inquiries.module';
 import { MyInquiriesModule } from './my-inquiries/my-inquiries.module';
 import { StatsModule } from './stats/stats.module';
+import { ChatModule } from './chat/chat.module';
 import { AuditModule } from './audit/audit.module';
 import { ProfileModule } from './profile/profile.module';
 import { DatabaseModule } from './database/database.module';
@@ -42,6 +43,7 @@ import { DatabaseModule } from './database/database.module';
     InquiriesModule,
     MyInquiriesModule,
     StatsModule,
+    ChatModule,
     AuditModule,
     ProfileModule,
   ],
