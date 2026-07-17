@@ -42,6 +42,11 @@ const orgNavItems: NavItem[] = [
     icon: LayoutDashboard,
   },
   {
+    title: 'Courses',
+    url: '/courses',
+    icon: BookOpen,
+  },
+  {
     title: 'Assignments',
     url: '/teacher/assignments',
     icon: ClipboardList,
