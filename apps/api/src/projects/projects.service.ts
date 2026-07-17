@@ -351,6 +351,11 @@ export class ProjectsService {
       return this.prisma.project.findMany({
         orderBy: { updatedAt: 'desc' },
         include: {
+          repository: {
+            select: {
+              htmlUrl: true,
+            },
+          },
           media: { orderBy: { sortOrder: 'asc' } },
           technologies: {
             include: { technology: true },
@@ -368,6 +373,11 @@ export class ProjectsService {
       where: { createdByUserId: user.id },
       orderBy: { updatedAt: 'desc' },
       include: {
+        repository: {
+          select: {
+            htmlUrl: true,
+          },
+        },
         media: { orderBy: { sortOrder: 'asc' } },
         technologies: {
           include: { technology: true },
@@ -385,6 +395,11 @@ export class ProjectsService {
     const project = await this.prisma.project.findUnique({
       where: { id: projectId },
       include: {
+        repository: {
+          select: {
+            htmlUrl: true,
+          },
+        },
         media: {
           orderBy: {
             sortOrder: 'asc',
@@ -760,6 +775,11 @@ export class ProjectsService {
     const project = await this.prisma.project.findUnique({
       where: { slug },
       include: {
+        repository: {
+          select: {
+            htmlUrl: true,
+          },
+        },
         media: {
           select: {
             id: true,

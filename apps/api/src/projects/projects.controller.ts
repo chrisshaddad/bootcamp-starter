@@ -158,9 +158,12 @@ export class ProjectsController {
   ): Promise<ProjectByIdResponse[]> {
     const projects = await this.projectsService.getMyProjects(user);
 
-    return projects.map((project) =>
-      projectByIdResponseSchema.parse({
-        ...project,
+    return projects.map((project) => {
+      const { repository, ...projectFields } = project;
+
+      return projectByIdResponseSchema.parse({
+        ...projectFields,
+        repositoryUrl: repository.htmlUrl,
         createdAt: project.createdAt.toISOString(),
         updatedAt: project.updatedAt.toISOString(),
         publishedAt: project.publishedAt?.toISOString() ?? null,
@@ -189,8 +192,8 @@ export class ProjectsController {
           updatedAt: pt.updatedAt.toISOString(),
         })),
         members: (project.members ?? []).map(mapProjectMember),
-      }),
-    );
+      });
+    });
   }
 
   @Get('explore')
@@ -235,9 +238,11 @@ export class ProjectsController {
     @Param('id') projectId: string,
   ): Promise<ProjectByIdResponse> {
     const project = await this.projectsService.getProjectById(user, projectId);
+    const { repository, ...projectFields } = project;
 
     return projectByIdResponseSchema.parse({
-      ...project,
+      ...projectFields,
+      repositoryUrl: repository.htmlUrl,
       createdAt: project.createdAt.toISOString(),
       updatedAt: project.updatedAt.toISOString(),
       publishedAt: project.publishedAt?.toISOString() ?? null,
@@ -554,6 +559,7 @@ export class ProjectsController {
     const result = {
       id: project.id,
       repositoryId: project.repositoryId,
+      repositoryUrl: project.repository.htmlUrl,
       createdByUserId: project.createdByUserId,
       title: project.title,
       slug: project.slug,
