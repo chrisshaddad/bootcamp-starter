@@ -164,7 +164,9 @@ export class ProjectsController {
     status: 200,
     description: 'List of projects successfully retrieved.',
   })
-  async getMyProjects(@CurrentUser() user: User): Promise<ProjectResponse[]> {
+  async getMyProjects(
+    @CurrentUser() user: User,
+  ): Promise<ProjectByIdResponse[]> {
     const projects = await this.projectsService.getMyProjects(user);
 
     return projects.map((project) => ({
@@ -172,6 +174,31 @@ export class ProjectsController {
       createdAt: project.createdAt.toISOString(),
       updatedAt: project.updatedAt.toISOString(),
       publishedAt: project.publishedAt?.toISOString() ?? null,
+      media: project.media.map((m) => ({
+        id: m.id,
+        projectId: m.projectId,
+        uploadedByUserId: m.uploadedByUserId,
+        mediaType: m.mediaType as 'IMAGE' | 'GIF' | 'ARCHITECTURE_DIAGRAM',
+        storageKey: m.storageKey,
+        publicUrl: m.publicUrl,
+        caption: m.caption,
+        sortOrder: m.sortOrder,
+        createdAt: m.createdAt.toISOString(),
+        updatedAt: m.updatedAt.toISOString(),
+      })),
+      technologies: project.technologies.map((pt) => ({
+        id: pt.id,
+        projectId: pt.projectId,
+        technologyId: pt.technologyId,
+        technology: pt.technology,
+        source: pt.source,
+        evidence: pt.evidence,
+        isPrimary: pt.isPrimary,
+        sortOrder: pt.sortOrder,
+        createdAt: pt.createdAt.toISOString(),
+        updatedAt: pt.updatedAt.toISOString(),
+      })),
+      members: (project.members ?? []).map(mapProjectMember),
     }));
   }
 
@@ -235,22 +262,17 @@ export class ProjectsController {
         createdAt: m.createdAt.toISOString(),
         updatedAt: m.updatedAt.toISOString(),
       })),
-      technologies: (project.technologies ?? []).map((t) => ({
-        id: t.id,
-        projectId: t.projectId,
-        technologyId: t.technologyId,
-        source: t.source as 'SCANNER' | 'MANUAL' | 'BOTH',
-        evidence: t.evidence,
-        isPrimary: t.isPrimary,
-        sortOrder: t.sortOrder,
-        createdAt: t.createdAt.toISOString(),
-        updatedAt: t.updatedAt.toISOString(),
-        technology: {
-          id: t.technology.id,
-          name: t.technology.name,
-          slug: t.technology.slug,
-          category: t.technology.category,
-        },
+      technologies: (project.technologies ?? []).map((pt) => ({
+        id: pt.id,
+        projectId: pt.projectId,
+        technologyId: pt.technologyId,
+        technology: pt.technology,
+        source: pt.source,
+        evidence: pt.evidence,
+        isPrimary: pt.isPrimary,
+        sortOrder: pt.sortOrder,
+        createdAt: pt.createdAt.toISOString(),
+        updatedAt: pt.updatedAt.toISOString(),
       })),
       members: (project.members ?? []).map(mapProjectMember),
     } as unknown as ProjectByIdResponse;
@@ -539,6 +561,7 @@ export class ProjectsController {
       createdByUserId: project.createdByUserId,
       title: project.title,
       slug: project.slug,
+      logoUrl: project.logoUrl,
       shortDescription: project.shortDescription,
       fullDescription: project.fullDescription,
       deploymentUrl: project.deploymentUrl,
@@ -556,22 +579,17 @@ export class ProjectsController {
         createdAt: m.createdAt.toISOString(),
         updatedAt: m.updatedAt.toISOString(),
       })),
-      technologies: (project.technologies ?? []).map((t) => ({
-        id: t.id,
-        projectId: t.projectId,
-        technologyId: t.technologyId,
-        source: t.source as 'SCANNER' | 'MANUAL' | 'BOTH',
-        evidence: t.evidence,
-        isPrimary: t.isPrimary,
-        sortOrder: t.sortOrder,
-        createdAt: t.createdAt.toISOString(),
-        updatedAt: t.updatedAt.toISOString(),
-        technology: {
-          id: t.technology.id,
-          name: t.technology.name,
-          slug: t.technology.slug,
-          category: t.technology.category,
-        },
+      technologies: (project.technologies ?? []).map((pt) => ({
+        id: pt.id,
+        projectId: pt.projectId,
+        technologyId: pt.technologyId,
+        technology: pt.technology,
+        source: pt.source,
+        evidence: pt.evidence,
+        isPrimary: pt.isPrimary,
+        sortOrder: pt.sortOrder,
+        createdAt: pt.createdAt.toISOString(),
+        updatedAt: pt.updatedAt.toISOString(),
       })),
       members: (project.members ?? []).map(mapProjectMember),
     };
@@ -715,6 +733,29 @@ export class ProjectsController {
       projectId,
       mediaId,
       body,
+    );
+    return {
+      ...media,
+      createdAt: media.createdAt.toISOString(),
+      updatedAt: media.updatedAt.toISOString(),
+    };
+  }
+
+  @Patch(':id/media/:mediaId/set-cover')
+  @Roles(AccountType.DEVELOPER, AccountType.SUPER_ADMIN)
+  @ApiOperation({
+    summary: 'Atomically set a media item as the project cover (sortOrder 0)',
+  })
+  @ApiResponse({ status: 200, description: 'Cover media successfully set.' })
+  async setCoverProjectMedia(
+    @CurrentUser() user: User,
+    @Param('id') projectId: string,
+    @Param('mediaId') mediaId: string,
+  ) {
+    const media = await this.projectsService.setCoverMedia(
+      user,
+      projectId,
+      mediaId,
     );
     return {
       ...media,

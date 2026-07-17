@@ -346,12 +346,34 @@ export class ProjectsService {
     if (user.accountType === AccountType.SUPER_ADMIN) {
       return this.prisma.project.findMany({
         orderBy: { updatedAt: 'desc' },
+        include: {
+          media: { orderBy: { sortOrder: 'asc' } },
+          technologies: {
+            include: { technology: true },
+            orderBy: { sortOrder: 'asc' },
+          },
+          members: {
+            include: projectMemberInclude,
+            orderBy: { createdAt: 'asc' },
+          },
+        },
       });
     }
 
     return this.prisma.project.findMany({
       where: { createdByUserId: user.id },
       orderBy: { updatedAt: 'desc' },
+      include: {
+        media: { orderBy: { sortOrder: 'asc' } },
+        technologies: {
+          include: { technology: true },
+          orderBy: { sortOrder: 'asc' },
+        },
+        members: {
+          include: projectMemberInclude,
+          orderBy: { createdAt: 'asc' },
+        },
+      },
     });
   }
 
@@ -365,9 +387,8 @@ export class ProjectsService {
           },
         },
         technologies: {
-          include: {
-            technology: true,
-          },
+          include: { technology: true },
+          orderBy: { sortOrder: 'asc' },
         },
         members: {
           include: projectMemberInclude,
@@ -750,11 +771,9 @@ export class ProjectsService {
             sortOrder: 'asc',
           },
         },
-        // ADD THIS: Include technologies so we fetch them for public view
         technologies: {
-          include: {
-            technology: true,
-          },
+          include: { technology: true },
+          orderBy: { sortOrder: 'asc' },
         },
         members: {
           include: projectMemberInclude,
@@ -922,6 +941,59 @@ export class ProjectsService {
         sortOrder: data.sortOrder !== undefined ? data.sortOrder : undefined,
       },
     });
+  }
+
+  async setCoverMedia(user: User, projectId: string, mediaId: string) {
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+    });
+
+    if (!project) throw new NotFoundException('Project not found');
+
+    const isAdmin = user.accountType === AccountType.SUPER_ADMIN;
+    const isCreator = project.createdByUserId === user.id;
+
+    if (!isAdmin && !isCreator) {
+      throw new ForbiddenException(
+        'You are not authorized to edit this project',
+      );
+    }
+
+    const media = await this.prisma.projectMedia.findMany({
+      where: { projectId },
+      orderBy: { sortOrder: 'asc' },
+    });
+
+    const target = media.find((m) => m.id === mediaId);
+    if (!target) throw new NotFoundException('Media not found');
+
+    const current = media[0];
+    if (!current || current.id === target.id) {
+      return target;
+    }
+
+    // If a prior race between two uploads left current and target tied on
+    // sortOrder, a straight swap is a no-op (both writes carry the same
+    // value). Decrementing the target's new value guarantees it lands
+    // strictly below current's, so it always becomes the new cover.
+    const newCurrentSortOrder = target.sortOrder;
+    let newTargetSortOrder = current.sortOrder;
+    if (newCurrentSortOrder === newTargetSortOrder) {
+      newTargetSortOrder -= 1;
+    }
+
+    const [, updatedTarget] = await this.prisma.$transaction([
+      this.prisma.projectMedia.update({
+        where: { id: current.id },
+        data: { sortOrder: newCurrentSortOrder },
+      }),
+      this.prisma.projectMedia.update({
+        where: { id: target.id },
+        data: { sortOrder: newTargetSortOrder },
+      }),
+    ]);
+
+    return updatedTarget;
   }
 
   async deleteMedia(user: User, projectId: string, mediaId: string) {

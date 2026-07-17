@@ -12,7 +12,7 @@ describe('GithubService', () => {
   let fetchMock: jest.MockedFunction<typeof fetch>;
 
   beforeEach(() => {
-    service = new GithubService();
+    service = new GithubService({} as never);
     fetchMock = jest.fn() as jest.MockedFunction<typeof fetch>;
     global.fetch = fetchMock;
     delete process.env.GITHUB_TOKEN;
