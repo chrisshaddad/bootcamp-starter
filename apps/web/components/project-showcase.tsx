@@ -5,7 +5,6 @@ import {
   Github,
   ExternalLink,
   Bookmark,
-  ImageIcon,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
@@ -31,6 +30,7 @@ import {
 // PublicProjectMediaResponse, so that's the shape this component needs.
 interface ProjectShowcaseProps {
   project: ProjectResponse & {
+    repositoryUrl: string;
     media: PublicProjectMediaResponse[];
     technologies: ProjectTechnologyResponse[];
   };
@@ -123,9 +123,9 @@ export function ProjectShowcase({ project, onSave }: ProjectShowcaseProps) {
             </section>
           )}
 
-          <section>
-            <h2 className="mb-3 text-sm font-bold">Screenshots</h2>
-            {project.media.length > 0 ? (
+          {project.media.length > 0 && (
+            <section>
+              <h2 className="mb-3 text-sm font-bold">Screenshots</h2>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {project.media.map((media, index) => (
                   <button
@@ -143,17 +143,8 @@ export function ProjectShowcase({ project, onSave }: ProjectShowcaseProps) {
                   </button>
                 ))}
               </div>
-            ) : (
-              <Card className="border-dashed">
-                <CardContent className="flex flex-col items-center gap-1.5 py-8 text-center">
-                  <ImageIcon className="h-5 w-5 text-muted-foreground" />
-                  <p className="text-muted-foreground text-xs">
-                    No screenshots yet.
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-          </section>
+            </section>
+          )}
         </div>
 
         <div className="space-y-4">
@@ -195,14 +186,30 @@ export function ProjectShowcase({ project, onSave }: ProjectShowcaseProps) {
           </Card>
 
           <Card>
-            <CardContent className="space-y-2 pt-4">
+            <CardContent className="space-y-3 pt-4">
               <h3 className="text-muted-foreground text-xs font-bold tracking-wide uppercase">
                 Repository
               </h3>
-              <p className="inline-flex items-center gap-1.5 text-sm font-medium">
-                <Github className="h-3.5 w-3.5" />
-                {project.repositoryId}
-              </p>
+              <a
+                href={project.repositoryUrl}
+                target="_blank"
+                rel="noreferrer"
+                aria-label={`Open repository ${project.repositoryUrl} in a new tab`}
+                className="group flex items-start gap-3 rounded-lg border border-border/70 bg-muted/30 px-3 py-2.5 text-sm font-medium transition-colors hover:border-border hover:bg-muted/60"
+              >
+                <span className="mt-0.5 rounded-md bg-background p-1.5 text-muted-foreground transition-colors group-hover:text-foreground">
+                  <Github className="h-3.5 w-3.5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Open repository
+                  </span>
+                  <span className="mt-0.5 block break-all text-foreground">
+                    {project.repositoryUrl}
+                  </span>
+                </span>
+                <ExternalLink className="mt-1 h-3.5 w-3.5 flex-shrink-0 text-muted-foreground transition-colors group-hover:text-foreground" />
+              </a>
             </CardContent>
           </Card>
         </div>

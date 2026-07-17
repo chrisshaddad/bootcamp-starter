@@ -18,6 +18,7 @@ export type PublicProjectMediaResponse = z.infer<
 >;
 
 export const projectBySlugResponseSchema = projectResponseSchema.extend({
+  repositoryUrl: z.string().url(),
   media: z.array(publicProjectMediaResponseSchema),
   technologies: z.array(projectTechnologyResponseSchema).default([]),
 });
