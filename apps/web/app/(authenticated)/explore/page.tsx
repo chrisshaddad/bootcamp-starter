@@ -16,11 +16,11 @@ import { Input } from '@/components/ui/input';
 import { useExploreProjects } from '@/hooks/use-projects';
 import { ApiError } from '@/lib/api';
 
-const THUMB_GRADIENTS = [
-  'from-primary-base to-accent',
-  'from-purple to-accent',
-  'from-orange to-accent',
-];
+//const THUMB_GRADIENTS = [
+//  'from-primary-base to-accent',
+//  'from-purple to-accent',
+//  'from-orange to-accent',
+//];
 
 function LoadingSkeleton() {
   return (
@@ -117,7 +117,7 @@ export default function ExplorePage() {
       ) : (
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {projects.map((project, index) => {
+            {projects.map((project) => {
               //const cover = project.media?.[0];
 
               return (
