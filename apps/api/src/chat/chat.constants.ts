@@ -4,6 +4,7 @@ import type { User } from '@repo/db';
 // without a code change. Sonnet 5 is the default — strong instruction-following
 // (which keeps the assistant in-scope) at a lower cost than Opus for a
 // high-touch in-app helper.
+// eslint-disable-next-line turbo/no-undeclared-env-vars -- loaded at runtime from apps/api/.env via ConfigModule, not Turbo-managed
 export const CHAT_MODEL = process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-5';
 
 // A single reply is short; cap output so cost stays bounded and the
@@ -14,6 +15,15 @@ export const CHAT_MAX_TOKENS = 1024;
 // the assistant only needs a couple of data lookups to answer, so this is a
 // runaway guard, not a real limit.
 export const CHAT_MAX_TOOL_ITERATIONS = 5;
+
+// Wall-clock budget for a single assistant turn — the whole tool-use loop and
+// any SDK retries, enforced with one AbortSignal shared across every model
+// call. /chat is synchronous, so without this a hung or slow completion would
+// ride the SDK's 10-minute per-request default (and, multiplied across loop
+// iterations, longer still) and blow past upstream proxy/LB limits as an opaque
+// 504. When the deadline fires, the in-flight request aborts and the error
+// flows into our ServiceUnavailableException fallback.
+export const CHAT_TIMEOUT_MS = 30_000;
 
 // The instructor persona and guardrails. Static across every request (good for
 // prompt caching); the caller's own identity is appended per-request by

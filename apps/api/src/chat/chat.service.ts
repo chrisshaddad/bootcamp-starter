@@ -12,6 +12,7 @@ import {
   CHAT_MAX_TOKENS,
   CHAT_MAX_TOOL_ITERATIONS,
   CHAT_MODEL,
+  CHAT_TIMEOUT_MS,
 } from './chat.constants';
 
 // A data tool the assistant may call. `roles` gates which callers even see the
@@ -34,6 +35,7 @@ export class ChatService {
   private readonly client: Anthropic | null;
 
   constructor(private readonly stats: StatsService) {
+    // eslint-disable-next-line turbo/no-undeclared-env-vars -- loaded at runtime from apps/api/.env via ConfigModule, not Turbo-managed
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
       this.logger.warn(
@@ -100,15 +102,24 @@ export class ChatService {
       content: message.content,
     }));
 
+    // One wall-clock deadline for the whole turn. Sharing a single signal across
+    // every model call means the loop and the SDK's own retries can never
+    // collectively outlive it; when it fires, the in-flight request aborts and
+    // the error is handled by the catch below.
+    const signal = AbortSignal.timeout(CHAT_TIMEOUT_MS);
+
     try {
       for (let i = 0; i < CHAT_MAX_TOOL_ITERATIONS; i++) {
-        const response = await this.client.messages.create({
-          model: CHAT_MODEL,
-          max_tokens: CHAT_MAX_TOKENS,
-          system,
-          messages: conversation,
-          tools: toolDefs.length > 0 ? toolDefs : undefined,
-        });
+        const response = await this.client.messages.create(
+          {
+            model: CHAT_MODEL,
+            max_tokens: CHAT_MAX_TOKENS,
+            system,
+            messages: conversation,
+            tools: toolDefs.length > 0 ? toolDefs : undefined,
+          },
+          { signal },
+        );
 
         if (response.stop_reason !== 'tool_use') {
           return { reply: this.extractText(response) };

@@ -1,4 +1,4 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import {
   chatRequestSchema,
   type ChatRequest,
@@ -18,6 +18,7 @@ export class ChatController {
   constructor(private readonly chatService: ChatService) {}
 
   @Post()
+  @HttpCode(HttpStatus.OK)
   chat(
     @CurrentUser() actor: User,
     @Body(new ZodValidationPipe(chatRequestSchema)) body: ChatRequest,

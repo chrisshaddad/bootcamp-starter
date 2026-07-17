@@ -75,6 +75,13 @@ export function ChatWidget() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const lastMessageRef = useRef<HTMLDivElement>(null);
+  const launcherRef = useRef<HTMLButtonElement>(null);
+  const wasOpen = useRef(false);
+
+  // Every dismissal path routes through here so closing always returns focus to
+  // the launcher (see the open/close effect) instead of stranding it inside the
+  // now-inert panel.
+  const closePanel = () => setOpen(false);
 
   // Dismiss on a click/tap outside the panel or on Escape. The listener is only
   // attached while open, and it's registered in an effect (after the click that
@@ -84,11 +91,11 @@ export function ChatWidget() {
     if (!open) return;
     const onPointerDown = (event: PointerEvent) => {
       if (!panelRef.current?.contains(event.target as Node)) {
-        setOpen(false);
+        closePanel();
       }
     };
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
+      if (event.key === 'Escape') closePanel();
     };
     document.addEventListener('pointerdown', onPointerDown);
     document.addEventListener('keydown', onKeyDown);
@@ -121,15 +128,27 @@ export function ChatWidget() {
     }
   }, [messages, isLoading]);
 
-  // Focus the input when the panel opens.
+  // Focus the input when the panel opens; when it closes, return focus to the
+  // launcher so keyboard users aren't left on the now-inert panel. Guarding on
+  // wasOpen skips restoring focus on the initial (closed) mount.
   useEffect(() => {
-    if (open) inputRef.current?.focus();
+    if (open) {
+      inputRef.current?.focus();
+    } else if (wasOpen.current) {
+      launcherRef.current?.focus();
+    }
+    wasOpen.current = open;
   }, [open]);
 
   const submit = (value: string) => {
     if (!value.trim() || isLoading) return;
-    void sendMessage(value);
+    // Clear the composer optimistically; restore the draft if the send fails so
+    // the user can retry without retyping. (The input is disabled while loading,
+    // so nothing typed in the meantime can be clobbered by the restore.)
     setInput('');
+    void sendMessage(value).then((ok) => {
+      if (!ok) setInput(value);
+    });
   };
 
   // Both the launcher and the panel stay mounted so each transition (open AND
@@ -138,6 +157,7 @@ export function ChatWidget() {
   return (
     <>
       <Button
+        ref={launcherRef}
         type="button"
         size="icon"
         aria-label="Open the MedFind assistant"
@@ -179,7 +199,7 @@ export function ChatWidget() {
             variant="ghost"
             size="icon-sm"
             aria-label="Close the assistant"
-            onClick={() => setOpen(false)}
+            onClick={closePanel}
           >
             <X className="size-4" />
           </Button>
