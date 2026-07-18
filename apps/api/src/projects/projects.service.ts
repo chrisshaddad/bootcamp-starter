@@ -647,13 +647,15 @@ export class ProjectsService {
     // react") matches projects that mention/use *both*, not the literal
     // phrase — each term just needs to show up somewhere (title, either
     // description, or a technology name), but every term must be satisfied.
+    const MAX_SEARCH_TERMS = 10;
     const searchTerms = (query.search ?? '')
       .split(/[\s,]+/)
       .map((term) => term.trim())
       .filter(
         (term) =>
           term.length > 0 && !['and', 'or'].includes(term.toLowerCase()),
-      );
+      )
+      .slice(0, MAX_SEARCH_TERMS);
 
     const where: Prisma.ProjectWhereInput = {
       status: ProjectStatus.PUBLISHED,
@@ -718,9 +720,13 @@ export class ProjectsService {
             orderBy: { sortOrder: 'asc' },
             select: {
               id: true,
+              projectId: true,
+              mediaType: true,
               publicUrl: true,
               caption: true,
               sortOrder: true,
+              createdAt: true,
+              updatedAt: true,
             },
           },
           repository: {
@@ -729,7 +735,6 @@ export class ProjectsService {
           createdBy: {
             select: {
               id: true,
-              email: true,
               developerProfile: {
                 select: {
                   displayName: true,
@@ -756,7 +761,6 @@ export class ProjectsService {
               user: {
                 select: {
                   id: true,
-                  email: true,
                   developerProfile: {
                     select: { displayName: true, profilePictureUrl: true },
                   },

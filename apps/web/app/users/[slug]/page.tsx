@@ -14,15 +14,10 @@ import { fetcher, ApiError } from '@/lib/api';
 import type {
   ExploreUsersResponse,
   ExploreProjectsResponse,
-  // 1. Import the media type from your contracts (technologies already
-  // ship flat on ExploreProjectsResponse['data'][number])
-  PublicProjectMediaResponse,
 } from '@repo/contracts';
 
-// 2. Create a local type merging the base project with a media array
-type PortfolioProject = ExploreProjectsResponse['data'][number] & {
-  media?: PublicProjectMediaResponse[];
-};
+// media and technologies now ship natively on this contract type
+type PortfolioProject = ExploreProjectsResponse['data'][number];
 
 const THUMB_GRADIENTS = [
   'from-primary-base to-accent',

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { publicProjectResponseSchema } from './project-public.response';
+import { publicProjectMediaResponseSchema } from './project-by-slug.response';
 import { technologySchema } from '../technologies';
 
 export const exploreProjectCreatorSchema = z.object({
@@ -24,6 +25,7 @@ export type ExploreProjectContributor = z.infer<
 
 export const exploreProjectResponseSchema = publicProjectResponseSchema.extend({
   repositoryUrl: z.string().nullable(),
+  media: z.array(publicProjectMediaResponseSchema).default([]),
   createdBy: exploreProjectCreatorSchema.nullable(),
   technologies: z.array(technologySchema).default([]),
   contributors: z.array(exploreProjectContributorSchema).default([]),

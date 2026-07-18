@@ -14,6 +14,7 @@ import type {
   ProjectMediaUploadRequest,
   ProjectMediaResponse,
   ExploreProjectsResponse,
+  ProjectsExploreQuery,
 } from '@repo/contracts';
 
 const PROJECTS_KEY = '/projects';
@@ -157,13 +158,7 @@ export function useDeleteProjectMedia() {
   }, []);
 }
 // New hook added for fetching Explore Projects
-export function useExploreProjects(query?: {
-  page?: number;
-  limit?: number;
-  search?: string;
-  sort?: 'latest' | 'oldest' | 'alphabetical';
-  technology?: string;
-}) {
+export function useExploreProjects(query?: Partial<ProjectsExploreQuery>) {
   const params = new URLSearchParams();
   if (query?.page) params.append('page', query.page.toString());
   if (query?.limit) params.append('limit', query.limit.toString());
