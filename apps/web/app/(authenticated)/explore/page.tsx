@@ -218,22 +218,28 @@ export default function ExplorePage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
-  const [technology, setTechnology] = useState('all');
   const [sort, setSort] = useState<'latest' | 'oldest' | 'alphabetical'>(
     'latest',
   );
+  const [selectedTechnologySlugs, setSelectedTechnologySlugs] = useState<
+    string[]
+  >([]);
 
-  const { technologies } = useTechnologies();
+  const { technologies, isLoading: technologiesLoading } = useTechnologies();
   const { projects, meta, isLoading, error } = useExploreProjects({
     page,
     limit: 6,
     search: search || undefined,
     sort,
-    technology: technology !== 'all' ? technology : undefined,
+    technology: selectedTechnologySlugs,
   });
 
-  const activeTechnology = technologies?.find((t) => t.slug === technology);
-  const hasActiveFilters = Boolean(search) || technology !== 'all';
+  const selectedTechnologies =
+    technologies?.filter((technology) =>
+      selectedTechnologySlugs.includes(technology.slug),
+    ) ?? [];
+  const hasActiveFilters =
+    Boolean(search) || selectedTechnologySlugs.length > 0;
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -244,7 +250,21 @@ export default function ExplorePage() {
   const clearFilters = () => {
     setSearch('');
     setSearchInput('');
-    setTechnology('all');
+    setSelectedTechnologySlugs([]);
+    setPage(1);
+  };
+
+  const addTechnologyFilter = (slug: string) => {
+    setSelectedTechnologySlugs((current) =>
+      current.includes(slug) ? current : [...current, slug],
+    );
+    setPage(1);
+  };
+
+  const removeTechnologyFilter = (slug: string) => {
+    setSelectedTechnologySlugs((current) =>
+      current.filter((currentSlug) => currentSlug !== slug),
+    );
     setPage(1);
   };
 
@@ -269,22 +289,25 @@ export default function ExplorePage() {
 
         <div className="flex flex-col gap-2 sm:flex-row">
           <Select
-            value={technology}
-            onValueChange={(value) => {
-              setTechnology(value);
-              setPage(1);
-            }}
+            value=""
+            onValueChange={addTechnologyFilter}
+            disabled={technologiesLoading}
           >
             <SelectTrigger className="w-full sm:w-44">
-              <SelectValue placeholder="All technologies" />
+              <SelectValue
+                placeholder={
+                  technologiesLoading ? 'Loading...' : 'Add technology'
+                }
+              />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All technologies</SelectItem>
-              {technologies?.map((tech) => (
-                <SelectItem key={tech.id} value={tech.slug}>
-                  {tech.name}
-                </SelectItem>
-              ))}
+              {technologies
+                ?.filter((tech) => !selectedTechnologySlugs.includes(tech.slug))
+                .map((tech) => (
+                  <SelectItem key={tech.id} value={tech.slug}>
+                    {tech.name}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
 
@@ -310,22 +333,22 @@ export default function ExplorePage() {
       {/* Active filters */}
       {hasActiveFilters && (
         <div className="flex flex-wrap items-center gap-2">
-          {activeTechnology && (
-            <span className="border-primary bg-accent text-accent-foreground inline-flex items-center gap-1.5 rounded-full border py-1 pr-2 pl-3 text-xs font-bold">
-              {activeTechnology.name}
+          {selectedTechnologies.map((technology) => (
+            <span
+              key={technology.id}
+              className="border-primary bg-accent text-accent-foreground inline-flex items-center gap-1.5 rounded-full border py-1 pr-2 pl-3 text-xs font-bold"
+            >
+              {technology.name}
               <button
                 type="button"
-                aria-label="Remove technology filter"
-                onClick={() => {
-                  setTechnology('all');
-                  setPage(1);
-                }}
+                aria-label={`Remove ${technology.name} filter`}
+                onClick={() => removeTechnologyFilter(technology.slug)}
                 className="opacity-70 hover:opacity-100"
               >
                 <X className="h-3 w-3" />
               </button>
             </span>
-          )}
+          ))}
           {search && (
             <span className="border-border bg-muted text-muted-foreground inline-flex items-center gap-1.5 rounded-full border py-1 pr-2 pl-3 text-xs font-bold">
               &ldquo;{search}&rdquo;

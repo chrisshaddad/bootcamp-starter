@@ -164,7 +164,8 @@ export class ProjectsController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Paginated public projects list successfully retrieved.',
+    description:
+      'Paginated public projects. Multiple technology values match every selected technology.',
   })
   async exploreProjects(
     @Query(new ZodValidationPipe(projectsExploreQuerySchema))
