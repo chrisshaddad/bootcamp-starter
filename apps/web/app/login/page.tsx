@@ -12,6 +12,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { CoordlyLogo } from '@/components/coordly-logo';
 import { ApiError } from '@/lib/api';
 
 export default function LoginPage() {
@@ -61,24 +62,17 @@ export default function LoginPage() {
 
         {/* Content Section with green top border */}
         <div className="flex flex-col gap-6 border-t-[5px] border-primary-base bg-gray-900 px-12.5 pb-15 pt-10">
-          {/* Logo */}
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-6 w-6 items-center justify-center">
-              <span className="text-2xl text-primary-base">✦</span>
-            </div>
-            <span className="text-xl font-semibold text-white">
-              Bootcamp Starter
-            </span>
-          </div>
+          <CoordlyLogo markClassName="size-7" wordmarkClassName="text-white" />
 
           {/* Headline */}
           <h1 className="text-5xl font-bold leading-[1.2] tracking-[-0.5px] text-white">
-            Build your next project on a solid foundation.
+            Bring your people and events together.
           </h1>
 
           {/* Subtext */}
           <p className="text-lg leading-normal text-white">
-            A generic full-stack starter for your bootcamp project.
+            Manage members, events, attendance, and announcements in one
+            coordinated workspace.
           </p>
         </div>
       </div>
@@ -88,9 +82,11 @@ export default function LoginPage() {
         {/* Form Section */}
         <div className="flex flex-1 items-center justify-center px-6 py-12">
           <div className="flex w-full max-w-120 flex-col items-center gap-8">
+            <CoordlyLogo className="lg:hidden" />
+
             {/* Title */}
             <h2 className="w-full text-center text-2xl font-bold leading-[1.3] text-gray-900">
-              Login first to your account
+              Sign in to Coordly
             </h2>
 
             {/* Form */}
@@ -167,8 +163,7 @@ export default function LoginPage() {
         <footer className="px-6 py-6">
           <div className="flex flex-wrap items-center justify-center gap-2.5 text-sm font-medium leading-[1.6]">
             <span className="text-gray-500">
-              © {new Date().getFullYear()} Bootcamp Starter. All rights
-              reserved.
+              © {new Date().getFullYear()} Coordly. All rights reserved.
             </span>
             <a
               href="/terms"
