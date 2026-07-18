@@ -16,6 +16,7 @@ import {
   Activity,
   ScrollText,
   UserCheck,
+  ChartNoAxesCombined,
 } from 'lucide-react';
 import { useUser } from '@/hooks/use-auth';
 import { useInvitationPendingCount } from '@/hooks/use-project-invitations';
@@ -61,6 +62,11 @@ const orgNavItems: NavItem[] = [
     title: 'Invitations',
     url: '/invitations',
     icon: Mail,
+  },
+  {
+    title: 'Analytics',
+    url: '/analytics',
+    icon: ChartNoAxesCombined,
   },
   {
     title: 'Profile',

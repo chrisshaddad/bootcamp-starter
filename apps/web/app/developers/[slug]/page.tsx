@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ProjectListCard } from '@/components/project-list-card';
 import { DeveloperSaveCandidate } from '@/components/developer-save-candidate';
+import { AnalyticsTracker } from '@/components/analytics-tracker';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
@@ -64,6 +65,12 @@ export default async function DeveloperPublicProfilePage({
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
+      <AnalyticsTracker
+        event={{
+          eventType: 'PORTFOLIO_VIEW',
+          developerSlug: profile.publicSlug,
+        }}
+      />
       <SiteHeader />
       <main className="relative flex-1 overflow-hidden px-6 py-10 sm:px-10">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_0%,rgba(47,120,238,0.2),transparent_55%)]" />

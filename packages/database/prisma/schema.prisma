@@ -16,6 +16,13 @@ enum AccountType {
   @@schema("public")
 }
 
+enum AnalyticsEventType {
+  PORTFOLIO_VIEW
+  PROJECT_VIEW
+
+  @@schema("public")
+}
+
 enum CandidateStatus {
   SAVED
   CONTACTED
@@ -176,6 +183,7 @@ model User {
   addedTechnologies   ProjectTechnology[] @relation("ProjectTechAddedBy")
   adminAuditLogs      AdminAuditLog[]     @relation("AdminAuditActor")
   moderatedProjects   Project[]           @relation("ProjectModerator")
+  analyticsVisits     AnalyticsVisit[]    @relation("AnalyticsDeveloper")
 
   @@index([accountType])
   @@index([status])
@@ -325,6 +333,7 @@ model Project {
   technologies ProjectTechnology[]
   media        ProjectMedia[]
   savedByUsers SavedProject[]
+  analyticsVisits AnalyticsVisit[]
 
   @@index([status])
   @@index([createdByUserId])
@@ -350,6 +359,32 @@ model AdminAuditLog {
   @@index([action, createdAt])
   @@index([targetType, targetId, createdAt])
   @@index([createdAt])
+  @@schema("public")
+}
+
+model AnalyticsVisit {
+  id String @id @default(uuid())
+
+  eventType       AnalyticsEventType
+  targetKey       String
+  developerUserId String
+  projectId       String?
+
+  visitorHash        String
+  visitorAccountType AccountType?
+  referrerDomain     String?
+  dedupeKey          String       @unique
+
+  occurredAt DateTime @default(now())
+
+  developer User     @relation("AnalyticsDeveloper", fields: [developerUserId], references: [id], onDelete: Cascade)
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([developerUserId, occurredAt])
+  @@index([projectId, occurredAt])
+  @@index([eventType, occurredAt])
+  @@index([visitorAccountType, occurredAt])
+  @@index([visitorHash])
   @@schema("public")
 }
 
@@ -566,4 +601,3 @@ model SavedCandidate {
   @@index([status])
   @@schema("public")
 }
-

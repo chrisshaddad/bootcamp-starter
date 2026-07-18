@@ -15,6 +15,7 @@ import {
 } from '@/hooks/use-saved-projects';
 import { ProjectShowcase } from '@/components/project-showcase';
 import { ApiError } from '@/lib/api';
+import { AnalyticsTracker } from '@/components/analytics-tracker';
 
 export default function ProjectShowcasePage() {
   const params = useParams<{ slug: string }>();
@@ -72,12 +73,20 @@ export default function ProjectShowcasePage() {
               </p>
             </div>
           ) : (
-            <ProjectShowcase
-              project={project}
-              onSave={isRecruiter ? handleSave : undefined}
-              isSaved={isSaved}
-              isSaving={isSaving}
-            />
+            <>
+              <AnalyticsTracker
+                event={{
+                  eventType: 'PROJECT_VIEW',
+                  projectSlug: project.slug,
+                }}
+              />
+              <ProjectShowcase
+                project={project}
+                onSave={isRecruiter ? handleSave : undefined}
+                isSaved={isSaved}
+                isSaving={isSaving}
+              />
+            </>
           )}
         </div>
       </main>

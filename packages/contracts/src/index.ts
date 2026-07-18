@@ -9,3 +9,4 @@ export * from './saved-projects';
 export * from './admin';
 export * from './settings';
 export * from './saved-candidates';
+export * from './analytics';

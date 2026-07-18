@@ -15,7 +15,8 @@
         "GITHUB_CLIENT_ID",
         "GITHUB_CLIENT_SECRET",
         "GITHUB_TOKEN_ENCRYPTION_KEY",
-        "GITHUB_TOKEN"
+        "GITHUB_TOKEN",
+        "ANALYTICS_HASH_SECRET"
       ]
     },
     "lint": {
@@ -39,7 +40,8 @@
         "GITHUB_CLIENT_ID",
         "GITHUB_CLIENT_SECRET",
         "GITHUB_TOKEN_ENCRYPTION_KEY",
-        "GITHUB_TOKEN"
+        "GITHUB_TOKEN",
+        "ANALYTICS_HASH_SECRET"
       ]
     },
     "db:generate": {
