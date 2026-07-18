@@ -1,16 +1,18 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import {
   employeeProfileUpdateRequestSchema,
   type EmployeeProfileUpdateRequest,
+  type EmployeeResponse,
 } from '@repo/contracts';
 import { ApiError } from '@/lib/api';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Dialog,
@@ -19,26 +21,45 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
+const EMPLOYMENT_TYPE_LABELS = {
+  FULL_TIME: 'Full-time',
+  PART_TIME: 'Part-time',
+  CONTRACT: 'Contract',
+  INTERN: 'Intern',
+} as const;
+
+const WORK_ARRANGEMENT_LABELS = {
+  REMOTE: 'Remote',
+  HYBRID: 'Hybrid',
+  ONSITE: 'On-site',
+} as const;
 
 interface EditProfileDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  bio: string | null;
-  careerGoal: string | null;
+  profile: EmployeeResponse['profile'];
   onSave: (data: EmployeeProfileUpdateRequest) => Promise<unknown>;
 }
 
 export function EditProfileDialog({
   open,
   onOpenChange,
-  bio,
-  careerGoal,
+  profile,
   onSave,
 }: EditProfileDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
     register,
+    control,
     handleSubmit,
     reset,
     formState: { errors },
@@ -48,8 +69,20 @@ export function EditProfileDialog({
 
   useEffect(() => {
     if (!open) return;
-    reset({ bio: bio ?? '', careerGoal: careerGoal ?? '' });
-  }, [open, bio, careerGoal, reset]);
+    reset({
+      bio: profile?.bio ?? '',
+      careerGoal: profile?.careerGoal ?? '',
+      phoneNumber: profile?.phoneNumber ?? '',
+      street1: profile?.street1 ?? '',
+      street2: profile?.street2 ?? '',
+      city: profile?.city ?? '',
+      state: profile?.state ?? '',
+      postalCode: profile?.postalCode ?? '',
+      country: profile?.country ?? '',
+      employmentType: profile?.employmentType ?? undefined,
+      workArrangement: profile?.workArrangement ?? undefined,
+    });
+  }, [open, profile, reset]);
 
   const onSubmit = async (values: EmployeeProfileUpdateRequest) => {
     setIsSubmitting(true);
@@ -57,6 +90,15 @@ export function EditProfileDialog({
       await onSave({
         bio: values.bio || null,
         careerGoal: values.careerGoal || null,
+        phoneNumber: values.phoneNumber || null,
+        street1: values.street1 || null,
+        street2: values.street2 || null,
+        city: values.city || null,
+        state: values.state || null,
+        postalCode: values.postalCode || null,
+        country: values.country || null,
+        employmentType: values.employmentType || null,
+        workArrangement: values.workArrangement || null,
       });
       toast.success('Profile updated');
       onOpenChange(false);
@@ -73,7 +115,7 @@ export function EditProfileDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl">
+      <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Profile</DialogTitle>
         </DialogHeader>
@@ -105,6 +147,136 @@ export function EditProfileDialog({
             {errors.careerGoal && (
               <p className="text-sm text-error">{errors.careerGoal.message}</p>
             )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="phoneNumber">Phone Number</Label>
+            <Input
+              id="phoneNumber"
+              placeholder="+1 415 555 0100"
+              className="h-10 rounded-lg border-gray-200 bg-white text-sm"
+              {...register('phoneNumber')}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="employmentType">Employment Type</Label>
+              <Controller
+                name="employmentType"
+                control={control}
+                render={({ field }) => (
+                  <Select
+                    value={field.value ?? undefined}
+                    onValueChange={field.onChange}
+                  >
+                    <SelectTrigger
+                      id="employmentType"
+                      className="h-10 w-full rounded-lg border-gray-200 bg-white text-sm"
+                    >
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(EMPLOYMENT_TYPE_LABELS).map(
+                        ([value, label]) => (
+                          <SelectItem key={value} value={value}>
+                            {label}
+                          </SelectItem>
+                        ),
+                      )}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="workArrangement">Work Arrangement</Label>
+              <Controller
+                name="workArrangement"
+                control={control}
+                render={({ field }) => (
+                  <Select
+                    value={field.value ?? undefined}
+                    onValueChange={field.onChange}
+                  >
+                    <SelectTrigger
+                      id="workArrangement"
+                      className="h-10 w-full rounded-lg border-gray-200 bg-white text-sm"
+                    >
+                      <SelectValue placeholder="Select arrangement" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(WORK_ARRANGEMENT_LABELS).map(
+                        ([value, label]) => (
+                          <SelectItem key={value} value={value}>
+                            {label}
+                          </SelectItem>
+                        ),
+                      )}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="street1">Address Line 1</Label>
+            <Input
+              id="street1"
+              placeholder="Street address"
+              className="h-10 rounded-lg border-gray-200 bg-white text-sm"
+              {...register('street1')}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="street2">Address Line 2 (optional)</Label>
+            <Input
+              id="street2"
+              placeholder="Apartment, suite, etc."
+              className="h-10 rounded-lg border-gray-200 bg-white text-sm"
+              {...register('street2')}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="city">City</Label>
+              <Input
+                id="city"
+                className="h-10 rounded-lg border-gray-200 bg-white text-sm"
+                {...register('city')}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="state">State / Province</Label>
+              <Input
+                id="state"
+                className="h-10 rounded-lg border-gray-200 bg-white text-sm"
+                {...register('state')}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="postalCode">Postal Code</Label>
+              <Input
+                id="postalCode"
+                className="h-10 rounded-lg border-gray-200 bg-white text-sm"
+                {...register('postalCode')}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="country">Country</Label>
+              <Input
+                id="country"
+                className="h-10 rounded-lg border-gray-200 bg-white text-sm"
+                {...register('country')}
+              />
+            </div>
           </div>
 
           <DialogFooter>

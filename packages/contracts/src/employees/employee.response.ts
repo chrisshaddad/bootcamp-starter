@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import { dateSchema } from '../common';
+import { employmentTypeSchema } from './employment-type.schema';
+import { workArrangementSchema } from './work-arrangement.schema';
 
 const employeeDepartmentSchema = z.object({
   id: z.uuid(),
@@ -16,9 +18,14 @@ const employeeProfileSchema = z.object({
   bio: z.string().nullable(),
   careerGoal: z.string().nullable(),
   phoneNumber: z.string().nullable(),
+  street1: z.string().nullable(),
+  street2: z.string().nullable(),
   city: z.string().nullable(),
   state: z.string().nullable(),
+  postalCode: z.string().nullable(),
   country: z.string().nullable(),
+  employmentType: employmentTypeSchema.nullable(),
+  workArrangement: workArrangementSchema.nullable(),
   profilePictureUrl: z.string().nullable(),
 });
 

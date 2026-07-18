@@ -96,6 +96,12 @@ export class ApplicationsService {
           reviewerNotes: true,
           createdAt: true,
           updatedAt: true,
+          user: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
           opportunity: {
             select: {
               id: true,
@@ -137,7 +143,17 @@ export class ApplicationsService {
     // Role-based filtering
     let where: Prisma.ApplicationWhereInput = {};
 
-    if (currentUser.role === 'EMPLOYEE') {
+    if (query.team) {
+      // Team scope (used by the manager-facing Team Overview screen): only
+      // applications submitted by the current user's direct reports. Falls
+      // through to an empty result set for non-managers, same as
+      // OpportunitiesService's "mine" scoping.
+      where = {
+        user: {
+          managerId: currentUser.id,
+        },
+      };
+    } else if (currentUser.role === 'EMPLOYEE') {
       // Employees see only their own applications
       where = {
         userId: currentUser.id,
@@ -177,6 +193,12 @@ export class ApplicationsService {
           reviewerNotes: true,
           createdAt: true,
           updatedAt: true,
+          user: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
           opportunity: {
             select: {
               id: true,
@@ -237,6 +259,12 @@ export class ApplicationsService {
         reviewerNotes: true,
         createdAt: true,
         updatedAt: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         opportunity: {
           select: {
             id: true,
@@ -338,6 +366,12 @@ export class ApplicationsService {
         reviewerNotes: true,
         createdAt: true,
         updatedAt: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         opportunity: {
           select: {
             id: true,

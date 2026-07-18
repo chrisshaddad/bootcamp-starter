@@ -61,6 +61,23 @@ enum ApplicationStatus {
   @@schema("public")
 }
 
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERN
+
+  @@schema("public")
+}
+
+enum WorkArrangement {
+  REMOTE
+  HYBRID
+  ONSITE
+
+  @@schema("public")
+}
+
 // ─── Auth (private schema) ───────────────────────────────
 
 model Session {
@@ -151,6 +168,9 @@ model UserProfile {
   state      String?
   postalCode String?
   country    String?
+
+  employmentType   EmploymentType?
+  workArrangement  WorkArrangement?
 
   profilePictureUrl String?
   createdAt         DateTime @default(now())
