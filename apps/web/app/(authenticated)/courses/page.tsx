@@ -165,7 +165,13 @@ export default function CoursesPage() {
       }, false);
 
       toast.success('Course updated successfully.');
-      closeUpdateModal();
+
+      setEditingCourse(null);
+      reset({
+        title: '',
+        description: '',
+        status: 'draft',
+      });
     } catch (error) {
       console.error('Failed to update course:', error);
       toast.error(
