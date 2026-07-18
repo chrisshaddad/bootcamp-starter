@@ -161,15 +161,18 @@ describe('ProjectInvitationsService', () => {
     );
   });
 
-  it('keeps a created invitation when email enqueueing fails', async () => {
+  it('removes a created invitation when email enqueueing fails', async () => {
     mailQueue.add.mockRejectedValue(new Error('Redis unavailable'));
     await expect(
       service.createInvitation(ownerUser(), PROJECT_ID, {
         githubUsername: 'invitee',
         role: 'EDITOR',
       }),
-    ).resolves.toMatchObject({ status: 'PENDING' });
+    ).rejects.toThrow('The invitation could not be sent');
     expect(db.projectInvitation.create).toHaveBeenCalledTimes(1);
+    expect(db.projectInvitation.delete).toHaveBeenCalledWith({
+      where: { id: INVITATION_ID },
+    });
   });
 
   it('rejects duplicate pending invitations', async () => {
@@ -306,6 +309,31 @@ describe('ProjectInvitationsService', () => {
       service.declineInvitation(inviteeUser(), INVITATION_ID),
     ).resolves.toMatchObject({ status: 'DECLINED' });
     expect(db.projectMember.create).not.toHaveBeenCalled();
+  });
+
+  it('allows the recipient to decline after disconnecting GitHub', async () => {
+    db.developerProfile.findUnique.mockResolvedValue(null);
+    db.projectInvitation.updateMany.mockResolvedValue({ count: 1 });
+
+    await expect(
+      service.declineInvitation(inviteeUser(), INVITATION_ID),
+    ).resolves.toBeDefined();
+    expect(db.developerProfile.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('expires only the current invitee records on request paths', async () => {
+    await service.getPendingCount(inviteeUser());
+
+    // The lightweight Prisma mock is intentionally untyped in this legacy suite.
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    const rawCall: unknown = db.projectInvitation.updateMany.mock.calls[0]?.[0];
+    const expiration = rawCall as {
+      where: { inviteeUserId?: string; status?: ProjectInvitationStatus };
+      data: { status?: ProjectInvitationStatus };
+    };
+    expect(expiration.where.inviteeUserId).toBe(INVITEE_ID);
+    expect(expiration.where.status).toBe(ProjectInvitationStatus.PENDING);
+    expect(expiration.data.status).toBe(ProjectInvitationStatus.EXPIRED);
   });
 
   it('lets only the owner cancel a pending invitation', async () => {
@@ -451,6 +479,7 @@ function createDatabaseMock() {
     count: jest.fn().mockResolvedValue(0),
     update: jest.fn().mockResolvedValue({}),
     updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+    delete: jest.fn().mockResolvedValue({}),
   };
 
   return {

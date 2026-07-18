@@ -296,7 +296,7 @@ export class GithubService {
       }
 
       if (!response.ok) {
-        this.handleAuthenticatedGithubErrorResponse(response);
+        await this.handleAuthenticatedGithubErrorResponse(response);
       }
 
       let repos: GithubRepoResponse[];
@@ -583,7 +583,7 @@ export class GithubService {
     }
 
     if (!response.ok) {
-      this.handleGithubErrorResponse(response);
+      await this.handleGithubErrorResponse(response);
     }
 
     let apiFile: unknown;
@@ -627,7 +627,7 @@ export class GithubService {
     }
 
     if (!response.ok) {
-      this.handleGithubErrorResponse(response);
+      await this.handleGithubErrorResponse(response);
     }
 
     try {
@@ -699,7 +699,10 @@ export class GithubService {
     }
 
     if (!response.ok) {
-      this.handleAuthenticatedGithubErrorResponse(response, notFoundMessage);
+      await this.handleAuthenticatedGithubErrorResponse(
+        response,
+        notFoundMessage,
+      );
     }
 
     try {
@@ -709,12 +712,12 @@ export class GithubService {
     }
   }
 
-  private handleGithubErrorResponse(response: Response): never {
+  private async handleGithubErrorResponse(response: Response): Promise<never> {
     if (response.status === 404) {
       throw new NotFoundException(REPOSITORY_NOT_FOUND_MESSAGE);
     }
 
-    if (response.status === 403 && this.isRateLimited(response)) {
+    if (await this.isRateLimited(response)) {
       throw new ServiceUnavailableException(GITHUB_RATE_LIMIT_MESSAGE);
     }
 
@@ -724,10 +727,10 @@ export class GithubService {
     throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
   }
 
-  private handleAuthenticatedGithubErrorResponse(
+  private async handleAuthenticatedGithubErrorResponse(
     response: Response,
     notFoundMessage = REPOSITORY_NOT_FOUND_MESSAGE,
-  ): never {
+  ): Promise<never> {
     if (response.status === 404) {
       throw new NotFoundException(notFoundMessage);
     }
@@ -738,7 +741,7 @@ export class GithubService {
       );
     }
 
-    if (response.status === 403 && this.isRateLimited(response)) {
+    if (await this.isRateLimited(response)) {
       throw new ServiceUnavailableException(GITHUB_RATE_LIMIT_MESSAGE);
     }
 
@@ -848,8 +851,23 @@ export class GithubService {
     return key;
   }
 
-  private isRateLimited(response: Response): boolean {
-    return response.headers.get('x-ratelimit-remaining') === '0';
+  private async isRateLimited(response: Response): Promise<boolean> {
+    if (
+      response.status === 429 ||
+      response.headers.has('retry-after') ||
+      response.headers.get('x-ratelimit-remaining') === '0'
+    ) {
+      return true;
+    }
+
+    if (response.status !== 403) return false;
+
+    try {
+      const body = await response.clone().text();
+      return /secondary rate limit|abuse detection/i.test(body);
+    } catch {
+      return false;
+    }
   }
 
   private normalizeLanguages(

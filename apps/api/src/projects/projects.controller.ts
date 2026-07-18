@@ -47,6 +47,7 @@ import {
   projectByIdResponseSchema,
   projectResponseSchema,
   projectMediaResponseSchema,
+  successResponseSchema,
   type CreateProjectRequest,
   type ImportGithubProjectRequest,
   type ImportGithubProjectResponse,
@@ -60,6 +61,7 @@ import {
   type ExploreProjectsResponse,
   type ProjectsListQuery,
   type ProjectsListResponse,
+  type SuccessResponse,
 } from '@repo/contracts';
 import {
   importGithubProjectRequestSchema as importGithubProjectOpenApiRequestSchema,
@@ -456,29 +458,13 @@ export class ProjectsController {
     const apiUrl = process.env.API_URL ?? 'http://localhost:3001';
     const publicUrl = `${apiUrl}/uploads/project-media/${finalFilename}`;
 
+    let result: Awaited<ReturnType<ProjectsService['uploadLogo']>>;
     try {
-      const result = await this.projectsService.uploadLogo(
+      result = await this.projectsService.uploadLogo(
         user,
         projectId,
         publicUrl,
       );
-      const { previousLogoKey, ...project } = result;
-
-      // Unlink safely using the server-extracted storage key
-      if (previousLogoKey) {
-        try {
-          await unlink(join(PROJECT_MEDIA_DIR, previousLogoKey));
-        } catch (_unlinkError) {
-          // Ignored
-        }
-      }
-
-      return projectResponseSchema.parse({
-        ...project,
-        createdAt: project.createdAt.toISOString(),
-        updatedAt: project.updatedAt.toISOString(),
-        publishedAt: project.publishedAt?.toISOString() ?? null,
-      });
     } catch (error) {
       try {
         await unlink(join(PROJECT_MEDIA_DIR, finalFilename));
@@ -487,6 +473,26 @@ export class ProjectsController {
       }
       throw error;
     }
+
+    const { previousLogoKey, ...project } = result;
+    const response = projectResponseSchema.parse({
+      ...project,
+      createdAt: project.createdAt.toISOString(),
+      updatedAt: project.updatedAt.toISOString(),
+      publishedAt: project.publishedAt?.toISOString() ?? null,
+    });
+
+    // Only remove the old logo after the persisted replacement is confirmed to
+    // satisfy the public response contract.
+    if (previousLogoKey) {
+      try {
+        await unlink(join(PROJECT_MEDIA_DIR, previousLogoKey));
+      } catch (_unlinkError) {
+        // Ignored
+      }
+    }
+
+    return response;
   }
 
   @Delete(':id')
@@ -501,7 +507,7 @@ export class ProjectsController {
   async deleteProject(
     @CurrentUser() user: User,
     @Param('id') projectId: string,
-  ) {
+  ): Promise<SuccessResponse> {
     const { mediaStorageKeys } = await this.projectsService.deleteProject(
       user,
       projectId,
@@ -524,7 +530,7 @@ export class ProjectsController {
       }),
     );
 
-    return { success: true };
+    return successResponseSchema.parse({ success: true });
   }
 
   @Get('slug/:slug')
@@ -676,17 +682,12 @@ export class ProjectsController {
     const apiUrl = process.env.API_URL ?? 'http://localhost:3001';
     const publicUrl = `${apiUrl}/uploads/project-media/${finalFilename}`;
 
+    let media: Awaited<ReturnType<ProjectsService['addMedia']>>;
     try {
-      const media = await this.projectsService.addMedia(user, projectId, {
+      media = await this.projectsService.addMedia(user, projectId, {
         ...body,
         storageKey: finalFilename,
         publicUrl,
-      });
-
-      return projectMediaResponseSchema.parse({
-        ...media,
-        createdAt: media.createdAt.toISOString(),
-        updatedAt: media.updatedAt.toISOString(),
       });
     } catch (error) {
       try {
@@ -696,6 +697,12 @@ export class ProjectsController {
       }
       throw error;
     }
+
+    return projectMediaResponseSchema.parse({
+      ...media,
+      createdAt: media.createdAt.toISOString(),
+      updatedAt: media.updatedAt.toISOString(),
+    });
   }
 
   @Patch(':id/media/:mediaId')
@@ -767,7 +774,7 @@ export class ProjectsController {
     @CurrentUser() user: User,
     @Param('id') projectId: string,
     @Param('mediaId') mediaId: string,
-  ) {
+  ): Promise<SuccessResponse> {
     const result = await this.projectsService.deleteMedia(
       user,
       projectId,
@@ -780,6 +787,6 @@ export class ProjectsController {
       // Ignore error if file is already missing from disk
     }
 
-    return { success: true };
+    return successResponseSchema.parse({ success: true });
   }
 }

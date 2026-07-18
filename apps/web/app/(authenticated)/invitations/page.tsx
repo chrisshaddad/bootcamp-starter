@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Pagination } from '@/components/pagination';
 
 function statusClass(status: ProjectInvitationResponse['status']) {
   if (status === 'ACCEPTED') return 'bg-success/10 text-success';
@@ -21,7 +22,11 @@ function statusClass(status: ProjectInvitationResponse['status']) {
 }
 
 export default function InvitationsPage() {
-  const { invitations, isLoading, error } = useInvitationInbox();
+  const [page, setPage] = useState(1);
+  const { invitations, meta, isLoading, error } = useInvitationInbox({
+    page,
+    limit: 20,
+  });
   const { acceptInvitation, declineInvitation } = useProjectInvitationActions();
   const [responding, setResponding] = useState<{
     id: string;
@@ -32,6 +37,7 @@ export default function InvitationsPage() {
     invitation: ProjectInvitationResponse,
     action: 'accept' | 'decline',
   ) => {
+    if (responding) return;
     setResponding({ id: invitation.id, action });
     try {
       if (action === 'accept') {
@@ -123,6 +129,13 @@ export default function InvitationsPage() {
               ))}
             </section>
           )}
+          {meta && meta.totalPages > 1 && (
+            <Pagination
+              page={meta.currentPage}
+              totalPages={meta.totalPages}
+              onPageChange={setPage}
+            />
+          )}
         </>
       )}
     </div>
@@ -142,7 +155,7 @@ function InvitationCard({
   ) => Promise<void>;
 }) {
   const isPending = invitation.status === 'PENDING';
-  const isResponding = responding?.id === invitation.id;
+  const responsesDisabled = responding !== null;
 
   return (
     <Card>
@@ -197,7 +210,7 @@ function InvitationCard({
           <div className="flex flex-wrap justify-end gap-2 border-t pt-4">
             <Button
               variant="outline"
-              disabled={isResponding}
+              disabled={responsesDisabled}
               onClick={() => onRespond(invitation, 'decline')}
             >
               {responding?.id === invitation.id &&
@@ -209,7 +222,7 @@ function InvitationCard({
               Decline
             </Button>
             <Button
-              disabled={isResponding}
+              disabled={responsesDisabled}
               onClick={() => onRespond(invitation, 'accept')}
             >
               {responding?.id === invitation.id &&

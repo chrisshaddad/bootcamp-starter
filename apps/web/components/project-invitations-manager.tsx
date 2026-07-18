@@ -26,6 +26,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Pagination } from '@/components/pagination';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -65,7 +66,11 @@ export function ProjectInvitationsManager({
 }: {
   projectId: string;
 }) {
-  const { invitations, isLoading, error } = useProjectInvitations(projectId);
+  const [invitationPage, setInvitationPage] = useState(1);
+  const { invitations, meta, isLoading, error } = useProjectInvitations(
+    projectId,
+    { page: invitationPage, limit: 20 },
+  );
   const { searchCollaborator, createInvitation, cancelInvitation } =
     useProjectInvitationActions();
   const [validatedUsername, setValidatedUsername] = useState<string | null>(
@@ -156,6 +161,7 @@ export function ProjectInvitationsManager({
   };
 
   const handleCancel = async (invitationId: string) => {
+    if (cancelingId) return;
     setCancelingId(invitationId);
     try {
       await cancelInvitation(projectId, invitationId);
@@ -316,7 +322,7 @@ export function ProjectInvitationsManager({
                             type="button"
                             size="sm"
                             variant="outline"
-                            disabled={cancelingId === invitation.id}
+                            disabled={cancelingId !== null}
                           >
                             {cancelingId === invitation.id ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
@@ -354,6 +360,13 @@ export function ProjectInvitationsManager({
                 </div>
               ))}
             </div>
+          )}
+          {meta && meta.totalPages > 1 && (
+            <Pagination
+              page={meta.currentPage}
+              totalPages={meta.totalPages}
+              onPageChange={setInvitationPage}
+            />
           )}
         </div>
       </CardContent>

@@ -6,6 +6,7 @@ import type {
   CreateProjectInvitationRequest,
   ProjectInvitationListResponse,
   ProjectInvitationPendingCountResponse,
+  ProjectInvitationListQuery,
 } from '@repo/contracts';
 import {
   projectCollaboratorSearchResponseSchema,
@@ -15,18 +16,47 @@ import {
 } from '@repo/contracts';
 import { apiDelete, apiPost, fetcher } from '@/lib/api';
 
-const INBOX_KEY = '/project-invitations?page=1&limit=50';
 const PENDING_COUNT_KEY = '/project-invitations/pending-count';
-const ownerInvitationsKey = (projectId: string) =>
-  `/projects/${projectId}/invitations?page=1&limit=50`;
+const DEFAULT_LIST_QUERY = { page: 1, limit: 20 } satisfies Pick<
+  ProjectInvitationListQuery,
+  'page' | 'limit'
+>;
+
+function invitationListQueryString(
+  query: Partial<ProjectInvitationListQuery>,
+): string {
+  const resolved = { ...DEFAULT_LIST_QUERY, ...query };
+  const params = new URLSearchParams({
+    page: String(resolved.page),
+    limit: String(resolved.limit),
+  });
+  if (resolved.status) params.set('status', resolved.status);
+  return params.toString();
+}
+
+const inboxKey = (query: Partial<ProjectInvitationListQuery> = {}) =>
+  `/project-invitations?${invitationListQueryString(query)}`;
+const ownerInvitationsKey = (
+  projectId: string,
+  query: Partial<ProjectInvitationListQuery> = {},
+) => `/projects/${projectId}/invitations?${invitationListQueryString(query)}`;
 
 async function refreshInvitationData(projectId?: string, projectSlug?: string) {
   const keys: Array<Promise<unknown>> = [
-    globalMutate(INBOX_KEY),
+    globalMutate(
+      (key) =>
+        typeof key === 'string' && key.startsWith('/project-invitations?'),
+    ),
     globalMutate(PENDING_COUNT_KEY),
   ];
   if (projectId) {
-    keys.push(globalMutate(ownerInvitationsKey(projectId)));
+    keys.push(
+      globalMutate(
+        (key) =>
+          typeof key === 'string' &&
+          key.startsWith(`/projects/${projectId}/invitations?`),
+      ),
+    );
     keys.push(globalMutate(`/projects/id/${projectId}`));
   }
   if (projectSlug) keys.push(globalMutate(`/projects/slug/${projectSlug}`));
@@ -40,9 +70,12 @@ async function refreshInvitationData(projectId?: string, projectSlug?: string) {
   await Promise.all(keys);
 }
 
-export function useInvitationInbox(enabled = true) {
+export function useInvitationInbox(
+  query: Partial<ProjectInvitationListQuery> = {},
+  enabled = true,
+) {
   const { data, error, isLoading } = useSWR<ProjectInvitationListResponse>(
-    enabled ? INBOX_KEY : null,
+    enabled ? inboxKey(query) : null,
     async (key: string) =>
       projectInvitationListResponseSchema.parse(await fetcher(key)),
   );
@@ -65,14 +98,18 @@ export function useInvitationPendingCount(enabled = true) {
   return { pendingCount: data?.pendingCount ?? 0, error, isLoading };
 }
 
-export function useProjectInvitations(projectId?: string) {
+export function useProjectInvitations(
+  projectId?: string,
+  query: Partial<ProjectInvitationListQuery> = {},
+) {
   const { data, error, isLoading } = useSWR<ProjectInvitationListResponse>(
-    projectId ? ownerInvitationsKey(projectId) : null,
+    projectId ? ownerInvitationsKey(projectId, query) : null,
     async (key: string) =>
       projectInvitationListResponseSchema.parse(await fetcher(key)),
   );
   return {
     invitations: data?.data ?? [],
+    meta: data?.meta,
     error,
     isLoading,
   };

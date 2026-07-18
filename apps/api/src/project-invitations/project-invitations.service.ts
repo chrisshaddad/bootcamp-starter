@@ -6,6 +6,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  ServiceUnavailableException,
   type OnModuleInit,
 } from '@nestjs/common';
 import {
@@ -183,8 +184,12 @@ export class ProjectInvitationsService implements OnModuleInit {
       );
     } catch (error) {
       this.logger.error(
-        `Project invitation ${invitation.id} was saved but its email could not be queued.`,
+        `Project invitation ${invitation.id} email could not be queued; compensating the saved invitation.`,
         error instanceof Error ? error.stack : undefined,
+      );
+      await this.db.projectInvitation.delete({ where: { id: invitation.id } });
+      throw new ServiceUnavailableException(
+        'The invitation could not be sent. Please try again.',
       );
     }
 
@@ -197,7 +202,7 @@ export class ProjectInvitationsService implements OnModuleInit {
     query: ProjectInvitationListQuery,
   ): Promise<ProjectInvitationListResponse> {
     await this.getOwnerProject(user, projectId, false);
-    await this.expirePendingInvitations(projectId);
+    await this.expirePendingInvitations({ projectId });
     return this.listInvitations({ projectId }, query);
   }
 
@@ -205,14 +210,14 @@ export class ProjectInvitationsService implements OnModuleInit {
     user: User,
     query: ProjectInvitationListQuery,
   ): Promise<ProjectInvitationListResponse> {
-    await this.expirePendingInvitations();
+    await this.expirePendingInvitations({ inviteeUserId: user.id });
     return this.listInvitations({ inviteeUserId: user.id }, query);
   }
 
   async getPendingCount(
     user: User,
   ): Promise<ProjectInvitationPendingCountResponse> {
-    await this.expirePendingInvitations();
+    await this.expirePendingInvitations({ inviteeUserId: user.id });
     const pendingCount = await this.db.projectInvitation.count({
       where: {
         inviteeUserId: user.id,
@@ -227,8 +232,12 @@ export class ProjectInvitationsService implements OnModuleInit {
     user: User,
     invitationId: string,
   ): Promise<ProjectInvitationResponse> {
-    await this.expirePendingInvitations();
+    await this.expirePendingInvitations({
+      id: invitationId,
+      inviteeUserId: user.id,
+    });
     const invitation = await this.getInvitationForInvitee(user, invitationId);
+    await this.assertInvitationGithubIdentity(user, invitation);
 
     if (invitation.status === ProjectInvitationStatus.ACCEPTED) {
       return mapProjectInvitation(invitation);
@@ -322,7 +331,10 @@ export class ProjectInvitationsService implements OnModuleInit {
     user: User,
     invitationId: string,
   ): Promise<ProjectInvitationResponse> {
-    await this.expirePendingInvitations();
+    await this.expirePendingInvitations({
+      id: invitationId,
+      inviteeUserId: user.id,
+    });
     const invitation = await this.getInvitationForInvitee(user, invitationId);
     if (invitation.status === ProjectInvitationStatus.DECLINED) {
       return mapProjectInvitation(invitation);
@@ -359,7 +371,7 @@ export class ProjectInvitationsService implements OnModuleInit {
     invitationId: string,
   ): Promise<ProjectInvitationResponse> {
     await this.getOwnerProject(user, projectId, false);
-    await this.expirePendingInvitations(projectId);
+    await this.expirePendingInvitations({ id: invitationId, projectId });
     const invitation = await this.db.projectInvitation.findFirst({
       where: { id: invitationId, projectId },
       include: projectInvitationInclude,
@@ -395,10 +407,12 @@ export class ProjectInvitationsService implements OnModuleInit {
     return mapProjectInvitation(await this.getInvitationDetails(invitationId));
   }
 
-  async expirePendingInvitations(projectId?: string): Promise<number> {
+  async expirePendingInvitations(
+    scope: Prisma.ProjectInvitationWhereInput = {},
+  ): Promise<number> {
     const result = await this.db.projectInvitation.updateMany({
       where: {
-        ...(projectId ? { projectId } : {}),
+        ...scope,
         status: ProjectInvitationStatus.PENDING,
         expiresAt: { lte: new Date() },
       },
@@ -467,7 +481,7 @@ export class ProjectInvitationsService implements OnModuleInit {
     githubUserId: bigint,
     userId: string,
   ): Promise<void> {
-    await this.expirePendingInvitations(projectId);
+    await this.expirePendingInvitations({ projectId });
     const [member, pendingInvitation] = await Promise.all([
       this.db.projectMember.findFirst({
         where: {
@@ -628,6 +642,13 @@ export class ProjectInvitationsService implements OnModuleInit {
       throw new ForbiddenException('This invitation belongs to another user.');
     }
 
+    return invitation;
+  }
+
+  private async assertInvitationGithubIdentity(
+    user: User,
+    invitation: ProjectInvitationWithDetails,
+  ): Promise<void> {
     const profile = await this.db.developerProfile.findUnique({
       where: { userId: user.id },
       select: { githubUserId: true },
@@ -640,7 +661,6 @@ export class ProjectInvitationsService implements OnModuleInit {
         'Connect the GitHub account that received this invitation.',
       );
     }
-    return invitation;
   }
 
   private async getInvitationDetails(invitationId: string) {

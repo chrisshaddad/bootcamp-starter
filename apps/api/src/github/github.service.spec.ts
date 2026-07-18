@@ -417,6 +417,33 @@ describe('GithubService', () => {
     expect(getFetchHeaders(fetchMock).Authorization).toBe('Bearer test-token');
   });
 
+  it.each([
+    [403, { message: 'You have exceeded a secondary rate limit.' }, {}],
+    [403, { message: 'Forbidden' }, { 'retry-after': '60' }],
+    [429, { message: 'Too many requests' }, {}],
+  ])(
+    'maps authenticated GitHub throttling (%s) to service unavailable',
+    async (status, body, headers) => {
+      mockConnectedGithubUser(db, service, 42n, 'owner');
+      fetchMock.mockResolvedValueOnce(jsonResponse(body, status, headers));
+
+      await expect(service.getUserRepositories('user-id')).rejects.toThrow(
+        ServiceUnavailableException,
+      );
+    },
+  );
+
+  it('preserves authorization failures for non-rate-limited GitHub 403 responses', async () => {
+    mockConnectedGithubUser(db, service, 42n, 'owner');
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ message: 'Resource not accessible' }, 403),
+    );
+
+    await expect(service.getUserRepositories('user-id')).rejects.toThrow(
+      ForbiddenException,
+    );
+  });
+
   it('does not send Authorization when GITHUB_TOKEN is blank', async () => {
     process.env.GITHUB_TOKEN = '   ';
     fetchMock

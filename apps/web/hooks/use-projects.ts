@@ -11,7 +11,8 @@ import type {
   ProjectMediaUpdateRequest,
   ProjectMediaUploadRequest,
   ProjectsExploreQuery,
-  ProjectScope,
+  ProjectsListQuery,
+  SuccessResponse,
 } from '@repo/contracts';
 import {
   projectByIdResponseSchema,
@@ -20,6 +21,7 @@ import {
   projectResponseSchema,
   exploreProjectsResponseSchema,
   projectsListResponseSchema,
+  successResponseSchema,
 } from '@repo/contracts';
 
 const PROJECTS_KEY = '/projects';
@@ -34,11 +36,7 @@ const refreshProjectLists = () =>
 // real: GET /projects, list of projects owned by the current user. Includes
 // media so the dashboard card grid can use each project's cover screenshot.
 export function useProjects(
-  query: {
-    scope: ProjectScope;
-    page: number;
-    limit: number;
-  } = { scope: 'ALL', page: 1, limit: 20 },
+  query: ProjectsListQuery = { scope: 'ALL', page: 1, limit: 20 },
 ) {
   const params = new URLSearchParams({
     scope: query.scope,
@@ -83,8 +81,11 @@ export function useUpdateProject() {
 
 export function useDeleteProject() {
   return useCallback(async (id: string) => {
-    await apiDelete<{ success: true }>(`/projects/${id}`);
+    const response: SuccessResponse = successResponseSchema.parse(
+      await apiDelete<unknown>(`/projects/${id}`),
+    );
     await refreshProjectLists();
+    return response;
   }, []);
 }
 
@@ -181,10 +182,11 @@ export function useSetCoverProjectMedia() {
 
 export function useDeleteProjectMedia() {
   return useCallback(async (projectId: string, mediaId: string) => {
-    await apiDelete<{ success: true }>(
-      `/projects/${projectId}/media/${mediaId}`,
+    const response: SuccessResponse = successResponseSchema.parse(
+      await apiDelete<unknown>(`/projects/${projectId}/media/${mediaId}`),
     );
     await globalMutate(projectKey(projectId));
+    return response;
   }, []);
 }
 // New hook added for fetching Explore Projects

@@ -50,6 +50,7 @@ export class MailProcessor extends WorkerHost {
       case MAIL_JOBS.SEND_PROJECT_INVITATION:
         await this.handleSendProjectInvitation(
           job.data as SendProjectInvitationJobData,
+          job.id,
         );
         break;
       default:
@@ -102,6 +103,7 @@ export class MailProcessor extends WorkerHost {
 
   private async handleSendProjectInvitation(
     data: SendProjectInvitationJobData,
+    jobId?: string,
   ): Promise<void> {
     const { email, inviterName, projectTitle, invitationLink } = data;
     const text = `Hello,\n\n${inviterName} invited you to collaborate on ${projectTitle} on Deployfolio.\n\nReview the invitation in your inbox:\n\n${invitationLink}\n\nThis invitation expires in 7 days. You must sign in with the platform account connected to the invited GitHub identity.\n\nIf you were not expecting this invitation, you can safely decline or ignore it.`;
@@ -112,8 +114,12 @@ export class MailProcessor extends WorkerHost {
       text,
     });
     if (!success) {
-      throw new Error(`Failed to send project invitation email to ${email}`);
+      throw new Error(
+        `Failed to send project invitation email for job ${jobId ?? 'unknown'}`,
+      );
     }
-    this.logger.log(`Project invitation email sent successfully to ${email}`);
+    this.logger.log(
+      `Project invitation email sent successfully for job ${jobId ?? 'unknown'}`,
+    );
   }
 }
