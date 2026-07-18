@@ -300,13 +300,30 @@ export default function CoursesPage() {
             const isExpanded = expandedCourseId === course.id;
             const detailsId = `course-details-${course.id}`;
 
+            const toggleCourseDetails = () => {
+              setExpandedCourseId(isExpanded ? null : course.id);
+            };
+
             return (
               <Card
                 key={course.id}
-                onClick={() =>
-                  setExpandedCourseId(isExpanded ? null : course.id)
-                }
-                className="group cursor-pointer rounded-3xl border-gray-200 bg-white p-6 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md"
+                role="button"
+                tabIndex={0}
+                aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${course.title} details`}
+                aria-expanded={isExpanded}
+                aria-controls={detailsId}
+                onClick={toggleCourseDetails}
+                onKeyDown={(event) => {
+                  if (event.target !== event.currentTarget) {
+                    return;
+                  }
+
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    toggleCourseDetails();
+                  }
+                }}
+                className="group cursor-pointer rounded-3xl border-gray-200 bg-white p-6 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-base focus-visible:ring-offset-2"
               >
                 <CardHeader className="p-0">
                   <div className="flex items-start justify-between gap-4">
@@ -329,7 +346,7 @@ export default function CoursesPage() {
                       aria-controls={detailsId}
                       onClick={(event) => {
                         event.stopPropagation();
-                        setExpandedCourseId(isExpanded ? null : course.id);
+                        toggleCourseDetails();
                       }}
                       className="rounded-full p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
                     >
