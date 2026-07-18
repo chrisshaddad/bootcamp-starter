@@ -7,14 +7,20 @@ import {
 } from '@nestjs/common';
 import type {
   CreateTeacherAssignmentRequest,
+  CreateTeacherQuizRequest,
   DeleteTeacherAssignmentResponse,
   GradeSubmissionRequest,
   GradeSubmissionResponse,
   TeacherAssignmentListResponse,
   TeacherAssignmentResponse,
   TeacherCourseListResponse,
+  TeacherQuizListResponse,
+  TeacherQuizOption,
+  TeacherQuizResponse,
   TeacherSubmissionListResponse,
   UpdateTeacherAssignmentRequest,
+  DeleteTeacherQuizResponse,
+  UpdateTeacherQuizRequest,
 } from '@repo/contracts';
 import { PrismaService } from '../database/prisma.service';
 @Injectable()
@@ -108,6 +114,500 @@ export class TeacherService {
         },
       },
     });
+  }
+
+  async createQuiz(
+    teacherId: string,
+    organizationId: string | null,
+    input: CreateTeacherQuizRequest,
+  ): Promise<TeacherQuizResponse> {
+    if (!organizationId) {
+      throw new ForbiddenException(
+        'Teacher account is not assigned to an organization',
+      );
+    }
+
+    const course = await this.prisma.course.findFirst({
+      where: {
+        id: input.courseId,
+        teacherId,
+        organizationId,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!course) {
+      throw new ForbiddenException(
+        'You cannot create a quiz for the selected course',
+      );
+    }
+
+    const maxScore = input.questions.reduce(
+      (total, question) => total + question.points,
+      0,
+    );
+
+    const quiz = await this.prisma.assignment.create({
+      data: {
+        courseId: course.id,
+        createdById: teacherId,
+        type: input.type,
+        title: input.title,
+        instructions: input.instructions,
+        maxScore,
+        startsAt: input.startsAt ? new Date(input.startsAt) : null,
+        dueAt: input.dueAt ? new Date(input.dueAt) : null,
+        endsAt: input.endsAt ? new Date(input.endsAt) : null,
+        durationMinutes: input.durationMinutes,
+        noteToStudents: input.noteToStudents,
+        status: input.status,
+
+        quizQuestions: {
+          create: input.questions.map((question) => ({
+            questionText: question.questionText,
+            questionType: 'mcq',
+            options: question.options,
+            correctAnswer: {
+              optionId: question.correctOptionId,
+            },
+            points: question.points,
+            position: question.position,
+          })),
+        },
+      },
+      select: {
+        id: true,
+        courseId: true,
+        createdById: true,
+        type: true,
+        title: true,
+        instructions: true,
+        maxScore: true,
+        startsAt: true,
+        dueAt: true,
+        endsAt: true,
+        durationMinutes: true,
+        noteToStudents: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+
+        course: {
+          select: {
+            id: true,
+            title: true,
+          },
+        },
+
+        quizQuestions: {
+          orderBy: {
+            position: 'asc',
+          },
+          select: {
+            id: true,
+            assignmentId: true,
+            questionText: true,
+            questionType: true,
+            options: true,
+            correctAnswer: true,
+            points: true,
+            position: true,
+          },
+        },
+      },
+    });
+
+    return {
+      id: quiz.id,
+      courseId: quiz.courseId,
+      createdById: quiz.createdById,
+      type: quiz.type === 'exam' ? 'exam' : 'quiz',
+      title: quiz.title,
+      instructions: quiz.instructions,
+      maxScore: quiz.maxScore.toNumber(),
+      startsAt: quiz.startsAt,
+      dueAt: quiz.dueAt,
+      endsAt: quiz.endsAt,
+      durationMinutes: quiz.durationMinutes ?? input.durationMinutes,
+      noteToStudents: quiz.noteToStudents,
+      status: quiz.status,
+      createdAt: quiz.createdAt,
+      updatedAt: quiz.updatedAt,
+      course: quiz.course,
+
+      questions: quiz.quizQuestions.map((question) => {
+        const correctAnswer = question.correctAnswer as {
+          optionId: string;
+        };
+
+        return {
+          id: question.id,
+          assignmentId: question.assignmentId,
+          questionText: question.questionText,
+          questionType: 'mcq' as const,
+          options: question.options as TeacherQuizOption[],
+          correctOptionId: correctAnswer.optionId,
+          points: question.points.toNumber(),
+          position: question.position,
+        };
+      }),
+    };
+  }
+
+  async updateQuiz(
+    teacherId: string,
+    organizationId: string | null,
+    quizId: string,
+    input: UpdateTeacherQuizRequest,
+  ): Promise<TeacherQuizResponse> {
+    if (!organizationId) {
+      throw new ForbiddenException(
+        'Teacher account is not assigned to an organization',
+      );
+    }
+
+    const existingQuiz = await this.prisma.assignment.findFirst({
+      where: {
+        id: quizId,
+        createdById: teacherId,
+        type: {
+          in: ['quiz', 'exam'],
+        },
+        course: {
+          organizationId,
+        },
+      },
+      select: {
+        id: true,
+        courseId: true,
+      },
+    });
+
+    if (!existingQuiz) {
+      throw new NotFoundException(`Quiz with ID ${quizId} was not found`);
+    }
+
+    if (input.courseId) {
+      const course = await this.prisma.course.findFirst({
+        where: {
+          id: input.courseId,
+          teacherId,
+          organizationId,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      if (!course) {
+        throw new ForbiddenException(
+          'You cannot assign this quiz to the selected course',
+        );
+      }
+    }
+
+    const maxScore = input.questions
+      ? input.questions.reduce((total, question) => total + question.points, 0)
+      : undefined;
+
+    await this.prisma.$transaction(async (transaction) => {
+      await transaction.assignment.update({
+        where: {
+          id: quizId,
+        },
+        data: {
+          courseId: input.courseId,
+          type: input.type,
+          title: input.title,
+          instructions: input.instructions,
+          durationMinutes: input.durationMinutes,
+          startsAt:
+            input.startsAt === undefined
+              ? undefined
+              : input.startsAt
+                ? new Date(input.startsAt)
+                : null,
+
+          dueAt:
+            input.dueAt === undefined
+              ? undefined
+              : input.dueAt
+                ? new Date(input.dueAt)
+                : null,
+
+          endsAt:
+            input.endsAt === undefined
+              ? undefined
+              : input.endsAt
+                ? new Date(input.endsAt)
+                : null,
+          noteToStudents: input.noteToStudents,
+          status: input.status,
+          maxScore,
+        },
+      });
+
+      if (input.questions) {
+        await transaction.quizQuestion.deleteMany({
+          where: {
+            assignmentId: quizId,
+          },
+        });
+
+        await transaction.quizQuestion.createMany({
+          data: input.questions.map((question) => ({
+            assignmentId: quizId,
+            questionText: question.questionText,
+            questionType: 'mcq',
+            options: question.options,
+            correctAnswer: {
+              optionId: question.correctOptionId,
+            },
+            points: question.points,
+            position: question.position,
+          })),
+        });
+      }
+    });
+
+    return this.findQuizById(teacherId, organizationId, quizId);
+  }
+
+  async deleteQuiz(
+    teacherId: string,
+    organizationId: string | null,
+    quizId: string,
+  ): Promise<DeleteTeacherQuizResponse> {
+    if (!organizationId) {
+      throw new ForbiddenException(
+        'Teacher account is not assigned to an organization',
+      );
+    }
+
+    const quiz = await this.prisma.assignment.findFirst({
+      where: {
+        id: quizId,
+        createdById: teacherId,
+        type: {
+          in: ['quiz', 'exam'],
+        },
+        course: {
+          organizationId,
+        },
+      },
+      select: {
+        id: true,
+        _count: {
+          select: {
+            quizAttempts: true,
+          },
+        },
+      },
+    });
+
+    if (!quiz) {
+      throw new NotFoundException(`Quiz with ID ${quizId} was not found`);
+    }
+
+    if (quiz._count.quizAttempts > 0) {
+      throw new BadRequestException(
+        'A quiz with student attempts cannot be deleted',
+      );
+    }
+
+    await this.prisma.assignment.delete({
+      where: {
+        id: quizId,
+      },
+    });
+
+    return {
+      id: quiz.id,
+      message: 'Quiz deleted successfully',
+    };
+  }
+
+  async findMyQuizzes(
+    teacherId: string,
+    organizationId: string | null,
+  ): Promise<TeacherQuizListResponse> {
+    if (!organizationId) {
+      throw new ForbiddenException(
+        'Teacher account is not assigned to an organization',
+      );
+    }
+
+    const quizzes = await this.prisma.assignment.findMany({
+      where: {
+        createdById: teacherId,
+        type: {
+          in: ['quiz', 'exam'],
+        },
+        durationMinutes: {
+          not: null,
+        },
+        course: {
+          organizationId,
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      select: {
+        id: true,
+        courseId: true,
+        type: true,
+        title: true,
+        instructions: true,
+        maxScore: true,
+        durationMinutes: true,
+        startsAt: true,
+        dueAt: true,
+        endsAt: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+
+        course: {
+          select: {
+            id: true,
+            title: true,
+          },
+        },
+
+        _count: {
+          select: {
+            quizQuestions: true,
+            quizAttempts: true,
+          },
+        },
+      },
+    });
+
+    return quizzes.map((quiz) => ({
+      id: quiz.id,
+      courseId: quiz.courseId,
+      type: quiz.type === 'exam' ? 'exam' : 'quiz',
+      title: quiz.title,
+      instructions: quiz.instructions,
+      maxScore: quiz.maxScore.toNumber(),
+      durationMinutes: quiz.durationMinutes ?? 0,
+      startsAt: quiz.startsAt,
+      dueAt: quiz.dueAt,
+      endsAt: quiz.endsAt,
+      status: quiz.status,
+      createdAt: quiz.createdAt,
+      updatedAt: quiz.updatedAt,
+      course: quiz.course,
+      _count: quiz._count,
+    }));
+  }
+
+  async findQuizById(
+    teacherId: string,
+    organizationId: string | null,
+    quizId: string,
+  ): Promise<TeacherQuizResponse> {
+    if (!organizationId) {
+      throw new ForbiddenException(
+        'Teacher account is not assigned to an organization',
+      );
+    }
+
+    const quiz = await this.prisma.assignment.findFirst({
+      where: {
+        id: quizId,
+        createdById: teacherId,
+        type: {
+          in: ['quiz', 'exam'],
+        },
+        course: {
+          organizationId,
+        },
+      },
+      select: {
+        id: true,
+        courseId: true,
+        createdById: true,
+        type: true,
+        title: true,
+        instructions: true,
+        maxScore: true,
+        startsAt: true,
+        dueAt: true,
+        endsAt: true,
+        durationMinutes: true,
+        noteToStudents: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+
+        course: {
+          select: {
+            id: true,
+            title: true,
+          },
+        },
+
+        quizQuestions: {
+          orderBy: {
+            position: 'asc',
+          },
+          select: {
+            id: true,
+            assignmentId: true,
+            questionText: true,
+            questionType: true,
+            options: true,
+            correctAnswer: true,
+            points: true,
+            position: true,
+          },
+        },
+      },
+    });
+
+    if (!quiz || quiz.durationMinutes === null) {
+      throw new NotFoundException(`Quiz with ID ${quizId} was not found`);
+    }
+
+    return {
+      id: quiz.id,
+      courseId: quiz.courseId,
+      createdById: quiz.createdById,
+      type: quiz.type === 'exam' ? 'exam' : 'quiz',
+      title: quiz.title,
+      instructions: quiz.instructions,
+      maxScore: quiz.maxScore.toNumber(),
+      startsAt: quiz.startsAt,
+      dueAt: quiz.dueAt,
+      endsAt: quiz.endsAt,
+      durationMinutes: quiz.durationMinutes,
+      noteToStudents: quiz.noteToStudents,
+      status: quiz.status,
+      createdAt: quiz.createdAt,
+      updatedAt: quiz.updatedAt,
+      course: quiz.course,
+
+      questions: quiz.quizQuestions.map((question) => {
+        const correctAnswer = question.correctAnswer as {
+          optionId: string;
+        };
+
+        return {
+          id: question.id,
+          assignmentId: question.assignmentId,
+          questionText: question.questionText,
+          questionType: 'mcq' as const,
+          options: question.options as TeacherQuizOption[],
+          correctOptionId: correctAnswer.optionId,
+          points: question.points.toNumber(),
+          position: question.position,
+        };
+      }),
+    };
   }
 
   async createAssignment(

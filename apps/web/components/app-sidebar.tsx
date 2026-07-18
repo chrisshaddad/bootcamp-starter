@@ -11,6 +11,7 @@ import {
   Building2,
   ClipboardList,
   BookOpen,
+  FileQuestion,
 } from 'lucide-react';
 import { useAuth, useUser } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
@@ -45,6 +46,11 @@ const orgNavItems: NavItem[] = [
     title: 'Assignments',
     url: '/teacher/assignments',
     icon: ClipboardList,
+  },
+  {
+    title: 'Quizzes',
+    url: '/teacher/quizzes',
+    icon: FileQuestion,
   },
 ];
 
