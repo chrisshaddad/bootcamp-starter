@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import type { FormEvent } from 'react';
 import Link from 'next/link';
 import useSWR from 'swr';
 import {
@@ -17,24 +16,20 @@ import {
   UserRoundCheck,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import type {
-  CourseActionResponse,
-  CourseListItem,
-  CourseListResponse,
-  TeacherOrganizationsResponse,
-  UpdateCourseRequest,
-  UpdateCourseResponse,
+import {
+  UpdateCourseRequestSchema,
+  type CourseActionResponse,
+  type CourseListItem,
+  type CourseListResponse,
+  type TeacherOrganizationsResponse,
+  type UpdateCourseRequest,
+  type UpdateCourseResponse,
 } from '@repo/contracts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ApiError, apiDelete, apiPatch, fetcher } from '@/lib/api';
-
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 type OrganizationItem = TeacherOrganizationsResponse['organizations'][number];
-
-interface UpdateFormState {
-  title: string;
-  description: string;
-  status: 'draft' | 'published' | 'archived';
-}
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('en-US', {
@@ -46,14 +41,14 @@ function formatDate(value: string) {
 
 function getStatusClass(status: CourseListItem['status']) {
   if (status === 'published') {
-    return 'bg-emerald-50 text-emerald-700 ring-emerald-200';
+    return 'bg-primary-100 text-primary-base ring-primary-200';
   }
 
   if (status === 'archived') {
-    return 'bg-gray-100 text-gray-600 ring-gray-200';
+    return 'bg-error/10 text-error ring-error/20';
   }
 
-  return 'bg-amber-50 text-amber-700 ring-amber-200';
+  return 'bg-gray-100 text-gray-700 ring-gray-200';
 }
 
 export default function CoursesPage() {
@@ -67,15 +62,22 @@ export default function CoursesPage() {
     null,
   );
 
-  const [form, setForm] = useState<UpdateFormState>({
-    title: '',
-    description: '',
-    status: 'draft',
-  });
-
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<UpdateCourseRequest>({
+    resolver: zodResolver(UpdateCourseRequestSchema),
+    defaultValues: {
+      title: '',
+      description: '',
+      status: 'draft',
+    },
+  });
   const { data: organizationData, isLoading: isLoadingOrganizations } =
     useSWR<TeacherOrganizationsResponse>('/teachers/organizations', fetcher);
 
@@ -93,7 +95,8 @@ export default function CoursesPage() {
 
   function openUpdateModal(course: CourseListItem) {
     setEditingCourse(course);
-    setForm({
+
+    reset({
       title: course.title,
       description: course.description ?? '',
       status: course.status,
@@ -106,7 +109,8 @@ export default function CoursesPage() {
     }
 
     setEditingCourse(null);
-    setForm({
+
+    reset({
       title: '',
       description: '',
       status: 'draft',
@@ -125,9 +129,7 @@ export default function CoursesPage() {
     setDeletingCourse(null);
   }
 
-  async function handleUpdateCourse(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
+  async function handleUpdateCourse(values: UpdateCourseRequest) {
     if (!editingCourse || !organizationId) {
       return;
     }
@@ -135,9 +137,12 @@ export default function CoursesPage() {
     setIsSaving(true);
 
     const payload: UpdateCourseRequest = {
-      title: form.title.trim(),
-      description: form.description.trim() || null,
-      status: form.status,
+      title: values.title?.trim(),
+      description:
+        typeof values.description === 'string' && values.description.trim()
+          ? values.description.trim()
+          : null,
+      status: values.status,
     };
 
     try {
@@ -448,22 +453,25 @@ export default function CoursesPage() {
               </p>
             </div>
 
-            <form onSubmit={handleUpdateCourse} className="mt-5 space-y-4">
+            <form
+              onSubmit={handleSubmit(handleUpdateCourse)}
+              className="mt-5 space-y-4"
+            >
               <div>
                 <label className="mb-2 block text-sm font-medium text-gray-700">
                   Course Title
                 </label>
 
                 <input
-                  value={form.title}
-                  onChange={(event) =>
-                    setForm((currentForm) => ({
-                      ...currentForm,
-                      title: event.target.value,
-                    }))
-                  }
+                  {...register('title')}
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-200"
                 />
+
+                {errors.title?.message && (
+                  <p className="mt-1 text-xs text-red-600">
+                    {errors.title.message}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -472,16 +480,16 @@ export default function CoursesPage() {
                 </label>
 
                 <textarea
-                  value={form.description}
-                  onChange={(event) =>
-                    setForm((currentForm) => ({
-                      ...currentForm,
-                      description: event.target.value,
-                    }))
-                  }
+                  {...register('description')}
                   rows={3}
                   className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-200"
                 />
+
+                {errors.description?.message && (
+                  <p className="mt-1 text-xs text-red-600">
+                    {errors.description.message}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -490,22 +498,19 @@ export default function CoursesPage() {
                 </label>
 
                 <select
-                  value={form.status}
-                  onChange={(event) =>
-                    setForm((currentForm) => ({
-                      ...currentForm,
-                      status: event.target.value as
-                        | 'draft'
-                        | 'published'
-                        | 'archived',
-                    }))
-                  }
+                  {...register('status')}
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-200"
                 >
                   <option value="draft">Draft</option>
                   <option value="published">Published</option>
                   <option value="archived">Archived</option>
                 </select>
+
+                {errors.status?.message && (
+                  <p className="mt-1 text-xs text-red-600">
+                    {errors.status.message}
+                  </p>
+                )}
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-2">
