@@ -223,13 +223,13 @@ export default function DashboardPage() {
 
           <Link
             href="/courses"
-            className="group block rounded-3xl focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-700 focus-visible:ring-offset-2"
+            className="group block rounded-3xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-base focus-visible:ring-offset-2"
           >
             <Card className="h-full rounded-3xl border-gray-200 bg-white p-6 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
               <CardHeader className="p-0">
                 <div className="flex items-start gap-4">
-                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-indigo-100">
-                    <BookOpen className="h-7 w-7 text-indigo-700" />
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-primary-100">
+                    <BookOpen className="h-7 w-7 text-primary-base" />
                   </div>
 
                   <div>
@@ -246,7 +246,7 @@ export default function DashboardPage() {
               <CardContent className="mt-7 space-y-3 p-0">
                 <div className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3">
                   <div className="flex items-center gap-3 text-gray-600">
-                    <BookOpen className="h-4 w-4 text-indigo-700" />
+                    <BookOpen className="h-4 w-4 text-primary-base" />
                     <span className="text-sm font-medium">
                       Course management
                     </span>
@@ -257,7 +257,7 @@ export default function DashboardPage() {
                   </span>
                 </div>
 
-                <div className="mt-5 flex items-center justify-between rounded-xl border border-gray-200 px-4 py-4 transition group-hover:border-indigo-200 group-hover:bg-indigo-50/50">
+                <div className="mt-5 flex items-center justify-between rounded-xl border border-gray-200 px-4 py-4 transition group-hover:border-primary-200 group-hover:bg-primary-100/50">
                   <div>
                     <p className="text-sm font-medium text-gray-500">
                       Course cards
@@ -265,7 +265,7 @@ export default function DashboardPage() {
                     <p className="text-lg font-semibold text-gray-900">Open</p>
                   </div>
 
-                  <ArrowRight className="h-5 w-5 text-indigo-700 transition group-hover:translate-x-1" />
+                  <ArrowRight className="h-5 w-5 text-primary-base transition group-hover:translate-x-1" />
                 </div>
               </CardContent>
             </Card>
