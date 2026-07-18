@@ -1,21 +1,53 @@
 'use client';
 
+import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { SiteHeader } from '@/components/site-header';
 import { SiteFooter } from '@/components/site-footer';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useProjectBySlug } from '@/hooks/use-projects';
+import { useUser } from '@/hooks/use-auth';
+import {
+  useSavedProjectIds,
+  useSaveProject,
+  useUnsaveProject,
+} from '@/hooks/use-saved-projects';
 import { ProjectShowcase } from '@/components/project-showcase';
-
-// mock: SavedProject has no endpoint yet.
-function handleSave() {
-  toast.info('Saving projects is not connected to the backend yet.');
-}
+import { ApiError } from '@/lib/api';
 
 export default function ProjectShowcasePage() {
   const params = useParams<{ slug: string }>();
   const { project, error, isLoading } = useProjectBySlug(params.slug);
+  const { user } = useUser({ redirectOnUnauthenticated: false });
+  const isRecruiter = user?.accountType === 'HIRING';
+
+  const { savedProjectIds } = useSavedProjectIds(isRecruiter);
+  const saveProject = useSaveProject();
+  const unsaveProject = useUnsaveProject();
+  const [isSaving, setIsSaving] = useState(false);
+
+  const isSaved = !!project && savedProjectIds.includes(project.id);
+
+  const handleSave = async () => {
+    if (!project) return;
+    setIsSaving(true);
+    try {
+      if (isSaved) {
+        await unsaveProject(project.id);
+        toast.success('Removed from saved projects.');
+      } else {
+        await saveProject(project.id);
+        toast.success('Project saved.');
+      }
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : 'Something went wrong.',
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -40,7 +72,12 @@ export default function ProjectShowcasePage() {
               </p>
             </div>
           ) : (
-            <ProjectShowcase project={project} onSave={handleSave} />
+            <ProjectShowcase
+              project={project}
+              onSave={isRecruiter ? handleSave : undefined}
+              isSaved={isSaved}
+              isSaving={isSaving}
+            />
           )}
         </div>
       </main>
