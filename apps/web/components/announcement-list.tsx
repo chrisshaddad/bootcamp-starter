@@ -183,7 +183,7 @@ export function AnnouncementList({
         ))}
       </div>
     ) : cardGrid ? (
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 @xl:grid-cols-2">
         {[...Array(3)].map((_, index) => (
           <Skeleton key={index} className="h-44 rounded-lg" />
         ))}
@@ -297,7 +297,7 @@ export function AnnouncementList({
     <div
       className={
         cardGrid
-          ? 'grid items-start gap-3 sm:grid-cols-2'
+          ? 'grid items-start gap-3 @xl:grid-cols-2'
           : 'grid items-start gap-4 sm:grid-cols-2 xl:grid-cols-3'
       }
     >
@@ -414,7 +414,7 @@ export function AnnouncementList({
   }
 
   return (
-    <section className="space-y-4">
+    <section className="@container space-y-4">
       {header}
       {content}
     </section>
