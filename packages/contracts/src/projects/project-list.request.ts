@@ -1,5 +1,8 @@
 import { z } from 'zod';
-export const projectsListQuerySchema = z.object({
+import { projectScopeSchema } from './project-scope.schema';
+
+export const projectsListQuerySchema = z.strictObject({
+  scope: projectScopeSchema.default('ALL'),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });

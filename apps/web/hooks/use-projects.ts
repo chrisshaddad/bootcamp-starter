@@ -3,54 +3,80 @@
 
 import useSWR, { mutate as globalMutate } from 'swr';
 import { useCallback } from 'react';
-import { apiPost, apiPatch, apiDelete, apiUpload } from '@/lib/api';
+import { apiPost, apiPatch, apiDelete, apiUpload, fetcher } from '@/lib/api';
 import type {
   CreateProjectRequest,
   UpdateProjectRequest,
-  ProjectResponse,
   ProjectByIdResponse,
-  ProjectBySlugResponse,
   ProjectMediaUpdateRequest,
   ProjectMediaUploadRequest,
-  ProjectMediaResponse,
-  ExploreProjectsResponse,
   ProjectsExploreQuery,
+  ProjectScope,
+} from '@repo/contracts';
+import {
+  projectByIdResponseSchema,
+  projectBySlugResponseSchema,
+  projectMediaResponseSchema,
+  projectResponseSchema,
+  exploreProjectsResponseSchema,
+  projectsListResponseSchema,
 } from '@repo/contracts';
 
 const PROJECTS_KEY = '/projects';
 const projectKey = (id: string) => `/projects/id/${id}`;
+const refreshProjectLists = () =>
+  globalMutate(
+    (key) =>
+      typeof key === 'string' &&
+      (key === PROJECTS_KEY || key.startsWith(`${PROJECTS_KEY}?`)),
+  );
 
 // real: GET /projects, list of projects owned by the current user. Includes
 // media so the dashboard card grid can use each project's cover screenshot.
-export function useProjects() {
-  const { data, error, isLoading } =
-    useSWR<ProjectByIdResponse[]>(PROJECTS_KEY);
-  return { projects: data ?? [], error, isLoading };
+export function useProjects(
+  query: {
+    scope: ProjectScope;
+    page: number;
+    limit: number;
+  } = { scope: 'ALL', page: 1, limit: 20 },
+) {
+  const params = new URLSearchParams({
+    scope: query.scope,
+    page: String(query.page),
+    limit: String(query.limit),
+  });
+  const { data, error, isLoading } = useSWR(
+    `${PROJECTS_KEY}?${params.toString()}`,
+    async (key: string) => projectsListResponseSchema.parse(await fetcher(key)),
+  );
+  return { projects: data?.data ?? [], meta: data?.meta, error, isLoading };
 }
 
 // real: GET /projects/id/:id, for prefilling edit forms. Includes media.
 export function useProject(id: string | undefined) {
   const { data, error, isLoading } = useSWR<ProjectByIdResponse>(
     id ? projectKey(id) : null,
+    async (key: string) => projectByIdResponseSchema.parse(await fetcher(key)),
   );
   return { project: data, error, isLoading };
 }
 
 export function useCreateProject() {
   return useCallback(async (data: CreateProjectRequest) => {
-    const project = await apiPost<ProjectResponse>('/projects', data);
-    await globalMutate(PROJECTS_KEY);
+    const project = projectResponseSchema.parse(
+      await apiPost<unknown>('/projects', data),
+    );
+    await refreshProjectLists();
     return project;
   }, []);
 }
 
 export function useUpdateProject() {
   return useCallback(async (id: string, data: UpdateProjectRequest) => {
-    const project = await apiPatch<ProjectResponse>(`/projects/${id}`, data);
-    await Promise.all([
-      globalMutate(PROJECTS_KEY),
-      globalMutate(projectKey(id)),
-    ]);
+    const project = projectResponseSchema.parse(
+      await apiPatch<unknown>(`/projects/${id}`, data),
+    );
+    await Promise.all([refreshProjectLists(), globalMutate(projectKey(id))]);
     return project;
   }, []);
 }
@@ -58,15 +84,17 @@ export function useUpdateProject() {
 export function useDeleteProject() {
   return useCallback(async (id: string) => {
     await apiDelete<{ success: true }>(`/projects/${id}`);
-    await globalMutate(PROJECTS_KEY);
+    await refreshProjectLists();
   }, []);
 }
 
 // real: GET /projects/slug/:slug, public, only returns PUBLISHED projects.
 // Includes media.
 export function useProjectBySlug(slug: string | undefined) {
-  const { data, error, isLoading } = useSWR<ProjectBySlugResponse>(
+  const { data, error, isLoading } = useSWR(
     slug ? `/projects/slug/${slug}` : null,
+    async (key: string) =>
+      projectBySlugResponseSchema.parse(await fetcher(key)),
   );
 
   return { project: data, error, isLoading };
@@ -90,9 +118,8 @@ export function useUploadProjectMedia() {
         formData.append('sortOrder', String(options.sortOrder));
       }
 
-      const media = await apiUpload<ProjectMediaResponse>(
-        `/projects/${projectId}/media`,
-        formData,
+      const media = projectMediaResponseSchema.parse(
+        await apiUpload<unknown>(`/projects/${projectId}/media`, formData),
       );
       await globalMutate(projectKey(projectId));
       return media;
@@ -109,12 +136,11 @@ export function useUploadProjectLogo() {
     const formData = new FormData();
     formData.append('file', file);
 
-    const project = await apiUpload<ProjectResponse>(
-      `/projects/${projectId}/logo`,
-      formData,
+    const project = projectResponseSchema.parse(
+      await apiUpload<unknown>(`/projects/${projectId}/logo`, formData),
     );
     await Promise.all([
-      globalMutate(PROJECTS_KEY),
+      refreshProjectLists(),
       globalMutate(projectKey(projectId)),
     ]);
     return project;
@@ -128,9 +154,11 @@ export function useUpdateProjectMedia() {
       mediaId: string,
       data: ProjectMediaUpdateRequest,
     ) => {
-      const media = await apiPatch<ProjectMediaResponse>(
-        `/projects/${projectId}/media/${mediaId}`,
-        data,
+      const media = projectMediaResponseSchema.parse(
+        await apiPatch<unknown>(
+          `/projects/${projectId}/media/${mediaId}`,
+          data,
+        ),
       );
       await globalMutate(projectKey(projectId));
       return media;
@@ -141,8 +169,10 @@ export function useUpdateProjectMedia() {
 
 export function useSetCoverProjectMedia() {
   return useCallback(async (projectId: string, mediaId: string) => {
-    const media = await apiPatch<ProjectMediaResponse>(
-      `/projects/${projectId}/media/${mediaId}/set-cover`,
+    const media = projectMediaResponseSchema.parse(
+      await apiPatch<unknown>(
+        `/projects/${projectId}/media/${mediaId}/set-cover`,
+      ),
     );
     await globalMutate(projectKey(projectId));
     return media;
@@ -167,8 +197,10 @@ export function useExploreProjects(query?: Partial<ProjectsExploreQuery>) {
   if (query?.technology) params.append('technology', query.technology);
 
   const queryString = params.toString() ? `?${params.toString()}` : '';
-  const { data, error, isLoading } = useSWR<ExploreProjectsResponse>(
+  const { data, error, isLoading } = useSWR(
     `/projects/explore${queryString}`,
+    async (key: string) =>
+      exploreProjectsResponseSchema.parse(await fetcher(key)),
   );
 
   return { projects: data?.data ?? [], meta: data?.meta, error, isLoading };

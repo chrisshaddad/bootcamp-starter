@@ -7,7 +7,10 @@ import { toast } from 'sonner';
 import useSWR from 'swr';
 import { fetcher, apiPost, ApiError } from '@/lib/api';
 import { useUser } from '@/hooks/use-auth';
-import { type GithubRepository } from '@repo/contracts';
+import {
+  githubRepositoryListSchema,
+  type GithubRepository,
+} from '@repo/contracts';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -36,14 +39,17 @@ export default function NewProjectPage() {
     isLoading: reposLoading,
   } = useSWR<GithubRepository[]>(
     isConnected ? '/github/my-repositories' : null,
-    fetcher,
+    async (key: string) => githubRepositoryListSchema.parse(await fetcher(key)),
   );
 
-  const totalPages = repositories
-    ? Math.ceil(repositories.length / PAGE_SIZE)
-    : 0;
+  const importableRepositories =
+    repositories?.filter((repository) => !repository.isImported) ?? [];
+  const importedRepositories =
+    repositories?.filter((repository) => repository.isImported) ?? [];
+
+  const totalPages = Math.ceil(importableRepositories.length / PAGE_SIZE);
   const currentPage = Math.min(page, Math.max(totalPages, 1));
-  const pageRepositories = repositories?.slice(
+  const pageRepositories = importableRepositories.slice(
     (currentPage - 1) * PAGE_SIZE,
     currentPage * PAGE_SIZE,
   );
@@ -134,7 +140,7 @@ export default function NewProjectPage() {
           {repositories && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {pageRepositories?.map((repo) => (
+                {pageRepositories.map((repo) => (
                   <Card
                     key={repo.id}
                     className="flex flex-col overflow-hidden transition-colors hover:border-primary/50"
@@ -163,11 +169,9 @@ export default function NewProjectPage() {
                         size="sm"
                         variant="secondary"
                         onClick={() => handleImport(repo.url)}
-                        disabled={repo.isImported || importingUrl !== null}
+                        disabled={importingUrl !== null}
                       >
-                        {repo.isImported ? (
-                          'Already imported'
-                        ) : importingUrl === repo.url ? (
+                        {importingUrl === repo.url ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
                           <>
@@ -182,16 +186,56 @@ export default function NewProjectPage() {
 
                 {repositories.length === 0 && (
                   <div className="col-span-full py-12 text-center text-muted-foreground">
-                    No repositories found on this GitHub account.
+                    No supported public repositories owned by this GitHub
+                    account were found.
                   </div>
                 )}
+                {repositories.length > 0 &&
+                  importableRepositories.length === 0 && (
+                    <div className="col-span-full py-12 text-center text-muted-foreground">
+                      Every supported repository has already been imported.
+                    </div>
+                  )}
               </div>
 
-              <Pagination
-                page={currentPage}
-                totalPages={totalPages}
-                onPageChange={setPage}
-              />
+              {totalPages > 1 && (
+                <Pagination
+                  page={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setPage}
+                />
+              )}
+
+              {importedRepositories.length > 0 && (
+                <section className="space-y-3 border-t pt-6">
+                  <div>
+                    <h2 className="font-semibold">Already imported</h2>
+                    <p className="text-sm text-muted-foreground">
+                      These supported repositories already have projects.
+                    </p>
+                  </div>
+                  <div className="divide-y rounded-lg border">
+                    {importedRepositories.map((repo) => (
+                      <div
+                        key={repo.id}
+                        className="flex items-center justify-between gap-4 px-4 py-3"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">
+                            {repo.name}
+                          </p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {repo.fullName}
+                          </p>
+                        </div>
+                        <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
+                          Already imported
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
             </div>
           )}
         </div>

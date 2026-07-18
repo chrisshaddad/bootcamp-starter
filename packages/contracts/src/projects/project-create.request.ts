@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { projectStatusSchema } from './project-status.schema';
 export const createProjectRequestSchema = z.object({
   repositoryId: z.string().uuid('Invalid repository ID'),
   title: z.string().min(1, 'Title is required'),
@@ -13,6 +14,6 @@ export const createProjectRequestSchema = z.object({
     .nullable()
     .transform((val) => (val === '' ? null : val))
     .optional(),
-  status: z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']).optional(),
+  status: projectStatusSchema.optional(),
 });
 export type CreateProjectRequest = z.infer<typeof createProjectRequestSchema>;

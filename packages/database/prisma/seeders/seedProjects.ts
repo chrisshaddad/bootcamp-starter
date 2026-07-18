@@ -35,6 +35,12 @@ export async function seedProjects(prisma: PrismaClient) {
       'No developer found with email dev.sarah@example.com. Seed users first.',
     );
   }
+  const devProfile = await prisma.developerProfile.findUnique({
+    where: { userId: devUser.id },
+  });
+  if (!devProfile?.githubUserId || !devProfile.githubUsername) {
+    throw new Error('Seed developer must have a GitHub identity.');
+  }
 
   // 3. Seed Repository and Project
   const reposAndProjects = [
@@ -85,15 +91,22 @@ export async function seedProjects(prisma: PrismaClient) {
     // Upsert Repository
     const repo = await prisma.repository.upsert({
       where: { githubRepoId: item.githubRepoId },
-      update: {},
+      update: {
+        ownerGithubUserId: devProfile.githubUserId,
+        ownerType: 'User',
+        isFork: false,
+      },
       create: {
         githubRepoId: item.githubRepoId,
         fullName: item.fullName,
         ownerLogin: item.ownerLogin,
+        ownerGithubUserId: devProfile.githubUserId,
+        ownerType: 'User',
         repoName: item.repoName,
         htmlUrl: item.htmlUrl,
         defaultBranch: item.defaultBranch,
         visibility: 'PUBLIC',
+        isFork: false,
       },
     });
 
@@ -108,6 +121,7 @@ export async function seedProjects(prisma: PrismaClient) {
         fullDescription: item.fullDescription,
         deploymentUrl: item.deploymentUrl,
         status: item.status,
+        githubOwnershipVerifiedAt: new Date(),
       },
       create: {
         repositoryId: repo.id,
@@ -118,6 +132,32 @@ export async function seedProjects(prisma: PrismaClient) {
         fullDescription: item.fullDescription,
         deploymentUrl: item.deploymentUrl,
         status: item.status,
+        githubOwnershipVerifiedAt: new Date(),
+      },
+    });
+
+    await prisma.projectMember.upsert({
+      where: {
+        projectId_userId: { projectId: project.id, userId: devUser.id },
+      },
+      update: {
+        githubUserId: devProfile.githubUserId,
+        githubUsername: devProfile.githubUsername,
+        role: 'OWNER',
+        verificationStatus: 'VERIFIED',
+        verificationSource: 'GITHUB_OWNER',
+        verifiedAt: new Date(),
+      },
+      create: {
+        projectId: project.id,
+        userId: devUser.id,
+        githubUserId: devProfile.githubUserId,
+        githubUsername: devProfile.githubUsername,
+        role: 'OWNER',
+        verificationStatus: 'VERIFIED',
+        verificationSource: 'GITHUB_OWNER',
+        verifiedAt: new Date(),
+        addedByUserId: devUser.id,
       },
     });
 
@@ -161,19 +201,25 @@ export async function seedProjects(prisma: PrismaClient) {
       update: {
         fullName: repo.fullName,
         ownerLogin: repo.ownerLogin,
+        ownerGithubUserId: devProfile.githubUserId,
+        ownerType: 'User',
         repoName: repo.repoName,
         htmlUrl: repo.htmlUrl,
         defaultBranch: repo.defaultBranch,
         visibility: 'PUBLIC',
+        isFork: false,
       },
       create: {
         githubRepoId: repo.githubRepoId,
         fullName: repo.fullName,
         ownerLogin: repo.ownerLogin,
+        ownerGithubUserId: devProfile.githubUserId,
+        ownerType: 'User',
         repoName: repo.repoName,
         htmlUrl: repo.htmlUrl,
         defaultBranch: repo.defaultBranch,
         visibility: 'PUBLIC',
+        isFork: false,
       },
     });
   }

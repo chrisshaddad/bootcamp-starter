@@ -46,6 +46,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { ProjectInvitationsManager } from '@/components/project-invitations-manager';
 
 export default function EditProjectPage() {
   const params = useParams<{ slug: string }>();
@@ -81,7 +82,9 @@ export default function EditProjectPage() {
             shortDescription: project.shortDescription,
             fullDescription: project.fullDescription,
             deploymentUrl: project.deploymentUrl,
-            status: project.status,
+            status: project.access.capabilities.canPublish
+              ? project.status
+              : undefined,
           }
         : undefined,
     // Deliberately depending on the scalar fields, not `project` itself —
@@ -94,6 +97,7 @@ export default function EditProjectPage() {
       project?.fullDescription,
       project?.deploymentUrl,
       project?.status,
+      project?.access.capabilities.canPublish,
     ],
   );
 
@@ -116,10 +120,14 @@ export default function EditProjectPage() {
 
   const onSubmit = async (data: UpdateProjectRequest) => {
     if (!project) return;
+    const allowedData = { ...data };
+    if (!project.access.capabilities.canPublish) {
+      delete allowedData.status;
+    }
 
     setIsSubmitting(true);
     try {
-      await updateProject(project.id, data);
+      await updateProject(project.id, allowedData);
 
       toast.success('Project updated successfully');
       router.push('/projects');
@@ -251,6 +259,28 @@ export default function EditProjectPage() {
           Projects
         </Link>
         <p className="text-muted-foreground text-sm">Project not found.</p>
+      </div>
+    );
+  }
+
+  if (!project.access.capabilities.canEditContent) {
+    return (
+      <div className="space-y-4">
+        <Link
+          href={`/projects/${project.id}/preview`}
+          className="text-muted-foreground inline-flex items-center gap-1.5 text-sm hover:text-foreground"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          View project
+        </Link>
+        <Card className="border-dashed py-12 text-center">
+          <CardContent>
+            <p className="font-medium">This project is read-only for you.</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Contributors can view the project but cannot edit it.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -443,25 +473,30 @@ export default function EditProjectPage() {
               <CardTitle className="text-sm">Visibility</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
-                <Controller
-                  name="status"
-                  control={control}
-                  render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger id="status" className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="DRAFT">Draft</SelectItem>
-                        <SelectItem value="PUBLISHED">Published</SelectItem>
-                        <SelectItem value="ARCHIVED">Archived</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </div>
+              {project.access.capabilities.canPublish && (
+                <div className="space-y-2">
+                  <Label htmlFor="status">Status</Label>
+                  <Controller
+                    name="status"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      >
+                        <SelectTrigger id="status" className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="DRAFT">Draft</SelectItem>
+                          <SelectItem value="PUBLISHED">Published</SelectItem>
+                          <SelectItem value="ARCHIVED">Archived</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="deploymentUrl">Deployment URL</Label>
                 <Input
@@ -490,57 +525,65 @@ export default function EditProjectPage() {
             )}
           </Button>
 
-          <Card className="border-destructive/50">
-            <CardHeader>
-              <CardTitle className="text-destructive text-sm">
-                Danger zone
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    className="w-full"
-                    disabled={isDeleting}
-                  >
-                    {isDeleting ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Deleting...
-                      </>
-                    ) : (
-                      'Delete project'
-                    )}
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>
-                      Delete &ldquo;{project.title}&rdquo;?
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This permanently deletes the project and all of its
-                      screenshots. This can&apos;t be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel type="button">Cancel</AlertDialogCancel>
-                    <AlertDialogAction
+          {project.access.capabilities.canDelete && (
+            <Card className="border-destructive/50">
+              <CardHeader>
+                <CardTitle className="text-destructive text-sm">
+                  Danger zone
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
                       type="button"
                       variant="destructive"
-                      onClick={handleDeleteProject}
+                      className="w-full"
+                      disabled={isDeleting}
                     >
-                      Delete
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </CardContent>
-          </Card>
+                      {isDeleting ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Deleting...
+                        </>
+                      ) : (
+                        'Delete project'
+                      )}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        Delete &ldquo;{project.title}&rdquo;?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This permanently deletes the project and all of its
+                        screenshots. This can&apos;t be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel type="button">
+                        Cancel
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        type="button"
+                        variant="destructive"
+                        onClick={handleDeleteProject}
+                      >
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </form>
+
+      {project.access.capabilities.canManageInvitations && (
+        <ProjectInvitationsManager projectId={project.id} />
+      )}
     </div>
   );
 }

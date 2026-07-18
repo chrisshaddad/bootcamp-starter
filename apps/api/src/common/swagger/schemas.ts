@@ -7,6 +7,14 @@ import {
   magicLinkVerifyRequestSchema as magicLinkVerifyRequestContractSchema,
   signupRequestSchema as signupRequestContractSchema,
   updateProfileRequestSchema as updateProfileRequestContractSchema,
+  createProjectInvitationRequestSchema as createProjectInvitationRequestContractSchema,
+  projectCollaboratorSearchResponseSchema as projectCollaboratorSearchResponseContractSchema,
+  projectInvitationResponseSchema as projectInvitationResponseContractSchema,
+  projectInvitationListResponseSchema as projectInvitationListResponseContractSchema,
+  projectInvitationPendingCountResponseSchema as projectInvitationPendingCountResponseContractSchema,
+  projectsListResponseSchema as projectsListResponseContractSchema,
+  projectByIdResponseSchema as projectByIdResponseContractSchema,
+  updateProjectRequestSchema as updateProjectRequestContractSchema,
 } from '@repo/contracts';
 import { z, type ZodType } from 'zod';
 
@@ -21,8 +29,11 @@ function assertSchemaObject(
   }
 }
 
-function toOpenApiSchema(schema: ZodType): OpenApiSchemaObject {
-  const openApiSchema = z.toJSONSchema(schema, { target: 'openapi-3.0' });
+export function toOpenApiSchema(schema: ZodType): OpenApiSchemaObject {
+  const openApiSchema = z.toJSONSchema(schema, {
+    target: 'openapi-3.0',
+    unrepresentable: 'any',
+  });
   assertSchemaObject(openApiSchema);
   return openApiSchema;
 }
@@ -119,4 +130,38 @@ export const importGithubProjectRequestSchema: ApiBodySchema = withExample(
     title: 'Next.js',
     shortDescription: 'The React Framework',
   },
+);
+
+export const createProjectInvitationRequestSchema: ApiBodySchema = withExample(
+  toOpenApiSchema(createProjectInvitationRequestContractSchema),
+  {
+    githubUsername: 'octocat',
+    role: 'CONTRIBUTOR',
+    contributionRoleLabel: 'Backend developer',
+  },
+);
+
+export const projectCollaboratorSearchResponseSchema: ApiBodySchema =
+  toOpenApiSchema(projectCollaboratorSearchResponseContractSchema);
+
+export const projectInvitationResponseSchema: ApiBodySchema = toOpenApiSchema(
+  projectInvitationResponseContractSchema,
+);
+
+export const projectInvitationListResponseSchema: ApiBodySchema =
+  toOpenApiSchema(projectInvitationListResponseContractSchema);
+
+export const projectInvitationPendingCountResponseSchema: ApiBodySchema =
+  toOpenApiSchema(projectInvitationPendingCountResponseContractSchema);
+
+export const projectsListResponseSchema: ApiBodySchema = toOpenApiSchema(
+  projectsListResponseContractSchema,
+);
+
+export const projectByIdResponseSchema: ApiBodySchema = toOpenApiSchema(
+  projectByIdResponseContractSchema,
+);
+
+export const updateProjectRequestSchema: ApiBodySchema = toOpenApiSchema(
+  updateProjectRequestContractSchema,
 );

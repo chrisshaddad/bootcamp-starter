@@ -6,6 +6,16 @@ export const githubRepositorySchema = z.object({
   fullName: z.string(),
   isPrivate: z.boolean(),
   isImported: z.boolean(),
+  isEligible: z.boolean(),
+  eligibilityReason: z
+    .enum([
+      'PRIVATE',
+      'ORGANIZATION_OWNED',
+      'NOT_OWNER',
+      'FORK',
+      'ALREADY_IMPORTED',
+    ])
+    .nullable(),
   url: z.string(),
   updatedAt: z.string(),
   description: z.string().nullable(),

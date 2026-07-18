@@ -22,7 +22,7 @@ describe('ProjectsController', () => {
     controller = moduleRef.get(ProjectsController);
   });
 
-  it('allows developer and super admin imports but not hiring accounts', () => {
+  it('allows only developer accounts to import repositories', () => {
     const handler: unknown = Object.getOwnPropertyDescriptor(
       ProjectsController.prototype,
       'importGithubProject',
@@ -31,8 +31,10 @@ describe('ProjectsController', () => {
     expect(typeof handler).toBe('function');
     expect(Reflect.getMetadata(ROLES_KEY, handler as object)).toEqual([
       AccountType.DEVELOPER,
-      AccountType.SUPER_ADMIN,
     ]);
+    expect(Reflect.getMetadata(ROLES_KEY, handler as object)).not.toContain(
+      AccountType.SUPER_ADMIN,
+    );
     expect(Reflect.getMetadata(ROLES_KEY, handler as object)).not.toContain(
       AccountType.HIRING,
     );

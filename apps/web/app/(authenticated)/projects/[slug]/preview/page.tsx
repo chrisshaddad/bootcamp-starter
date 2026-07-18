@@ -25,7 +25,7 @@ export default function ProjectPreviewPage() {
           <ArrowLeft className="h-3.5 w-3.5" />
           Projects
         </Link>
-        {project && (
+        {project?.access.capabilities.canEditContent && (
           <Button asChild variant="outline" size="sm">
             <Link href={`/projects/${project.id}/edit`}>
               <Pencil className="h-3.5 w-3.5" />

@@ -22,6 +22,7 @@ import {
   ApiCookieAuth,
   ApiConsumes,
   ApiOperation,
+  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -40,7 +41,12 @@ import {
   projectMediaUploadSchema,
   projectMediaUpdateSchema,
   projectsExploreQuerySchema,
+  projectsListQuerySchema,
+  projectsListResponseSchema,
   projectBySlugResponseSchema,
+  projectByIdResponseSchema,
+  projectResponseSchema,
+  projectMediaResponseSchema,
   type CreateProjectRequest,
   type ImportGithubProjectRequest,
   type ImportGithubProjectResponse,
@@ -52,8 +58,16 @@ import {
   type ProjectBySlugResponse,
   type ProjectsExploreQuery,
   type ExploreProjectsResponse,
+  type ProjectsListQuery,
+  type ProjectsListResponse,
 } from '@repo/contracts';
-import { importGithubProjectRequestSchema as importGithubProjectOpenApiRequestSchema } from '../common/swagger/schemas';
+import {
+  importGithubProjectRequestSchema as importGithubProjectOpenApiRequestSchema,
+  projectByIdResponseSchema as projectByIdOpenApiResponseSchema,
+  projectsListResponseSchema as projectsListOpenApiResponseSchema,
+  updateProjectRequestSchema as updateProjectOpenApiRequestSchema,
+} from '../common/swagger/schemas';
+import { mapProjectMember } from './project-member.mapper';
 
 const PROJECT_MEDIA_MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
 const PROJECT_MEDIA_ALLOWED_MIME_TYPES = [
@@ -70,6 +84,7 @@ if (!existsSync(PROJECT_MEDIA_DIR)) {
 }
 
 @ApiTags('projects')
+@ApiCookieAuth('session')
 @Controller('projects')
 export class ProjectsController {
   private readonly logger = new Logger(ProjectsController.name);
@@ -77,13 +92,14 @@ export class ProjectsController {
   constructor(private readonly projectsService: ProjectsService) {}
 
   @Post('import-github')
-  @Roles(AccountType.DEVELOPER, AccountType.SUPER_ADMIN)
+  @Roles(AccountType.DEVELOPER)
   @ApiCookieAuth('session')
   @ApiOperation({ summary: 'Import a public GitHub repository as a project' })
   @ApiBody({ schema: importGithubProjectOpenApiRequestSchema })
   @ApiResponse({
     status: 201,
-    description: 'GitHub repository imported as an unverified draft project.',
+    description:
+      'GitHub repository imported as an owner-verified draft project.',
   })
   @ApiResponse({ status: 400, description: 'Invalid import request.' })
   @ApiResponse({ status: 401, description: 'Missing or invalid session.' })
@@ -110,50 +126,66 @@ export class ProjectsController {
 
   @Get()
   @Roles(AccountType.DEVELOPER, AccountType.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Get list of projects owned by the current user' })
+  @ApiCookieAuth('session')
+  @ApiOperation({ summary: 'Get owned and accepted collaboration projects' })
+  @ApiQuery({
+    name: 'scope',
+    required: false,
+    enum: ['ALL', 'OWNED', 'COLLABORATIONS'],
+    description: 'Project ownership scope. Defaults to ALL.',
+  })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
   @ApiResponse({
     status: 200,
     description: 'List of projects successfully retrieved.',
+    schema: projectsListOpenApiResponseSchema,
   })
   async getMyProjects(
     @CurrentUser() user: User,
-  ): Promise<ProjectByIdResponse[]> {
-    const projects = await this.projectsService.getMyProjects(user);
+    @Query(new ZodValidationPipe(projectsListQuerySchema))
+    query: ProjectsListQuery,
+  ): Promise<ProjectsListResponse> {
+    const result = await this.projectsService.getMyProjects(user, query);
 
-    return projects.map((project) => {
-      const { repository, ...projectFields } = project;
+    return projectsListResponseSchema.parse({
+      data: result.data.map((project) => {
+        const { repository, ...projectFields } = project;
 
-      return {
-        ...projectFields,
-        repositoryUrl: repository.htmlUrl,
-        createdAt: project.createdAt.toISOString(),
-        updatedAt: project.updatedAt.toISOString(),
-        publishedAt: project.publishedAt?.toISOString() ?? null,
-        media: project.media.map((m) => ({
-          id: m.id,
-          projectId: m.projectId,
-          uploadedByUserId: m.uploadedByUserId,
-          mediaType: m.mediaType as 'IMAGE' | 'GIF' | 'ARCHITECTURE_DIAGRAM',
-          storageKey: m.storageKey,
-          publicUrl: m.publicUrl,
-          caption: m.caption,
-          sortOrder: m.sortOrder,
-          createdAt: m.createdAt.toISOString(),
-          updatedAt: m.updatedAt.toISOString(),
-        })),
-        technologies: project.technologies.map((pt) => ({
-          id: pt.id,
-          projectId: pt.projectId,
-          technologyId: pt.technologyId,
-          technology: pt.technology,
-          source: pt.source,
-          evidence: pt.evidence,
-          isPrimary: pt.isPrimary,
-          sortOrder: pt.sortOrder,
-          createdAt: pt.createdAt.toISOString(),
-          updatedAt: pt.updatedAt.toISOString(),
-        })),
-      };
+        return projectByIdResponseSchema.parse({
+          ...projectFields,
+          repositoryUrl: repository.htmlUrl,
+          createdAt: project.createdAt.toISOString(),
+          updatedAt: project.updatedAt.toISOString(),
+          publishedAt: project.publishedAt?.toISOString() ?? null,
+          media: project.media.map((m) => ({
+            id: m.id,
+            projectId: m.projectId,
+            uploadedByUserId: m.uploadedByUserId,
+            mediaType: m.mediaType as 'IMAGE' | 'GIF' | 'ARCHITECTURE_DIAGRAM',
+            storageKey: m.storageKey,
+            publicUrl: m.publicUrl,
+            caption: m.caption,
+            sortOrder: m.sortOrder,
+            createdAt: m.createdAt.toISOString(),
+            updatedAt: m.updatedAt.toISOString(),
+          })),
+          technologies: project.technologies.map((pt) => ({
+            id: pt.id,
+            projectId: pt.projectId,
+            technologyId: pt.technologyId,
+            technology: pt.technology,
+            source: pt.source,
+            evidence: pt.evidence,
+            isPrimary: pt.isPrimary,
+            sortOrder: pt.sortOrder,
+            createdAt: pt.createdAt.toISOString(),
+            updatedAt: pt.updatedAt.toISOString(),
+          })),
+          members: project.members.map(mapProjectMember),
+        });
+      }),
+      meta: result.meta,
     });
   }
 
@@ -231,7 +263,11 @@ export class ProjectsController {
   @ApiOperation({
     summary: 'Get a single project by ID for prefilling edit forms',
   })
-  @ApiResponse({ status: 200, description: 'Project successfully retrieved.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Project successfully retrieved.',
+    schema: projectByIdOpenApiResponseSchema,
+  })
   @ApiResponse({
     status: 403,
     description: 'Forbidden if the user does not own the project.',
@@ -244,8 +280,9 @@ export class ProjectsController {
     const project = await this.projectsService.getProjectById(user, projectId);
     const { repository, ...projectFields } = project;
 
-    return {
+    return projectByIdResponseSchema.parse({
       ...projectFields,
+      access: project.access,
       repositoryUrl: repository.htmlUrl,
       createdAt: project.createdAt.toISOString(),
       updatedAt: project.updatedAt.toISOString(),
@@ -274,11 +311,12 @@ export class ProjectsController {
         createdAt: pt.createdAt.toISOString(),
         updatedAt: pt.updatedAt.toISOString(),
       })),
-    };
+      members: (project.members ?? []).map(mapProjectMember),
+    });
   }
 
   @Post()
-  @Roles(AccountType.DEVELOPER, AccountType.SUPER_ADMIN)
+  @Roles(AccountType.DEVELOPER)
   @ApiOperation({ summary: 'Create a new project' })
   @ApiResponse({ status: 201, description: 'Project successfully created.' })
   @ApiResponse({
@@ -292,17 +330,18 @@ export class ProjectsController {
   ): Promise<ProjectResponse> {
     const project = await this.projectsService.createProject(userId, body);
 
-    return {
+    return projectResponseSchema.parse({
       ...project,
       createdAt: project.createdAt.toISOString(),
       updatedAt: project.updatedAt.toISOString(),
       publishedAt: project.publishedAt?.toISOString() ?? null,
-    };
+    });
   }
 
   @Patch(':id')
   @Roles(AccountType.DEVELOPER, AccountType.SUPER_ADMIN)
   @ApiOperation({ summary: 'Update an existing project' })
+  @ApiBody({ schema: updateProjectOpenApiRequestSchema })
   @ApiResponse({ status: 200, description: 'Project successfully updated.' })
   @ApiResponse({
     status: 403,
@@ -325,12 +364,12 @@ export class ProjectsController {
       body,
     );
 
-    return {
+    return projectResponseSchema.parse({
       ...project,
       createdAt: project.createdAt.toISOString(),
       updatedAt: project.updatedAt.toISOString(),
       publishedAt: project.publishedAt?.toISOString() ?? null,
-    };
+    });
   }
 
   @Post(':id/logo')
@@ -434,12 +473,12 @@ export class ProjectsController {
         }
       }
 
-      return {
+      return projectResponseSchema.parse({
         ...project,
         createdAt: project.createdAt.toISOString(),
         updatedAt: project.updatedAt.toISOString(),
         publishedAt: project.publishedAt?.toISOString() ?? null,
-      };
+      });
     } catch (error) {
       try {
         await unlink(join(PROJECT_MEDIA_DIR, finalFilename));
@@ -538,6 +577,7 @@ export class ProjectsController {
         createdAt: pt.createdAt.toISOString(),
         updatedAt: pt.updatedAt.toISOString(),
       })),
+      members: (project.members ?? []).map(mapProjectMember),
     };
 
     return projectBySlugResponseSchema.parse(result);
@@ -636,17 +676,26 @@ export class ProjectsController {
     const apiUrl = process.env.API_URL ?? 'http://localhost:3001';
     const publicUrl = `${apiUrl}/uploads/project-media/${finalFilename}`;
 
-    const media = await this.projectsService.addMedia(user, projectId, {
-      ...body,
-      storageKey: finalFilename,
-      publicUrl,
-    });
+    try {
+      const media = await this.projectsService.addMedia(user, projectId, {
+        ...body,
+        storageKey: finalFilename,
+        publicUrl,
+      });
 
-    return {
-      ...media,
-      createdAt: media.createdAt.toISOString(),
-      updatedAt: media.updatedAt.toISOString(),
-    };
+      return projectMediaResponseSchema.parse({
+        ...media,
+        createdAt: media.createdAt.toISOString(),
+        updatedAt: media.updatedAt.toISOString(),
+      });
+    } catch (error) {
+      try {
+        await unlink(join(PROJECT_MEDIA_DIR, finalFilename));
+      } catch (_unlinkError) {
+        // Ignored
+      }
+      throw error;
+    }
   }
 
   @Patch(':id/media/:mediaId')
@@ -680,11 +729,11 @@ export class ProjectsController {
       mediaId,
       body,
     );
-    return {
+    return projectMediaResponseSchema.parse({
       ...media,
       createdAt: media.createdAt.toISOString(),
       updatedAt: media.updatedAt.toISOString(),
-    };
+    });
   }
 
   @Patch(':id/media/:mediaId/set-cover')
@@ -703,11 +752,11 @@ export class ProjectsController {
       projectId,
       mediaId,
     );
-    return {
+    return projectMediaResponseSchema.parse({
       ...media,
       createdAt: media.createdAt.toISOString(),
       updatedAt: media.updatedAt.toISOString(),
-    };
+    });
   }
 
   @Delete(':id/media/:mediaId')

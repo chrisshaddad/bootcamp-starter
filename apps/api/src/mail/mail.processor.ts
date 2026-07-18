@@ -17,7 +17,17 @@ interface SendInvitationJobData {
   invitationLink: string;
 }
 
-type MailJobData = SendMagicLinkJobData | SendInvitationJobData;
+interface SendProjectInvitationJobData {
+  email: string;
+  inviterName: string;
+  projectTitle: string;
+  invitationLink: string;
+}
+
+type MailJobData =
+  | SendMagicLinkJobData
+  | SendInvitationJobData
+  | SendProjectInvitationJobData;
 
 @Processor(MAIL_QUEUE)
 export class MailProcessor extends WorkerHost {
@@ -36,6 +46,11 @@ export class MailProcessor extends WorkerHost {
         break;
       case MAIL_JOBS.SEND_INVITATION:
         await this.handleSendInvitation(job.data as SendInvitationJobData);
+        break;
+      case MAIL_JOBS.SEND_PROJECT_INVITATION:
+        await this.handleSendProjectInvitation(
+          job.data as SendProjectInvitationJobData,
+        );
         break;
       default:
         this.logger.warn(`Unknown job type: ${job.name}`);
@@ -83,5 +98,22 @@ export class MailProcessor extends WorkerHost {
       this.logger.error(`Failed to send invitation email to ${email}`);
       throw new Error(`Failed to send email to ${email}`);
     }
+  }
+
+  private async handleSendProjectInvitation(
+    data: SendProjectInvitationJobData,
+  ): Promise<void> {
+    const { email, inviterName, projectTitle, invitationLink } = data;
+    const text = `Hello,\n\n${inviterName} invited you to collaborate on ${projectTitle} on Deployfolio.\n\nReview the invitation in your inbox:\n\n${invitationLink}\n\nThis invitation expires in 7 days. You must sign in with the platform account connected to the invited GitHub identity.\n\nIf you were not expecting this invitation, you can safely decline or ignore it.`;
+    const success = await this.mailService.sendEmail({
+      to: email,
+      from: 'no-reply@bootcamp-starter.local',
+      subject: `Invitation to collaborate on ${projectTitle}`,
+      text,
+    });
+    if (!success) {
+      throw new Error(`Failed to send project invitation email to ${email}`);
+    }
+    this.logger.log(`Project invitation email sent successfully to ${email}`);
   }
 }

@@ -5,6 +5,8 @@ import {
   NotFoundException,
   ServiceUnavailableException,
   BadRequestException,
+  ForbiddenException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import {
   type GithubRepositoryPreviewResponse,
@@ -17,6 +19,8 @@ import type {
   NormalizedGithubLanguage,
   NormalizedGithubRepository,
   ParsedGithubRepository,
+  VerifiedGithubCollaborator,
+  VerifiedGithubRepository,
 } from './github.types';
 import {
   createCipheriv,
@@ -54,6 +58,24 @@ interface GithubRepoResponse {
   updated_at: string;
   description: string | null;
   language: string | null;
+  fork: boolean;
+  owner: {
+    id: number;
+    login: string;
+    type: string;
+  };
+}
+
+interface GithubUserResponse {
+  id: number;
+  login: string;
+  type: string;
+  avatar_url: string | null;
+}
+
+interface GithubPermissionResponse {
+  permission: string;
+  role_name?: string | null;
 }
 
 function getNextPageUrl(linkHeader: string | null): string | null {
@@ -104,7 +126,9 @@ export class GithubService {
       },
     });
 
-    return `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=repo&state=${state}`;
+    // This public-only flow needs collaborator metadata, but never private
+    // repository access or organization membership, so use the narrower scope.
+    return `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=public_repo&state=${state}`;
   }
 
   async handleOAuthCallback(
@@ -172,7 +196,7 @@ export class GithubService {
 
     const accessToken = tokenData.access_token;
     if (!accessToken) {
-      this.logger.error('Failed to obtain GitHub access token:', tokenData);
+      this.logger.warn('GitHub OAuth did not return an access token.');
       throw new BadRequestException('Failed to obtain GitHub access token');
     }
 
@@ -184,6 +208,7 @@ export class GithubService {
           Authorization: `Bearer ${accessToken}`,
           Accept: 'application/vnd.github+json',
           'User-Agent': GITHUB_USER_AGENT,
+          'X-GitHub-Api-Version': GITHUB_API_VERSION,
         },
         signal: AbortSignal.timeout(10_000),
       });
@@ -226,6 +251,14 @@ export class GithubService {
             oauthStateExpiresAt: null,
           },
         }),
+        this.db.projectMember.updateMany({
+          where: { githubUserId: BigInt(githubUser.id) },
+          data: { githubUsername: githubUser.login },
+        }),
+        this.db.projectInvitation.updateMany({
+          where: { inviteeGithubUserId: BigInt(githubUser.id) },
+          data: { inviteeGithubUsername: githubUser.login },
+        }),
       ]);
     } catch (error) {
       if (isPrismaUniqueConstraintError(error)) {
@@ -238,18 +271,7 @@ export class GithubService {
   }
 
   async getUserRepositories(userId: string): Promise<GithubRepository[]> {
-    const profile = await this.db.connectedAccount.findUnique({
-      where: { userId },
-      select: { githubAccessToken: true },
-    });
-
-    if (!profile || !profile.githubAccessToken) {
-      throw new BadRequestException('GitHub account not connected');
-    }
-
-    const githubAccessToken = this.decryptGithubAccessToken(
-      profile.githubAccessToken,
-    );
+    const githubContext = await this.getGithubContext(userId);
     const accumulatedRepos: GithubRepoResponse[] = [];
     let nextUrl: string | null =
       'https://api.github.com/user/repos?sort=updated&per_page=100';
@@ -259,9 +281,10 @@ export class GithubService {
       try {
         response = await fetch(nextUrl, {
           headers: {
-            Authorization: `Bearer ${githubAccessToken}`,
+            Authorization: `Bearer ${githubContext.accessToken}`,
             Accept: 'application/vnd.github+json',
             'User-Agent': GITHUB_USER_AGENT,
+            'X-GitHub-Api-Version': GITHUB_API_VERSION,
           },
           signal: AbortSignal.timeout(10_000),
         });
@@ -273,9 +296,7 @@ export class GithubService {
       }
 
       if (!response.ok) {
-        throw new ServiceUnavailableException(
-          'Failed to fetch repositories from GitHub',
-        );
+        this.handleAuthenticatedGithubErrorResponse(response);
       }
 
       let repos: GithubRepoResponse[];
@@ -291,11 +312,19 @@ export class GithubService {
       nextUrl = getNextPageUrl(linkHeader);
     }
 
-    const publicRepos = accumulatedRepos.filter((repo) => !repo.private);
-    const importedRepositories = publicRepos.length
+    const supportedOwnedRepositories = accumulatedRepos.filter(
+      (repo) =>
+        !repo.private &&
+        repo.owner.type === 'User' &&
+        BigInt(repo.owner.id) === githubContext.githubUserId &&
+        !repo.fork,
+    );
+    const importedRepositories = supportedOwnedRepositories.length
       ? await this.db.repository.findMany({
           where: {
-            githubRepoId: { in: publicRepos.map((repo) => BigInt(repo.id)) },
+            githubRepoId: {
+              in: supportedOwnedRepositories.map((repo) => BigInt(repo.id)),
+            },
             project: { isNot: null },
           },
           select: { githubRepoId: true },
@@ -307,19 +336,143 @@ export class GithubService {
       ),
     );
 
-    const validated = publicRepos.map((repo) => ({
-      id: repo.id.toString(),
-      name: repo.name,
-      fullName: repo.full_name,
-      isPrivate: repo.private,
-      isImported: importedRepositoryIds.has(repo.id.toString()),
-      url: repo.html_url,
-      updatedAt: repo.updated_at,
-      description: repo.description,
-      language: repo.language,
-    }));
+    const validated = supportedOwnedRepositories.map((repo) => {
+      const isImported = importedRepositoryIds.has(repo.id.toString());
+      const eligibilityReason = isImported
+        ? ('ALREADY_IMPORTED' as const)
+        : null;
 
-    return githubRepositoryListSchema.parse(validated);
+      return {
+        id: repo.id.toString(),
+        name: repo.name,
+        fullName: repo.full_name,
+        isPrivate: repo.private,
+        isImported,
+        isEligible: eligibilityReason === null,
+        eligibilityReason,
+        url: repo.html_url,
+        updatedAt: repo.updated_at,
+        description: repo.description,
+        language: repo.language,
+      };
+    });
+
+    return githubRepositoryListSchema.parse(
+      validated.sort(
+        (left, right) => Number(left.isImported) - Number(right.isImported),
+      ),
+    );
+  }
+
+  async verifyRepositoryOwnership(
+    userId: string,
+    repositoryUrl: string,
+  ): Promise<VerifiedGithubRepository> {
+    const repository = parseGithubRepositoryUrl(repositoryUrl);
+    const context = await this.getGithubContext(userId);
+    const apiRepository = await this.fetchGithubJsonWithToken<unknown>(
+      `/repos/${encodeURIComponent(repository.owner)}/${encodeURIComponent(
+        repository.repo,
+      )}`,
+      context.accessToken,
+    );
+
+    if (!isRecord(apiRepository) || !isRecord(apiRepository.owner)) {
+      throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+    }
+
+    const ownerType = getRequiredString(apiRepository.owner.type);
+    const ownerGithubUserId = parseGithubId(apiRepository.owner.id);
+    const isPrivate = apiRepository.private === true;
+    const isFork = apiRepository.fork === true;
+
+    if (isPrivate) {
+      throw new UnprocessableEntityException(
+        'Only public GitHub repositories can be published.',
+      );
+    }
+
+    if (ownerType !== 'User') {
+      throw new UnprocessableEntityException(
+        'Organization-owned repositories are not supported yet.',
+      );
+    }
+
+    if (isFork) {
+      throw new UnprocessableEntityException(
+        'Forked repositories cannot be published as original projects.',
+      );
+    }
+
+    if (ownerGithubUserId !== context.githubUserId) {
+      throw new ForbiddenException(
+        'Only the verified GitHub repository owner can publish this project.',
+      );
+    }
+
+    return {
+      ...this.normalizeRepository(apiRepository),
+      ownerGithubUserId,
+      ownerType: 'User',
+      isFork: false,
+    };
+  }
+
+  async verifyRepositoryCollaborator(
+    repositoryOwnerUserId: string,
+    repositoryFullName: string,
+    githubUsername: string,
+  ): Promise<VerifiedGithubCollaborator> {
+    const context = await this.getGithubContext(repositoryOwnerUserId);
+    const repository = parseGithubRepositoryUrl(
+      `https://github.com/${repositoryFullName}`,
+    );
+    const normalizedUsername = githubUsername.trim();
+    const githubUser = await this.fetchGithubJsonWithToken<GithubUserResponse>(
+      `/users/${encodeURIComponent(normalizedUsername)}`,
+      context.accessToken,
+      'GitHub user not found.',
+    );
+
+    if (
+      !githubUser ||
+      typeof githubUser.id !== 'number' ||
+      typeof githubUser.login !== 'string' ||
+      githubUser.type !== 'User'
+    ) {
+      throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+    }
+
+    const permission =
+      await this.fetchGithubJsonWithToken<GithubPermissionResponse>(
+        `/repos/${encodeURIComponent(repository.owner)}/${encodeURIComponent(
+          repository.repo,
+        )}/collaborators/${encodeURIComponent(githubUser.login)}/permission`,
+        context.accessToken,
+        'This GitHub user is not a repository collaborator.',
+      );
+
+    if (!permission || typeof permission.permission !== 'string') {
+      throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+    }
+
+    if (permission.permission === 'none') {
+      throw new NotFoundException(
+        'This GitHub user is not a repository collaborator.',
+      );
+    }
+
+    return {
+      githubUserId: BigInt(githubUser.id),
+      githubUsername: githubUser.login,
+      avatarUrl:
+        typeof githubUser.avatar_url === 'string'
+          ? githubUser.avatar_url
+          : null,
+      permission: permission.permission,
+      roleName:
+        typeof permission.role_name === 'string' ? permission.role_name : null,
+    };
   }
 
   // ==========================================
@@ -487,6 +640,75 @@ export class GithubService {
     }
   }
 
+  private async getGithubContext(userId: string): Promise<{
+    githubUserId: bigint;
+    githubUsername: string;
+    accessToken: string;
+  }> {
+    const user = await this.db.user.findUnique({
+      where: { id: userId },
+      select: {
+        developerProfile: {
+          select: { githubUserId: true, githubUsername: true },
+        },
+        connectedAccount: {
+          select: { githubAccessToken: true },
+        },
+      },
+    });
+
+    const githubUserId = user?.developerProfile?.githubUserId;
+    const githubUsername = user?.developerProfile?.githubUsername;
+    const encryptedAccessToken = user?.connectedAccount?.githubAccessToken;
+
+    if (!githubUserId || !githubUsername || !encryptedAccessToken) {
+      throw new BadRequestException(
+        'Connect your GitHub account before continuing.',
+      );
+    }
+
+    return {
+      githubUserId,
+      githubUsername,
+      accessToken: this.decryptGithubAccessToken(encryptedAccessToken),
+    };
+  }
+
+  private async fetchGithubJsonWithToken<T>(
+    path: string,
+    accessToken: string,
+    notFoundMessage = REPOSITORY_NOT_FOUND_MESSAGE,
+  ): Promise<T> {
+    let response: Response;
+
+    try {
+      response = await fetch(`${GITHUB_API_BASE_URL}${path}`, {
+        headers: {
+          Accept: 'application/vnd.github+json',
+          Authorization: `Bearer ${accessToken}`,
+          'User-Agent': GITHUB_USER_AGENT,
+          'X-GitHub-Api-Version': GITHUB_API_VERSION,
+        },
+        signal: AbortSignal.timeout(10_000),
+      });
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'TimeoutError') {
+        throw new GithubRequestTimeoutException();
+      }
+      throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+    }
+
+    if (!response.ok) {
+      this.handleAuthenticatedGithubErrorResponse(response, notFoundMessage);
+    }
+
+    try {
+      return (await response.json()) as T;
+    } catch {
+      throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+    }
+  }
+
   private handleGithubErrorResponse(response: Response): never {
     if (response.status === 404) {
       throw new NotFoundException(REPOSITORY_NOT_FOUND_MESSAGE);
@@ -498,6 +720,36 @@ export class GithubService {
 
     this.logger.warn(
       `GitHub API request failed with status ${response.status}`,
+    );
+    throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+  }
+
+  private handleAuthenticatedGithubErrorResponse(
+    response: Response,
+    notFoundMessage = REPOSITORY_NOT_FOUND_MESSAGE,
+  ): never {
+    if (response.status === 404) {
+      throw new NotFoundException(notFoundMessage);
+    }
+
+    if (response.status === 401) {
+      throw new BadRequestException(
+        'Your GitHub connection has expired. Reconnect GitHub and try again.',
+      );
+    }
+
+    if (response.status === 403 && this.isRateLimited(response)) {
+      throw new ServiceUnavailableException(GITHUB_RATE_LIMIT_MESSAGE);
+    }
+
+    if (response.status === 403) {
+      throw new ForbiddenException(
+        'GitHub did not authorize this repository operation. Reconnect GitHub and try again.',
+      );
+    }
+
+    this.logger.warn(
+      `Authenticated GitHub API request failed with status ${response.status}`,
     );
     throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
   }
@@ -725,6 +977,19 @@ function getRequiredStringOrNumber(value: unknown): string {
   }
 
   return String(value);
+}
+
+function parseGithubId(value: unknown): bigint {
+  const normalized = getRequiredStringOrNumber(value);
+  try {
+    const id = BigInt(normalized);
+    if (id <= 0n) {
+      throw new Error('Invalid GitHub ID');
+    }
+    return id;
+  } catch {
+    throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+  }
 }
 
 function getOptionalString(value: unknown): string | undefined {
