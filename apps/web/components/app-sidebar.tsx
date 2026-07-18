@@ -10,7 +10,7 @@ import {
   Building2,
   UserCog,
   FolderGit2,
-  Compass, // <-- 1. Import Compass here
+  Compass,
 } from 'lucide-react';
 import { useUser } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
@@ -34,7 +34,7 @@ interface NavItem {
   disabled?: boolean;
 }
 
-// Navigation items for ORG_ADMIN and MEMBER roles
+// Navigation items for DEVELOPER / standard users
 const orgNavItems: NavItem[] = [
   {
     title: 'Dashboard',
@@ -42,7 +42,7 @@ const orgNavItems: NavItem[] = [
     icon: LayoutDashboard,
   },
   {
-    title: 'Explore', // <-- 2. Added Explore for normal users
+    title: 'Explore',
     url: '/explore',
     icon: Compass,
   },
@@ -50,6 +50,30 @@ const orgNavItems: NavItem[] = [
     title: 'Projects',
     url: '/projects',
     icon: FolderGit2,
+  },
+  {
+    title: 'Profile',
+    url: '/profile',
+    icon: UserCog,
+  },
+];
+
+// Navigation items specifically for RECRUITERS (HIRING role)
+const recruiterNavItems: NavItem[] = [
+  {
+    title: 'Dashboard',
+    url: '/dashboard',
+    icon: LayoutDashboard,
+  },
+  {
+    title: 'Explore',
+    url: '/explore',
+    icon: Compass,
+  },
+  {
+    title: 'Browse Profiles', // Replaced Projects with Browse Profiles
+    url: '/users',
+    icon: Users,
   },
   {
     title: 'Profile',
@@ -66,7 +90,7 @@ const superAdminNavItems: NavItem[] = [
     icon: Building2,
   },
   {
-    title: 'Explore', // <-- 3. Fixed title and icon for super admins
+    title: 'Explore',
     url: '/explore',
     icon: Compass,
   },
@@ -79,7 +103,7 @@ const superAdminNavItems: NavItem[] = [
     title: 'Users',
     url: '/users',
     icon: Users,
-    disabled: true, // Placeholder for future implementation
+    // Enabled now that we've built the users list!
   },
 ];
 
@@ -104,7 +128,16 @@ export function AppSidebar() {
   const { user } = useUser({ redirectOnUnauthenticated: false });
 
   const isSuperAdmin = user?.accountType === 'SUPER_ADMIN';
-  const mainNavItems = isSuperAdmin ? superAdminNavItems : orgNavItems;
+  const isRecruiter = user?.accountType === 'HIRING';
+
+  // Select navigation items dynamically based on roles
+  let mainNavItems = orgNavItems;
+  if (isSuperAdmin) {
+    mainNavItems = superAdminNavItems;
+  } else if (isRecruiter) {
+    mainNavItems = recruiterNavItems;
+  }
+
   const secondaryNavItems = isSuperAdmin
     ? superAdminSecondaryNavItems
     : orgSecondaryNavItems;

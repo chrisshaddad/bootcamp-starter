@@ -645,6 +645,8 @@ export class ProjectsService {
 
     const where: Prisma.ProjectWhereInput = {
       status: ProjectStatus.PUBLISHED,
+      // 1. Filter by userId if it's passed in the query
+      ...(query.userId ? { createdByUserId: query.userId } : {}),
       ...(query.search
         ? {
             OR: [
@@ -692,6 +694,7 @@ export class ProjectsService {
         orderBy,
         skip,
         take,
+        // 2. Select media so screenshots can be rendered on frontend cards
         select: {
           id: true,
           title: true,
@@ -704,6 +707,15 @@ export class ProjectsService {
           publishedAt: true,
           createdAt: true,
           updatedAt: true,
+          media: {
+            orderBy: { sortOrder: 'asc' },
+            select: {
+              id: true,
+              publicUrl: true,
+              caption: true,
+              sortOrder: true,
+            },
+          },
         },
       }),
     ]);
@@ -721,7 +733,6 @@ export class ProjectsService {
       },
     };
   }
-
   async addMedia(
     user: User,
     projectId: string,

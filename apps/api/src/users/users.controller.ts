@@ -7,7 +7,7 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { UsersService } from './users.service';
-import { Public } from '../auth/decorators/public.decorator';
+
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import {
@@ -21,13 +21,17 @@ import {
 } from '@repo/contracts';
 import { updateProfileRequestSchema as updateProfileOpenApiSchema } from '../common/swagger/schemas';
 
+// 1. Import AccountType and Roles decorators
+import { AccountType } from '@repo/db';
+import { Roles } from '../auth/decorators/roles.decorator';
+
 @ApiTags('users')
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get('explore')
-  @Public()
+  @Roles(AccountType.HIRING, AccountType.SUPER_ADMIN) // 2. Restrict to Recruiter/Admin
   @ApiOperation({ summary: 'Explore public users with search and pagination' })
   @ApiResponse({
     status: 200,
@@ -46,7 +50,7 @@ export class UsersController {
   }
 
   @Get('id/:id')
-  @Public()
+  @Roles(AccountType.HIRING, AccountType.SUPER_ADMIN) // 3. Restrict to Recruiter/Admin
   @ApiOperation({ summary: 'Get a user by their unique ID' })
   async getUserById(@Param('id') id: string) {
     const user = await this.usersService.getUserById(id);
@@ -54,7 +58,7 @@ export class UsersController {
   }
 
   @Get('slug/:slug')
-  @Public()
+  @Roles(AccountType.HIRING, AccountType.SUPER_ADMIN) // 4. Restrict to Recruiter/Admin
   @ApiOperation({ summary: 'Get a developer by their public slug' })
   async getUserBySlug(@Param('slug') slug: string) {
     const user = await this.usersService.getUserBySlug(slug);
