@@ -219,6 +219,7 @@ export default function AdminPage() {
         isLoading={announcementsLoading}
         error={announcementsError}
         compact
+        cardGrid
         showViewAll
       />
     </div>
