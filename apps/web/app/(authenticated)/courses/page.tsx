@@ -298,6 +298,7 @@ export default function CoursesPage() {
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
           {courses.map((course) => {
             const isExpanded = expandedCourseId === course.id;
+            const detailsId = `course-details-${course.id}`;
 
             return (
               <Card
@@ -323,6 +324,13 @@ export default function CoursesPage() {
 
                     <button
                       type="button"
+                      aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${course.title} details`}
+                      aria-expanded={isExpanded}
+                      aria-controls={detailsId}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setExpandedCourseId(isExpanded ? null : course.id);
+                      }}
                       className="rounded-full p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
                     >
                       {isExpanded ? (
@@ -385,7 +393,10 @@ export default function CoursesPage() {
                   </div>
 
                   {isExpanded && (
-                    <div className="space-y-4 border-t border-gray-100 pt-5">
+                    <div
+                      id={detailsId}
+                      className="space-y-4 border-t border-gray-100 pt-5"
+                    >
                       <div>
                         <p className="text-sm font-semibold text-gray-500">
                           Description
