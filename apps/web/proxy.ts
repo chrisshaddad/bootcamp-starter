@@ -6,8 +6,8 @@ const SESSION_COOKIE_NAME = 'bootcamp_starter_session';
 // Auth entry pages — bounce authenticated users to the dashboard
 const authEntryRoutes = ['/login', '/auth/verify'];
 
-// Routes that do not require a session (includes auth entry + public browse)
-const publicRoutes = [...authEntryRoutes, '/browse'];
+// Routes that do not require a session.
+const publicRoutes = [...authEntryRoutes, '/browse', '/privacy', '/terms'];
 
 const DEFAULT_AUTHENTICATED_ROUTE = '/dashboard';
 
