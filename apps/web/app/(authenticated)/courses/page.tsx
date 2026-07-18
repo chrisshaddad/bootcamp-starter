@@ -29,6 +29,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ApiError, apiDelete, apiPatch, fetcher } from '@/lib/api';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 type OrganizationItem = TeacherOrganizationsResponse['organizations'][number];
 
 function formatDate(value: string) {
@@ -485,140 +493,149 @@ export default function CoursesPage() {
         </div>
       )}
 
-      {editingCourse && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 px-4 py-6">
-          <div className="w-[92vw] max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+      <Dialog
+        open={Boolean(editingCourse)}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeUpdateModal();
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Update Course</DialogTitle>
+            <DialogDescription>
+              Edit course information and save changes.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form
+            onSubmit={handleSubmit(handleUpdateCourse)}
+            className="space-y-4"
+          >
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Update Course</h2>
-              <p className="mt-1 text-sm text-gray-500">
-                Edit course information and save changes.
-              </p>
+              <label className="mb-2 block text-sm font-medium text-gray-700">
+                Course Title
+              </label>
+
+              <input
+                {...register('title')}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-200"
+              />
+
+              {errors.title?.message && (
+                <p className="mt-1 text-xs text-error">
+                  {errors.title.message}
+                </p>
+              )}
             </div>
 
-            <form
-              onSubmit={handleSubmit(handleUpdateCourse)}
-              className="mt-5 space-y-4"
-            >
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">
-                  Course Title
-                </label>
+            <div>
+              <label className="mb-2 block text-sm font-medium text-gray-700">
+                Description
+              </label>
 
-                <input
-                  {...register('title')}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-200"
-                />
+              <textarea
+                {...register('description')}
+                rows={3}
+                className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-200"
+              />
 
-                {errors.title?.message && (
-                  <p className="mt-1 text-xs text-red-600">
-                    {errors.title.message}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">
-                  Description
-                </label>
-
-                <textarea
-                  {...register('description')}
-                  rows={3}
-                  className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-200"
-                />
-
-                {errors.description?.message && (
-                  <p className="mt-1 text-xs text-red-600">
-                    {errors.description.message}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">
-                  Status
-                </label>
-
-                <select
-                  {...register('status')}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-200"
-                >
-                  <option value="draft">Draft</option>
-                  <option value="published">Published</option>
-                  <option value="archived">Archived</option>
-                </select>
-
-                {errors.status?.message && (
-                  <p className="mt-1 text-xs text-red-600">
-                    {errors.status.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={closeUpdateModal}
-                  disabled={isSaving}
-                  className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {isSaving ? 'Saving...' : 'Save changes'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {deletingCourse && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 text-center shadow-xl">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
-              <Trash2 className="h-6 w-6 text-red-600" />
+              {errors.description?.message && (
+                <p className="mt-1 text-xs text-error">
+                  {errors.description.message}
+                </p>
+              )}
             </div>
 
-            <h2 className="mt-4 text-lg font-bold text-gray-900">
-              Delete course?
-            </h2>
+            <div>
+              <label className="mb-2 block text-sm font-medium text-gray-700">
+                Status
+              </label>
 
-            <p className="mt-2 text-sm text-gray-500">
-              Are you sure you want to delete{' '}
-              <span className="font-semibold text-gray-900">
-                {deletingCourse.title}
-              </span>
-              ? This action cannot be undone.
-            </p>
+              <select
+                {...register('status')}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-200"
+              >
+                <option value="draft">Draft</option>
+                <option value="published">Published</option>
+                <option value="archived">Archived</option>
+              </select>
 
-            <div className="mt-6 flex items-center justify-center gap-3">
+              {errors.status?.message && (
+                <p className="mt-1 text-xs text-error">
+                  {errors.status.message}
+                </p>
+              )}
+            </div>
+
+            <DialogFooter>
               <button
                 type="button"
-                onClick={closeDeleteModal}
-                disabled={isDeleting}
+                onClick={closeUpdateModal}
+                disabled={isSaving}
                 className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Cancel
               </button>
 
               <button
-                type="button"
-                onClick={handleDeleteCourse}
-                disabled={isDeleting}
-                className="rounded-lg border border-red-600 bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:border-red-700 hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                type="submit"
+                disabled={isSaving}
+                className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isDeleting ? 'Deleting...' : 'Delete'}
+                {isSaving ? 'Saving...' : 'Save changes'}
               </button>
-            </div>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(deletingCourse)}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeDeleteModal();
+          }
+        }}
+      >
+        <DialogContent className="max-w-sm text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-error/10">
+            <Trash2 className="h-6 w-6 text-error" />
           </div>
-        </div>
-      )}
+
+          <DialogHeader>
+            <DialogTitle className="text-center">Delete course?</DialogTitle>
+            <DialogDescription className="text-center">
+              Are you sure you want to delete{' '}
+              <span className="font-semibold text-gray-900">
+                {deletingCourse?.title}
+              </span>
+              ? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="sm:justify-center">
+            <button
+              type="button"
+              onClick={closeDeleteModal}
+              disabled={isDeleting}
+              className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDeleteCourse}
+              disabled={isDeleting}
+              className="rounded-lg border border-error bg-error px-4 py-2 text-sm font-medium text-white transition hover:bg-error/90 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
