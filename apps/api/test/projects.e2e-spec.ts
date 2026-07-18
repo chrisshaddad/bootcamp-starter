@@ -4,15 +4,28 @@ import request from 'supertest';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from './../src/database/prisma.service';
 import { AuthGuard } from './../src/auth/guards/auth.guard';
-import { AccountType, ProjectStatus } from '@repo/db';
-import { CreateProjectRequest, UpdateProjectRequest } from '@repo/contracts';
+import {
+  AccountType,
+  ProjectRoleKey,
+  ProjectStatus,
+  VerificationStatus,
+} from '@repo/db';
+import {
+  projectByIdResponseSchema,
+  projectsListResponseSchema,
+  developerPublicProfileResponseSchema,
+  type CreateProjectRequest,
+  type UpdateProjectRequest,
+} from '@repo/contracts';
 import { Server } from 'http';
 import { Reflector } from '@nestjs/core';
+import { GithubService } from './../src/github/github.service';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 // Safe interface to bypass "any" for request objects
 interface AuthenticatedTestRequest {
   headers: Record<string, string | string[] | undefined>;
-  user?: { id: string };
+  user?: { id: string; accountType: AccountType };
 }
 
 interface ProjectResponseBody {
@@ -61,18 +74,54 @@ describe('ProjectsController (e2e)', () => {
         return Promise.resolve(false); // Return a Promise to satisfy the types
       }
 
-      req.user = { id: testUserId };
+      req.user = { id: testUserId, accountType: AccountType.DEVELOPER };
       return Promise.resolve(true); // Return a Promise to satisfy the types
     });
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(GithubService)
+      .useValue({
+        verifyRepositoryOwnership: jest
+          .fn()
+          .mockImplementation((_userId: string, repositoryUrl: string) =>
+            Promise.resolve({
+              githubRepoId: repositoryUrl.endsWith('/repo2')
+                ? '222222'
+                : '111111',
+              ownerGithubUserId: 1001n,
+              ownerLogin: 'test',
+              ownerType: 'User',
+              isFork: false,
+            }),
+          ),
+      })
+      .compile();
 
     app = moduleFixture.createNestApplication();
     prisma = app.get(PrismaService);
 
     await app.init();
+
+    // Recover cleanly if a previous local E2E run was interrupted mid-suite.
+    await prisma.project.deleteMany({
+      where: {
+        slug: {
+          in: ['test-project-1', 'draft-project', 'archived-project'],
+        },
+      },
+    });
+    await prisma.repository.deleteMany({
+      where: { githubRepoId: { in: [111111n, 222222n] } },
+    });
+    await prisma.user.deleteMany({
+      where: {
+        email: {
+          in: ['user1-projects-e2e@test.com', 'user2-projects-e2e@test.com'],
+        },
+      },
+    });
 
     // 1. Seed Test Data
     const user1 = await prisma.user.create({
@@ -80,6 +129,15 @@ describe('ProjectsController (e2e)', () => {
         email: 'user1-projects-e2e@test.com',
         passwordHash: 'dummyhash',
         accountType: AccountType.DEVELOPER,
+        isConfirmed: true,
+        developerProfile: {
+          create: {
+            publicSlug: 'user1-projects-e2e',
+            displayName: 'Project Owner',
+            headline: 'Full-stack developer',
+            githubUsername: 'project-owner-e2e',
+          },
+        },
       },
     });
     user1Id = user1.id;
@@ -89,6 +147,15 @@ describe('ProjectsController (e2e)', () => {
         email: 'user2-projects-e2e@test.com',
         passwordHash: 'dummyhash',
         accountType: AccountType.DEVELOPER,
+        isConfirmed: true,
+        developerProfile: {
+          create: {
+            publicSlug: 'user2-projects-e2e',
+            displayName: 'Project Contributor',
+            headline: 'Backend developer',
+            linkedinUrl: 'https://linkedin.com/in/project-contributor-e2e',
+          },
+        },
       },
     });
     user2Id = user2.id;
@@ -127,7 +194,6 @@ describe('ProjectsController (e2e)', () => {
       where: { id: { in: [user1Id, user2Id] } },
     });
 
-    await prisma.$disconnect();
     await app.close();
   });
 
@@ -223,6 +289,138 @@ describe('ProjectsController (e2e)', () => {
         .patch(`/projects/${randomUuid}`)
         .set('x-test-user-id', user1Id)
         .send({ title: 'New Title', deploymentUrl: null })
+        .expect(404);
+    });
+  });
+
+  describe('verified collaborator access', () => {
+    beforeAll(async () => {
+      await prisma.projectMember.create({
+        data: {
+          projectId: createdProjectId,
+          userId: user2Id,
+          role: ProjectRoleKey.EDITOR,
+          verificationStatus: VerificationStatus.VERIFIED,
+          verifiedAt: new Date(),
+          addedByUserId: user1Id,
+        },
+      });
+    });
+
+    it('lists an accepted editor collaboration using server pagination', async () => {
+      const response = await request(app.getHttpServer() as Server)
+        .get('/projects?scope=COLLABORATIONS&page=1&limit=10')
+        .set('x-test-user-id', user2Id)
+        .expect(200);
+
+      const body = projectsListResponseSchema.parse(response.body as unknown);
+      expect(body).toMatchObject({
+        data: [
+          expect.objectContaining({
+            id: createdProjectId,
+            access: expect.objectContaining({ currentUserRole: 'EDITOR' }),
+          }),
+        ],
+        meta: expect.objectContaining({ totalItems: 1, currentPage: 1 }),
+      });
+    });
+
+    it('lets an editor view and update content but rejects status changes', async () => {
+      const response = await request(app.getHttpServer() as Server)
+        .get(`/projects/id/${createdProjectId}`)
+        .set('x-test-user-id', user2Id)
+        .expect(200);
+      const body = projectByIdResponseSchema.parse(response.body as unknown);
+      expect(body.access.capabilities.canEditContent).toBe(true);
+      expect(body.access.capabilities.canPublish).toBe(false);
+
+      await request(app.getHttpServer() as Server)
+        .patch(`/projects/${createdProjectId}`)
+        .set('x-test-user-id', user2Id)
+        .send({ shortDescription: 'Edited by a verified editor' })
+        .expect(200);
+
+      await request(app.getHttpServer() as Server)
+        .patch(`/projects/${createdProjectId}`)
+        .set('x-test-user-id', user2Id)
+        .send({ status: 'ARCHIVED' })
+        .expect(403);
+    });
+
+    it('keeps a verified contributor read-only', async () => {
+      await prisma.projectMember.update({
+        where: {
+          projectId_userId: {
+            projectId: createdProjectId,
+            userId: user2Id,
+          },
+        },
+        data: { role: ProjectRoleKey.CONTRIBUTOR },
+      });
+
+      const response = await request(app.getHttpServer() as Server)
+        .get(`/projects/id/${createdProjectId}`)
+        .set('x-test-user-id', user2Id)
+        .expect(200);
+      const body = projectByIdResponseSchema.parse(response.body as unknown);
+      expect(body.access.currentUserRole).toBe('CONTRIBUTOR');
+      expect(body.access.capabilities.canEditContent).toBe(false);
+
+      await request(app.getHttpServer() as Server)
+        .patch(`/projects/${createdProjectId}`)
+        .set('x-test-user-id', user2Id)
+        .send({ shortDescription: 'Forbidden contributor edit' })
+        .expect(403);
+    });
+  });
+
+  describe('Swagger document', () => {
+    it('documents project scope and capability responses at runtime', () => {
+      const document = SwaggerModule.createDocument(
+        app,
+        new DocumentBuilder().build(),
+      );
+      const serializedOperation = JSON.stringify(
+        document.paths['/projects']?.get,
+      );
+
+      expect(serializedOperation).toContain('"scope"');
+      expect(serializedOperation).toContain('"COLLABORATIONS"');
+      expect(serializedOperation).toContain('"capabilities"');
+      expect(document.paths['/users/developers/{slug}']?.get).toBeDefined();
+    });
+  });
+
+  describe('GET /users/developers/:slug', () => {
+    it('shows a verified contributor and their published collaboration', async () => {
+      const response = await request(app.getHttpServer() as Server)
+        .get('/users/developers/user2-projects-e2e')
+        .expect(200);
+
+      const body = developerPublicProfileResponseSchema.parse(
+        response.body as unknown,
+      );
+      expect(body).toMatchObject({
+        publicSlug: 'user2-projects-e2e',
+        displayName: 'Project Contributor',
+        linkedinUrl: 'https://linkedin.com/in/project-contributor-e2e',
+        stats: {
+          publishedProjects: 1,
+          ownedProjects: 0,
+          collaborationProjects: 1,
+        },
+        projects: [
+          expect.objectContaining({
+            id: createdProjectId,
+            role: 'CONTRIBUTOR',
+          }),
+        ],
+      });
+    });
+
+    it('returns 404 for an unknown developer slug', async () => {
+      await request(app.getHttpServer() as Server)
+        .get('/users/developers/not-a-real-developer')
         .expect(404);
     });
   });

@@ -1,14 +1,17 @@
 import {
   ConflictException,
+  ForbiddenException,
   NotFoundException,
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { Prisma } from '@repo/db';
 import { projectsExploreQuerySchema } from '@repo/contracts';
+import { AccountType, Prisma, type User } from '@repo/db';
 import { PrismaService } from '../database/prisma.service';
 import { GithubRepositorySnapshotService } from '../repository-scanner/github-repository-snapshot.service';
+import { GithubService } from '../github/github.service';
 import { ProjectsService } from './projects.service';
+import type { ProjectAccessService } from './project-access.service';
 
 const USER_ID = '00000000-0000-4000-8000-000000000001';
 const REPOSITORY_ID = '00000000-0000-4000-8000-000000000002';
@@ -22,18 +25,26 @@ describe('ProjectsService GitHub import', () => {
   let tx: ReturnType<typeof createTransactionMock>;
   let prisma: ReturnType<typeof createPrismaMock>;
   let snapshotService: ReturnType<typeof createSnapshotServiceMock>;
+  let githubService: ReturnType<typeof createGithubServiceMock>;
 
   beforeEach(() => {
     tx = createTransactionMock();
     prisma = createPrismaMock(tx);
     snapshotService = createSnapshotServiceMock();
+    githubService = createGithubServiceMock();
     service = new ProjectsService(
       prisma as unknown as PrismaService,
       snapshotService as unknown as GithubRepositorySnapshotService,
+      githubService as unknown as GithubService,
+      {
+        assertCanEditContent: jest.fn().mockResolvedValue({
+          capabilities: { canPublish: true },
+        }),
+      } as unknown as ProjectAccessService,
     );
   });
 
-  it('persists an unverified draft with reusable scanner technologies', async () => {
+  it('persists a GitHub-verified owner draft with reusable scanner technologies', async () => {
     const response = await service.importGithubProject(USER_ID, {
       repositoryUrl: 'https://github.com/vercel/next.js',
       title: 'Next.js',
@@ -41,6 +52,10 @@ describe('ProjectsService GitHub import', () => {
     });
 
     expect(snapshotService.previewRepositoryAnalysis).toHaveBeenCalledWith(
+      'https://github.com/vercel/next.js',
+    );
+    expect(githubService.verifyRepositoryOwnership).toHaveBeenCalledWith(
+      USER_ID,
       'https://github.com/vercel/next.js',
     );
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
@@ -83,18 +98,18 @@ describe('ProjectsService GitHub import', () => {
         userId: string;
         role: string;
         verificationStatus: string;
-        verificationSource: null;
-        verifiedAt: null;
+        verificationSource: string;
+        verifiedAt: Date;
       };
     };
     expect(memberCreate.data).toMatchObject({
       projectId: PROJECT_ID,
       userId: USER_ID,
       role: 'OWNER',
-      verificationStatus: 'PENDING',
-      verificationSource: null,
-      verifiedAt: null,
+      verificationStatus: 'VERIFIED',
+      verificationSource: 'GITHUB_OWNER',
     });
+    expect(memberCreate.data.verifiedAt).toBeInstanceOf(Date);
     expect(tx.technology.upsert).toHaveBeenCalledTimes(2);
     expect(tx.projectTechnology.upsert).toHaveBeenCalledTimes(2);
     expect(response.project).toMatchObject({
@@ -199,6 +214,68 @@ describe('ProjectsService GitHub import', () => {
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
+  it('cannot bypass GitHub ownership by calling the import service directly', async () => {
+    githubService.verifyRepositoryOwnership.mockRejectedValue(
+      new ForbiddenException(
+        'Only the verified GitHub repository owner can publish this project.',
+      ),
+    );
+
+    await expect(
+      service.importGithubProject(USER_ID, {
+        repositoryUrl: 'https://github.com/other/repository',
+      }),
+    ).rejects.toThrow('Only the verified GitHub repository owner');
+    expect(snapshotService.previewRepositoryAnalysis).not.toHaveBeenCalled();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('revalidates GitHub ownership before publishing', async () => {
+    await service.updateProject(
+      { id: USER_ID, accountType: 'DEVELOPER' } as never,
+      PROJECT_ID,
+      { status: 'PUBLISHED' },
+    );
+
+    expect(githubService.verifyRepositoryOwnership).toHaveBeenCalledWith(
+      USER_ID,
+      'https://github.com/vercel/next.js',
+    );
+    expect(prisma.project.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: 'PUBLISHED',
+          githubOwnershipVerifiedAt: expect.any(Date),
+        }),
+      }),
+    );
+  });
+
+  it('loads only verified members for public project responses', async () => {
+    prisma.project.findUnique.mockResolvedValue({
+      id: PROJECT_ID,
+      createdByUserId: USER_ID,
+      slug: 'next-js',
+      status: 'PUBLISHED',
+      publishedAt: CREATED_AT,
+      repository: { htmlUrl: 'https://github.com/vercel/next.js' },
+      media: [],
+      technologies: [],
+      members: [],
+    });
+
+    await expect(service.getProjectBySlug('next-js')).resolves.toMatchObject({
+      id: PROJECT_ID,
+      members: [],
+    });
+    const query = prisma.project.findUnique.mock.calls[0]?.[0] as unknown as {
+      include: { members: { where: { verificationStatus: string } } };
+    };
+    expect(query.include.members.where).toEqual({
+      verificationStatus: 'VERIFIED',
+    });
+  });
+
   it('rejects a session whose user no longer exists', async () => {
     prisma.user.findUnique.mockResolvedValue(null);
 
@@ -234,6 +311,8 @@ describe('ProjectsService public technology filters', () => {
     const service = new ProjectsService(
       { project } as unknown as PrismaService,
       createSnapshotServiceMock() as unknown as GithubRepositorySnapshotService,
+      {} as GithubService,
+      {} as ProjectAccessService,
     );
     const query = projectsExploreQuerySchema.parse({
       technology: ['react', 'typescript'],
@@ -264,6 +343,91 @@ describe('ProjectsService public technology filters', () => {
       projectsExploreQuerySchema.parse({ technology: 'react,typescript' })
         .technology,
     ).toEqual(['react', 'typescript']);
+  });
+});
+
+describe('ProjectsService collaboration access', () => {
+  const project = {
+    count: jest.fn(),
+    findMany: jest.fn(),
+    findUnique: jest.fn(),
+  };
+  const projectAccess = {
+    getAccessFromProject: jest.fn().mockReturnValue({
+      currentUserRole: 'EDITOR',
+      capabilities: {
+        canView: true,
+        canEditContent: true,
+        canPublish: false,
+        canManageInvitations: false,
+        canDelete: false,
+      },
+    }),
+    assertCanEditContent: jest.fn(),
+  };
+  const service = new ProjectsService(
+    { project } as unknown as PrismaService,
+    {} as GithubRepositorySnapshotService,
+    {} as GithubService,
+    projectAccess as unknown as ProjectAccessService,
+  );
+  const memberUser = {
+    id: USER_ID,
+    accountType: AccountType.DEVELOPER,
+  } as User;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    project.count.mockResolvedValue(0);
+    project.findMany.mockResolvedValue([]);
+  });
+
+  it('filters ALL in the database before applying pagination', async () => {
+    await service.getMyProjects(memberUser, {
+      scope: 'ALL',
+      page: 2,
+      limit: 10,
+    });
+
+    expect(project.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ OR: expect.any(Array) }),
+        skip: 10,
+        take: 10,
+      }),
+    );
+  });
+
+  it('limits COLLABORATIONS to verified editor/contributor memberships', async () => {
+    await service.getMyProjects(memberUser, {
+      scope: 'COLLABORATIONS',
+      page: 1,
+      limit: 20,
+    });
+
+    expect(project.count).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        createdByUserId: { not: USER_ID },
+        members: {
+          some: expect.objectContaining({
+            userId: USER_ID,
+            verificationStatus: 'VERIFIED',
+            role: { in: ['EDITOR', 'CONTRIBUTOR'] },
+          }),
+        },
+      }),
+    });
+  });
+
+  it('rejects editor attempts to include owner-only status fields', async () => {
+    projectAccess.assertCanEditContent.mockResolvedValue({
+      capabilities: { canPublish: false },
+    });
+
+    await expect(
+      service.updateProject(memberUser, PROJECT_ID, { status: 'PUBLISHED' }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(project.findUnique).not.toHaveBeenCalled();
   });
 });
 
@@ -339,7 +503,23 @@ function createTransactionMock() {
 function createPrismaMock(tx: ReturnType<typeof createTransactionMock>) {
   return {
     user: {
-      findUnique: jest.fn().mockResolvedValue({ id: USER_ID }),
+      findUnique: jest.fn().mockResolvedValue({
+        id: USER_ID,
+        accountType: 'DEVELOPER',
+      }),
+    },
+    project: {
+      findUnique: jest.fn().mockResolvedValue({
+        id: PROJECT_ID,
+        createdByUserId: USER_ID,
+        slug: 'next-js',
+        publishedAt: null,
+        repository: { htmlUrl: 'https://github.com/vercel/next.js' },
+      }),
+      update: jest.fn().mockResolvedValue({
+        id: PROJECT_ID,
+        status: 'PUBLISHED',
+      }),
     },
     $transaction: jest.fn((callback: (client: typeof tx) => Promise<unknown>) =>
       callback(tx),
@@ -352,6 +532,25 @@ function createSnapshotServiceMock() {
     previewRepositoryAnalysis: jest
       .fn()
       .mockResolvedValue(createRepositoryAnalysisPreview()),
+  };
+}
+
+function createGithubServiceMock() {
+  return {
+    verifyRepositoryOwnership: jest.fn().mockResolvedValue({
+      githubRepoId: '70107786',
+      fullName: 'vercel/next.js',
+      ownerLogin: 'vercel',
+      repoName: 'next.js',
+      htmlUrl: 'https://github.com/vercel/next.js',
+      defaultBranch: 'canary',
+      visibility: 'PUBLIC',
+      description: 'The React Framework',
+      lastPushedAt: '2026-07-09T10:00:00.000Z',
+      ownerGithubUserId: 100n,
+      ownerType: 'User',
+      isFork: false,
+    }),
   };
 }
 

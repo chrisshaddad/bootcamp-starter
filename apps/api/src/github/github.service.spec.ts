@@ -1,8 +1,10 @@
 import {
   ConflictException,
+  ForbiddenException,
   Logger,
   NotFoundException,
   ServiceUnavailableException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import type { DatabaseService } from '../database/prisma.service';
 import { GithubRequestTimeoutException, GithubService } from './github.service';
@@ -24,7 +26,10 @@ describe('GithubService', () => {
       update: jest.Mock<unknown, [ConnectedAccountUpdateArgs]>;
     };
     developerProfile: { update: jest.Mock };
+    user: { findUnique: jest.Mock };
     repository: { findMany: jest.Mock };
+    projectMember: { updateMany: jest.Mock };
+    projectInvitation: { updateMany: jest.Mock };
     $transaction: jest.Mock;
   };
 
@@ -36,7 +41,10 @@ describe('GithubService', () => {
         update: jest.fn<unknown, [ConnectedAccountUpdateArgs]>(),
       },
       developerProfile: { update: jest.fn() },
+      user: { findUnique: jest.fn() },
       repository: { findMany: jest.fn().mockResolvedValue([]) },
+      projectMember: { updateMany: jest.fn().mockReturnValue({}) },
+      projectInvitation: { updateMany: jest.fn().mockReturnValue({}) },
       $transaction: jest.fn(),
     };
     service = new GithubService(db as unknown as DatabaseService);
@@ -59,6 +67,19 @@ describe('GithubService', () => {
     delete process.env.GITHUB_CLIENT_ID;
     delete process.env.GITHUB_CLIENT_SECRET;
     delete process.env.GITHUB_TOKEN_ENCRYPTION_KEY;
+  });
+
+  it('requests only GitHub public-repository access in the OAuth flow', async () => {
+    db.connectedAccount.upsert.mockResolvedValue({});
+
+    const authorizationUrl = await service.getOAuthConnectUrl('user-id');
+
+    expect(authorizationUrl).toContain('client_id=client-id');
+    expect(authorizationUrl).toContain('scope=public_repo');
+    expect(authorizationUrl).not.toContain('scope=repo');
+    expect(db.connectedAccount.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { userId: 'user-id' } }),
+    );
   });
 
   it('encrypts an OAuth token before saving it', async () => {
@@ -87,8 +108,9 @@ describe('GithubService', () => {
         encryptGithubAccessToken: (token: string) => string;
       }
     ).encryptGithubAccessToken('user-specific-token');
-    db.connectedAccount.findUnique.mockResolvedValue({
-      githubAccessToken: encryptedToken,
+    db.user.findUnique.mockResolvedValue({
+      developerProfile: { githubUserId: 42n, githubUsername: 'owner' },
+      connectedAccount: { githubAccessToken: encryptedToken },
     });
     fetchMock.mockResolvedValueOnce(jsonResponse([]));
 
@@ -105,8 +127,9 @@ describe('GithubService', () => {
         encryptGithubAccessToken: (token: string) => string;
       }
     ).encryptGithubAccessToken('user-specific-token');
-    db.connectedAccount.findUnique.mockResolvedValue({
-      githubAccessToken: encryptedToken,
+    db.user.findUnique.mockResolvedValue({
+      developerProfile: { githubUserId: 42n, githubUsername: 'owner' },
+      connectedAccount: { githubAccessToken: encryptedToken },
     });
     db.repository.findMany.mockResolvedValue([{ githubRepoId: 101n }]);
     fetchMock.mockResolvedValueOnce(
@@ -118,8 +141,18 @@ describe('GithubService', () => {
     );
 
     await expect(service.getUserRepositories('user-id')).resolves.toEqual([
-      expect.objectContaining({ id: '101', isImported: true }),
-      expect.objectContaining({ id: '102', isImported: false }),
+      expect.objectContaining({
+        id: '102',
+        isImported: false,
+        isEligible: true,
+        eligibilityReason: null,
+      }),
+      expect.objectContaining({
+        id: '101',
+        isImported: true,
+        isEligible: false,
+        eligibilityReason: 'ALREADY_IMPORTED',
+      }),
     ]);
     expect(db.repository.findMany).toHaveBeenCalledWith({
       where: {
@@ -128,6 +161,155 @@ describe('GithubService', () => {
       },
       select: { githubRepoId: true },
     });
+  });
+
+  it('omits forks, organization repositories, and repositories owned by another user', async () => {
+    const encryptedToken = (
+      service as unknown as {
+        encryptGithubAccessToken: (token: string) => string;
+      }
+    ).encryptGithubAccessToken('user-specific-token');
+    db.user.findUnique.mockResolvedValue({
+      developerProfile: { githubUserId: 42n, githubUsername: 'owner' },
+      connectedAccount: { githubAccessToken: encryptedToken },
+    });
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse([
+        githubRepository({ id: 201, name: 'supported', private: false }),
+        githubRepository({ id: 202, name: 'fork', private: false, fork: true }),
+        githubRepository({
+          id: 203,
+          name: 'organization',
+          private: false,
+          ownerType: 'Organization',
+        }),
+        githubRepository({
+          id: 204,
+          name: 'collaboration',
+          private: false,
+          ownerId: 99,
+        }),
+      ]),
+    );
+
+    await expect(service.getUserRepositories('user-id')).resolves.toEqual([
+      expect.objectContaining({ id: '201', name: 'supported' }),
+    ]);
+    expect(db.repository.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ githubRepoId: { in: [201n] } }),
+      }),
+    );
+  });
+
+  it('verifies a public personal non-fork repository by immutable owner ID', async () => {
+    mockConnectedGithubUser(db, service, 42n, 'owner');
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(ownedRepositoryResponse({ ownerId: 42 })),
+    );
+
+    await expect(
+      service.verifyRepositoryOwnership(
+        'user-id',
+        'https://github.com/owner/repo',
+      ),
+    ).resolves.toMatchObject({
+      githubRepoId: '100',
+      ownerGithubUserId: 42n,
+      ownerType: 'User',
+      isFork: false,
+    });
+  });
+
+  it('rejects a repository owned by another GitHub identity', async () => {
+    mockConnectedGithubUser(db, service, 42n, 'owner');
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(ownedRepositoryResponse({ ownerId: 99 })),
+    );
+    await expect(
+      service.verifyRepositoryOwnership(
+        'user-id',
+        'https://github.com/other/repo',
+      ),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it.each([
+    [{ ownerType: 'Organization' }, 'Organization-owned repositories'],
+    [{ private: true }, 'Only public GitHub repositories'],
+    [{ fork: true }, 'Forked repositories'],
+  ])(
+    'rejects unsupported repository metadata %j',
+    async (overrides, message) => {
+      mockConnectedGithubUser(db, service, 42n, 'owner');
+      fetchMock.mockResolvedValueOnce(
+        jsonResponse(ownedRepositoryResponse(overrides)),
+      );
+      try {
+        await service.verifyRepositoryOwnership(
+          'user-id',
+          'https://github.com/owner/repo',
+        );
+        fail('Expected unsupported repository metadata to be rejected.');
+      } catch (error) {
+        expect(error).toBeInstanceOf(UnprocessableEntityException);
+        expect(error).toHaveProperty(
+          'message',
+          expect.stringContaining(message),
+        );
+      }
+    },
+  );
+
+  it('resolves a collaborator to an immutable GitHub ID and permission', async () => {
+    mockConnectedGithubUser(db, service, 42n, 'owner');
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse({
+          id: 88,
+          login: 'Collaborator',
+          type: 'User',
+          avatar_url: 'https://avatars.githubusercontent.com/u/88',
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({ permission: 'push', role_name: 'write' }),
+      );
+
+    await expect(
+      service.verifyRepositoryCollaborator(
+        'user-id',
+        'owner/repo',
+        'collaborator',
+      ),
+    ).resolves.toEqual({
+      githubUserId: 88n,
+      githubUsername: 'Collaborator',
+      avatarUrl: 'https://avatars.githubusercontent.com/u/88',
+      permission: 'push',
+      roleName: 'write',
+    });
+  });
+
+  it('maps a missing collaborator to a safe not-found error', async () => {
+    mockConnectedGithubUser(db, service, 42n, 'owner');
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse({
+          id: 88,
+          login: 'not-collaborator',
+          type: 'User',
+          avatar_url: null,
+        }),
+      )
+      .mockResolvedValueOnce(jsonResponse({}, 404));
+    await expect(
+      service.verifyRepositoryCollaborator(
+        'user-id',
+        'owner/repo',
+        'not-collaborator',
+      ),
+    ).rejects.toThrow('This GitHub user is not a repository collaborator.');
   });
 
   it('returns a conflict when a GitHub account is connected to another user', async () => {
@@ -233,6 +415,33 @@ describe('GithubService', () => {
       'https://api.github.com/repos/openai/openai-node',
     );
     expect(getFetchHeaders(fetchMock).Authorization).toBe('Bearer test-token');
+  });
+
+  it.each([
+    [403, { message: 'You have exceeded a secondary rate limit.' }, {}],
+    [403, { message: 'Forbidden' }, { 'retry-after': '60' }],
+    [429, { message: 'Too many requests' }, {}],
+  ])(
+    'maps authenticated GitHub throttling (%s) to service unavailable',
+    async (status, body, headers) => {
+      mockConnectedGithubUser(db, service, 42n, 'owner');
+      fetchMock.mockResolvedValueOnce(jsonResponse(body, status, headers));
+
+      await expect(service.getUserRepositories('user-id')).rejects.toThrow(
+        ServiceUnavailableException,
+      );
+    },
+  );
+
+  it('preserves authorization failures for non-rate-limited GitHub 403 responses', async () => {
+    mockConnectedGithubUser(db, service, 42n, 'owner');
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ message: 'Resource not accessible' }, 403),
+    );
+
+    await expect(service.getUserRepositories('user-id')).rejects.toThrow(
+      ForbiddenException,
+    );
   });
 
   it('does not send Authorization when GITHUB_TOKEN is blank', async () => {
@@ -537,10 +746,16 @@ function githubRepository({
   id,
   name,
   private: isPrivate,
+  fork = false,
+  ownerId = 42,
+  ownerType = 'User',
 }: {
   id: number;
   name: string;
   private: boolean;
+  fork?: boolean;
+  ownerId?: number;
+  ownerType?: string;
 }) {
   return {
     id,
@@ -551,7 +766,53 @@ function githubRepository({
     updated_at: '2026-07-17T00:00:00Z',
     description: null,
     language: 'TypeScript',
+    fork,
+    owner: { id: ownerId, login: 'owner', type: ownerType },
   };
+}
+
+function ownedRepositoryResponse(
+  overrides: {
+    ownerId?: number;
+    ownerType?: string;
+    private?: boolean;
+    fork?: boolean;
+  } = {},
+) {
+  return {
+    id: 100,
+    full_name: 'owner/repo',
+    owner: {
+      id: overrides.ownerId ?? 42,
+      login: 'owner',
+      type: overrides.ownerType ?? 'User',
+    },
+    name: 'repo',
+    html_url: 'https://github.com/owner/repo',
+    default_branch: 'main',
+    private: overrides.private ?? false,
+    fork: overrides.fork ?? false,
+    visibility: overrides.private ? 'private' : 'public',
+    description: null,
+    pushed_at: null,
+  };
+}
+
+function mockConnectedGithubUser(
+  db: { user: { findUnique: jest.Mock } },
+  service: GithubService,
+  githubUserId: bigint,
+  githubUsername: string,
+) {
+  const encryptedToken = (
+    service as unknown as {
+      encryptGithubAccessToken: (token: string) => string;
+    }
+  ).encryptGithubAccessToken('user-specific-token');
+  db.user.findUnique.mockResolvedValue({
+    developerProfile: { githubUserId, githubUsername },
+    connectedAccount: { githubAccessToken: encryptedToken },
+  });
 }
 
 function mockOAuthState(db: {

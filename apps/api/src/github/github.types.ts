@@ -10,3 +10,17 @@ export type NormalizedGithubRepository =
 
 export type NormalizedGithubLanguage =
   GithubRepositoryPreviewResponse['languages'][number];
+
+export interface VerifiedGithubRepository extends NormalizedGithubRepository {
+  ownerGithubUserId: bigint;
+  ownerType: 'User';
+  isFork: false;
+}
+
+export interface VerifiedGithubCollaborator {
+  githubUserId: bigint;
+  githubUsername: string;
+  avatarUrl: string | null;
+  permission: string;
+  roleName: string | null;
+}
