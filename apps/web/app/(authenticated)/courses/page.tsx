@@ -173,10 +173,14 @@ export default function CoursesPage() {
         status: 'draft',
       });
     } catch (error) {
-      console.error('Failed to update course:', error);
-      toast.error(
-        error instanceof ApiError ? error.message : 'Failed to update course.',
-      );
+      const message =
+        error instanceof ApiError ? error.message : 'Failed to update course.';
+
+      if (!(error instanceof ApiError)) {
+        console.error('Failed to update course:', error);
+      }
+
+      toast.error(message);
     } finally {
       setIsSaving(false);
     }
@@ -210,10 +214,14 @@ export default function CoursesPage() {
       toast.success('Course deleted successfully.');
       setDeletingCourse(null);
     } catch (error) {
-      console.error('Failed to delete course:', error);
-      toast.error(
-        error instanceof ApiError ? error.message : 'Failed to delete course.',
-      );
+      const message =
+        error instanceof ApiError ? error.message : 'Failed to delete course.';
+
+      if (!(error instanceof ApiError)) {
+        console.error('Failed to delete course:', error);
+      }
+
+      toast.error(message);
     } finally {
       setIsDeleting(false);
     }
