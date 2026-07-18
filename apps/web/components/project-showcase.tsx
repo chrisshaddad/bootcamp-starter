@@ -1,12 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import {
   Github,
   ExternalLink,
   Bookmark,
   ChevronLeft,
   ChevronRight,
+  Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,6 +18,7 @@ import type {
   PublicProjectMediaResponse,
   ProjectTechnologyResponse,
   TechnologyResponse,
+  ProjectMemberResponse,
 } from '@repo/contracts';
 import { TECHNOLOGY_CATEGORY_LABELS } from '@/lib/technology-labels';
 import {
@@ -33,6 +36,7 @@ interface ProjectShowcaseProps {
     repositoryUrl: string;
     media: PublicProjectMediaResponse[];
     technologies: ProjectTechnologyResponse[];
+    members: ProjectMemberResponse[];
   };
   onSave?: () => void;
 }
@@ -148,6 +152,71 @@ export function ProjectShowcase({ project, onSave }: ProjectShowcaseProps) {
         </div>
 
         <div className="space-y-4">
+          {project.members.length > 0 && (
+            <Card>
+              <CardContent className="space-y-3 pt-4">
+                <h3 className="text-muted-foreground flex items-center gap-1.5 text-xs font-bold tracking-wide uppercase">
+                  <Users className="h-3.5 w-3.5" />
+                  Project members
+                </h3>
+                <div className="space-y-2">
+                  {project.members.map((member) => {
+                    const content = (
+                      <>
+                        <div className="bg-primary-100 text-primary-base flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full text-xs font-semibold">
+                          {member.user?.profilePictureUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={member.user.profilePictureUrl}
+                              alt=""
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            (
+                              member.user?.displayName ??
+                              member.githubUsername ??
+                              '?'
+                            )
+                              .charAt(0)
+                              .toUpperCase()
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">
+                            {member.user?.displayName ??
+                              member.githubUsername ??
+                              'GitHub collaborator'}
+                          </p>
+                          <p className="text-muted-foreground truncate text-xs">
+                            {member.contributionRoleLabel ??
+                              member.role.toLowerCase()}
+                          </p>
+                        </div>
+                      </>
+                    );
+
+                    return member.user ? (
+                      <Link
+                        key={member.id}
+                        href={`/developers/${member.user.publicSlug}`}
+                        className="flex items-center gap-2.5 rounded-md p-1.5 transition-colors hover:bg-muted"
+                      >
+                        {content}
+                      </Link>
+                    ) : (
+                      <div
+                        key={member.id}
+                        className="flex items-center gap-2.5 p-1.5"
+                      >
+                        {content}
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardContent className="space-y-3 pt-4">
               <h3 className="text-muted-foreground text-xs font-bold tracking-wide uppercase">

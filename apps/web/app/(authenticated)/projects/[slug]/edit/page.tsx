@@ -51,7 +51,7 @@ import { ProjectInvitationsManager } from '@/components/project-invitations-mana
 export default function EditProjectPage() {
   const params = useParams<{ slug: string }>();
   const router = useRouter();
-  const { project, isLoading } = useProject(params.slug);
+  const { project, error, isLoading } = useProject(params.slug);
   const updateProject = useUpdateProject();
   const deleteProject = useDeleteProject();
   const uploadMedia = useUploadProjectMedia();
@@ -248,7 +248,8 @@ export default function EditProjectPage() {
     );
   }
 
-  if (!project) {
+  if (error || !project) {
+    const isNotFound = error instanceof ApiError && error.status === 404;
     return (
       <div className="space-y-4">
         <Link
@@ -258,7 +259,11 @@ export default function EditProjectPage() {
           <ArrowLeft className="h-3.5 w-3.5" />
           Projects
         </Link>
-        <p className="text-muted-foreground text-sm">Project not found.</p>
+        <p className="text-muted-foreground text-sm">
+          {isNotFound
+            ? 'Project not found.'
+            : 'Unable to load this project. Please refresh and try again.'}
+        </p>
       </div>
     );
   }

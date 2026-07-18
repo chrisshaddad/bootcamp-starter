@@ -3,12 +3,24 @@ import {
   NotFoundException,
   ConflictException,
 } from '@nestjs/common';
-import { PrismaService } from '../database/prisma.service';
-import { UsersExploreQuery, UpdateProfileRequest } from '@repo/contracts';
-import { Prisma, OrganizationType } from '@repo/db';
+import { DatabaseService } from '../database/prisma.service';
+import {
+  developerPublicProfileResponseSchema,
+  type DeveloperPublicProfileResponse,
+  type UsersExploreQuery,
+  type UpdateProfileRequest,
+} from '@repo/contracts';
+import {
+  AccountType,
+  Prisma,
+  OrganizationType,
+  ProjectRoleKey,
+  ProjectStatus,
+  VerificationStatus,
+} from '@repo/db';
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: DatabaseService) {}
   private getSafeSelect() {
     return {
       id: true,
@@ -154,6 +166,136 @@ export class UsersService {
 
     return user;
   }
+
+  async getDeveloperPublicProfile(
+    slug: string,
+  ): Promise<DeveloperPublicProfileResponse> {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        accountType: AccountType.DEVELOPER,
+        isConfirmed: true,
+        developerProfile: { publicSlug: slug },
+      },
+      select: {
+        id: true,
+        developerProfile: {
+          select: {
+            publicSlug: true,
+            displayName: true,
+            headline: true,
+            bio: true,
+            location: true,
+            profilePictureUrl: true,
+            githubUsername: true,
+            linkedinUrl: true,
+            personalWebsiteUrl: true,
+          },
+        },
+      },
+    });
+
+    if (!user?.developerProfile) {
+      throw new NotFoundException('Developer profile not found');
+    }
+
+    const projects = await this.prisma.project.findMany({
+      where: {
+        status: ProjectStatus.PUBLISHED,
+        OR: [
+          { createdByUserId: user.id },
+          {
+            members: {
+              some: {
+                userId: user.id,
+                verificationStatus: VerificationStatus.VERIFIED,
+                role: {
+                  in: [ProjectRoleKey.EDITOR, ProjectRoleKey.CONTRIBUTOR],
+                },
+              },
+            },
+          },
+        ],
+      },
+      orderBy: [{ publishedAt: 'desc' }, { id: 'asc' }],
+      select: {
+        id: true,
+        createdByUserId: true,
+        title: true,
+        slug: true,
+        logoUrl: true,
+        shortDescription: true,
+        deploymentUrl: true,
+        publishedAt: true,
+        updatedAt: true,
+        members: {
+          where: {
+            userId: user.id,
+            verificationStatus: VerificationStatus.VERIFIED,
+          },
+          select: { role: true, contributionRoleLabel: true },
+          take: 1,
+        },
+        media: {
+          orderBy: { sortOrder: 'asc' },
+          select: { publicUrl: true },
+          take: 1,
+        },
+        technologies: {
+          orderBy: { sortOrder: 'asc' },
+          select: { technology: true },
+        },
+      },
+    });
+
+    const mappedProjects = projects.map((project) => {
+      const membership = project.members[0];
+      const role =
+        project.createdByUserId === user.id
+          ? ProjectRoleKey.OWNER
+          : (membership?.role ?? ProjectRoleKey.CONTRIBUTOR);
+
+      return {
+        id: project.id,
+        title: project.title,
+        slug: project.slug,
+        logoUrl: normalizeOptionalUrl(project.logoUrl),
+        shortDescription: project.shortDescription,
+        deploymentUrl: normalizeOptionalUrl(project.deploymentUrl),
+        publishedAt: project.publishedAt ?? project.updatedAt,
+        role,
+        contributionRoleLabel: membership?.contributionRoleLabel ?? null,
+        coverImageUrl: normalizeOptionalUrl(project.media[0]?.publicUrl),
+        technologies: project.technologies.map(({ technology }) => technology),
+      };
+    });
+    const ownedProjects = mappedProjects.filter(
+      (project) => project.role === ProjectRoleKey.OWNER,
+    ).length;
+    const profile = user.developerProfile;
+
+    return developerPublicProfileResponseSchema.parse({
+      userId: user.id,
+      publicSlug: profile.publicSlug,
+      displayName: profile.displayName,
+      headline: profile.headline,
+      bio: profile.bio,
+      location: profile.location,
+      profilePictureUrl: normalizeOptionalUrl(profile.profilePictureUrl),
+      githubUsername: profile.githubUsername,
+      githubUrl: profile.githubUsername
+        ? `https://github.com/${profile.githubUsername}`
+        : null,
+      linkedinUrl: normalizeOptionalUrl(profile.linkedinUrl),
+      personalWebsiteUrl: normalizeOptionalUrl(profile.personalWebsiteUrl),
+      stats: {
+        publishedProjects: mappedProjects.length,
+        ownedProjects,
+        collaborationProjects: mappedProjects.length - ownedProjects,
+      },
+      projects: mappedProjects,
+    });
+  }
+
   async updateProfile(userId: string, data: UpdateProfileRequest) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -205,4 +347,9 @@ export class UsersService {
 
     return this.getUserById(userId);
   }
+}
+
+function normalizeOptionalUrl(value: string | null | undefined): string | null {
+  const normalized = value?.trim();
+  return normalized ? normalized : null;
 }

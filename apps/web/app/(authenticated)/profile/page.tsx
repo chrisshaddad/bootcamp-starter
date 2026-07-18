@@ -5,17 +5,30 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ProfileForm } from '@/components/profile-form';
 import { UserCog } from 'lucide-react';
 import { useUser } from '@/hooks/use-auth';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { ExternalLink } from 'lucide-react';
 
 export default function ProfilePage() {
   const { user, isLoading, error } = useUser();
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-foreground text-2xl font-bold">Profile</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Manage your public profile information
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-foreground text-2xl font-bold">Profile</h1>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Manage your public profile information
+          </p>
+        </div>
+        {user?.developerProfile?.publicSlug && (
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/developers/${user.developerProfile.publicSlug}`}>
+              View public profile
+              <ExternalLink className="h-3.5 w-3.5" />
+            </Link>
+          </Button>
+        )}
       </div>
 
       <Card className="shadow-sm">
