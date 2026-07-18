@@ -3,6 +3,7 @@
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/app-sidebar';
 import { TopNavbar } from '@/components/top-navbar';
+import { ChatWidget } from '@/components/chat/chat-widget';
 
 export default function DashboardLayout({
   children,
@@ -22,6 +23,7 @@ export default function DashboardLayout({
         <main className="min-h-0 flex-1 overflow-y-auto bg-gray-50 p-6 [&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-track]:bg-white hover:[&::-webkit-scrollbar-thumb]:bg-gray-400">
           {children}
         </main>
+        <ChatWidget />
       </SidebarInset>
     </SidebarProvider>
   );

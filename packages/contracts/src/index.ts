@@ -11,5 +11,6 @@ export * from './stock';
 export * from './inquiries';
 export * from './my-inquiries';
 export * from './stats';
+export * from './chat';
 export * from './audit';
 export * from './profile';
