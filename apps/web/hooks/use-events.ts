@@ -2,15 +2,25 @@
 
 import useSWR, { mutate } from 'swr';
 import { useCallback } from 'react';
-import { apiPatch, apiPost } from '@/lib/api';
+import { apiDelete, apiPatch, apiPost } from '@/lib/api';
 import type {
   EventAttendanceUpdateRequest,
   EventAttendanceUpdateResponse,
   EventAttendeeListResponse,
+  EventCreateRequest,
   EventDetailResponse,
   EventListResponse,
   EventRegisterResponse,
+  EventUpdateRequest,
 } from '@repo/contracts';
+
+function invalidateEvents() {
+  return mutate(
+    (key) => typeof key === 'string' && key.startsWith('/events'),
+    undefined,
+    { revalidate: true },
+  );
+}
 
 interface UseEventsOptions {
   enabled?: boolean;
@@ -23,6 +33,7 @@ interface UseEventsReturn {
   total: number | undefined;
   isLoading: boolean;
   error: Error | undefined;
+  create: (body: EventCreateRequest) => Promise<EventDetailResponse>;
   mutate: () => void;
 }
 
@@ -44,11 +55,18 @@ export function useEvents(options: UseEventsOptions = {}): UseEventsReturn {
     mutate: swrMutate,
   } = useSWR<EventListResponse>(enabled ? endpoint : null);
 
+  const create = useCallback(async (body: EventCreateRequest) => {
+    const result = await apiPost<EventDetailResponse>('/events', body);
+    await invalidateEvents();
+    return result;
+  }, []);
+
   return {
     events: data?.events,
     total: data?.total,
     isLoading,
     error,
+    create,
     mutate: swrMutate,
   };
 }
@@ -62,6 +80,9 @@ interface UseEventReturn {
   isLoading: boolean;
   error: Error | undefined;
   register: () => Promise<EventRegisterResponse>;
+  update: (body: EventUpdateRequest) => Promise<EventDetailResponse>;
+  cancel: () => Promise<EventDetailResponse>;
+  remove: () => Promise<void>;
   mutate: () => void;
 }
 
@@ -80,26 +101,45 @@ export function useEvent(
 
   const invalidateAll = useCallback(() => {
     swrMutate();
-    mutate(
-      (key) => typeof key === 'string' && key.startsWith('/events'),
-      undefined,
-      { revalidate: true },
-    );
+    return invalidateEvents();
   }, [swrMutate]);
 
   const register = useCallback(async () => {
     const result = await apiPost<EventRegisterResponse>(
       `/events/${id}/register`,
     );
-    invalidateAll();
+    await invalidateAll();
     return result;
   }, [id, invalidateAll]);
+
+  const update = useCallback(
+    async (body: EventUpdateRequest) => {
+      const result = await apiPatch<EventDetailResponse>(`/events/${id}`, body);
+      await invalidateAll();
+      return result;
+    },
+    [id, invalidateAll],
+  );
+
+  const cancel = useCallback(async () => {
+    const result = await apiPost<EventDetailResponse>(`/events/${id}/cancel`);
+    await invalidateAll();
+    return result;
+  }, [id, invalidateAll]);
+
+  const remove = useCallback(async () => {
+    await apiDelete(`/events/${id}`);
+    await invalidateEvents();
+  }, [id]);
 
   return {
     event: data,
     isLoading,
     error,
     register,
+    update,
+    cancel,
+    remove,
     mutate: swrMutate,
   };
 }
@@ -137,11 +177,7 @@ export function useEventAttendees(
 
   const invalidateAll = useCallback(() => {
     swrMutate();
-    mutate(
-      (key) => typeof key === 'string' && key.startsWith('/events'),
-      undefined,
-      { revalidate: true },
-    );
+    return invalidateEvents();
   }, [swrMutate]);
 
   const updateAttendance = useCallback(
@@ -150,7 +186,13 @@ export function useEventAttendees(
         `/events/${eventId}/attendees/${userId}/attendance`,
         body,
       );
-      invalidateAll();
+      await invalidateAll();
+      await mutate(
+        (key) =>
+          typeof key === 'string' && key.startsWith(`/stats/events/${eventId}`),
+        undefined,
+        { revalidate: true },
+      );
       return result;
     },
     [eventId, invalidateAll],

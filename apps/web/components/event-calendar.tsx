@@ -288,11 +288,13 @@ export function EventCalendar({
                           key={event.id}
                           className={cn(
                             'h-1.5 flex-1 rounded-full',
-                            event.hostedByMe
-                              ? 'bg-blue-600'
-                              : event.isUpcoming === false
-                                ? 'bg-gray-400'
-                                : 'bg-primary-base',
+                            event.status === 'CANCELLED'
+                              ? 'bg-error'
+                              : event.hostedByMe
+                                ? 'bg-blue-600'
+                                : event.isUpcoming === false
+                                  ? 'bg-gray-400'
+                                  : 'bg-primary-base',
                           )}
                         />
                       ))}
@@ -330,7 +332,7 @@ export function EventCalendar({
             </DialogTitle>
             <DialogDescription>
               {selectedEvents.length}{' '}
-              {selectedEvents.length === 1 ? 'event' : 'events'} scheduled
+              {selectedEvents.length === 1 ? 'event' : 'events'}
             </DialogDescription>
           </DialogHeader>
 
@@ -360,11 +362,18 @@ export function EventCalendar({
                       </span>
                     )}
                   </p>
-                  {event.isRegistered && (
-                    <span className="mt-2 inline-flex rounded-full bg-primary-100 px-2 py-0.5 text-xs font-medium text-primary-base">
-                      Registered
-                    </span>
-                  )}
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {event.status === 'CANCELLED' && (
+                      <span className="inline-flex rounded-full bg-error/10 px-2 py-0.5 text-xs font-medium text-error">
+                        Cancelled
+                      </span>
+                    )}
+                    {event.isRegistered && (
+                      <span className="inline-flex rounded-full bg-primary-100 px-2 py-0.5 text-xs font-medium text-primary-base">
+                        Registered
+                      </span>
+                    )}
+                  </div>
                 </button>
               </li>
             ))}

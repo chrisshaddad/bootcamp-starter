@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { dateSchema } from '../common';
+import { eventStatusSchema } from './event-status.schema';
 
 export const eventDetailResponseSchema = z.object({
   id: z.uuid(),
@@ -7,6 +8,7 @@ export const eventDetailResponseSchema = z.object({
   presenterId: z.uuid().nullable(),
   organizationId: z.uuid(),
   startsAt: dateSchema,
+  status: eventStatusSchema,
   createdAt: dateSchema,
   updatedAt: dateSchema,
   isRegistered: z.boolean(),

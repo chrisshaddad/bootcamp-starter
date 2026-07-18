@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { dateSchema } from '../common';
+import { eventStatusSchema } from './event-status.schema';
 
 const eventPresenterSchema = z.object({
   id: z.uuid(),
@@ -12,6 +13,7 @@ export const eventSchema = z.object({
   presenterId: z.uuid().nullable(),
   organizationId: z.uuid(),
   startsAt: dateSchema,
+  status: eventStatusSchema,
   isRegistered: z.boolean().optional(),
   isUpcoming: z.boolean().optional(),
   hostedByMe: z.boolean().optional(),

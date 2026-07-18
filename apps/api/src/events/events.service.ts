@@ -13,11 +13,18 @@ import type {
   EventAttendanceUpdateRequest,
   EventAttendanceUpdateResponse,
   EventAttendeeListResponse,
+  EventCreateRequest,
   EventDetailResponse,
   EventListQuery,
   EventListResponse,
   EventRegisterResponse,
+  EventUpdateRequest,
+  PublicEventDetailResponse,
+  PublicEventListQuery,
+  PublicEventListResponse,
 } from '@repo/contracts';
+
+type EventStatusValue = 'SCHEDULED' | 'CANCELLED';
 
 @Injectable()
 export class EventsService {
@@ -31,6 +38,7 @@ export class EventsService {
     presenterId: true,
     organizationId: true,
     startsAt: true,
+    status: true,
     createdAt: true,
     updatedAt: true,
     presenter: {
@@ -108,15 +116,39 @@ export class EventsService {
     return null;
   }
 
+  private async assertPresenterInOrganization(
+    presenterId: string,
+    organizationId: string,
+  ): Promise<void> {
+    const presenter = await this.prisma.member.findFirst({
+      where: {
+        id: presenterId,
+        organizationId,
+      },
+      select: { id: true },
+    });
+
+    if (!presenter) {
+      throw new BadRequestException(
+        'Presenter must be a member of the same organization',
+      );
+    }
+  }
+
   private async evaluateRegistrationEligibility(
     user: Pick<User, 'id' | 'role'>,
     event: {
       organizationId: string;
       startsAt: Date;
       presenterId: string | null;
+      status: EventStatusValue;
     },
   ): Promise<boolean> {
     if (user.role !== 'MEMBER') {
+      return false;
+    }
+
+    if (event.status === 'CANCELLED') {
       return false;
     }
 
@@ -150,11 +182,18 @@ export class EventsService {
       organizationId: string;
       startsAt: Date;
       presenterId: string | null;
+      status: EventStatusValue;
     },
   ): Promise<void> {
     if (user.role !== 'MEMBER') {
       throw new ForbiddenException(
         'Only organization members can register as event attendees',
+      );
+    }
+
+    if (event.status === 'CANCELLED') {
+      throw new BadRequestException(
+        'Registration is not available for cancelled events',
       );
     }
 
@@ -191,6 +230,7 @@ export class EventsService {
       organizationId: string;
       startsAt: Date;
       presenterId: string | null;
+      status: EventStatusValue;
     },
   ): Promise<boolean> {
     return this.evaluateRegistrationEligibility(user, event);
@@ -249,6 +289,7 @@ export class EventsService {
         organizationId: true,
         presenterId: true,
         startsAt: true,
+        status: true,
       },
     });
 
@@ -257,6 +298,45 @@ export class EventsService {
     }
 
     return event;
+  }
+
+  private async toDetailResponse(
+    event: {
+      id: string;
+      eventName: string;
+      presenterId: string | null;
+      organizationId: string;
+      startsAt: Date;
+      status: EventStatusValue;
+      createdAt: Date;
+      updatedAt: Date;
+      presenter: { id: string; username: string } | null;
+      _count: { attendees: number };
+    },
+    user: User,
+  ): Promise<EventDetailResponse> {
+    const registration = await this.prisma.eventAttendee.findFirst({
+      where: {
+        eventId: event.id,
+        userId: user.id,
+      },
+    });
+
+    const { presenter, _count, ...rest } = event;
+    const isRegistered = !!registration;
+    const isUpcoming = this.isUpcoming(event.startsAt);
+    const canManageAttendance = await this.canManageAttendance(user, event);
+
+    return {
+      ...rest,
+      presenter: presenter ?? null,
+      isRegistered,
+      isUpcoming,
+      canRegister: !isRegistered && (await this.canUserRegister(user, event)),
+      canManageAttendance,
+      canUpdateAttendance: canManageAttendance && !isUpcoming,
+      attendeeCount: _count.attendees,
+    };
   }
 
   private async getRegisteredEventIds(
@@ -276,6 +356,103 @@ export class EventsService {
     });
 
     return new Set(registrations.map((registration) => registration.eventId));
+  }
+
+  async findPublicAll(
+    query: PublicEventListQuery,
+  ): Promise<PublicEventListResponse> {
+    const { page = 1, limit = 20, organizationId } = query;
+    const skip = (page - 1) * limit;
+    const now = new Date();
+
+    const where = {
+      status: 'SCHEDULED' as const,
+      startsAt: { gt: now },
+      ...(organizationId ? { organizationId } : {}),
+    };
+
+    const [rows, total] = await Promise.all([
+      this.prisma.event.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { startsAt: 'asc' },
+        select: {
+          id: true,
+          eventName: true,
+          startsAt: true,
+          organizationId: true,
+          organization: {
+            select: {
+              name: true,
+            },
+          },
+          presenter: {
+            select: {
+              id: true,
+              username: true,
+            },
+          },
+        },
+      }),
+      this.prisma.event.count({ where }),
+    ]);
+
+    this.logger.log(`Listed ${rows.length} public events (total: ${total})`);
+
+    return {
+      events: rows.map(({ organization, presenter, ...event }) => ({
+        ...event,
+        organizationName: organization.name,
+        presenter: presenter ?? null,
+      })),
+      total,
+    };
+  }
+
+  async findPublicOne(id: string): Promise<PublicEventDetailResponse> {
+    const event = await this.prisma.event.findFirst({
+      where: {
+        id,
+        status: 'SCHEDULED',
+        startsAt: { gt: new Date() },
+      },
+      select: {
+        id: true,
+        eventName: true,
+        startsAt: true,
+        organizationId: true,
+        organization: {
+          select: {
+            name: true,
+          },
+        },
+        presenter: {
+          select: {
+            id: true,
+            username: true,
+          },
+        },
+        _count: {
+          select: {
+            attendees: true,
+          },
+        },
+      },
+    });
+
+    if (!event) {
+      throw new NotFoundException(`Event with ID ${id} not found`);
+    }
+
+    const { organization, presenter, _count, ...rest } = event;
+
+    return {
+      ...rest,
+      organizationName: organization.name,
+      presenter: presenter ?? null,
+      attendeeCount: _count.attendees,
+    };
   }
 
   async findAll(query: EventListQuery, user: User): Promise<EventListResponse> {
@@ -319,6 +496,7 @@ export class EventsService {
           presenterId: true,
           organizationId: true,
           startsAt: true,
+          status: true,
           presenter: {
             select: {
               id: true,
@@ -373,28 +551,96 @@ export class EventsService {
       throw new NotFoundException(`Event with ID ${id} not found`);
     }
 
-    const registration = await this.prisma.eventAttendee.findFirst({
-      where: {
-        eventId: id,
-        userId: user.id,
+    return this.toDetailResponse(event, user);
+  }
+
+  async create(
+    body: EventCreateRequest,
+    user: User,
+  ): Promise<EventDetailResponse> {
+    const organizationId = resolveOrganizationScope(user, body.organizationId);
+
+    if (!organizationId) {
+      throw new BadRequestException(
+        'organizationId is required when creating an event',
+      );
+    }
+
+    if (body.presenterId) {
+      await this.assertPresenterInOrganization(
+        body.presenterId,
+        organizationId,
+      );
+    }
+
+    const event = await this.prisma.event.create({
+      data: {
+        eventName: body.eventName,
+        startsAt: new Date(body.startsAt),
+        organizationId,
+        presenterId: body.presenterId ?? null,
+        status: 'SCHEDULED',
       },
+      select: this.eventSelect,
     });
 
-    const { presenter, _count, ...rest } = event;
-    const isRegistered = !!registration;
-    const isUpcoming = this.isUpcoming(event.startsAt);
-    const canManageAttendance = await this.canManageAttendance(user, event);
+    this.logger.log(`Created event ${event.id} in org ${organizationId}`);
+    return this.toDetailResponse(event, user);
+  }
 
-    return {
-      ...rest,
-      presenter: presenter ?? null,
-      isRegistered,
-      isUpcoming,
-      canRegister: !isRegistered && (await this.canUserRegister(user, event)),
-      canManageAttendance,
-      canUpdateAttendance: canManageAttendance && !isUpcoming,
-      attendeeCount: _count.attendees,
-    };
+  async update(
+    id: string,
+    body: EventUpdateRequest,
+    user: User,
+  ): Promise<EventDetailResponse> {
+    const scoped = await this.getScopedEvent(id, user);
+
+    if (body.presenterId) {
+      await this.assertPresenterInOrganization(
+        body.presenterId,
+        scoped.organizationId,
+      );
+    }
+
+    const event = await this.prisma.event.update({
+      where: { id: scoped.id },
+      data: {
+        ...(body.eventName !== undefined ? { eventName: body.eventName } : {}),
+        ...(body.startsAt !== undefined
+          ? { startsAt: new Date(body.startsAt) }
+          : {}),
+        ...(body.presenterId !== undefined
+          ? { presenterId: body.presenterId }
+          : {}),
+      },
+      select: this.eventSelect,
+    });
+
+    this.logger.log(`Updated event ${event.id}`);
+    return this.toDetailResponse(event, user);
+  }
+
+  async cancel(id: string, user: User): Promise<EventDetailResponse> {
+    const scoped = await this.getScopedEvent(id, user);
+
+    const event = await this.prisma.event.update({
+      where: { id: scoped.id },
+      data: { status: 'CANCELLED' },
+      select: this.eventSelect,
+    });
+
+    this.logger.log(`Cancelled event ${event.id}`);
+    return this.toDetailResponse(event, user);
+  }
+
+  async remove(id: string, user: User): Promise<void> {
+    const scoped = await this.getScopedEvent(id, user);
+
+    await this.prisma.event.delete({
+      where: { id: scoped.id },
+    });
+
+    this.logger.log(`Deleted event ${scoped.id}`);
   }
 
   async findAttendees(
