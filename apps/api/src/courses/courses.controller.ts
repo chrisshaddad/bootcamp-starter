@@ -8,7 +8,7 @@ import {
   Patch,
 } from '@nestjs/common';
 import type {
-  CourseActionResponse,
+  DeleteCourseResponse,
   CourseListResponse,
   UpdateCourseRequest,
   UpdateCourseResponse,
@@ -49,7 +49,7 @@ export class CoursesController {
     organizationId: string,
     @Param('courseId', new ParseUUIDPipe({ version: '4' }))
     courseId: string,
-  ): Promise<CourseActionResponse> {
+  ): Promise<DeleteCourseResponse> {
     return this.coursesService.deleteCourse(organizationId, courseId);
   }
 }

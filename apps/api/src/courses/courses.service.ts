@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type {
-  CourseActionResponse,
+  DeleteCourseResponse,
   CourseListItem,
   CourseListResponse,
   UpdateCourseRequest,
@@ -223,7 +223,7 @@ export class CoursesService {
   async deleteCourse(
     organizationId: string,
     courseId: string,
-  ): Promise<CourseActionResponse> {
+  ): Promise<DeleteCourseResponse> {
     const course = await this.prisma.course.findFirst({
       where: {
         id: courseId,

@@ -18,7 +18,7 @@ import {
 import { toast } from 'sonner';
 import {
   UpdateCourseRequestSchema,
-  type CourseActionResponse,
+  type DeleteCourseResponse,
   type CourseListItem,
   type CourseListResponse,
   type TeacherOrganizationsResponse,
@@ -190,7 +190,7 @@ export default function CoursesPage() {
     setIsDeleting(true);
 
     try {
-      await apiDelete<CourseActionResponse>(
+      await apiDelete<DeleteCourseResponse>(
         `/courses/organizations/${organizationId}/courses/${deletingCourse.id}`,
       );
 
