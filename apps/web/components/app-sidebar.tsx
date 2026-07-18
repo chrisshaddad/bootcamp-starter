@@ -42,11 +42,6 @@ const orgNavItems: NavItem[] = [
     icon: LayoutDashboard,
   },
   {
-    title: 'Courses',
-    url: '/courses',
-    icon: BookOpen,
-  },
-  {
     title: 'Assignments',
     url: '/teacher/assignments',
     icon: ClipboardList,
@@ -58,6 +53,11 @@ const superAdminNavItems: NavItem[] = [
     title: 'Organizations',
     url: '/organizations',
     icon: Building2,
+  },
+  {
+    title: 'Courses',
+    url: '/courses',
+    icon: BookOpen,
   },
   {
     title: 'Users',
