@@ -173,10 +173,45 @@ export class ProjectsController {
 
     return {
       data: result.data.map((project) => ({
-        ...project,
+        id: project.id,
+        title: project.title,
+        slug: project.slug,
+        logoUrl: project.logoUrl,
+        shortDescription: project.shortDescription,
+        fullDescription: project.fullDescription,
+        deploymentUrl: project.deploymentUrl,
+        status: project.status,
         createdAt: project.createdAt.toISOString(),
         updatedAt: project.updatedAt.toISOString(),
         publishedAt: project.publishedAt?.toISOString() ?? null,
+        repositoryUrl: project.repository?.htmlUrl ?? null,
+        createdBy: project.createdBy
+          ? {
+              id: project.createdBy.id,
+              displayName:
+                project.createdBy.developerProfile?.displayName ??
+                project.createdBy.email.split('@')[0] ??
+                project.createdBy.email,
+              headline: project.createdBy.developerProfile?.headline ?? null,
+              profilePictureUrl:
+                project.createdBy.developerProfile?.profilePictureUrl ?? null,
+              githubUsername:
+                project.createdBy.developerProfile?.githubUsername ?? null,
+            }
+          : null,
+        technologies: project.technologies.map((pt) => pt.technology),
+        contributors: project.members
+          .filter((member) => member.user !== null)
+          .map((member) => ({
+            id: member.user!.id,
+            displayName:
+              member.user!.developerProfile?.displayName ??
+              member.user!.email.split('@')[0] ??
+              member.user!.email,
+            profilePictureUrl:
+              member.user!.developerProfile?.profilePictureUrl ?? null,
+          })),
+        contributorCount: project._count.members,
       })),
       meta: result.meta,
     };

@@ -162,12 +162,14 @@ export function useExploreProjects(query?: {
   limit?: number;
   search?: string;
   sort?: 'latest' | 'oldest' | 'alphabetical';
+  technology?: string;
 }) {
   const params = new URLSearchParams();
   if (query?.page) params.append('page', query.page.toString());
   if (query?.limit) params.append('limit', query.limit.toString());
   if (query?.search) params.append('search', query.search);
   if (query?.sort) params.append('sort', query.sort);
+  if (query?.technology) params.append('technology', query.technology);
 
   const queryString = params.toString() ? `?${params.toString()}` : '';
   const { data, error, isLoading } = useSWR<ExploreProjectsResponse>(

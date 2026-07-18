@@ -6,6 +6,7 @@ export const projectsExploreQuerySchema = z.object({
   search: z.string().optional(),
   sort: z.enum(['latest', 'oldest', 'alphabetical']).default('latest'),
   userId: z.string().optional(), // Add this line
+  technology: z.string().optional(),
 });
 
 export type ProjectsExploreQuery = z.infer<typeof projectsExploreQuerySchema>;

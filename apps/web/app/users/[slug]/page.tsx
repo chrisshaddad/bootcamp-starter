@@ -14,15 +14,14 @@ import { fetcher, ApiError } from '@/lib/api';
 import type {
   ExploreUsersResponse,
   ExploreProjectsResponse,
-  // 1. Import the media and tech types from your contracts
+  // 1. Import the media type from your contracts (technologies already
+  // ship flat on ExploreProjectsResponse['data'][number])
   PublicProjectMediaResponse,
-  ProjectTechnologyResponse,
 } from '@repo/contracts';
 
-// 2. Create a local type merging the base project with media/tech arrays
+// 2. Create a local type merging the base project with a media array
 type PortfolioProject = ExploreProjectsResponse['data'][number] & {
   media?: PublicProjectMediaResponse[];
-  technologies?: ProjectTechnologyResponse[];
 };
 
 const THUMB_GRADIENTS = [
@@ -102,9 +101,9 @@ export default function UserPortfolioPage() {
     const titleMatches = project.title?.toLowerCase().includes(query);
     const descMatches = project.shortDescription?.toLowerCase().includes(query);
 
-    // 4. TypeScript now knows `project.technologies` is an array of `ProjectTechnologyResponse`
-    const techMatches = project.technologies?.some((pt) =>
-      pt.technology?.name?.toLowerCase().includes(query),
+    // 4. `project.technologies` is a flat array of `TechnologyResponse`
+    const techMatches = project.technologies?.some((tech) =>
+      tech.name?.toLowerCase().includes(query),
     );
 
     return titleMatches || descMatches || techMatches;
