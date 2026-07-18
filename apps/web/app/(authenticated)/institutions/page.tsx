@@ -132,7 +132,7 @@ function CreateInstitutionDialog() {
             <Label htmlFor="type">Type</Label>
             <select
               id="type"
-              className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm"
+              className="h-10 w-full rounded-md border border-border bg-card px-3 text-sm"
               {...register('type')}
             >
               <option value="CLINIC">Clinic</option>
@@ -220,8 +220,8 @@ export default function InstitutionsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Institutions</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-foreground">Institutions</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Manage institution registrations and approvals
           </p>
         </div>
@@ -253,7 +253,7 @@ export default function InstitutionsPage() {
             <Building2 className="h-5 w-5" />
             Institutions
             {total !== undefined && (
-              <span className="text-sm font-normal text-gray-500">
+              <span className="text-sm font-normal text-muted-foreground">
                 ({total} total)
               </span>
             )}
@@ -271,7 +271,7 @@ export default function InstitutionsPage() {
               Failed to load institutions
             </div>
           ) : !institutions?.length ? (
-            <div className="py-10 text-center text-gray-500">
+            <div className="py-10 text-center text-muted-foreground">
               No institutions found
             </div>
           ) : (
@@ -297,27 +297,27 @@ export default function InstitutionsPage() {
                     <TableCell>
                       <Link
                         href={`/institutions/${institution.id}`}
-                        className="font-medium text-gray-900 hover:underline"
+                        className="font-medium text-foreground hover:underline"
                         onClick={(e) => e.stopPropagation()}
                       >
                         {institution.name}
                       </Link>
                       {institution.address && (
-                        <div className="text-sm text-gray-500">
+                        <div className="text-sm text-muted-foreground">
                           {institution.address}
                         </div>
                       )}
                     </TableCell>
-                    <TableCell className="text-gray-600">
+                    <TableCell className="text-muted-foreground">
                       {institution.type}
                     </TableCell>
                     <TableCell>
                       <StatusBadge status={institution.status} />
                     </TableCell>
-                    <TableCell className="text-gray-600">
+                    <TableCell className="text-muted-foreground">
                       {institution._count.users}
                     </TableCell>
-                    <TableCell className="text-gray-500 text-sm">
+                    <TableCell className="text-muted-foreground text-sm">
                       {new Date(institution.createdAt).toLocaleDateString()}
                     </TableCell>
                   </TableRow>

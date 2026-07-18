@@ -27,8 +27,8 @@ function DetailRow({
   if (value === null || value === undefined || value === '') return null;
   return (
     <div className="flex justify-between gap-4 py-1.5 text-sm">
-      <span className="text-gray-500">{label}</span>
-      <span className="text-right font-medium text-gray-900">{value}</span>
+      <span className="text-muted-foreground">{label}</span>
+      <span className="text-right font-medium text-foreground">{value}</span>
     </div>
   );
 }
@@ -180,25 +180,25 @@ export function RecordDetailDialog({
 
             {record.prescription && (
               <div>
-                <div className="mb-2 text-sm font-medium text-gray-700">
+                <div className="mb-2 text-sm font-medium text-foreground">
                   Medications ({fmt(record.prescription.prescriptionDate)})
                 </div>
                 <div className="space-y-2">
                   {record.prescription.items.map((item) => (
                     <div
                       key={item.id}
-                      className="rounded-md border border-gray-100 bg-gray-50 p-3 text-sm"
+                      className="rounded-md border border-border bg-muted p-3 text-sm"
                     >
-                      <div className="font-medium text-gray-900">
+                      <div className="font-medium text-foreground">
                         {item.medicationName}
                       </div>
-                      <div className="text-gray-600">
+                      <div className="text-muted-foreground">
                         {item.dosage} · {item.frequency}
                         {item.duration ? ` · ${item.duration}` : ''} ·{' '}
                         {item.route}
                       </div>
                       {item.notes && (
-                        <div className="mt-1 text-gray-500">{item.notes}</div>
+                        <div className="mt-1 text-muted-foreground">{item.notes}</div>
                       )}
                     </div>
                   ))}
@@ -208,12 +208,12 @@ export function RecordDetailDialog({
 
             {/* Attachments */}
             <div>
-              <div className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
+              <div className="mb-2 flex items-center gap-2 text-sm font-medium text-foreground">
                 <Paperclip className="h-4 w-4" />
                 Attachments
               </div>
               {record.files.length === 0 ? (
-                <p className="text-sm text-gray-400">No attachments</p>
+                <p className="text-sm text-muted-foreground">No attachments</p>
               ) : (
                 <ul className="space-y-1">
                   {record.files.map((f) => (
@@ -233,7 +233,7 @@ export function RecordDetailDialog({
               )}
 
               {canUpload && (
-                <label className="mt-3 inline-flex cursor-pointer items-center gap-2 text-sm text-gray-600 hover:text-gray-900">
+                <label className="mt-3 inline-flex cursor-pointer items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
                   <Upload className="h-4 w-4" />
                   {uploading ? 'Uploading...' : 'Attach a file'}
                   <input

@@ -78,10 +78,10 @@ export default function PatientDetailPage() {
 
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-foreground">
             {patient.fullName}
           </h1>
-          <p className="mt-1 text-sm text-gray-500">{patient.email}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{patient.email}</p>
         </div>
         <StatusBadge status={patient.isActive ? 'ACTIVE' : 'INACTIVE'} />
       </div>

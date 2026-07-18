@@ -147,7 +147,7 @@ function CreateUserDialog() {
             <Label htmlFor="role">Role</Label>
             <select
               id="role"
-              className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm"
+              className="h-10 w-full rounded-md border border-border bg-card px-3 text-sm"
               {...register('role')}
             >
               <option value="STAFF">Staff</option>
@@ -342,8 +342,8 @@ export default function UsersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Staff & Doctors</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-foreground">Staff & Doctors</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Manage staff and professional accounts
           </p>
         </div>
@@ -371,7 +371,7 @@ export default function UsersPage() {
             <UsersIcon className="h-5 w-5" />
             Users
             {total !== undefined && (
-              <span className="text-sm font-normal text-gray-500">
+              <span className="text-sm font-normal text-muted-foreground">
                 ({total} total)
               </span>
             )}
@@ -389,7 +389,7 @@ export default function UsersPage() {
               Failed to load users
             </div>
           ) : !users?.length ? (
-            <div className="py-10 text-center text-gray-500">
+            <div className="py-10 text-center text-muted-foreground">
               No users found
             </div>
           ) : (
@@ -407,16 +407,16 @@ export default function UsersPage() {
                 {users.map((u) => (
                   <TableRow key={u.id}>
                     <TableCell>
-                      <div className="font-medium text-gray-900">
+                      <div className="font-medium text-foreground">
                         {u.fullName}
                       </div>
-                      <div className="text-sm text-gray-500">{u.email}</div>
+                      <div className="text-sm text-muted-foreground">{u.email}</div>
                     </TableCell>
-                    <TableCell className="text-gray-600">
+                    <TableCell className="text-muted-foreground">
                       {ROLE_LABELS[u.role] || u.role}
                     </TableCell>
-                    <TableCell className="text-gray-600">
-                      {u.specialty || <span className="text-gray-400">—</span>}
+                    <TableCell className="text-muted-foreground">
+                      {u.specialty || <span className="text-muted-foreground">—</span>}
                     </TableCell>
                     <TableCell>
                       <StatusBadge

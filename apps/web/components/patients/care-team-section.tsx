@@ -133,7 +133,7 @@ export function CareTeamSection({ patient, canManage, onChange }: Props) {
       </CardHeader>
       <CardContent>
         {!patient.careTeam.length ? (
-          <p className="py-4 text-center text-sm text-gray-500">
+          <p className="py-4 text-center text-sm text-muted-foreground">
             No professionals assigned yet
           </p>
         ) : (
@@ -144,10 +144,10 @@ export function CareTeamSection({ patient, canManage, onChange }: Props) {
                 className="flex items-center justify-between py-3"
               >
                 <div>
-                  <div className="font-medium text-gray-900">
+                  <div className="font-medium text-foreground">
                     {member.fullName}
                   </div>
-                  <div className="text-sm text-gray-500">
+                  <div className="text-sm text-muted-foreground">
                     {member.specialty || 'Professional'} · {member.phone}
                   </div>
                 </div>
@@ -155,7 +155,7 @@ export function CareTeamSection({ patient, canManage, onChange }: Props) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-gray-400 hover:text-error"
+                    className="h-8 w-8 text-muted-foreground hover:text-error"
                     onClick={() => onRemove(member.assignmentId)}
                   >
                     <X className="h-4 w-4" />

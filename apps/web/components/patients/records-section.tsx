@@ -18,11 +18,11 @@ const RECORD_TYPE_LABELS: Record<RecordType, string> = {
 };
 
 const TYPE_COLORS: Record<RecordType, string> = {
-  LAB_RESULT: 'bg-blue-100 text-blue-800',
-  CONSULTATION: 'bg-purple-100 text-purple-800',
-  PRESCRIPTION: 'bg-green-100 text-green-800',
-  SCAN: 'bg-orange-100 text-orange-800',
-  VACCINATION: 'bg-teal-100 text-teal-800',
+  LAB_RESULT: 'bg-blue text-white',
+  CONSULTATION: 'bg-purple text-white',
+  PRESCRIPTION: 'bg-success-light text-success-dark',
+  SCAN: 'bg-orange text-white',
+  VACCINATION: 'bg-secondary text-secondary-foreground',
 };
 
 interface Props {
@@ -61,13 +61,13 @@ export function RecordsSection({ patientId, canAdd }: Props) {
             Failed to load records
           </div>
         ) : !records?.length ? (
-          <div className="py-8 text-center text-gray-500">No records yet</div>
+          <div className="py-8 text-center text-muted-foreground">No records yet</div>
         ) : (
           <ul className="divide-y divide-gray-100">
             {records.map((r) => (
               <li
                 key={r.id}
-                className="flex cursor-pointer items-center justify-between py-3 transition-colors hover:bg-gray-50"
+                className="flex cursor-pointer items-center justify-between py-3 transition-colors hover:bg-muted"
                 onClick={() => openRecord(r.id)}
               >
                 <div className="flex items-center gap-3">
@@ -77,15 +77,15 @@ export function RecordsSection({ patientId, canAdd }: Props) {
                     {RECORD_TYPE_LABELS[r.recordType]}
                   </span>
                   <div>
-                    <div className="font-medium text-gray-900">{r.title}</div>
-                    <div className="text-sm text-gray-500">
+                    <div className="font-medium text-foreground">{r.title}</div>
+                    <div className="text-sm text-muted-foreground">
                       {new Date(r.recordDate).toLocaleDateString()} ·{' '}
                       {r.uploadedByName}
                     </div>
                   </div>
                 </div>
                 {r.fileCount > 0 && (
-                  <span className="flex items-center gap-1 text-xs text-gray-400">
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Paperclip className="h-3.5 w-3.5" />
                     {r.fileCount}
                   </span>

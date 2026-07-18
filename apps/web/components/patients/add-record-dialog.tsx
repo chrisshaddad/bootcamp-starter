@@ -280,7 +280,7 @@ export function AddRecordDialog({ createRecord }: Props) {
               <Label htmlFor="rec-type">Record Type</Label>
               <select
                 id="rec-type"
-                className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm"
+                className="h-10 w-full rounded-md border border-border bg-card px-3 text-sm"
                 value={recordType}
                 onChange={(e) => setRecordType(e.target.value as RecordType)}
               >
@@ -305,7 +305,7 @@ export function AddRecordDialog({ createRecord }: Props) {
 
           {/* Type-specific fields */}
           {recordType === 'LAB_RESULT' && (
-            <div className="space-y-4 rounded-lg border border-gray-100 p-4">
+            <div className="space-y-4 rounded-lg border border-border p-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="lab-testName">Test Name</Label>
@@ -343,7 +343,7 @@ export function AddRecordDialog({ createRecord }: Props) {
           )}
 
           {recordType === 'CONSULTATION' && (
-            <div className="space-y-4 rounded-lg border border-gray-100 p-4">
+            <div className="space-y-4 rounded-lg border border-border p-4">
               <div className="space-y-2">
                 <Label htmlFor="con-cc">Chief Complaint</Label>
                 <Input
@@ -402,13 +402,13 @@ export function AddRecordDialog({ createRecord }: Props) {
           )}
 
           {recordType === 'SCAN' && (
-            <div className="space-y-4 rounded-lg border border-gray-100 p-4">
+            <div className="space-y-4 rounded-lg border border-border p-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="scan-modality">Modality</Label>
                   <select
                     id="scan-modality"
-                    className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm"
+                    className="h-10 w-full rounded-md border border-border bg-card px-3 text-sm"
                     value={scan.modalityType}
                     onChange={(e) =>
                       setScan({
@@ -460,7 +460,7 @@ export function AddRecordDialog({ createRecord }: Props) {
           )}
 
           {recordType === 'VACCINATION' && (
-            <div className="space-y-4 rounded-lg border border-gray-100 p-4">
+            <div className="space-y-4 rounded-lg border border-border p-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="vac-name">Vaccine Name</Label>
@@ -533,7 +533,7 @@ export function AddRecordDialog({ createRecord }: Props) {
           )}
 
           {recordType === 'PRESCRIPTION' && (
-            <div className="space-y-4 rounded-lg border border-gray-100 p-4">
+            <div className="space-y-4 rounded-lg border border-border p-4">
               <div className="space-y-2">
                 <Label htmlFor="pre-date">Prescription Date</Label>
                 <Input
@@ -548,10 +548,10 @@ export function AddRecordDialog({ createRecord }: Props) {
                 {lines.map((line, index) => (
                   <div
                     key={index}
-                    className="space-y-3 rounded-md border border-gray-100 bg-gray-50 p-3"
+                    className="space-y-3 rounded-md border border-border bg-muted p-3"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-700">
+                      <span className="text-sm font-medium text-foreground">
                         Medication {index + 1}
                       </span>
                       {lines.length > 1 && (
@@ -559,7 +559,7 @@ export function AddRecordDialog({ createRecord }: Props) {
                           type="button"
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 text-gray-400 hover:text-error"
+                          className="h-7 w-7 text-muted-foreground hover:text-error"
                           onClick={() =>
                             setLines(lines.filter((_, i) => i !== index))
                           }
@@ -601,7 +601,7 @@ export function AddRecordDialog({ createRecord }: Props) {
                         }
                       />
                       <select
-                        className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm"
+                        className="h-10 w-full rounded-md border border-border bg-card px-3 text-sm"
                         value={line.route}
                         onChange={(e) =>
                           updateLine(index, {

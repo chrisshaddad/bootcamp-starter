@@ -33,13 +33,13 @@ const BLOOD_TYPE_LABELS: Record<BloodType, string> = {
 };
 
 function Chips({ items }: { items: string[] }) {
-  if (!items.length) return <span className="text-gray-400">—</span>;
+  if (!items.length) return <span className="text-muted-foreground">—</span>;
   return (
     <div className="flex flex-wrap gap-1.5">
       {items.map((item) => (
         <span
           key={item}
-          className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700"
+          className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs text-foreground"
         >
           {item}
         </span>
@@ -116,31 +116,31 @@ export function ClinicalSection({ patient, canEdit, onSave }: Props) {
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
-          <div className="text-sm text-gray-500">Blood Type</div>
-          <div className="mt-0.5 text-sm font-medium text-gray-900">
+          <div className="text-sm text-muted-foreground">Blood Type</div>
+          <div className="mt-0.5 text-sm font-medium text-foreground">
             {patient.bloodType ? (
               BLOOD_TYPE_LABELS[patient.bloodType]
             ) : (
-              <span className="text-gray-400">—</span>
+              <span className="text-muted-foreground">—</span>
             )}
           </div>
         </div>
         <div>
-          <div className="text-sm text-gray-500">Allergies</div>
+          <div className="text-sm text-muted-foreground">Allergies</div>
           <div className="mt-1">
             <Chips items={patient.allergies} />
           </div>
         </div>
         <div>
-          <div className="text-sm text-gray-500">Chronic Conditions</div>
+          <div className="text-sm text-muted-foreground">Chronic Conditions</div>
           <div className="mt-1">
             <Chips items={patient.chronicConditions} />
           </div>
         </div>
         <div>
-          <div className="text-sm text-gray-500">Clinical Notes</div>
-          <div className="mt-0.5 whitespace-pre-wrap text-sm font-medium text-gray-900">
-            {patient.clinicalNotes || <span className="text-gray-400">—</span>}
+          <div className="text-sm text-muted-foreground">Clinical Notes</div>
+          <div className="mt-0.5 whitespace-pre-wrap text-sm font-medium text-foreground">
+            {patient.clinicalNotes || <span className="text-muted-foreground">—</span>}
           </div>
         </div>
       </CardContent>
@@ -155,7 +155,7 @@ export function ClinicalSection({ patient, canEdit, onSave }: Props) {
               <Label htmlFor="clin-bloodType">Blood Type</Label>
               <select
                 id="clin-bloodType"
-                className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm"
+                className="h-10 w-full rounded-md border border-border bg-card px-3 text-sm"
                 value={bloodType}
                 onChange={(e) => setBloodType(e.target.value)}
               >
@@ -193,7 +193,7 @@ export function ClinicalSection({ patient, canEdit, onSave }: Props) {
               <Label htmlFor="clin-notes">Clinical Notes</Label>
               <textarea
                 id="clin-notes"
-                className="min-h-24 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
+                className="min-h-24 w-full rounded-md border border-border bg-card px-3 py-2 text-sm"
                 value={clinicalNotes}
                 onChange={(e) => setClinicalNotes(e.target.value)}
               />

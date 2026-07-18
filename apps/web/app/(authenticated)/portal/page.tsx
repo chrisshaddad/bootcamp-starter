@@ -44,8 +44,8 @@ export default function PortalPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">My Health</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <h1 className="text-2xl font-bold text-foreground">My Health</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Your profile, care team, and medical records
         </p>
       </div>

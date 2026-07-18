@@ -83,7 +83,7 @@ function AdminInstitutionCard() {
   if (!institution) return null;
 
   return (
-    <Card className="border-gray-200 bg-white shadow-sm">
+    <Card className="border-border bg-card shadow-sm">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
           <Building2 className="h-5 w-5" />
@@ -92,7 +92,7 @@ function AdminInstitutionCard() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-muted-foreground">
           {institution.type} · {institution._count.users} member
           {institution._count.users === 1 ? '' : 's'}
         </p>
@@ -119,10 +119,10 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">
+        <h1 className="text-2xl font-bold text-foreground">
           Welcome, {user?.fullName || user?.email?.split('@')[0] || 'User'}!
         </h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <p className="mt-1 text-sm text-muted-foreground">
           Here&apos;s what you can do today.
         </p>
       </div>
@@ -132,7 +132,7 @@ export default function DashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {links.map((link) => (
           <Link key={link.href} href={link.href}>
-            <Card className="h-full border-gray-200 bg-white shadow-sm transition-colors hover:border-primary-300 hover:bg-primary-100/30">
+            <Card className="h-full border-border bg-card shadow-sm transition-colors hover:border-primary-300 hover:bg-primary-100/30">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <link.icon className="h-5 w-5 text-primary-base" />
@@ -140,7 +140,7 @@ export default function DashboardPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-gray-500">{link.description}</p>
+                <p className="text-sm text-muted-foreground">{link.description}</p>
               </CardContent>
             </Card>
           </Link>

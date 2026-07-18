@@ -128,7 +128,7 @@ function CreatePatientDialog() {
               <Label htmlFor="gender">Gender</Label>
               <select
                 id="gender"
-                className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm"
+                className="h-10 w-full rounded-md border border-border bg-card px-3 text-sm"
                 {...register('gender')}
               >
                 <option value="">—</option>
@@ -182,10 +182,10 @@ export default function PatientsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-foreground">
             {isProfessional ? 'My Patients' : 'Patients'}
           </h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-muted-foreground">
             {isProfessional
               ? 'Patients assigned to your care'
               : 'Manage patient records and care teams'}
@@ -208,7 +208,7 @@ export default function PatientsPage() {
             <UsersRound className="h-5 w-5" />
             Patients
             {total !== undefined && (
-              <span className="text-sm font-normal text-gray-500">
+              <span className="text-sm font-normal text-muted-foreground">
                 ({total} total)
               </span>
             )}
@@ -226,7 +226,7 @@ export default function PatientsPage() {
               Failed to load patients
             </div>
           ) : !patients?.length ? (
-            <div className="py-10 text-center text-gray-500">
+            <div className="py-10 text-center text-muted-foreground">
               No patients found
             </div>
           ) : (
@@ -247,15 +247,15 @@ export default function PatientsPage() {
                     onClick={() => router.push(`/patients/${p.id}`)}
                   >
                     <TableCell>
-                      <div className="font-medium text-gray-900">
+                      <div className="font-medium text-foreground">
                         {p.fullName}
                       </div>
-                      <div className="text-sm text-gray-500">{p.email}</div>
+                      <div className="text-sm text-muted-foreground">{p.email}</div>
                     </TableCell>
-                    <TableCell className="text-gray-600">
-                      {p.nationalId || <span className="text-gray-400">—</span>}
+                    <TableCell className="text-muted-foreground">
+                      {p.nationalId || <span className="text-muted-foreground">—</span>}
                     </TableCell>
-                    <TableCell className="text-gray-600">
+                    <TableCell className="text-muted-foreground">
                       {formatDate(p.dateOfBirth)}
                     </TableCell>
                     <TableCell>

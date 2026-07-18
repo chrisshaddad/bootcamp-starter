@@ -53,11 +53,11 @@ function InfoRow({
   value: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start gap-3 py-3 border-b border-gray-100 last:border-0">
-      <Icon className="h-5 w-5 text-gray-400 mt-0.5 shrink-0" />
+    <div className="flex items-start gap-3 py-3 border-b border-border last:border-0">
+      <Icon className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
       <div className="min-w-0 flex-1">
-        <div className="text-sm text-gray-500">{label}</div>
-        <div className="text-sm font-medium text-gray-900 mt-0.5">{value}</div>
+        <div className="text-sm text-muted-foreground">{label}</div>
+        <div className="text-sm font-medium text-foreground mt-0.5">{value}</div>
       </div>
     </div>
   );
@@ -136,7 +136,7 @@ export default function InstitutionDetailPage() {
   if (!institution) {
     return (
       <div className="py-10 text-center">
-        <div className="text-gray-500 mb-4">Institution not found</div>
+        <div className="text-muted-foreground mb-4">Institution not found</div>
         <Button variant="outline" onClick={() => router.back()}>
           Go Back
         </Button>
@@ -162,7 +162,7 @@ export default function InstitutionDetailPage() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-foreground">
             {institution.name}
           </h1>
           <div className="mt-2">
@@ -182,7 +182,7 @@ export default function InstitutionDetailPage() {
               Reject
             </Button>
             <Button
-              className="gap-2 bg-green-600 hover:bg-green-700"
+              className="gap-2 bg-success hover:bg-success-dark"
               onClick={() => setShowApproveDialog(true)}
             >
               <CheckCircle className="h-4 w-4" />
@@ -209,7 +209,7 @@ export default function InstitutionDetailPage() {
               label="Address"
               value={
                 institution.address || (
-                  <span className="text-gray-400">Not provided</span>
+                  <span className="text-muted-foreground">Not provided</span>
                 )
               }
             />
@@ -218,7 +218,7 @@ export default function InstitutionDetailPage() {
               label="Phone"
               value={
                 institution.phone || (
-                  <span className="text-gray-400">Not provided</span>
+                  <span className="text-muted-foreground">Not provided</span>
                 )
               }
             />
@@ -247,23 +247,23 @@ export default function InstitutionDetailPage() {
           </CardHeader>
           <CardContent className="pt-0">
             <div className="space-y-4">
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">
+              <div className="p-4 bg-muted rounded-lg">
+                <div className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
                   Total Members
                 </div>
-                <div className="font-medium text-gray-900">
+                <div className="font-medium text-foreground">
                   {institution._count.users} user
                   {institution._count.users !== 1 ? 's' : ''}
                 </div>
               </div>
 
               {isPending && (
-                <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                  <div className="flex items-center gap-2 text-yellow-700">
+                <div className="p-4 bg-warning-light rounded-lg border border-warning">
+                  <div className="flex items-center gap-2 text-warning-dark">
                     <Clock className="h-5 w-5" />
                     <span className="font-medium">Awaiting Approval</span>
                   </div>
-                  <p className="mt-1 text-sm text-yellow-600">
+                  <p className="mt-1 text-sm text-warning-dark">
                     This institution is waiting for a super admin to review and
                     approve the registration.
                   </p>
@@ -295,7 +295,7 @@ export default function InstitutionDetailPage() {
               Cancel
             </Button>
             <Button
-              className="bg-green-600 hover:bg-green-700"
+              className="bg-success hover:bg-success-dark"
               onClick={handleApprove}
               disabled={isApproving}
             >

@@ -35,9 +35,9 @@ function formatDate(value: string | Date | null): string {
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
-      <dt className="text-sm text-gray-500">{label}</dt>
-      <dd className="mt-0.5 text-sm font-medium text-gray-900">
-        {value || <span className="text-gray-400">—</span>}
+      <dt className="text-sm text-muted-foreground">{label}</dt>
+      <dd className="mt-0.5 text-sm font-medium text-foreground">
+        {value || <span className="text-muted-foreground">—</span>}
       </dd>
     </div>
   );
@@ -162,7 +162,7 @@ export function AdministrativeSection({ patient, canEdit, onSave }: Props) {
                 <Label htmlFor="admin-gender">Gender</Label>
                 <select
                   id="admin-gender"
-                  className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm"
+                  className="h-10 w-full rounded-md border border-border bg-card px-3 text-sm"
                   {...register('gender', {
                     // The blank option must become null, not '', or the enum
                     // (MALE | FEMALE | OTHER) validation rejects it.
