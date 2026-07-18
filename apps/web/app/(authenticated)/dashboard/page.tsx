@@ -5,10 +5,10 @@ import Link from 'next/link';
 import useSWR from 'swr';
 import {
   ArrowRight,
+  BookOpen,
   Building2,
   GraduationCap,
   UsersRound,
-  BookOpen,
   UserRoundCheck,
 } from 'lucide-react';
 import type {
@@ -94,7 +94,7 @@ export default function DashboardPage() {
       </div>
 
       {isSuperAdmin && (
-        <div className="grid gap-5 md:grid-cols-3">
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           <Link
             href="/students"
             className="group block rounded-3xl focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2"
