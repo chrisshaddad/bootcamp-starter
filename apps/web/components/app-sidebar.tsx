@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -12,8 +13,10 @@ import {
   FolderGit2,
   Compass,
   Bookmark,
+  Mail,
 } from 'lucide-react';
 import { useUser } from '@/hooks/use-auth';
+import { useInvitationPendingCount } from '@/hooks/use-project-invitations';
 import { cn } from '@/lib/utils';
 import {
   Sidebar,
@@ -51,6 +54,11 @@ const orgNavItems: NavItem[] = [
     title: 'Projects',
     url: '/projects',
     icon: FolderGit2,
+  },
+  {
+    title: 'Invitations',
+    url: '/invitations',
+    icon: Mail,
   },
   {
     title: 'Profile',
@@ -132,18 +140,21 @@ const superAdminSecondaryNavItems: NavItem[] = [
 export function AppSidebar() {
   const pathname = usePathname();
   const { user } = useUser({ redirectOnUnauthenticated: false });
+  const [mounted, setMounted] = useState(false);
 
-  const isSuperAdmin = user?.accountType === 'SUPER_ADMIN';
-  const isRecruiter = user?.accountType === 'HIRING';
+  useEffect(() => setMounted(true), []);
 
-  // Select navigation items dynamically based on roles
-  let mainNavItems = orgNavItems;
-  if (isSuperAdmin) {
-    mainNavItems = superAdminNavItems;
-  } else if (isRecruiter) {
-    mainNavItems = recruiterNavItems;
-  }
-
+  const isSuperAdmin = mounted && user?.accountType === 'SUPER_ADMIN';
+  const isDeveloper = mounted && user?.accountType === 'DEVELOPER';
+  const isRecruiter = mounted && user?.accountType === 'HIRING';
+  const { pendingCount } = useInvitationPendingCount(isDeveloper);
+  const mainNavItems = isSuperAdmin
+    ? superAdminNavItems
+    : isRecruiter
+      ? recruiterNavItems
+      : isDeveloper
+        ? orgNavItems
+        : orgNavItems.filter((item) => item.url !== '/invitations');
   const secondaryNavItems = isSuperAdmin
     ? superAdminSecondaryNavItems
     : orgSecondaryNavItems;
@@ -203,6 +214,11 @@ export function AppSidebar() {
                       <Link href={item.url}>
                         <item.icon className="text-sidebar-foreground/60 h-5 w-5" />
                         <span>{item.title}</span>
+                        {item.url === '/invitations' && pendingCount > 0 && (
+                          <span className="bg-primary-base ml-auto min-w-5 rounded-full px-1.5 py-0.5 text-center text-xs text-white">
+                            {pendingCount > 99 ? '99+' : pendingCount}
+                          </span>
+                        )}
                       </Link>
                     )}
                   </SidebarMenuButton>

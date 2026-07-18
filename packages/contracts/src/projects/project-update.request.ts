@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { projectStatusSchema } from './project-status.schema';
 export const updateProjectRequestSchema = z.object({
   title: z.string().min(1).optional(),
   slug: z.string().min(1).optional(),
@@ -8,6 +9,6 @@ export const updateProjectRequestSchema = z.object({
 
   // Standard type-safe Zod pattern for optional URL inputs that can be empty strings ""
   deploymentUrl: z.string().url().nullable().or(z.literal('')).optional(),
-  status: z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']).optional(),
+  status: projectStatusSchema.optional(),
 });
 export type UpdateProjectRequest = z.infer<typeof updateProjectRequestSchema>;

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Pagination } from '@/components/pagination';
 import { useProjects } from '@/hooks/use-projects';
 import { ApiError } from '@/lib/api';
+import type { ProjectScope } from '@repo/contracts';
 import {
   PROJECT_STATUS_COLORS,
   PROJECT_STATUS_LABELS,
@@ -33,15 +34,21 @@ function LoadingSkeleton() {
 }
 
 export default function ProjectsPage() {
-  const { projects, isLoading, error } = useProjects();
+  const [scope, setScope] = useState<ProjectScope>('ALL');
   const [page, setPage] = useState(1);
+  const { projects, meta, isLoading, error } = useProjects({
+    scope,
+    page,
+    limit: PAGE_SIZE,
+  });
 
-  const totalPages = Math.ceil(projects.length / PAGE_SIZE);
-  const currentPage = Math.min(page, Math.max(totalPages, 1));
-  const pageProjects = projects.slice(
-    (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE,
-  );
+  const totalPages = meta?.totalPages ?? 0;
+  const currentPage = meta?.currentPage ?? page;
+
+  const changeScope = (nextScope: ProjectScope) => {
+    setScope(nextScope);
+    setPage(1);
+  };
 
   return (
     <div className="space-y-6">
@@ -60,6 +67,29 @@ export default function ProjectsPage() {
         </Button>
       </div>
 
+      <div
+        className="inline-flex rounded-lg border bg-muted/30 p-1"
+        role="group"
+        aria-label="Project scope"
+      >
+        {(['ALL', 'OWNED', 'COLLABORATIONS'] as const).map((value) => (
+          <Button
+            key={value}
+            type="button"
+            size="sm"
+            variant={scope === value ? 'default' : 'ghost'}
+            aria-pressed={scope === value}
+            onClick={() => changeScope(value)}
+          >
+            {value === 'ALL'
+              ? 'All'
+              : value === 'OWNED'
+                ? 'Own'
+                : 'Collaborations'}
+          </Button>
+        ))}
+      </div>
+
       {error ? (
         <Card className="flex flex-col items-center gap-2 border-dashed py-16 text-center">
           <p className="font-medium">Unable to load projects</p>
@@ -76,13 +106,17 @@ export default function ProjectsPage() {
           <FolderGit2 className="h-8 w-8 text-muted-foreground" />
           <p className="font-medium">No projects yet</p>
           <p className="text-muted-foreground max-w-xs text-sm">
-            Link a repository to showcase your work.
+            {scope === 'COLLABORATIONS'
+              ? 'You have no collaboration projects yet.'
+              : scope === 'OWNED'
+                ? 'You have not imported any projects yet.'
+                : 'Link a repository or accept an invitation to get started.'}
           </p>
         </Card>
       ) : (
         <div className="space-y-6">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {pageProjects.map((project, index) => {
+            {projects.map((project, index) => {
               const cover = project.media[0];
 
               return (
@@ -90,13 +124,15 @@ export default function ProjectsPage() {
                   key={project.id}
                   className="group relative flex flex-col overflow-hidden py-0"
                 >
-                  <Link
-                    href={`/projects/${project.id}/edit`}
-                    className="absolute top-9 right-2.5 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-background/90 text-muted-foreground opacity-0 shadow-sm backdrop-blur-sm transition-opacity hover:bg-background hover:text-foreground group-hover:opacity-100 focus-visible:opacity-100"
-                    aria-label="Edit"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Link>
+                  {project.access.capabilities.canEditContent && (
+                    <Link
+                      href={`/projects/${project.id}/edit`}
+                      className="absolute top-9 right-2.5 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-background/90 text-muted-foreground opacity-0 shadow-sm backdrop-blur-sm transition-opacity hover:bg-background hover:text-foreground group-hover:opacity-100 focus-visible:opacity-100"
+                      aria-label="Edit"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Link>
+                  )}
 
                   <Link
                     href={`/projects/${project.id}/preview`}
@@ -121,6 +157,11 @@ export default function ProjectsPage() {
                       >
                         {PROJECT_STATUS_LABELS[project.status]}
                       </span>
+                      {project.access.currentUserRole && (
+                        <span className="absolute top-2.5 left-2.5 rounded-full bg-background/90 px-2 py-0.5 text-[10px] font-semibold capitalize text-foreground shadow-sm">
+                          {project.access.currentUserRole.toLowerCase()}
+                        </span>
+                      )}
                     </div>
 
                     <div className="flex flex-1 gap-3 px-4 pt-3">

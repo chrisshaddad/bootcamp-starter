@@ -50,9 +50,20 @@ enum VerificationStatus {
 }
 
 enum VerificationSource {
+  GITHUB_OWNER
   GITHUB_CONTRIBUTOR
   GITHUB_COLLABORATOR
   MANUAL_INVITE
+
+  @@schema("public")
+}
+
+enum ProjectInvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  CANCELED
+  EXPIRED
 
   @@schema("public")
 }
@@ -114,6 +125,8 @@ model User {
   createdProjects     Project[]           @relation("ProjectCreator")
   addedMembers        ProjectMember[]     @relation("MemberAddedBy")
   projectMemberships  ProjectMember[]     @relation("UserProjectMemberships")
+  sentProjectInvitations     ProjectInvitation[] @relation("ProjectInvitationsSent")
+  receivedProjectInvitations ProjectInvitation[] @relation("ProjectInvitationsReceived")
   uploadedMedia       ProjectMedia[]
   savedProjects       SavedProject[]
   addedTechnologies   ProjectTechnology[] @relation("ProjectTechAddedBy")
@@ -187,11 +200,14 @@ model HiringProfile {
 model Repository {
   id String @id @default(uuid())
 
-  githubRepoId BigInt @unique
-  fullName     String @unique
-  ownerLogin   String
-  repoName     String
-  htmlUrl      String @unique
+  githubRepoId      BigInt  @unique
+  fullName          String  @unique
+  ownerLogin        String
+  ownerGithubUserId BigInt?
+  ownerType         String?
+  repoName          String
+  htmlUrl           String  @unique
+  isFork            Boolean @default(false)
 
   defaultBranch String?
   visibility    RepositoryVisibility @default(PUBLIC)
@@ -225,6 +241,8 @@ model Project {
 
   status ProjectStatus @default(DRAFT)
 
+  githubOwnershipVerifiedAt DateTime?
+
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   publishedAt DateTime?
@@ -233,6 +251,7 @@ model Project {
   createdBy  User       @relation("ProjectCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
 
   members      ProjectMember[]
+  invitations  ProjectInvitation[]
   technologies ProjectTechnology[]
   media        ProjectMedia[]
   savedByUsers SavedProject[]
@@ -247,6 +266,7 @@ model ProjectMember {
 
   projectId      String
   userId         String?
+  githubUserId   BigInt?
   githubUsername String?
 
   role ProjectRoleKey
@@ -254,6 +274,7 @@ model ProjectMember {
   contributionRoleLabel String?
   contributionSummary   String? @db.Text
   githubPermission      String?
+  githubRoleName        String?
 
   verificationStatus VerificationStatus  @default(PENDING)
   verificationSource VerificationSource?
@@ -267,11 +288,51 @@ model ProjectMember {
   user    User?   @relation("UserProjectMemberships", fields: [userId], references: [id], onDelete: SetNull)
   addedBy User?   @relation("MemberAddedBy", fields: [addedByUserId], references: [id], onDelete: SetNull)
 
+  @@unique([projectId, userId])
+  @@unique([projectId, githubUserId])
   @@index([projectId])
   @@index([userId])
   @@index([githubUsername])
+  @@index([githubUserId])
   @@index([verificationStatus])
   @@index([addedByUserId])
+  @@schema("public")
+}
+
+model ProjectInvitation {
+  id String @id @default(uuid())
+
+  projectId       String
+  invitedByUserId String?
+  inviteeUserId   String?
+
+  inviteeGithubUserId   BigInt
+  inviteeGithubUsername String
+
+  requestedRole ProjectRoleKey
+
+  contributionRoleLabel String?
+  githubPermission      String?
+  githubRoleName        String?
+
+  status     ProjectInvitationStatus @default(PENDING)
+  pendingKey String?                 @unique
+
+  expiresAt   DateTime
+  respondedAt DateTime?
+  canceledAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  invitedBy User?   @relation("ProjectInvitationsSent", fields: [invitedByUserId], references: [id], onDelete: SetNull)
+  invitee   User?   @relation("ProjectInvitationsReceived", fields: [inviteeUserId], references: [id], onDelete: SetNull)
+
+  @@index([projectId, status, createdAt])
+  @@index([inviteeUserId, status, createdAt])
+  @@index([inviteeGithubUserId, status])
+  @@index([status, expiresAt])
+  @@index([invitedByUserId])
   @@schema("public")
 }
 

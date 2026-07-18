@@ -7,7 +7,7 @@ import {
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { PrismaService } from '../database/prisma.service';
+import { DatabaseService } from '../database/prisma.service';
 import {
   type CreateProjectRequest,
   type ImportGithubProjectRequest,
@@ -16,6 +16,7 @@ import {
   type ProjectMediaUploadRequest,
   type ProjectMediaUpdateRequest,
   type ProjectsExploreQuery,
+  type ProjectsListQuery,
 } from '@repo/contracts';
 import {
   ProjectStatus,
@@ -28,8 +29,11 @@ import {
   ProjectTechnologySource,
   RepositoryVisibility,
   TechnologyCategory,
+  VerificationSource,
 } from '@repo/db';
 import { GithubRepositorySnapshotService } from '../repository-scanner/github-repository-snapshot.service';
+import { GithubService } from '../github/github.service';
+import { ProjectAccessService } from './project-access.service';
 
 const GITHUB_API_UNAVAILABLE_MESSAGE =
   'GitHub API is currently unavailable. Please try again later.';
@@ -38,13 +42,34 @@ const REPOSITORY_PROJECT_CONFLICT_MESSAGE =
 const PROJECT_SLUG_CONFLICT_MESSAGE =
   'A project with this slug already exists.';
 
+const verifiedProjectMembersQuery = {
+  where: { verificationStatus: VerificationStatus.VERIFIED },
+  include: {
+    user: {
+      select: {
+        id: true,
+        developerProfile: {
+          select: {
+            displayName: true,
+            publicSlug: true,
+            profilePictureUrl: true,
+          },
+        },
+      },
+    },
+  },
+  orderBy: { createdAt: 'asc' as const },
+};
+
 @Injectable()
 export class ProjectsService {
   private readonly logger = new Logger(ProjectsService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly prisma: DatabaseService,
     private readonly githubRepositorySnapshotService: GithubRepositorySnapshotService,
+    private readonly githubService: GithubService,
+    private readonly projectAccess: ProjectAccessService,
   ) {}
 
   private mapStatus(
@@ -60,17 +85,33 @@ export class ProjectsService {
   ): Promise<ImportGithubProjectResponse> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true },
+      select: { id: true, accountType: true },
     });
 
     if (!user) {
       throw new UnauthorizedException('Authenticated user not found');
     }
 
+    if (user.accountType !== AccountType.DEVELOPER) {
+      throw new ForbiddenException(
+        'Only developer accounts can import GitHub repositories.',
+      );
+    }
+
+    const verifiedRepository =
+      await this.githubService.verifyRepositoryOwnership(
+        userId,
+        data.repositoryUrl,
+      );
+
     const analysis =
       await this.githubRepositorySnapshotService.previewRepositoryAnalysis(
         data.repositoryUrl,
       );
+
+    if (analysis.repository.githubRepoId !== verifiedRepository.githubRepoId) {
+      throw new ServiceUnavailableException(GITHUB_API_UNAVAILABLE_MESSAGE);
+    }
 
     const githubRepoId = parseGithubRepositoryId(
       analysis.repository.githubRepoId,
@@ -96,8 +137,11 @@ export class ProjectsService {
             githubRepoId,
             fullName: analysis.repository.fullName,
             ownerLogin: analysis.repository.ownerLogin,
+            ownerGithubUserId: verifiedRepository.ownerGithubUserId,
+            ownerType: verifiedRepository.ownerType,
             repoName: analysis.repository.repoName,
             htmlUrl: analysis.repository.htmlUrl,
+            isFork: verifiedRepository.isFork,
             defaultBranch: analysis.repository.defaultBranch,
             visibility: RepositoryVisibility.PUBLIC,
             lastPushedAt,
@@ -106,8 +150,11 @@ export class ProjectsService {
           update: {
             fullName: analysis.repository.fullName,
             ownerLogin: analysis.repository.ownerLogin,
+            ownerGithubUserId: verifiedRepository.ownerGithubUserId,
+            ownerType: verifiedRepository.ownerType,
             repoName: analysis.repository.repoName,
             htmlUrl: analysis.repository.htmlUrl,
+            isFork: verifiedRepository.isFork,
             defaultBranch: analysis.repository.defaultBranch,
             visibility: RepositoryVisibility.PUBLIC,
             lastPushedAt,
@@ -140,6 +187,7 @@ export class ProjectsService {
             deploymentUrl: data.deploymentUrl ?? null,
             status: ProjectStatus.DRAFT,
             publishedAt: null,
+            githubOwnershipVerifiedAt: importedAt,
           },
         });
 
@@ -147,11 +195,12 @@ export class ProjectsService {
           data: {
             projectId: project.id,
             userId,
-            githubUsername: null,
+            githubUserId: verifiedRepository.ownerGithubUserId,
+            githubUsername: verifiedRepository.ownerLogin,
             role: ProjectRoleKey.OWNER,
-            verificationStatus: VerificationStatus.PENDING,
-            verificationSource: null,
-            verifiedAt: null,
+            verificationStatus: VerificationStatus.VERIFIED,
+            verificationSource: VerificationSource.GITHUB_OWNER,
+            verifiedAt: importedAt,
             addedByUserId: userId,
           },
         });
@@ -300,44 +349,67 @@ export class ProjectsService {
     return `${baseSlug}-${suffix}`;
   }
 
-  async getMyProjects(user: User) {
-    if (user.accountType === AccountType.SUPER_ADMIN) {
-      return this.prisma.project.findMany({
-        orderBy: { updatedAt: 'desc' },
+  async getMyProjects(user: User, query: ProjectsListQuery) {
+    const verifiedCollaboration: Prisma.ProjectWhereInput = {
+      members: {
+        some: {
+          userId: user.id,
+          verificationStatus: VerificationStatus.VERIFIED,
+          role: { in: [ProjectRoleKey.EDITOR, ProjectRoleKey.CONTRIBUTOR] },
+        },
+      },
+    };
+    const where: Prisma.ProjectWhereInput =
+      user.accountType === AccountType.SUPER_ADMIN && query.scope === 'ALL'
+        ? {}
+        : query.scope === 'OWNED'
+          ? { createdByUserId: user.id }
+          : query.scope === 'COLLABORATIONS'
+            ? {
+                createdByUserId: { not: user.id },
+                ...verifiedCollaboration,
+              }
+            : {
+                OR: [{ createdByUserId: user.id }, verifiedCollaboration],
+              };
+    const [totalItems, projects] = await Promise.all([
+      this.prisma.project.count({ where }),
+      this.prisma.project.findMany({
+        where,
+        orderBy: [{ updatedAt: 'desc' }, { id: 'asc' }],
+        skip: (query.page - 1) * query.limit,
+        take: query.limit,
         include: {
-          repository: {
-            select: {
-              htmlUrl: true,
-            },
-          },
+          repository: { select: { htmlUrl: true } },
           media: { orderBy: { sortOrder: 'asc' } },
           technologies: {
             include: { technology: true },
             orderBy: { sortOrder: 'asc' },
           },
+          members: verifiedProjectMembersQuery,
         },
-      });
-    }
+      }),
+    ]);
+    const totalPages = Math.ceil(totalItems / query.limit);
 
-    return this.prisma.project.findMany({
-      where: { createdByUserId: user.id },
-      orderBy: { updatedAt: 'desc' },
-      include: {
-        repository: {
-          select: {
-            htmlUrl: true,
-          },
-        },
-        media: { orderBy: { sortOrder: 'asc' } },
-        technologies: {
-          include: { technology: true },
-          orderBy: { sortOrder: 'asc' },
-        },
+    return {
+      data: projects.map((project) => ({
+        ...project,
+        access: this.projectAccess.getAccessFromProject(user, project),
+      })),
+      meta: {
+        totalItems,
+        currentPage: query.page,
+        totalPages,
+        hasNextPage: query.page < totalPages,
+        hasPreviousPage: query.page > 1,
       },
-    });
+    };
   }
 
   async getProjectById(user: User, projectId: string) {
+    const { project: _accessProject, ...access } =
+      await this.projectAccess.assertCanView(user, projectId);
     const project = await this.prisma.project.findUnique({
       where: { id: projectId },
       include: {
@@ -355,6 +427,7 @@ export class ProjectsService {
           include: { technology: true },
           orderBy: { sortOrder: 'asc' },
         },
+        members: verifiedProjectMembersQuery,
       },
     });
 
@@ -362,16 +435,7 @@ export class ProjectsService {
       throw new NotFoundException('Project not found');
     }
 
-    const isAdmin = user.accountType === AccountType.SUPER_ADMIN;
-    const isCreator = project.createdByUserId === user.id;
-
-    if (!isAdmin && !isCreator) {
-      throw new ForbiddenException(
-        'You are not authorized to view this project',
-      );
-    }
-
-    return project;
+    return { ...project, access };
   }
 
   async createProject(userId: string, data: CreateProjectRequest) {
@@ -392,21 +456,24 @@ export class ProjectsService {
       throw new NotFoundException('Repository not found');
     }
 
-    const githubUsername = user.developerProfile?.githubUsername;
-    const isAdmin = user.accountType === AccountType.SUPER_ADMIN;
-
-    if (!githubUsername && !isAdmin) {
+    if (user.accountType !== AccountType.DEVELOPER) {
       throw new ForbiddenException(
-        'A connected GitHub account is required to create a project.',
+        'Only developer accounts can create GitHub projects.',
       );
     }
 
-    const isOwner =
-      githubUsername?.toLowerCase() === repository.ownerLogin.toLowerCase();
+    const verifiedRepository =
+      await this.githubService.verifyRepositoryOwnership(
+        userId,
+        repository.htmlUrl,
+      );
 
-    if (!isOwner && !isAdmin) {
+    if (
+      BigInt(repository.githubRepoId) !==
+      BigInt(verifiedRepository.githubRepoId)
+    ) {
       throw new ForbiddenException(
-        'You are not authorized to create a project for this repository because you do not own it.',
+        'The stored repository does not match the verified GitHub repository.',
       );
     }
 
@@ -440,6 +507,7 @@ export class ProjectsService {
             createdByUserId: userId,
             status,
             publishedAt: status === ProjectStatus.PUBLISHED ? new Date() : null,
+            githubOwnershipVerifiedAt: new Date(),
           },
         });
 
@@ -447,9 +515,12 @@ export class ProjectsService {
           data: {
             projectId: newProject.id,
             userId: user.id,
-            githubUsername: githubUsername,
+            githubUserId: verifiedRepository.ownerGithubUserId,
+            githubUsername: verifiedRepository.ownerLogin,
             role: ProjectRoleKey.OWNER,
             verificationStatus: VerificationStatus.VERIFIED,
+            verificationSource: VerificationSource.GITHUB_OWNER,
+            verifiedAt: new Date(),
             addedByUserId: user.id,
           },
         });
@@ -498,21 +569,22 @@ export class ProjectsService {
     projectId: string,
     data: UpdateProjectRequest,
   ) {
+    const access = await this.projectAccess.assertCanEditContent(
+      user,
+      projectId,
+    );
+    if (data.status !== undefined && !access.capabilities.canPublish) {
+      throw new ForbiddenException(
+        'Only the verified project owner can change project status',
+      );
+    }
     const project = await this.prisma.project.findUnique({
       where: { id: projectId },
+      include: { repository: true },
     });
 
     if (!project) {
       throw new NotFoundException('Project not found');
-    }
-
-    const isAdmin = user.accountType === AccountType.SUPER_ADMIN;
-    const isCreator = project.createdByUserId === user.id;
-
-    if (!isAdmin && !isCreator) {
-      throw new ForbiddenException(
-        'You are not authorized to edit this project',
-      );
     }
 
     if (data.slug && data.slug !== project.slug) {
@@ -525,6 +597,15 @@ export class ProjectsService {
     }
 
     const newStatus = data.status ? this.mapStatus(data.status) : undefined;
+
+    let githubOwnershipVerifiedAt: Date | undefined;
+    if (newStatus === ProjectStatus.PUBLISHED) {
+      await this.githubService.verifyRepositoryOwnership(
+        project.createdByUserId,
+        project.repository.htmlUrl,
+      );
+      githubOwnershipVerifiedAt = new Date();
+    }
 
     let publishedAt: Date | null | undefined = undefined;
     if (newStatus === ProjectStatus.PUBLISHED) {
@@ -547,6 +628,7 @@ export class ProjectsService {
           deploymentUrl: data.deploymentUrl,
           status: newStatus,
           publishedAt,
+          githubOwnershipVerifiedAt,
         },
       });
     } catch (error) {
@@ -565,21 +647,13 @@ export class ProjectsService {
   }
 
   async uploadLogo(user: User, projectId: string, logoUrl: string) {
+    await this.projectAccess.assertCanEditContent(user, projectId);
     const project = await this.prisma.project.findUnique({
       where: { id: projectId },
     });
 
     if (!project) {
       throw new NotFoundException('Project not found');
-    }
-
-    const isAdmin = user.accountType === AccountType.SUPER_ADMIN;
-    const isCreator = project.createdByUserId === user.id;
-
-    if (!isAdmin && !isCreator) {
-      throw new ForbiddenException(
-        'You are not authorized to edit this project',
-      );
     }
 
     const previousLogoUrl = project.logoUrl;
@@ -629,6 +703,7 @@ export class ProjectsService {
           include: { technology: true },
           orderBy: { sortOrder: 'asc' },
         },
+        members: verifiedProjectMembersQuery,
       },
     });
 
@@ -793,20 +868,12 @@ export class ProjectsService {
     projectId: string,
     data: ProjectMediaUploadRequest & { storageKey: string; publicUrl: string },
   ) {
+    await this.projectAccess.assertCanEditContent(user, projectId);
     const project = await this.prisma.project.findUnique({
       where: { id: projectId },
     });
 
     if (!project) throw new NotFoundException('Project not found');
-
-    const isAdmin = user.accountType === AccountType.SUPER_ADMIN;
-    const isCreator = project.createdByUserId === user.id;
-
-    if (!isAdmin && !isCreator) {
-      throw new ForbiddenException(
-        'You are not authorized to edit this project',
-      );
-    }
 
     return this.prisma.projectMedia.create({
       data: {
@@ -827,20 +894,12 @@ export class ProjectsService {
     mediaId: string,
     data: ProjectMediaUpdateRequest,
   ) {
+    await this.projectAccess.assertCanEditContent(user, projectId);
     const project = await this.prisma.project.findUnique({
       where: { id: projectId },
     });
 
     if (!project) throw new NotFoundException('Project not found');
-
-    const isAdmin = user.accountType === AccountType.SUPER_ADMIN;
-    const isCreator = project.createdByUserId === user.id;
-
-    if (!isAdmin && !isCreator) {
-      throw new ForbiddenException(
-        'You are not authorized to edit this project',
-      );
-    }
 
     const media = await this.prisma.projectMedia.findUnique({
       where: { id: mediaId },
@@ -860,20 +919,12 @@ export class ProjectsService {
   }
 
   async setCoverMedia(user: User, projectId: string, mediaId: string) {
+    await this.projectAccess.assertCanEditContent(user, projectId);
     const project = await this.prisma.project.findUnique({
       where: { id: projectId },
     });
 
     if (!project) throw new NotFoundException('Project not found');
-
-    const isAdmin = user.accountType === AccountType.SUPER_ADMIN;
-    const isCreator = project.createdByUserId === user.id;
-
-    if (!isAdmin && !isCreator) {
-      throw new ForbiddenException(
-        'You are not authorized to edit this project',
-      );
-    }
 
     const media = await this.prisma.projectMedia.findMany({
       where: { projectId },
@@ -913,20 +964,12 @@ export class ProjectsService {
   }
 
   async deleteMedia(user: User, projectId: string, mediaId: string) {
+    await this.projectAccess.assertCanEditContent(user, projectId);
     const project = await this.prisma.project.findUnique({
       where: { id: projectId },
     });
 
     if (!project) throw new NotFoundException('Project not found');
-
-    const isAdmin = user.accountType === AccountType.SUPER_ADMIN;
-    const isCreator = project.createdByUserId === user.id;
-
-    if (!isAdmin && !isCreator) {
-      throw new ForbiddenException(
-        'You are not authorized to edit this project',
-      );
-    }
 
     const media = await this.prisma.projectMedia.findUnique({
       where: { id: mediaId },
@@ -944,21 +987,13 @@ export class ProjectsService {
   }
 
   async deleteProject(user: User, projectId: string) {
+    await this.projectAccess.assertCanDelete(user, projectId);
     const project = await this.prisma.project.findUnique({
       where: { id: projectId },
       include: { media: true },
     });
 
     if (!project) throw new NotFoundException('Project not found');
-
-    const isAdmin = user.accountType === AccountType.SUPER_ADMIN;
-    const isCreator = project.createdByUserId === user.id;
-
-    if (!isAdmin && !isCreator) {
-      throw new ForbiddenException(
-        'You are not authorized to delete this project',
-      );
-    }
 
     await this.prisma.project.delete({ where: { id: projectId } });
 

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { dateSchema } from '../common';
+import { projectStatusSchema } from './project-status.schema';
 
 export const publicProjectResponseSchema = z.object({
   id: z.string(),
@@ -9,7 +10,7 @@ export const publicProjectResponseSchema = z.object({
   shortDescription: z.string().nullable(),
   fullDescription: z.string().nullable(),
   deploymentUrl: z.string().nullable(),
-  status: z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']),
+  status: projectStatusSchema,
   createdAt: dateSchema,
   updatedAt: dateSchema,
   publishedAt: dateSchema.nullable(),
