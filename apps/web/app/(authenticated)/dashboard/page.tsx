@@ -5,6 +5,7 @@ import Link from 'next/link';
 import useSWR from 'swr';
 import {
   ArrowRight,
+  BookOpen,
   Building2,
   GraduationCap,
   UsersRound,
@@ -93,7 +94,7 @@ export default function DashboardPage() {
       </div>
 
       {isSuperAdmin && (
-        <div className="grid gap-5 md:grid-cols-2">
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           <Link
             href="/students"
             className="group block rounded-3xl focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2"
@@ -215,6 +216,56 @@ export default function DashboardPage() {
                   </div>
 
                   <ArrowRight className="h-5 w-5 text-sky-700 transition group-hover:translate-x-1" />
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link
+            href="/courses"
+            className="group block rounded-3xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-base focus-visible:ring-offset-2"
+          >
+            <Card className="h-full rounded-3xl border-gray-200 bg-white p-6 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
+              <CardHeader className="p-0">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-primary-100">
+                    <BookOpen className="h-7 w-7 text-primary-base" />
+                  </div>
+
+                  <div>
+                    <CardTitle className="text-xl font-bold text-gray-900">
+                      Courses
+                    </CardTitle>
+                    <p className="mt-1 max-w-xs text-sm font-medium leading-6 text-gray-600">
+                      View courses as cards and manage course data.
+                    </p>
+                  </div>
+                </div>
+              </CardHeader>
+
+              <CardContent className="mt-7 space-y-3 p-0">
+                <div className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3">
+                  <div className="flex items-center gap-3 text-gray-600">
+                    <BookOpen className="h-4 w-4 text-primary-base" />
+                    <span className="text-sm font-medium">
+                      Course management
+                    </span>
+                  </div>
+
+                  <span className="text-base font-semibold text-gray-900">
+                    Open
+                  </span>
+                </div>
+
+                <div className="mt-5 flex items-center justify-between rounded-xl border border-gray-200 px-4 py-4 transition group-hover:border-primary-200 group-hover:bg-primary-100/50">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">
+                      Course cards
+                    </p>
+                    <p className="text-lg font-semibold text-gray-900">Open</p>
+                  </div>
+
+                  <ArrowRight className="h-5 w-5 text-primary-base transition group-hover:translate-x-1" />
                 </div>
               </CardContent>
             </Card>

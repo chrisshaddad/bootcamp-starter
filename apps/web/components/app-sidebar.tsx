@@ -55,6 +55,11 @@ const superAdminNavItems: NavItem[] = [
     icon: Building2,
   },
   {
+    title: 'Courses',
+    url: '/courses',
+    icon: BookOpen,
+  },
+  {
     title: 'Users',
     url: '/users',
     icon: Users,
