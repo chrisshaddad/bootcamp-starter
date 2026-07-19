@@ -145,6 +145,7 @@ function PresenterDashboard({
             isLoading={announcementsLoading}
             error={announcementsError}
             compact
+            cardGrid
             showViewAll
           />
         </div>
@@ -309,6 +310,7 @@ export default function DashboardPage() {
         isLoading={announcementsLoading}
         error={announcementsError}
         compact
+        cardGrid
         showViewAll
       />
 

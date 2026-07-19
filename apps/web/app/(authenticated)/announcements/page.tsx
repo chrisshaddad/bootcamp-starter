@@ -355,41 +355,49 @@ export default function AnnouncementsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
-          <Megaphone className="h-6 w-6" />
-          Announcements
-        </h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Updates for the platform, your organization, and events.
-        </p>
+    <div className="space-y-5">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+            <Megaphone className="h-6 w-6" />
+            Announcements
+          </h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Updates for the platform, your organization, and events.
+          </p>
+        </div>
+        {total !== undefined && (
+          <p className="text-sm font-medium text-gray-500">{total} total</p>
+        )}
       </div>
 
       {canCreate && (
-        <Card className="border-gray-200 bg-white shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold text-gray-900">
+        <Card className="gap-0 border-gray-200 bg-white py-0 shadow-sm">
+          <CardHeader className="px-4 py-3 sm:px-5">
+            <CardTitle className="text-base font-semibold text-gray-900">
               New announcement
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="announcement-title">Title</Label>
+          <CardContent className="px-4 pb-4 sm:px-5">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+              <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_240px]">
+                <div className="space-y-1.5">
+                  <Label htmlFor="announcement-title" className="text-xs">
+                    Title
+                  </Label>
                   <Input
                     id="announcement-title"
                     maxLength={140}
                     aria-invalid={!!errors.title}
+                    className="h-10 rounded-md px-3 py-2"
                     {...register('title')}
                   />
                   {errors.title && (
                     <p className="text-sm text-error">{errors.title.message}</p>
                   )}
                 </div>
-                <div className="space-y-2">
-                  <Label>Scope</Label>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Scope</Label>
                   <Select
                     value={scope}
                     onValueChange={(value) => {
@@ -431,9 +439,9 @@ export default function AnnouncementsPage() {
               </div>
 
               {scope === 'EVENT' && (
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>Event</Label>
+                <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_240px]">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Event</Label>
                     <div ref={eventComboboxRef} className="relative">
                       <Button
                         type="button"
@@ -527,8 +535,8 @@ export default function AnnouncementsPage() {
                       </p>
                     )}
                   </div>
-                  <div className="space-y-2">
-                    <Label>Audience</Label>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Audience</Label>
                     <Select
                       value={audience}
                       onValueChange={(value) =>
@@ -564,13 +572,14 @@ export default function AnnouncementsPage() {
                 </div>
               )}
 
-              <div className="space-y-2">
-                <Label>Message</Label>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Message</Label>
                 <RichTextEditor
                   value={bodyHtml}
                   onChange={(value) =>
                     setValue('bodyHtml', value, { shouldValidate: true })
                   }
+                  className="[&_.ProseMirror]:min-h-28"
                 />
                 {errors.bodyHtml && (
                   <p className="text-sm text-error">
@@ -579,32 +588,29 @@ export default function AnnouncementsPage() {
                 )}
               </div>
 
-              <Button
-                type="submit"
-                disabled={isSubmitting || isFormIncomplete}
-                className="bg-primary-base hover:bg-primary-base/90"
-              >
-                {isSubmitting ? 'Posting...' : 'Post announcement'}
-              </Button>
+              <div className="flex justify-end">
+                <Button
+                  type="submit"
+                  disabled={isSubmitting || isFormIncomplete}
+                  className="w-full bg-primary-base hover:bg-primary-base/90 sm:w-auto"
+                >
+                  {isSubmitting ? 'Posting...' : 'Post announcement'}
+                </Button>
+              </div>
             </form>
           </CardContent>
         </Card>
       )}
 
-      <div>
-        {total !== undefined && (
-          <p className="mb-3 text-sm text-gray-500">{total} total</p>
-        )}
-        <AnnouncementList
-          announcements={announcements}
-          isLoading={announcementsLoading}
-          error={error}
-          canManage={canManageAnnouncement}
-          onEdit={openEditDialog}
-          onDelete={onDelete}
-          deletingId={deletingId}
-        />
-      </div>
+      <AnnouncementList
+        announcements={announcements}
+        isLoading={announcementsLoading}
+        error={error}
+        canManage={canManageAnnouncement}
+        onEdit={openEditDialog}
+        onDelete={onDelete}
+        deletingId={deletingId}
+      />
 
       <Dialog
         open={!!editingAnnouncement}
