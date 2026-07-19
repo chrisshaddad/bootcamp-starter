@@ -9,12 +9,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
 const TABS = [
-  { title: 'Profile', href: '/portal' },
-  { title: 'Care Team', href: '/portal/care-team' },
-  { title: 'Records', href: '/portal/records' },
+  { title: 'Profile', href: '/my-health' },
+  { title: 'Care Team', href: '/my-health/care-team' },
+  { title: 'Records', href: '/my-health/records' },
 ];
 
-export default function PortalLayout({
+export default function MyHealthLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -60,8 +60,8 @@ export default function PortalLayout({
       <div className="flex gap-1 border-b border-border">
         {TABS.map((tab) => {
           const active =
-            tab.href === '/portal'
-              ? pathname === '/portal'
+            tab.href === '/my-health'
+              ? pathname === '/my-health'
               : pathname.startsWith(tab.href);
           return (
             <Link

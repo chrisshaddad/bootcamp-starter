@@ -44,6 +44,10 @@ export default function ProfilePage() {
   }
 
   const isProfessional = profile.role === 'PROFESSIONAL';
+  const isDirty =
+    fullName !== profile.fullName ||
+    phone !== profile.phone ||
+    (isProfessional && bio !== (profile.bio ?? ''));
 
   const onSave = async () => {
     setIsSaving(true);
@@ -100,9 +104,14 @@ export default function ProfilePage() {
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
+            <div className="min-w-0 space-y-2">
               <Label>Email</Label>
-              <p className="text-sm text-muted-foreground">{profile.email}</p>
+              <p
+                className="truncate text-sm text-muted-foreground"
+                title={profile.email}
+              >
+                {profile.email}
+              </p>
             </div>
             <div className="space-y-2">
               <Label>Role</Label>
@@ -142,7 +151,7 @@ export default function ProfilePage() {
             </>
           )}
 
-          <Button onClick={onSave} disabled={isSaving}>
+          <Button onClick={onSave} disabled={isSaving || !isDirty}>
             {isSaving ? 'Saving...' : 'Save Changes'}
           </Button>
         </CardContent>

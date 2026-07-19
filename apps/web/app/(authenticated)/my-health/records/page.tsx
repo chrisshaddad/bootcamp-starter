@@ -3,7 +3,7 @@
 import { usePatientMe } from '@/hooks/use-patients';
 import { RecordsSection } from '@/components/patients/records-section';
 
-export default function PortalRecordsPage() {
+export default function MyHealthRecordsPage() {
   const { patient } = usePatientMe();
 
   if (!patient) return null;

@@ -9,6 +9,8 @@ import {
   CalendarClock,
   Syringe,
 } from 'lucide-react';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import type { RecordTypeCount } from '@repo/contracts';
 import { useUser } from '@/hooks/use-auth';
 import { useMyInstitution } from '@/hooks/use-my-institution';
@@ -301,9 +303,18 @@ function ProfessionalDashboard() {
 }
 
 export default function DashboardPage() {
+  const router = useRouter();
   const { user, isLoading } = useUser();
+  const role = user?.role;
 
-  if (isLoading) {
+  // Patients have no use for this dashboard — their home is My Health.
+  useEffect(() => {
+    if (role === 'PATIENT') {
+      router.replace('/my-health');
+    }
+  }, [role, router]);
+
+  if (isLoading || role === 'PATIENT') {
     return (
       <div className="space-y-6">
         <Skeleton className="h-8 w-48" />
@@ -311,8 +322,6 @@ export default function DashboardPage() {
       </div>
     );
   }
-
-  const role = user?.role;
 
   return (
     <div className="space-y-6">

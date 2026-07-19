@@ -34,9 +34,12 @@ function formatDate(value: string | Date | null): string {
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div>
+    <div className="min-w-0">
       <dt className="text-sm text-muted-foreground">{label}</dt>
-      <dd className="mt-0.5 text-sm font-medium text-foreground">
+      <dd
+        className="mt-0.5 truncate text-sm font-medium text-foreground"
+        title={typeof value === 'string' ? value : undefined}
+      >
         {value || <span className="text-muted-foreground">—</span>}
       </dd>
     </div>
@@ -105,7 +108,7 @@ export function AdministrativeSection({ patient, canEdit, onSave }: Props) {
         )}
       </CardHeader>
       <CardContent>
-        <dl className="grid grid-cols-2 gap-4">
+        <dl className="grid grid-cols-1 gap-4">
           <Field label="Full Name" value={patient.fullName} />
           <Field label="Email" value={patient.email} />
           <Field label="Phone" value={patient.phone} />

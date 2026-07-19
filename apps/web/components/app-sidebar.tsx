@@ -63,7 +63,7 @@ const NAV_ITEMS_BY_ROLE: Record<Role, NavItem[]> = {
   ],
   PATIENT: [
     { title: 'Notifications', url: '/notifications', icon: Bell },
-    { title: 'My Health', url: '/portal', icon: HeartPulse },
+    { title: 'My Health', url: '/my-health', icon: HeartPulse },
   ],
 };
 

@@ -7,7 +7,7 @@ import { ClinicalSection } from '@/components/patients/clinical-section';
 // Read-only view: patients can view everything, edit nothing.
 const noop = async () => undefined;
 
-export default function PortalProfilePage() {
+export default function MyHealthProfilePage() {
   const { patient } = usePatientMe();
 
   // The layout above already gated on role/loading/error, so `patient` is
@@ -16,7 +16,7 @@ export default function PortalProfilePage() {
   if (!patient) return null;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
+    <div className="flex flex-col gap-6">
       <AdministrativeSection patient={patient} canEdit={false} onSave={noop} />
       <ClinicalSection patient={patient} canEdit={false} onSave={noop} />
     </div>

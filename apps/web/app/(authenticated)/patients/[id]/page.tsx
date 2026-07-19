@@ -76,17 +76,22 @@ export default function PatientDetailPage() {
         Back to Patients
       </Button>
 
-      <div className="flex items-start justify-between">
-        <div>
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold text-foreground">
             {patient.fullName}
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">{patient.email}</p>
+          <p
+            className="mt-1 truncate text-sm text-muted-foreground"
+            title={patient.email}
+          >
+            {patient.email}
+          </p>
         </div>
         <StatusBadge status={patient.isActive ? 'ACTIVE' : 'INACTIVE'} />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="flex flex-col gap-6">
         <AdministrativeSection
           patient={patient}
           canEdit={canEditAdmin}
