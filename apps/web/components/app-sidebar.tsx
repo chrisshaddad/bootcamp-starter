@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import type { Role } from '@repo/contracts';
 import { useAuth, useUser } from '@/hooks/use-auth';
+import { useMyInstitution } from '@/hooks/use-my-institution';
 import { cn } from '@/lib/utils';
 import {
   Sidebar,
@@ -79,6 +80,12 @@ export function AppSidebar() {
   const isSuperAdmin = role === 'SUPER_ADMIN';
   const mainNavItems = role ? NAV_ITEMS_BY_ROLE[role] : [];
 
+  // Super Admin manages every institution, so it keeps the MediLink brand.
+  // Every other role belongs to exactly one institution, which takes over
+  // the sidebar header instead.
+  const { institution } = useMyInstitution({ enabled: !!role && !isSuperAdmin });
+  const brandName = isSuperAdmin ? 'MediLink' : institution?.name || 'MediLink';
+
   const isActive = (url: string) => {
     if (url === '/dashboard' || url === '/portal') {
       return pathname === url;
@@ -95,7 +102,7 @@ export function AppSidebar() {
             <HeartPulse className="h-5 w-5 text-white" />
           </div>
           <span className="text-xl font-semibold text-sidebar-foreground">
-            MediLink
+            {brandName}
           </span>
         </Link>
       </SidebarHeader>

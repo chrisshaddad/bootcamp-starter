@@ -10,7 +10,7 @@ const STATUS_COLORS: Record<string, string> = {
   PENDING: 'bg-warning-light text-warning-dark',
   ACTIVE: 'bg-success-light text-success-dark',
   REJECTED: 'bg-error-light text-error-dark',
-  SUSPENDED: 'bg-secondary text-secondary-foreground',
+  SUSPENDED: 'bg-secondary-200 text-secondary-base',
   INACTIVE: 'bg-muted text-muted-foreground',
 };
 

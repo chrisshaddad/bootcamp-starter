@@ -91,7 +91,7 @@ export class InstitutionsService {
   }
 
   /**
-   * Get the caller's own institution (Institution Admin / Staff / Professional).
+   * Get the caller's own institution (Institution Admin / Staff / Professional / Patient).
    * Unlike findOne, there is no platform-institution exclusion because the
    * caller's institutionId is always a real tenant.
    */

@@ -8,7 +8,7 @@ import type {
   InstitutionUpdateRequest,
 } from '@repo/contracts';
 
-/** The caller's own institution (Institution Admin / Staff / Professional). */
+/** The caller's own institution (Institution Admin / Staff / Professional / Patient). */
 export function useMyInstitution(options: { enabled?: boolean } = {}) {
   const { enabled = true } = options;
   const { data, error, isLoading, mutate } = useSWR<InstitutionDetailResponse>(

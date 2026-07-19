@@ -92,9 +92,9 @@ a {
   --color-secondary-100: #f1f5f9;
 
   /* Alert - Success */
-  --color-success: #0891b2;
-  --color-success-dark: #0e7490;
-  --color-success-light: #a5f3fc;
+  --color-success: #10a37f;
+  --color-success-dark: #0b7a5c;
+  --color-success-light: #c8f0e3;
 
   /* Alert - Warning */
   --color-warning: #f97316;
