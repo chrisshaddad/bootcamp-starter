@@ -8,12 +8,12 @@ export const teacherQuizListItemResponseSchema = z.object({
   instructions: z.string().nullable(),
   maxScore: z.number(),
   durationMinutes: z.number(),
-  startsAt: z.date().nullable(),
-  dueAt: z.date().nullable(),
-  endsAt: z.date().nullable(),
+  startsAt: z.iso.datetime().nullable(),
+  dueAt: z.iso.datetime().nullable(),
+  endsAt: z.iso.datetime().nullable(),
   status: z.enum(['draft', 'published', 'closed']),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  createdAt: z.iso.datetime(),
+  updatedAt: z.iso.datetime(),
 
   course: z.object({
     id: z.string(),

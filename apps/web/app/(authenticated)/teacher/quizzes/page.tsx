@@ -12,14 +12,20 @@ import { ApiError, fetcher } from '@/lib/api';
 export default function TeacherQuizzesPage() {
   const [quizzes, setQuizzes] = useState<TeacherQuizListResponse>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   useEffect(() => {
     async function loadQuizzes() {
+      setIsLoading(true);
+      setLoadFailed(false);
+
       try {
         const data = await fetcher<TeacherQuizListResponse>('/teacher/quizzes');
 
         setQuizzes(data);
       } catch (error) {
+        setLoadFailed(true);
+
         if (error instanceof ApiError) {
           toast.error(error.message);
         } else {
@@ -56,6 +62,26 @@ export default function TeacherQuizzesPage() {
         <div className="flex min-h-64 items-center justify-center">
           <Loader2 className="h-7 w-7 animate-spin text-gray-500" />
         </div>
+      ) : loadFailed ? (
+        <Card className="border-dashed">
+          <CardContent className="flex min-h-64 flex-col items-center justify-center text-center">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Could not load quizzes
+            </h2>
+
+            <p className="mt-1 text-sm text-gray-500">
+              Something went wrong while loading the quizzes.
+            </p>
+
+            <Button
+              type="button"
+              className="mt-5"
+              onClick={() => window.location.reload()}
+            >
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
       ) : quizzes.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="flex min-h-64 flex-col items-center justify-center text-center">

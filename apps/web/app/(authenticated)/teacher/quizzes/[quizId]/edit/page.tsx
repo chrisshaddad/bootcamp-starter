@@ -158,6 +158,15 @@ export default function EditTeacherQuizPage() {
           fetcher<TeacherQuizResponse>(`/teacher/quizzes/${quizId}`),
         ]);
 
+        if (quiz.status === 'closed') {
+          toast.error(
+            'Closed quizzes cannot be edited. Reopen the quiz explicitly first.',
+          );
+
+          router.replace(`/teacher/quizzes/${quizId}`);
+          return;
+        }
+
         setCourses(courseData);
 
         reset({
@@ -167,17 +176,13 @@ export default function EditTeacherQuizPage() {
           instructions: quiz.instructions ?? undefined,
           durationMinutes: quiz.durationMinutes,
 
-          startsAt: quiz.startsAt
-            ? new Date(quiz.startsAt).toISOString()
-            : undefined,
-
-          dueAt: quiz.dueAt ? new Date(quiz.dueAt).toISOString() : undefined,
-
-          endsAt: quiz.endsAt ? new Date(quiz.endsAt).toISOString() : undefined,
+          startsAt: quiz.startsAt ?? undefined,
+          dueAt: quiz.dueAt ?? undefined,
+          endsAt: quiz.endsAt ?? undefined,
 
           noteToStudents: quiz.noteToStudents ?? undefined,
 
-          status: quiz.status === 'closed' ? 'published' : quiz.status,
+          status: quiz.status,
 
           questions: quiz.questions.map((question, position) => ({
             questionText: question.questionText,
@@ -206,7 +211,7 @@ export default function EditTeacherQuizPage() {
     }
 
     void loadPage();
-  }, [quizId, reset]);
+  }, [quizId, reset, router]);
 
   function addQuestion() {
     appendQuestion(createQuestion(questionFields.length));
@@ -421,6 +426,7 @@ export default function EditTeacherQuizPage() {
                   {...register('instructions', {
                     setValueAs: (value: string) => {
                       const trimmedValue = value.trim();
+
                       return trimmedValue || undefined;
                     },
                   })}
@@ -573,6 +579,7 @@ export default function EditTeacherQuizPage() {
                   {...register('noteToStudents', {
                     setValueAs: (value: string) => {
                       const trimmedValue = value.trim();
+
                       return trimmedValue || undefined;
                     },
                   })}

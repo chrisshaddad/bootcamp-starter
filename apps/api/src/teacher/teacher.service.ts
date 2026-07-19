@@ -227,14 +227,14 @@ export class TeacherService {
       title: quiz.title,
       instructions: quiz.instructions,
       maxScore: quiz.maxScore.toNumber(),
-      startsAt: quiz.startsAt,
-      dueAt: quiz.dueAt,
-      endsAt: quiz.endsAt,
+      startsAt: quiz.startsAt?.toISOString() ?? null,
+      dueAt: quiz.dueAt?.toISOString() ?? null,
+      endsAt: quiz.endsAt?.toISOString() ?? null,
       durationMinutes: quiz.durationMinutes ?? input.durationMinutes,
       noteToStudents: quiz.noteToStudents,
       status: quiz.status,
-      createdAt: quiz.createdAt,
-      updatedAt: quiz.updatedAt,
+      createdAt: quiz.createdAt.toISOString(),
+      updatedAt: quiz.updatedAt.toISOString(),
       course: quiz.course,
 
       questions: quiz.quizQuestions.map((question) => {
@@ -282,11 +282,25 @@ export class TeacherService {
       select: {
         id: true,
         courseId: true,
+        startsAt: true,
+        dueAt: true,
+        endsAt: true,
+        _count: {
+          select: {
+            quizAttempts: true,
+          },
+        },
       },
     });
 
     if (!existingQuiz) {
       throw new NotFoundException(`Quiz with ID ${quizId} was not found`);
+    }
+
+    if (input.questions !== undefined && existingQuiz._count.quizAttempts > 0) {
+      throw new BadRequestException(
+        'Quiz questions cannot be changed after a student has started an attempt',
+      );
     }
 
     if (input.courseId) {
@@ -308,9 +322,46 @@ export class TeacherService {
       }
     }
 
-    const maxScore = input.questions
-      ? input.questions.reduce((total, question) => total + question.points, 0)
-      : undefined;
+    const mergedStartsAt =
+      input.startsAt === undefined
+        ? existingQuiz.startsAt
+        : input.startsAt
+          ? new Date(input.startsAt)
+          : null;
+
+    const mergedDueAt =
+      input.dueAt === undefined
+        ? existingQuiz.dueAt
+        : input.dueAt
+          ? new Date(input.dueAt)
+          : null;
+
+    const mergedEndsAt =
+      input.endsAt === undefined
+        ? existingQuiz.endsAt
+        : input.endsAt
+          ? new Date(input.endsAt)
+          : null;
+
+    if (mergedStartsAt && mergedEndsAt && mergedStartsAt >= mergedEndsAt) {
+      throw new BadRequestException('End date must be after the start date');
+    }
+
+    if (mergedStartsAt && mergedDueAt && mergedDueAt < mergedStartsAt) {
+      throw new BadRequestException('Due date cannot be before the start date');
+    }
+
+    if (mergedDueAt && mergedEndsAt && mergedDueAt > mergedEndsAt) {
+      throw new BadRequestException('Due date cannot be after the end date');
+    }
+
+    const maxScore =
+      input.questions !== undefined
+        ? input.questions.reduce(
+            (total, question) => total + question.points,
+            0,
+          )
+        : undefined;
 
     await this.prisma.$transaction(async (transaction) => {
       await transaction.assignment.update({
@@ -323,33 +374,20 @@ export class TeacherService {
           title: input.title,
           instructions: input.instructions,
           durationMinutes: input.durationMinutes,
-          startsAt:
-            input.startsAt === undefined
-              ? undefined
-              : input.startsAt
-                ? new Date(input.startsAt)
-                : null,
 
-          dueAt:
-            input.dueAt === undefined
-              ? undefined
-              : input.dueAt
-                ? new Date(input.dueAt)
-                : null,
+          startsAt: input.startsAt === undefined ? undefined : mergedStartsAt,
 
-          endsAt:
-            input.endsAt === undefined
-              ? undefined
-              : input.endsAt
-                ? new Date(input.endsAt)
-                : null,
+          dueAt: input.dueAt === undefined ? undefined : mergedDueAt,
+
+          endsAt: input.endsAt === undefined ? undefined : mergedEndsAt,
+
           noteToStudents: input.noteToStudents,
           status: input.status,
           maxScore,
         },
       });
 
-      if (input.questions) {
+      if (input.questions !== undefined) {
         await transaction.quizQuestion.deleteMany({
           where: {
             assignmentId: quizId,
@@ -494,12 +532,12 @@ export class TeacherService {
       instructions: quiz.instructions,
       maxScore: quiz.maxScore.toNumber(),
       durationMinutes: quiz.durationMinutes ?? 0,
-      startsAt: quiz.startsAt,
-      dueAt: quiz.dueAt,
-      endsAt: quiz.endsAt,
+      startsAt: quiz.startsAt?.toISOString() ?? null,
+      dueAt: quiz.dueAt?.toISOString() ?? null,
+      endsAt: quiz.endsAt?.toISOString() ?? null,
       status: quiz.status,
-      createdAt: quiz.createdAt,
-      updatedAt: quiz.updatedAt,
+      createdAt: quiz.createdAt.toISOString(),
+      updatedAt: quiz.updatedAt.toISOString(),
       course: quiz.course,
       _count: quiz._count,
     }));
@@ -581,14 +619,14 @@ export class TeacherService {
       title: quiz.title,
       instructions: quiz.instructions,
       maxScore: quiz.maxScore.toNumber(),
-      startsAt: quiz.startsAt,
-      dueAt: quiz.dueAt,
-      endsAt: quiz.endsAt,
+      startsAt: quiz.startsAt?.toISOString() ?? null,
+      dueAt: quiz.dueAt?.toISOString() ?? null,
+      endsAt: quiz.endsAt?.toISOString() ?? null,
       durationMinutes: quiz.durationMinutes,
       noteToStudents: quiz.noteToStudents,
       status: quiz.status,
-      createdAt: quiz.createdAt,
-      updatedAt: quiz.updatedAt,
+      createdAt: quiz.createdAt.toISOString(),
+      updatedAt: quiz.updatedAt.toISOString(),
       course: quiz.course,
 
       questions: quiz.quizQuestions.map((question) => {

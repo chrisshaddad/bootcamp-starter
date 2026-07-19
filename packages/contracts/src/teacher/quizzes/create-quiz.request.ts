@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { validateQuizScheduleAndPositions } from './quiz-validation';
 
 export const teacherQuizOptionSchema = z.object({
   id: z.uuid(),
@@ -97,45 +98,7 @@ export const createTeacherQuizRequestSchema = z
       .min(1, 'A quiz must contain at least one question')
       .max(100, 'A quiz cannot contain more than 100 questions'),
   })
-  .superRefine((quiz, context) => {
-    const startsAt = quiz.startsAt ? new Date(quiz.startsAt) : null;
-    const dueAt = quiz.dueAt ? new Date(quiz.dueAt) : null;
-    const endsAt = quiz.endsAt ? new Date(quiz.endsAt) : null;
-
-    if (startsAt && endsAt && startsAt >= endsAt) {
-      context.addIssue({
-        code: 'custom',
-        path: ['endsAt'],
-        message: 'End date must be after the start date',
-      });
-    }
-
-    if (startsAt && dueAt && dueAt < startsAt) {
-      context.addIssue({
-        code: 'custom',
-        path: ['dueAt'],
-        message: 'Due date cannot be before the start date',
-      });
-    }
-
-    if (dueAt && endsAt && dueAt > endsAt) {
-      context.addIssue({
-        code: 'custom',
-        path: ['dueAt'],
-        message: 'Due date cannot be after the end date',
-      });
-    }
-
-    const positions = quiz.questions.map((question) => question.position);
-
-    if (new Set(positions).size !== positions.length) {
-      context.addIssue({
-        code: 'custom',
-        path: ['questions'],
-        message: 'Question positions must be unique',
-      });
-    }
-  });
+  .superRefine(validateQuizScheduleAndPositions);
 
 export type TeacherQuizOption = z.infer<typeof teacherQuizOptionSchema>;
 
