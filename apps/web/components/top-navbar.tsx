@@ -10,6 +10,7 @@ import {
   Bell,
   Sun,
   Moon,
+  UserCircle,
 } from 'lucide-react';
 import { useAuth, useUser } from '@/hooks/use-auth';
 import { useNotifications } from '@/hooks/use-notifications';
@@ -20,6 +21,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { SidebarTrigger } from '@/components/ui/sidebar';
@@ -126,6 +128,13 @@ export function TopNavbar() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem asChild>
+              <Link href="/profile" className="flex items-center gap-2">
+                <UserCircle className="h-4 w-4" />
+                <span>Profile</span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => logout()}
               className="flex items-center gap-2 text-error focus:bg-error-light focus:text-error"

@@ -13,12 +13,14 @@ import type {
 
 interface UsePatientsOptions {
   search?: string;
+  unassigned?: boolean;
   enabled?: boolean;
 }
 
 function buildPatientsKey(options: UsePatientsOptions): string {
   const params = new URLSearchParams();
   if (options.search) params.set('search', options.search);
+  if (options.unassigned) params.set('unassigned', 'true');
   const qs = params.toString();
   return qs ? `/patients?${qs}` : '/patients';
 }

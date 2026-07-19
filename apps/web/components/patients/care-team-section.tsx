@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Stethoscope, Plus, X } from 'lucide-react';
-import type { PatientDetailResponse } from '@repo/contracts';
+import { Stethoscope, Plus, X, Mail, Phone } from 'lucide-react';
+import type { CareTeamMember, PatientDetailResponse } from '@repo/contracts';
 import { ApiError } from '@/lib/api';
 import { useAssignments } from '@/hooks/use-assignments';
 import { useUsers } from '@/hooks/use-users';
@@ -103,6 +103,41 @@ function AssignDialog({
   );
 }
 
+function ProfessionalProfileDialog({ member }: { member: CareTeamMember }) {
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm">
+          View Profile
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{member.fullName}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <p className="text-sm font-medium text-primary-base">
+            {member.specialty || 'Professional'}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            {member.bio || 'No bio provided yet.'}
+          </p>
+          <div className="space-y-2 border-t border-border pt-4">
+            <div className="flex items-center gap-2 text-sm text-foreground">
+              <Mail className="h-4 w-4 text-muted-foreground" />
+              {member.email}
+            </div>
+            <div className="flex items-center gap-2 text-sm text-foreground">
+              <Phone className="h-4 w-4 text-muted-foreground" />
+              {member.phone}
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function CareTeamSection({ patient, canManage, onChange }: Props) {
   const { removeAssignment } = useAssignments(patient.id, {
     enabled: false,
@@ -151,16 +186,19 @@ export function CareTeamSection({ patient, canManage, onChange }: Props) {
                     {member.specialty || 'Professional'} · {member.phone}
                   </div>
                 </div>
-                {canManage && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-error"
-                    onClick={() => onRemove(member.assignmentId)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                )}
+                <div className="flex items-center gap-2">
+                  <ProfessionalProfileDialog member={member} />
+                  {canManage && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-error"
+                      onClick={() => onRemove(member.assignmentId)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
               </li>
             ))}
           </ul>

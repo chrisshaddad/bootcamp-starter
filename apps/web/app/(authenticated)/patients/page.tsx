@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
@@ -28,6 +28,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -155,8 +156,12 @@ function CreatePatientDialog() {
 
 export default function PatientsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, isLoading: userLoading } = useUser();
   const [search, setSearch] = useState('');
+  const [unassignedOnly, setUnassignedOnly] = useState(
+    () => searchParams.get('unassigned') === 'true',
+  );
 
   const role = user?.role;
   const canAccess = role ? ALLOWED_ROLES.includes(role) : false;
@@ -165,8 +170,21 @@ export default function PatientsPage() {
 
   const { patients, total, isLoading, error } = usePatients({
     search: search || undefined,
+    unassigned: unassignedOnly || undefined,
     enabled: canAccess,
   });
+
+  const toggleUnassignedOnly = (checked: boolean) => {
+    setUnassignedOnly(checked);
+    const params = new URLSearchParams(searchParams.toString());
+    if (checked) {
+      params.set('unassigned', 'true');
+    } else {
+      params.delete('unassigned');
+    }
+    const qs = params.toString();
+    router.replace(qs ? `/patients?${qs}` : '/patients', { scroll: false });
+  };
 
   if (userLoading) {
     return <Skeleton className="h-64 w-full" />;
@@ -192,6 +210,18 @@ export default function PatientsPage() {
           </p>
         </div>
         <div className="flex items-center gap-4">
+          {!isProfessional && (
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="unassigned-filter"
+                checked={unassignedOnly}
+                onCheckedChange={(checked) => toggleUnassignedOnly(checked === true)}
+              />
+              <Label htmlFor="unassigned-filter" className="text-sm font-normal text-foreground">
+                No care team
+              </Label>
+            </div>
+          )}
           <Input
             placeholder="Search patients..."
             value={search}
