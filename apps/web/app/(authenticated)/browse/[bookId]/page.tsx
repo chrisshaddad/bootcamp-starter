@@ -40,6 +40,24 @@ const CONDITION_LABELS: Record<BookCopyCondition, string> = {
   DAMAGED: 'Damaged',
 };
 
+// Worst to best, so condition pickers/breakdowns read as a clear scale
+// rather than arbitrary insertion order.
+const CONDITION_ORDER: BookCopyCondition[] = [
+  'DAMAGED',
+  'POOR',
+  'FAIR',
+  'GOOD',
+  'NEW',
+];
+
+function sortByCondition<T extends string>(conditions: T[]): T[] {
+  return [...conditions].sort(
+    (a, b) =>
+      CONDITION_ORDER.indexOf(a as BookCopyCondition) -
+      CONDITION_ORDER.indexOf(b as BookCopyCondition),
+  );
+}
+
 export default function BookDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -70,9 +88,11 @@ export default function BookDetailPage() {
     return acc;
   }, {});
 
-  const buyableConditions = Object.entries(conditionBreakdown)
-    .filter(([, counts]) => counts.available > 0)
-    .map(([condition]) => condition as BookCopyCondition);
+  const buyableConditions = sortByCondition(
+    Object.entries(conditionBreakdown)
+      .filter(([, counts]) => counts.available > 0)
+      .map(([condition]) => condition as BookCopyCondition),
+  );
   const canBuy = buyableConditions.length > 0 && !!book?.salePrice;
 
   const handlePlaceHold = async () => {
@@ -258,24 +278,29 @@ export default function BookDetailPage() {
                   Not available in this library yet
                 </p>
               ) : (
-                Object.entries(conditionBreakdown).map(
-                  ([condition, counts]) => (
-                    <div
-                      key={condition}
-                      className="flex items-center justify-between text-sm"
-                    >
-                      <span className="text-foreground">
-                        {CONDITION_LABELS[condition as BookCopyCondition]}
-                      </span>
-                      <span className="text-muted-foreground">
-                        {counts.available} available
-                        <span className="text-muted-foreground/60">
-                          {' '}
-                          / {counts.total} total
+                sortByCondition(Object.keys(conditionBreakdown)).map(
+                  (condition) => {
+                    // Keys come directly from conditionBreakdown, so the
+                    // entry always exists - TS just can't see that.
+                    const counts = conditionBreakdown[condition]!;
+                    return (
+                      <div
+                        key={condition}
+                        className="flex items-center justify-between text-sm"
+                      >
+                        <span className="text-foreground">
+                          {CONDITION_LABELS[condition as BookCopyCondition]}
                         </span>
-                      </span>
-                    </div>
-                  ),
+                        <span className="text-muted-foreground">
+                          {counts.available} available
+                          <span className="text-muted-foreground/60">
+                            {' '}
+                            / {counts.total} total
+                          </span>
+                        </span>
+                      </div>
+                    );
+                  },
                 )
               )}
             </CardContent>
@@ -296,11 +321,13 @@ export default function BookDetailPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={NO_PREFERENCE}>No preference</SelectItem>
-                  {Object.keys(conditionBreakdown).map((condition) => (
-                    <SelectItem key={condition} value={condition}>
-                      {CONDITION_LABELS[condition as BookCopyCondition]}
-                    </SelectItem>
-                  ))}
+                  {sortByCondition(Object.keys(conditionBreakdown)).map(
+                    (condition) => (
+                      <SelectItem key={condition} value={condition}>
+                        {CONDITION_LABELS[condition as BookCopyCondition]}
+                      </SelectItem>
+                    ),
+                  )}
                 </SelectContent>
               </Select>
               <Button

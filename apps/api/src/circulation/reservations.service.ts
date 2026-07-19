@@ -274,6 +274,46 @@ export class ReservationsService {
     return this.findOne(organizationId, id);
   }
 
+  /**
+   * Daily housekeeping (see DueReminderScanProcessor - shares the same
+   * nightly circulation-scan trigger as rental due reminders): a hold that's
+   * been READY_FOR_PICKUP past its expiresAt without being picked up is
+   * expired, releasing its set-aside copy back to AVAILABLE for the next
+   * patron. Platform-wide, not organizationId-scoped, matching
+   * DueRemindersService.runDailyScan()'s same one-cron-for-everyone shape.
+   */
+  async expireStalePickups(): Promise<number> {
+    const stale = await this.prisma.reservation.findMany({
+      where: { status: 'READY_FOR_PICKUP', expiresAt: { lt: new Date() } },
+    });
+
+    for (const reservation of stale) {
+      await this.prisma.$transaction(async (tx) => {
+        const bookCopy = await tx.bookCopy.findFirst({
+          where: {
+            bookId: reservation.bookId,
+            organizationId: reservation.organizationId,
+            status: 'RESERVED',
+          },
+        });
+
+        if (bookCopy) {
+          await tx.bookCopy.update({
+            where: { id: bookCopy.id },
+            data: { status: 'AVAILABLE' },
+          });
+        }
+
+        await tx.reservation.update({
+          where: { id: reservation.id },
+          data: { status: 'EXPIRED' },
+        });
+      });
+    }
+
+    return stale.length;
+  }
+
   // A hold is a bet on future availability, so this only checks the book has
   // ever had copies at all (not that one is free right now) - unlike
   // markReady() which is a *now* action and validates against the actual
