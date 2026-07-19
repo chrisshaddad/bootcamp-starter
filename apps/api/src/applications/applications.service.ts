@@ -147,10 +147,12 @@ export class ApplicationsService {
       // Team scope (used by the manager-facing Team Overview screen): only
       // applications submitted by the current user's direct reports. Falls
       // through to an empty result set for non-managers, same as
-      // OpportunitiesService's "mine" scoping.
+      // OpportunitiesService's "mine" scoping. organizationId is scoped
+      // explicitly rather than relying on managerId alone.
       where = {
         user: {
           managerId: currentUser.id,
+          organizationId: currentUser.organizationId as string,
         },
       };
     } else if (currentUser.role === 'EMPLOYEE') {
@@ -230,10 +232,15 @@ export class ApplicationsService {
     let where: Prisma.ApplicationWhereInput = { id };
 
     if (currentUser.role === 'EMPLOYEE') {
-      // Employees can only see their own applications
+      // Employees can see their own applications, and managers can see
+      // (read-only) applications submitted by their direct reports - this
+      // matches the team-scoped list on the Team Overview screen.
       where = {
         id,
-        userId: currentUser.id,
+        OR: [
+          { userId: currentUser.id },
+          { user: { managerId: currentUser.id } },
+        ],
       };
     } else if (currentUser.role === 'HR' || currentUser.role === 'ORG_ADMIN') {
       // HR/ORG_ADMIN can see applications in their org

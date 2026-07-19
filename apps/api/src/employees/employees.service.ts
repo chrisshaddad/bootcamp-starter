@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@repo/db';
 import { PrismaService } from '../database/prisma.service';
-import type { User, EmploymentType, WorkArrangement } from '@repo/db';
+import type { User, UserRole, EmploymentType, WorkArrangement } from '@repo/db';
 import type {
   EmployeeResponse,
   EmployeeListQuery,
@@ -15,6 +15,26 @@ import type {
   EmployeeSkillsUpdateRequest,
   EmployeeProfileUpdateRequest,
 } from '@repo/contracts';
+
+// HR/ORG_ADMIN/SUPER_ADMIN may view anyone's contact/address details; anyone
+// else only sees them for their own record or a direct report's (matches the
+// Team Overview manager use case) - see canViewPrivateProfile below.
+const ADMIN_ROLES: UserRole[] = ['HR', 'ORG_ADMIN', 'SUPER_ADMIN'];
+
+type EmployeeProfileRecord = {
+  bio: string | null;
+  careerGoal: string | null;
+  phoneNumber: string | null;
+  street1: string | null;
+  street2: string | null;
+  city: string | null;
+  state: string | null;
+  postalCode: string | null;
+  country: string | null;
+  employmentType: EmploymentType | null;
+  workArrangement: WorkArrangement | null;
+  profilePictureUrl: string | null;
+};
 
 type EmployeeListRecord = {
   id: string;
@@ -27,20 +47,7 @@ type EmployeeListRecord = {
   updatedAt: Date;
   department: { id: string; name: string } | null;
   manager: { id: string; email: string; name: string } | null;
-  profile: {
-    bio: string | null;
-    careerGoal: string | null;
-    phoneNumber: string | null;
-    street1: string | null;
-    street2: string | null;
-    city: string | null;
-    state: string | null;
-    postalCode: string | null;
-    country: string | null;
-    employmentType: EmploymentType | null;
-    workArrangement: WorkArrangement | null;
-    profilePictureUrl: string | null;
-  } | null;
+  profile: EmployeeProfileRecord | null;
   // Only populated when the "mine" filter is set (see findAll below) -
   // omitted from the general directory listing for performance.
   userSkills?: {
@@ -131,9 +138,11 @@ export class EmployeesService {
     }
 
     const { userSkills, ...employeeFields } = employee;
+    const canViewPrivate = this.canViewPrivateProfile(currentUser, employee);
 
     return {
       ...employeeFields,
+      profile: this.toProfileResponse(employee.profile, canViewPrivate),
       skills: userSkills.map(({ skill, proficiencyLevel }) => ({
         ...skill,
         proficiencyLevel,
@@ -244,6 +253,7 @@ export class EmployeesService {
     return {
       employees: employeeRecords.map((emp) => {
         const userSkills = emp.userSkills ?? [];
+        const canViewPrivate = this.canViewPrivateProfile(currentUser, emp);
 
         return {
           id: emp.id,
@@ -256,7 +266,7 @@ export class EmployeesService {
           updatedAt: emp.updatedAt,
           department: emp.department,
           manager: emp.manager,
-          profile: emp.profile,
+          profile: this.toProfileResponse(emp.profile, canViewPrivate),
           skills: userSkills.map(({ skill, proficiencyLevel }) => ({
             ...skill,
             proficiencyLevel,
@@ -264,6 +274,50 @@ export class EmployeesService {
         };
       }),
       total,
+    };
+  }
+
+  /**
+   * Contact/address fields are only visible to the employee themselves,
+   * their direct manager, or HR/ORG_ADMIN/SUPER_ADMIN - not to every
+   * coworker in the org via the general directory listing.
+   */
+  private canViewPrivateProfile(
+    currentUser: User,
+    employee: { id: string; manager: { id: string } | null },
+  ): boolean {
+    return (
+      currentUser.id === employee.id ||
+      ADMIN_ROLES.includes(currentUser.role) ||
+      employee.manager?.id === currentUser.id
+    );
+  }
+
+  private toProfileResponse(
+    profile: EmployeeProfileRecord | null,
+    canViewPrivate: boolean,
+  ): EmployeeProfileRecord | null {
+    if (!profile) {
+      return null;
+    }
+
+    if (canViewPrivate) {
+      return profile;
+    }
+
+    return {
+      bio: profile.bio,
+      careerGoal: profile.careerGoal,
+      phoneNumber: null,
+      street1: null,
+      street2: null,
+      city: null,
+      state: null,
+      postalCode: null,
+      country: null,
+      employmentType: null,
+      workArrangement: null,
+      profilePictureUrl: profile.profilePictureUrl,
     };
   }
 

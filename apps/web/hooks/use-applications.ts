@@ -13,6 +13,7 @@ import type {
 interface UseApplicationsOptions {
   status?: ApplicationStatus;
   team?: boolean;
+  limit?: number;
   enabled?: boolean;
 }
 
@@ -30,11 +31,12 @@ interface UseApplicationsReturn {
 export function useApplications(
   options: UseApplicationsOptions = {},
 ): UseApplicationsReturn {
-  const { status, team, enabled = true } = options;
+  const { status, team, limit, enabled = true } = options;
 
   const params = new URLSearchParams();
   if (status) params.set('status', status);
   if (team) params.set('team', 'true');
+  if (limit) params.set('limit', String(limit));
   const query = params.toString();
   const endpoint = query ? `/applications?${query}` : '/applications';
 

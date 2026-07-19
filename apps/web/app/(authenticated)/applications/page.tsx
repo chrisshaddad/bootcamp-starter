@@ -93,6 +93,10 @@ function ApplicationsContent() {
   const { applications, isLoading, error } = useApplications({
     status: statusFilter === 'ALL' ? undefined : statusFilter,
     team: teamView,
+    // A manager's team-wide application volume can exceed the default page
+    // size; the personal view stays on the default since a single person's
+    // application count realistically won't.
+    limit: teamView ? 100 : undefined,
   });
 
   const filtered = useMemo(() => {

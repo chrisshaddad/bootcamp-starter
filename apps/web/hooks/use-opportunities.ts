@@ -14,6 +14,7 @@ import type {
 interface UseOpportunitiesOptions {
   status?: OpportunityStatus;
   mine?: boolean;
+  limit?: number;
   enabled?: boolean;
 }
 
@@ -31,11 +32,12 @@ interface UseOpportunitiesReturn {
 export function useOpportunities(
   options: UseOpportunitiesOptions = {},
 ): UseOpportunitiesReturn {
-  const { status, mine, enabled = true } = options;
+  const { status, mine, limit, enabled = true } = options;
 
   const params = new URLSearchParams();
   if (status) params.set('status', status);
   if (mine) params.set('mine', 'true');
+  if (limit) params.set('limit', String(limit));
   const query = params.toString();
   const endpoint = query ? `/opportunities?${query}` : '/opportunities';
 

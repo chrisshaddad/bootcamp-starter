@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { z } from 'zod';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import {
-  employeeProfileUpdateRequestSchema,
+  employmentTypeSchema,
+  workArrangementSchema,
   type EmployeeProfileUpdateRequest,
   type EmployeeResponse,
 } from '@repo/contracts';
@@ -42,6 +44,29 @@ const WORK_ARRANGEMENT_LABELS = {
   ONSITE: 'On-site',
 } as const;
 
+// Radix Select items can't use an empty string as their value, so a sentinel
+// represents "no selection" - translated back to null on submit.
+const NOT_SPECIFIED = '__not_specified__';
+
+// Local form schema (not the contract's update schema directly) - lets the
+// employment/work-arrangement selects hold the NOT_SPECIFIED sentinel, which
+// is converted to null when building the API payload in onSubmit.
+const profileFormSchema = z.object({
+  bio: z.string().max(2000).optional(),
+  careerGoal: z.string().max(2000).optional(),
+  phoneNumber: z.string().max(50).optional(),
+  street1: z.string().max(200).optional(),
+  street2: z.string().max(200).optional(),
+  city: z.string().max(100).optional(),
+  state: z.string().max(100).optional(),
+  postalCode: z.string().max(20).optional(),
+  country: z.string().max(100).optional(),
+  employmentType: z.union([employmentTypeSchema, z.literal(NOT_SPECIFIED)]),
+  workArrangement: z.union([workArrangementSchema, z.literal(NOT_SPECIFIED)]),
+});
+
+type ProfileFormValues = z.infer<typeof profileFormSchema>;
+
 interface EditProfileDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -63,8 +88,8 @@ export function EditProfileDialog({
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm<EmployeeProfileUpdateRequest>({
-    resolver: zodResolver(employeeProfileUpdateRequestSchema),
+  } = useForm<ProfileFormValues>({
+    resolver: zodResolver(profileFormSchema),
   });
 
   useEffect(() => {
@@ -79,12 +104,12 @@ export function EditProfileDialog({
       state: profile?.state ?? '',
       postalCode: profile?.postalCode ?? '',
       country: profile?.country ?? '',
-      employmentType: profile?.employmentType ?? undefined,
-      workArrangement: profile?.workArrangement ?? undefined,
+      employmentType: profile?.employmentType ?? NOT_SPECIFIED,
+      workArrangement: profile?.workArrangement ?? NOT_SPECIFIED,
     });
   }, [open, profile, reset]);
 
-  const onSubmit = async (values: EmployeeProfileUpdateRequest) => {
+  const onSubmit = async (values: ProfileFormValues) => {
     setIsSubmitting(true);
     try {
       await onSave({
@@ -97,8 +122,14 @@ export function EditProfileDialog({
         state: values.state || null,
         postalCode: values.postalCode || null,
         country: values.country || null,
-        employmentType: values.employmentType || null,
-        workArrangement: values.workArrangement || null,
+        employmentType:
+          values.employmentType === NOT_SPECIFIED
+            ? null
+            : values.employmentType,
+        workArrangement:
+          values.workArrangement === NOT_SPECIFIED
+            ? null
+            : values.workArrangement,
       });
       toast.success('Profile updated');
       onOpenChange(false);
@@ -177,6 +208,9 @@ export function EditProfileDialog({
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value={NOT_SPECIFIED}>
+                        Not specified
+                      </SelectItem>
                       {Object.entries(EMPLOYMENT_TYPE_LABELS).map(
                         ([value, label]) => (
                           <SelectItem key={value} value={value}>
@@ -207,6 +241,9 @@ export function EditProfileDialog({
                       <SelectValue placeholder="Select arrangement" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value={NOT_SPECIFIED}>
+                        Not specified
+                      </SelectItem>
                       {Object.entries(WORK_ARRANGEMENT_LABELS).map(
                         ([value, label]) => (
                           <SelectItem key={value} value={value}>

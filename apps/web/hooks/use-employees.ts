@@ -6,6 +6,7 @@ import type { EmployeeListResponse } from '@repo/contracts';
 interface UseEmployeesOptions {
   departmentId?: string;
   mine?: boolean;
+  limit?: number;
   enabled?: boolean;
 }
 
@@ -24,11 +25,12 @@ interface UseEmployeesReturn {
 export function useEmployees(
   options: UseEmployeesOptions = {},
 ): UseEmployeesReturn {
-  const { departmentId, mine, enabled = true } = options;
+  const { departmentId, mine, limit, enabled = true } = options;
 
   const params = new URLSearchParams();
   if (departmentId) params.set('departmentId', departmentId);
   if (mine) params.set('mine', 'true');
+  if (limit) params.set('limit', String(limit));
   const query = params.toString();
   const endpoint = query ? `/employees?${query}` : '/employees';
 

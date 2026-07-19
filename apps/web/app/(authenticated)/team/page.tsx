@@ -122,7 +122,12 @@ function SkillBreakdownBar({ row }: { row: SkillBreakdownRow }) {
 // Public ApplicationStatus collapses MANAGER_REVIEW/UNDER_REVIEW/SHORTLISTED
 // down to PENDING (see ApplicationsService.toPublicStatus) - so "pending
 // review" for a manager is simply the public PENDING status.
-const PENDING_STATUSES: ApplicationStatus[] = ['PENDING'];
+
+// Team-scoped lists are capped at the API's max page size rather than
+// paginated in the UI - a manager's direct-report count/application volume
+// realistically stays well under this, but stat *counts* below still use the
+// API's `total` (unaffected by this cap) so they're accurate either way.
+const TEAM_LIST_LIMIT = 100;
 
 export default function TeamOverviewPage() {
   const router = useRouter();
@@ -130,19 +135,38 @@ export default function TeamOverviewPage() {
   const isManager = Boolean(user?.isManager);
 
   const { employee } = useEmployee(user?.id, { enabled: isManager });
-  const { employees, isLoading: employeesLoading } = useEmployees({
+  const {
+    employees,
+    total: employeesTotal,
+    isLoading: employeesLoading,
+  } = useEmployees({
     mine: true,
+    limit: TEAM_LIST_LIMIT,
     enabled: isManager,
   });
-  const { opportunities, isLoading: opportunitiesLoading } = useOpportunities({
-    mine: true,
-    status: 'OPEN',
-    enabled: isManager,
-  });
+  // Only the count is displayed, so fetch a minimal page.
+  const { total: opportunitiesTotal, isLoading: opportunitiesLoading } =
+    useOpportunities({
+      mine: true,
+      status: 'OPEN',
+      limit: 1,
+      enabled: isManager,
+    });
   const { applications, isLoading: applicationsLoading } = useApplications({
     team: true,
+    limit: TEAM_LIST_LIMIT,
     enabled: isManager,
   });
+  // Counted via the API's `total` (a real count query) rather than the
+  // possibly-truncated `applications` array, so this stays correct even
+  // if a manager's team has more than TEAM_LIST_LIMIT applications.
+  const { total: pendingReviewsTotal, isLoading: pendingReviewsLoading } =
+    useApplications({
+      team: true,
+      status: 'PENDING',
+      limit: 1,
+      enabled: isManager,
+    });
 
   const skillBreakdown = useMemo<SkillBreakdownRow[]>(() => {
     if (!employees) return [];
@@ -181,10 +205,6 @@ export default function TeamOverviewPage() {
       );
   }, [employees]);
 
-  const pendingReviewsCount = (applications ?? []).filter((application) =>
-    PENDING_STATUSES.includes(application.status),
-  ).length;
-
   const recentApplications = (applications ?? []).slice(0, 5);
 
   if (isUserLoading) {
@@ -208,21 +228,21 @@ export default function TeamOverviewPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard
           title="Team Members"
-          value={employees?.length}
+          value={employeesTotal}
           icon={<Users className="h-5 w-5" />}
           loading={employeesLoading}
         />
         <StatCard
           title="Open Opportunities"
-          value={opportunities?.length}
+          value={opportunitiesTotal}
           icon={<Briefcase className="h-5 w-5" />}
           loading={opportunitiesLoading}
         />
         <StatCard
           title="Pending Reviews"
-          value={pendingReviewsCount}
+          value={pendingReviewsTotal}
           icon={<FileText className="h-5 w-5" />}
-          loading={applicationsLoading}
+          loading={pendingReviewsLoading}
         />
       </div>
 
