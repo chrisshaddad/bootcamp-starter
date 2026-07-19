@@ -59,7 +59,6 @@ const superAdminNavGroups: NavGroup[] = [
     label: 'Administration',
     items: [
       { title: 'Organizations', url: '/organizations', icon: Building2 },
-      { title: 'Patrons', url: '/patrons', icon: Users },
       { title: 'Users', url: '/users', icon: Users, disabled: true },
     ],
   },

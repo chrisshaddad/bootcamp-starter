@@ -225,8 +225,8 @@ export class LibraryMembersService {
   /**
    * A patron requesting access to a specific library. userId is always the
    * caller's own id (from the session) - never client-supplied. The request
-   * starts PENDING; a SUPER_ADMIN reviews it (see approve()/reject() below),
-   * not that library's own staff.
+   * starts PENDING; that library's own ORG_ADMIN/LIBRARIAN staff review it
+   * (see approve()/reject() below).
    */
   async requestMembership(
     userId: string,
@@ -305,38 +305,15 @@ export class LibraryMembersService {
   }
 
   /**
-   * Platform-wide pending membership requests, across every organization -
-   * SUPER_ADMIN reviews these, not each library's own staff (mirrors how
-   * Organization registrations are approved today).
+   * Approve a pending membership request (PENDING -> ACTIVE). Scoped to the
+   * reviewing staff member's own organization - a library's ORG_ADMIN/
+   * LIBRARIAN reviews requests to join THEIR library, not any other.
    */
-  async findAllPending(options: {
-    page?: number;
-    limit?: number;
-  }): Promise<LibraryMemberWithOrganizationListResponse> {
-    const { page = 1, limit = 20 } = options;
-    const skip = (page - 1) * limit;
-    const where = { membershipStatus: 'PENDING' as const };
-
-    const [libraryMembers, total] = await Promise.all([
-      this.prisma.libraryMember.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { createdAt: 'asc' },
-        include: libraryMemberWithOrganizationInclude,
-      }),
-      this.prisma.libraryMember.count({ where }),
-    ]);
-
-    return { libraryMembers, total };
-  }
-
-  /**
-   * Approve a pending membership request (PENDING -> ACTIVE). Not
-   * organizationId-scoped since a SUPER_ADMIN isn't tied to one org.
-   */
-  async approve(id: string): Promise<LibraryMemberWithOrganizationResponse> {
-    const existing = await this.requirePending(id);
+  async approve(
+    organizationId: string,
+    id: string,
+  ): Promise<LibraryMemberWithOrganizationResponse> {
+    const existing = await this.requirePending(organizationId, id);
 
     return this.prisma.libraryMember.update({
       where: { id: existing.id },
@@ -349,8 +326,11 @@ export class LibraryMembersService {
    * Reject a pending membership request (PENDING -> CANCELLED - there's no
    * REJECTED value on LibraryMemberStatus, unlike OrganizationStatus).
    */
-  async reject(id: string): Promise<LibraryMemberWithOrganizationResponse> {
-    const existing = await this.requirePending(id);
+  async reject(
+    organizationId: string,
+    id: string,
+  ): Promise<LibraryMemberWithOrganizationResponse> {
+    const existing = await this.requirePending(organizationId, id);
 
     return this.prisma.libraryMember.update({
       where: { id: existing.id },
@@ -392,9 +372,9 @@ export class LibraryMembersService {
     });
   }
 
-  private async requirePending(id: string) {
-    const existing = await this.prisma.libraryMember.findUnique({
-      where: { id },
+  private async requirePending(organizationId: string, id: string) {
+    const existing = await this.prisma.libraryMember.findFirst({
+      where: { id, organizationId },
     });
 
     if (!existing) {

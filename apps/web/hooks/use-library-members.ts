@@ -12,6 +12,7 @@ import type {
   LibraryMemberUpdateRequest,
   LibraryMemberStatus,
   LibraryMembershipType,
+  LibraryMemberActionResponse,
 } from '@repo/contracts';
 
 const PREFIX = '/library-members';
@@ -27,8 +28,6 @@ interface UseLibraryMembersOptions {
 
 /**
  * List + mutations hook for library members (tenant-scoped by the API).
- * `approve` is a thin wrapper over update that flips a PENDING member to ACTIVE
- * (there's no dedicated approve endpoint).
  */
 export function useLibraryMembers(options: UseLibraryMembersOptions = {}) {
   const {
@@ -72,10 +71,21 @@ export function useLibraryMembers(options: UseLibraryMembersOptions = {}) {
     [],
   );
 
-  const approve = useCallback(
-    (id: string) => update(id, { membershipStatus: 'ACTIVE' }),
-    [update],
-  );
+  const approve = useCallback(async (id: string) => {
+    const res = await apiPatch<LibraryMemberActionResponse>(
+      `${PREFIX}/${id}/approve`,
+    );
+    await invalidateByPrefix(PREFIX);
+    return res.libraryMember;
+  }, []);
+
+  const reject = useCallback(async (id: string) => {
+    const res = await apiPatch<LibraryMemberActionResponse>(
+      `${PREFIX}/${id}/reject`,
+    );
+    await invalidateByPrefix(PREFIX);
+    return res.libraryMember;
+  }, []);
 
   const remove = useCallback(async (id: string) => {
     await apiDelete(`${PREFIX}/${id}`);
@@ -91,6 +101,7 @@ export function useLibraryMembers(options: UseLibraryMembersOptions = {}) {
     create,
     update,
     approve,
+    reject,
     remove,
   };
 }
