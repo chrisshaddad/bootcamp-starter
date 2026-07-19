@@ -8,6 +8,9 @@ interface CoordlyLogoProps {
   showWordmark?: boolean;
 }
 
+/**
+ * Renders the Coordly brand mark with an optional wordmark.
+ */
 export function CoordlyLogo({
   className,
   markClassName,

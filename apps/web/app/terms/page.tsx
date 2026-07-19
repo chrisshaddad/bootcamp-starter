@@ -6,6 +6,9 @@ export const metadata: Metadata = {
   description: 'The terms that apply when using Coordly.',
 };
 
+/**
+ * Renders Coordly's public terms and conditions page.
+ */
 export default function TermsPage() {
   return (
     <LegalPage

@@ -7,6 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePublicEvents } from '@/hooks/use-public-events';
 
+/**
+ * Formats an event start date for the public event list.
+ */
 function formatDate(value: string | Date) {
   return new Date(value).toLocaleString(undefined, {
     weekday: 'short',
@@ -17,6 +20,9 @@ function formatDate(value: string | Date) {
   });
 }
 
+/**
+ * Renders the public Coordly event browse page.
+ */
 export default function BrowseEventsPage() {
   const { events, total, isLoading, error } = usePublicEvents();
 

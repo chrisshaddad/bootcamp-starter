@@ -10,6 +10,9 @@ interface LegalPageProps {
   children: ReactNode;
 }
 
+/**
+ * Renders the shared public legal page shell for Coordly policies.
+ */
 export function LegalPage({
   title,
   description,
@@ -65,6 +68,9 @@ export function LegalPage({
   );
 }
 
+/**
+ * Renders a titled section inside a Coordly legal page.
+ */
 export function LegalSection({
   title,
   children,

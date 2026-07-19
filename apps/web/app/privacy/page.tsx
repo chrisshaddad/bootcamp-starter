@@ -6,6 +6,9 @@ export const metadata: Metadata = {
   description: 'How Coordly collects, uses, and protects personal information.',
 };
 
+/**
+ * Renders Coordly's public privacy policy page.
+ */
 export default function PrivacyPage() {
   return (
     <LegalPage
