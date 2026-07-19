@@ -1,12 +1,17 @@
 'use client';
 
-import { useState } from 'react';
-import { useUser } from '@/hooks/use-auth';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
+import { useUser, useAuth } from '@/hooks/use-auth';
 import { usePortalBooks } from '@/hooks/use-portal-books';
 import { usePortalCategories } from '@/hooks/use-portal-categories';
 import { usePortalAuthors } from '@/hooks/use-portal-authors';
+import { usePortalMemberships } from '@/hooks/use-portal-memberships';
 import { useDebounce } from '@/hooks/use-debounce';
+import { invalidateByPrefix } from '@/lib/swr';
+import { ApiError } from '@/lib/api';
 import { BookCard } from '@/components/book-card';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import {
@@ -16,18 +21,64 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { BookOpen, Search } from 'lucide-react';
+import { BookOpen, Search, Library } from 'lucide-react';
 
 const ALL_FILTER_VALUE = 'all';
 
 export default function BrowsePage() {
   const { user, isLoading: userLoading } = useUser();
+  const { setActiveOrganization } = useAuth();
   const [search, setSearch] = useState('');
   const [categoryId, setCategoryId] = useState<string | undefined>();
   const [authorId, setAuthorId] = useState<string | undefined>();
+  const [isSwitching, setIsSwitching] = useState(false);
   const debouncedSearch = useDebounce(search, 300);
 
+  const { memberships, isLoading: membershipsLoading } = usePortalMemberships();
+  const activeMemberships = (memberships ?? []).filter(
+    (m) => m.membershipStatus === 'ACTIVE',
+  );
+
   const hasActiveLibrary = !!user?.activeOrganizationId;
+
+  // A patron with exactly one active library shouldn't have to visit My
+  // Libraries and click Activate before they can browse - skip straight to
+  // their catalog. With 2+ libraries there's a real choice to make, so that
+  // case still asks (see the "choose a library" screen below), just inline
+  // on this page instead of a separate one.
+  useEffect(() => {
+    const soleMembership =
+      activeMemberships.length === 1 ? activeMemberships[0] : undefined;
+
+    if (
+      !userLoading &&
+      !membershipsLoading &&
+      !hasActiveLibrary &&
+      soleMembership
+    ) {
+      setActiveOrganization({
+        organizationId: soleMembership.organization.id,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userLoading, membershipsLoading, hasActiveLibrary]);
+
+  const handleSwitchLibrary = async (organizationId: string) => {
+    setIsSwitching(true);
+    try {
+      await setActiveOrganization({ organizationId });
+      // The active org lives in the session, not the /portal/books query
+      // string, so switching doesn't change any SWR key - force a
+      // revalidation of everything scoped to the active library.
+      await invalidateByPrefix('/portal/');
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : 'Failed to switch library',
+      );
+    } finally {
+      setIsSwitching(false);
+    }
+  };
 
   const { books, total, isLoading, error } = usePortalBooks({
     limit: 60,
@@ -39,29 +90,60 @@ export default function BrowsePage() {
   const { categories } = usePortalCategories({ enabled: hasActiveLibrary });
   const { authors } = usePortalAuthors({ enabled: hasActiveLibrary });
 
-  if (userLoading) {
+  if (userLoading || membershipsLoading) {
     return <Skeleton className="h-64 w-full" />;
+  }
+
+  if (activeMemberships.length === 0) {
+    return (
+      <div className="py-20 text-center">
+        <BookOpen className="mx-auto h-12 w-12 text-muted-foreground/60" />
+        <h2 className="mt-4 text-lg font-semibold text-foreground">
+          No active library memberships yet
+        </h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Join a library to start browsing its catalog.
+        </p>
+        <a
+          href="/discover"
+          className="mt-4 inline-block text-sm text-library-primary hover:underline"
+        >
+          Discover libraries
+        </a>
+      </div>
+    );
   }
 
   if (!hasActiveLibrary) {
     return (
       <div className="py-20 text-center">
-        <BookOpen className="mx-auto h-12 w-12 text-muted-foreground/60" />
+        <Library className="mx-auto h-12 w-12 text-muted-foreground/60" />
         <h2 className="mt-4 text-lg font-semibold text-foreground">
-          Select a library first
+          Choose a library to browse
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Activate one of your approved libraries to browse its catalog.
+          You belong to {activeMemberships.length} libraries - pick one to see
+          its catalog.
         </p>
-        <a
-          href="/my-libraries"
-          className="mt-4 inline-block text-sm text-library-primary hover:underline"
-        >
-          Go to My Libraries
-        </a>
+        <div className="mx-auto mt-4 flex max-w-xs flex-col gap-2">
+          {activeMemberships.map((membership) => (
+            <Button
+              key={membership.organization.id}
+              variant="outline"
+              disabled={isSwitching}
+              onClick={() => handleSwitchLibrary(membership.organization.id)}
+            >
+              {membership.organization.name}
+            </Button>
+          ))}
+        </div>
       </div>
     );
   }
+
+  const activeLibraryName = activeMemberships.find(
+    (m) => m.organization.id === user?.activeOrganizationId,
+  )?.organization.name;
 
   return (
     <div className="space-y-6">
@@ -124,6 +206,29 @@ export default function BrowsePage() {
               ))}
             </SelectContent>
           </Select>
+
+          {activeMemberships.length > 1 && (
+            <Select
+              value={user?.activeOrganizationId ?? undefined}
+              onValueChange={handleSwitchLibrary}
+              disabled={isSwitching}
+            >
+              <SelectTrigger className="w-48" aria-label="Switch library">
+                <Library className="h-4 w-4" />
+                <SelectValue>{activeLibraryName}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {activeMemberships.map((membership) => (
+                  <SelectItem
+                    key={membership.organization.id}
+                    value={membership.organization.id}
+                  >
+                    {membership.organization.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
       </div>
 
