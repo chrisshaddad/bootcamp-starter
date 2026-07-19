@@ -11,7 +11,6 @@ import {
   HeartPulse,
   Building2,
   Bell,
-  Settings,
   LogOut,
 } from 'lucide-react';
 import type { Role } from '@repo/contracts';
@@ -29,7 +28,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarSeparator,
 } from '@/components/ui/sidebar';
 
 interface NavItem {
@@ -39,37 +37,33 @@ interface NavItem {
 }
 
 // Main navigation per role. Backend guards remain the real enforcement — this
-// just hides items a role can't use. Settings is shared (see below).
+// just hides items a role can't use.
 const NAV_ITEMS_BY_ROLE: Record<Role, NavItem[]> = {
   SUPER_ADMIN: [
     { title: 'Institutions', url: '/institutions', icon: Building2 },
   ],
   INSTITUTION_ADMIN: [
+    { title: 'Notifications', url: '/notifications', icon: Bell },
     { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
     { title: 'Patients', url: '/patients', icon: UsersRound },
     { title: 'Staff & Doctors', url: '/users', icon: Users },
     { title: 'My Institution', url: '/institution', icon: Building2 },
-    { title: 'Notifications', url: '/notifications', icon: Bell },
   ],
   STAFF: [
+    { title: 'Notifications', url: '/notifications', icon: Bell },
     { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
     { title: 'Patients', url: '/patients', icon: UsersRound },
-    { title: 'Notifications', url: '/notifications', icon: Bell },
   ],
   PROFESSIONAL: [
+    { title: 'Notifications', url: '/notifications', icon: Bell },
     { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
     { title: 'My Patients', url: '/patients', icon: Stethoscope },
-    { title: 'Notifications', url: '/notifications', icon: Bell },
   ],
   PATIENT: [
-    { title: 'My Health', url: '/portal', icon: HeartPulse },
     { title: 'Notifications', url: '/notifications', icon: Bell },
+    { title: 'My Health', url: '/portal', icon: HeartPulse },
   ],
 };
-
-const SECONDARY_NAV_ITEMS: NavItem[] = [
-  { title: 'Settings', url: '/settings', icon: Settings },
-];
 
 export function AppSidebar() {
   const pathname = usePathname();
@@ -116,38 +110,6 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {mainNavItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive(item.url)}
-                    className={cn(
-                      'h-11 gap-3 rounded-lg px-3 text-sm font-medium transition-colors',
-                      isActive(item.url)
-                        ? 'bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent/80'
-                        : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-                    )}
-                  >
-                    <Link href={item.url}>
-                      <item.icon className="h-5 w-5 text-sidebar-foreground/60" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarSeparator className="my-4" />
-
-        {/* Secondary Navigation */}
-        <SidebarGroup>
-          <SidebarGroupLabel className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-sidebar-foreground/60">
-            Support
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {SECONDARY_NAV_ITEMS.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild

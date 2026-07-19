@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
-import { UsersRound, Users, Building2, Bell, HeartPulse } from 'lucide-react';
+import { UsersRound, Users, Building2, HeartPulse } from 'lucide-react';
 import type { Role } from '@repo/contracts';
 import { useUser } from '@/hooks/use-auth';
 import { useMyInstitution } from '@/hooks/use-my-institution';
@@ -45,12 +45,6 @@ const QUICK_LINKS: Partial<Record<Role, QuickLink[]>> = {
       href: '/patients',
       icon: UsersRound,
     },
-    {
-      title: 'Notifications',
-      description: 'View your notifications',
-      href: '/notifications',
-      icon: Bell,
-    },
   ],
   PROFESSIONAL: [
     {
@@ -58,12 +52,6 @@ const QUICK_LINKS: Partial<Record<Role, QuickLink[]>> = {
       description: 'Patients assigned to your care',
       href: '/patients',
       icon: UsersRound,
-    },
-    {
-      title: 'Notifications',
-      description: 'View your notifications',
-      href: '/notifications',
-      icon: Bell,
     },
   ],
   PATIENT: [
