@@ -5,6 +5,7 @@ import {
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { projectsExploreQuerySchema } from '@repo/contracts';
 import { AccountType, Prisma, type User } from '@repo/db';
 import { PrismaService } from '../database/prisma.service';
 import { GithubRepositorySnapshotService } from '../repository-scanner/github-repository-snapshot.service';
@@ -284,6 +285,64 @@ describe('ProjectsService GitHub import', () => {
       }),
     ).rejects.toThrow(UnauthorizedException);
     expect(snapshotService.previewRepositoryAnalysis).not.toHaveBeenCalled();
+  });
+});
+
+describe('ProjectsService public technology filters', () => {
+  it('requires public projects to include every selected technology', async () => {
+    const project = {
+      count: jest.fn().mockResolvedValue(1),
+      findMany: jest.fn().mockResolvedValue([
+        {
+          id: PROJECT_ID,
+          title: 'Filtered project',
+          slug: 'filtered-project',
+          logoUrl: null,
+          shortDescription: null,
+          fullDescription: null,
+          deploymentUrl: null,
+          status: 'PUBLISHED',
+          publishedAt: CREATED_AT,
+          createdAt: CREATED_AT,
+          updatedAt: CREATED_AT,
+        },
+      ]),
+    };
+    const service = new ProjectsService(
+      { project } as unknown as PrismaService,
+      createSnapshotServiceMock() as unknown as GithubRepositorySnapshotService,
+      {} as GithubService,
+      {} as ProjectAccessService,
+    );
+    const query = projectsExploreQuerySchema.parse({
+      technology: ['react', 'typescript'],
+    });
+
+    await service.exploreProjects(query);
+
+    const expectedWhere: Prisma.ProjectWhereInput = {
+      status: 'PUBLISHED',
+      AND: [
+        { technologies: { some: { technology: { slug: 'react' } } } },
+        { technologies: { some: { technology: { slug: 'typescript' } } } },
+      ],
+    };
+    expect(project.count).toHaveBeenCalledWith({ where: expectedWhere });
+    expect(project.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expectedWhere }),
+    );
+  });
+
+  it('accepts repeated or comma-separated technology query values', () => {
+    expect(
+      projectsExploreQuerySchema.parse({
+        technology: ['react', 'typescript'],
+      }).technology,
+    ).toEqual(['react', 'typescript']);
+    expect(
+      projectsExploreQuerySchema.parse({ technology: 'react,typescript' })
+        .technology,
+    ).toEqual(['react', 'typescript']);
   });
 });
 
