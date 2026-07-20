@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { BookCover } from '@/components/book-cover';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { getBuyPriceRange, formatPriceRange } from '@/lib/book-condition';
 import type { BookResponse } from '@repo/contracts';
 
 interface BookCardProps {
@@ -46,7 +47,7 @@ export function BookCard({ book }: BookCardProps) {
 
         <div className="mt-auto flex items-center justify-between pt-2">
           <span className="font-semibold text-foreground">
-            {book.salePrice ? `$${book.salePrice}` : '—'}
+            {formatPriceRange(getBuyPriceRange(book.conditionPrices))}
           </span>
           <Badge
             className={cn(

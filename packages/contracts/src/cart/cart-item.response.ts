@@ -1,13 +1,13 @@
 import { z } from 'zod';
 import { dateSchema } from '../common';
 import { bookCopyConditionSchema } from '../book-copies';
+import { bookConditionPriceResponseSchema } from '../books';
 
 const cartItemBookSummarySchema = z.object({
   id: z.uuid(),
   title: z.string(),
   coverUrl: z.string().nullable(),
-  // Prisma Decimal serializes to a string over the wire (see BookResponse).
-  salePrice: z.string().nullable(),
+  conditionPrices: z.array(bookConditionPriceResponseSchema),
 });
 
 // Response shape for a single CartItem

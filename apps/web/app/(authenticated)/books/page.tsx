@@ -9,7 +9,13 @@ import { toast } from 'sonner';
 import { BookOpen, Plus, Search, Pencil, Trash2 } from 'lucide-react';
 
 import { bookCreateRequestSchema } from '@repo/contracts';
-import type { BookCreateRequest, BookResponse } from '@repo/contracts';
+import type {
+  BookConditionPriceInput,
+  BookCopyCondition,
+  BookCreateRequest,
+  BookResponse,
+} from '@repo/contracts';
+import { CONDITION_ORDER, CONDITION_LABELS } from '@/lib/book-condition';
 import { useBooks } from '@/hooks/use-books';
 import { useAuthors } from '@/hooks/use-authors';
 import { useCategories } from '@/hooks/use-categories';
@@ -62,6 +68,19 @@ const NO_PUBLISHER = '__none__';
 // z.coerce.date() makes the schema's input type diverge from its output type,
 // so the form is typed with the input while submit receives the parsed output.
 type BookFormInput = z.input<typeof bookCreateRequestSchema>;
+
+interface PriceRow {
+  rentPrice: string;
+  buyPrice: string;
+}
+
+type PriceRows = Record<BookCopyCondition, PriceRow>;
+
+function emptyPriceRows(): PriceRows {
+  return Object.fromEntries(
+    CONDITION_ORDER.map((c) => [c, { rentPrice: '', buyPrice: '' }]),
+  ) as PriceRows;
+}
 
 function toDateInput(value: unknown): string {
   if (!value) return '';
@@ -324,6 +343,11 @@ function BookDialog({
     defaultValues: { title: '', authorIds: [], categoryIds: [] },
   });
 
+  // BookCopyCondition is a fixed, closed 5-value enum, so a static
+  // one-row-per-condition grid (rather than a dynamic add/remove list) can't
+  // produce duplicate or invalid rows - simpler than useFieldArray for this.
+  const [priceRows, setPriceRows] = useState<PriceRows>(emptyPriceRows);
+
   useEffect(() => {
     if (!open) return;
     form.reset({
@@ -336,15 +360,31 @@ function BookDialog({
       language: book?.language ?? undefined,
       pageCount: book?.pageCount ?? undefined,
       coverUrl: book?.coverUrl ?? undefined,
-      salePrice: book?.salePrice ?? undefined,
       edition: book?.edition ?? undefined,
       publisherId: book?.publisher?.id ?? undefined,
       authorIds: book?.authors.map((a) => a.id) ?? [],
       categoryIds: book?.categories.map((c) => c.id) ?? [],
     });
+
+    const rows = emptyPriceRows();
+    for (const cp of book?.conditionPrices ?? []) {
+      rows[cp.condition] = { rentPrice: cp.rentPrice, buyPrice: cp.buyPrice };
+    }
+    setPriceRows(rows);
   }, [open, book, form]);
 
   const onSubmit = async (values: BookCreateRequest) => {
+    const conditionPrices: BookConditionPriceInput[] = CONDITION_ORDER.map(
+      (condition) => ({ condition, ...priceRows[condition] }),
+    ).filter((r) => r.rentPrice.trim() !== '' || r.buyPrice.trim() !== '');
+
+    if (
+      conditionPrices.some((r) => !r.rentPrice.trim() || !r.buyPrice.trim())
+    ) {
+      toast.error('Each priced condition needs both a rent and a buy price');
+      return;
+    }
+
     const payload: BookCreateRequest = {
       title: values.title.trim(),
       isbn: values.isbn?.trim() || undefined,
@@ -353,7 +393,11 @@ function BookDialog({
       language: values.language?.trim() || undefined,
       pageCount: values.pageCount,
       coverUrl: values.coverUrl?.trim() || undefined,
-      salePrice: values.salePrice?.trim() || undefined,
+      conditionPrices: conditionPrices.map((r) => ({
+        condition: r.condition,
+        rentPrice: r.rentPrice.trim(),
+        buyPrice: r.buyPrice.trim(),
+      })),
       edition: values.edition?.trim() || undefined,
       publisherId: values.publisherId || undefined,
       // Always send the arrays so associations are replaced on edit.
@@ -551,49 +595,77 @@ function BookDialog({
                 )}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="pageCount"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Page count</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        placeholder="320"
-                        value={field.value ?? ''}
-                        onChange={(e) =>
-                          field.onChange(
-                            e.target.value === ''
-                              ? undefined
-                              : Number(e.target.value),
-                          )
-                        }
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="salePrice"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Sale price</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="12.99"
-                        {...field}
-                        value={field.value ?? ''}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+            <FormField
+              control={form.control}
+              name="pageCount"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Page count</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      placeholder="320"
+                      value={field.value ?? ''}
+                      onChange={(e) =>
+                        field.onChange(
+                          e.target.value === ''
+                            ? undefined
+                            : Number(e.target.value),
+                        )
+                      }
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormItem>
+              <FormLabel>Pricing by condition</FormLabel>
+              <p className="text-sm text-muted-foreground">
+                Set a rent and buy price for each condition you offer this book
+                in. Leave both blank to skip a condition.
+              </p>
+              <div className="space-y-2 rounded-md border border-border p-3">
+                {CONDITION_ORDER.map((condition) => (
+                  <div
+                    key={condition}
+                    className="grid grid-cols-3 items-center gap-3"
+                  >
+                    <span className="text-sm text-foreground">
+                      {CONDITION_LABELS[condition]}
+                    </span>
+                    <Input
+                      placeholder="Rent price"
+                      aria-label={`${CONDITION_LABELS[condition]} rent price`}
+                      value={priceRows[condition].rentPrice}
+                      onChange={(e) =>
+                        setPriceRows((prev) => ({
+                          ...prev,
+                          [condition]: {
+                            ...prev[condition],
+                            rentPrice: e.target.value,
+                          },
+                        }))
+                      }
+                    />
+                    <Input
+                      placeholder="Buy price"
+                      aria-label={`${CONDITION_LABELS[condition]} buy price`}
+                      value={priceRows[condition].buyPrice}
+                      onChange={(e) =>
+                        setPriceRows((prev) => ({
+                          ...prev,
+                          [condition]: {
+                            ...prev[condition],
+                            buyPrice: e.target.value,
+                          },
+                        }))
+                      }
+                    />
+                  </div>
+                ))}
+              </div>
+            </FormItem>
             <FormField
               control={form.control}
               name="coverUrl"

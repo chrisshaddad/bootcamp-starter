@@ -22,6 +22,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Clock } from 'lucide-react';
+import { findConditionPrice } from '@/lib/book-condition';
 import type { RentalResponse } from '@repo/contracts';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -72,6 +73,12 @@ export default function MyRentalsPage() {
     !rental.finePaid && Number(rental.fineAmount) > 0
       ? Number(rental.fineAmount)
       : 0;
+
+  const bookValuePrice = (rental: RentalResponse) =>
+    findConditionPrice(
+      rental.bookCopy.book.conditionPrices,
+      rental.bookCopy.condition,
+    )?.buyPrice;
 
   return (
     <div className="space-y-6">
@@ -226,11 +233,11 @@ export default function MyRentalsPage() {
                       {new Date(selected.dueDate).toLocaleDateString()}
                     </dd>
                   </div>
-                  {selected.bookCopy.book.salePrice && (
+                  {bookValuePrice(selected) && (
                     <div>
                       <dt className="text-muted-foreground">Book Value</dt>
                       <dd className="font-medium text-foreground">
-                        ${selected.bookCopy.book.salePrice}
+                        ${bookValuePrice(selected)}
                       </dd>
                     </div>
                   )}

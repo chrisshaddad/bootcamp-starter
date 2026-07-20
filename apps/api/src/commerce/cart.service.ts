@@ -17,7 +17,19 @@ const cartInclude = {
     orderBy: { createdAt: 'asc' },
     include: {
       book: {
-        select: { id: true, title: true, coverUrl: true, salePrice: true },
+        select: {
+          id: true,
+          title: true,
+          coverUrl: true,
+          conditionPrices: {
+            select: {
+              id: true,
+              condition: true,
+              rentPrice: true,
+              buyPrice: true,
+            },
+          },
+        },
       },
     },
   },
@@ -65,13 +77,19 @@ export class CartService {
   ): Promise<CartResponse> {
     const book = await this.prisma.book.findFirst({
       where: { id: data.bookId, organizationId },
+      include: { conditionPrices: true },
     });
 
     if (!book) {
       throw new BadRequestException(`Book with ID ${data.bookId} not found`);
     }
 
-    if (book.salePrice === null) {
+    const priced = new Set(book.conditionPrices.map((cp) => cp.condition));
+    const buyable = data.preferredCondition
+      ? priced.has(data.preferredCondition)
+      : priced.size > 0;
+
+    if (!buyable) {
       throw new BadRequestException('This book is not available for purchase');
     }
 
@@ -135,24 +153,46 @@ export class CartService {
       const created: PurchaseWithBookCopy[] = [];
 
       for (const item of cart.items) {
-        if (item.book.salePrice === null) {
+        const priced = new Map(
+          item.book.conditionPrices.map((cp) => [cp.condition, cp]),
+        );
+
+        // Which conditions may this line item legitimately claim? Constrains
+        // the claim below to priced conditions so a copy can't be claimed
+        // and then discovered unpriceable.
+        const allowed = item.preferredCondition
+          ? priced.has(item.preferredCondition)
+            ? [item.preferredCondition]
+            : []
+          : [...priced.keys()];
+
+        if (allowed.length === 0) {
           failures.push(item.book.title);
           continue;
         }
 
-        const copy = await this.claimAvailableCopy(tx, organizationId, item);
+        const copy = await this.claimAvailableCopy(
+          tx,
+          organizationId,
+          item.bookId,
+          allowed,
+        );
 
         if (!copy) {
           failures.push(item.book.title);
           continue;
         }
 
+        // Guaranteed to be set: claimAvailableCopy only claims copies whose
+        // condition is in `allowed`, which is itself derived from `priced`.
+        const priceRow = priced.get(copy.condition)!;
+
         const purchase = await tx.purchase.create({
           data: {
             organizationId,
             bookCopyId: copy.id,
             memberId,
-            price: item.book.salePrice,
+            price: priceRow.buyPrice,
           },
           include: purchaseInclude,
         });
@@ -192,14 +232,15 @@ export class CartService {
   private async claimAvailableCopy(
     tx: Prisma.TransactionClient,
     organizationId: string,
-    item: { bookId: string; preferredCondition: BookCopyCondition | null },
+    bookId: string,
+    allowedConditions: BookCopyCondition[],
   ) {
     const candidate = await tx.bookCopy.findFirst({
       where: {
         organizationId,
-        bookId: item.bookId,
+        bookId,
         status: 'AVAILABLE',
-        condition: item.preferredCondition ?? undefined,
+        condition: { in: allowedConditions },
       },
     });
 
@@ -253,7 +294,12 @@ export class CartService {
         ...item,
         book: {
           ...item.book,
-          salePrice: item.book.salePrice?.toString() ?? null,
+          conditionPrices: item.book.conditionPrices.map((cp) => ({
+            id: cp.id,
+            condition: cp.condition,
+            rentPrice: cp.rentPrice.toString(),
+            buyPrice: cp.buyPrice.toString(),
+          })),
         },
       })),
     };

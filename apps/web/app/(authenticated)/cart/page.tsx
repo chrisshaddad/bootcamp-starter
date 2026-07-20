@@ -11,15 +11,13 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ShoppingCart, Trash2, CheckCircle2 } from 'lucide-react';
 import { ApiError } from '@/lib/api';
-import type { CheckoutResponse } from '@repo/contracts';
-
-const CONDITION_LABELS: Record<string, string> = {
-  NEW: 'New',
-  GOOD: 'Good',
-  FAIR: 'Fair',
-  POOR: 'Poor',
-  DAMAGED: 'Damaged',
-};
+import {
+  CONDITION_LABELS,
+  findConditionPrice,
+  getBuyPriceRange,
+  formatPriceRange,
+} from '@/lib/book-condition';
+import type { CartItemResponse, CheckoutResponse } from '@repo/contracts';
 
 export default function CartPage() {
   const { user, isLoading: userLoading } = useUser();
@@ -32,10 +30,34 @@ export default function CartPage() {
     enabled: hasActiveLibrary,
   });
 
+  // The exact charged price for an "any condition" item isn't pinned down
+  // until checkout claims a specific copy - use the cheapest priced
+  // condition as a floor estimate for the running total in that case.
+  const itemEstimatedPrice = (item: CartItemResponse) => {
+    if (item.preferredCondition) {
+      return Number(
+        findConditionPrice(item.book.conditionPrices, item.preferredCondition)
+          ?.buyPrice ?? 0,
+      );
+    }
+    return getBuyPriceRange(item.book.conditionPrices)?.min ?? 0;
+  };
+
   const total = (items ?? []).reduce(
-    (sum, item) => sum + Number(item.book.salePrice ?? 0),
+    (sum, item) => sum + itemEstimatedPrice(item),
     0,
   );
+
+  const itemPriceDisplay = (item: CartItemResponse) => {
+    if (!item.preferredCondition) {
+      return formatPriceRange(getBuyPriceRange(item.book.conditionPrices));
+    }
+    const price = findConditionPrice(
+      item.book.conditionPrices,
+      item.preferredCondition,
+    );
+    return price ? `$${price.buyPrice}` : '—';
+  };
 
   const handleRemove = async (itemId: string) => {
     setRemovingId(itemId);
@@ -193,7 +215,7 @@ export default function CartPage() {
                     </div>
                   </div>
                   <div className="font-semibold text-foreground">
-                    {item.book.salePrice ? `$${item.book.salePrice}` : '—'}
+                    {itemPriceDisplay(item)}
                   </div>
                   <Button
                     variant="ghost"
@@ -231,6 +253,9 @@ export default function CartPage() {
                 {isCheckingOut ? 'Placing Order...' : 'Checkout'}
               </Button>
               <p className="text-center text-xs text-muted-foreground">
+                {items.some((item) => !item.preferredCondition)
+                  ? 'Estimated total (cheapest condition per "any condition" item) - checkout confirms the final price. '
+                  : ''}
                 This is a mock checkout - no real payment is processed.
               </p>
             </CardContent>

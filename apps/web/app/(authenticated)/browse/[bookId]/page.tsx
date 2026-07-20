@@ -28,35 +28,17 @@ import {
   BookmarkPlus,
 } from 'lucide-react';
 import { ApiError } from '@/lib/api';
+import {
+  CONDITION_LABELS,
+  sortByCondition,
+  findConditionPrice,
+  getBuyPriceRange,
+  getRentPriceRange,
+  formatPriceRange,
+} from '@/lib/book-condition';
 import type { BookCopyCondition } from '@repo/contracts';
 
 const NO_PREFERENCE = 'any';
-
-const CONDITION_LABELS: Record<BookCopyCondition, string> = {
-  NEW: 'New',
-  GOOD: 'Good',
-  FAIR: 'Fair',
-  POOR: 'Poor',
-  DAMAGED: 'Damaged',
-};
-
-// Worst to best, so condition pickers/breakdowns read as a clear scale
-// rather than arbitrary insertion order.
-const CONDITION_ORDER: BookCopyCondition[] = [
-  'DAMAGED',
-  'POOR',
-  'FAIR',
-  'GOOD',
-  'NEW',
-];
-
-function sortByCondition<T extends string>(conditions: T[]): T[] {
-  return [...conditions].sort(
-    (a, b) =>
-      CONDITION_ORDER.indexOf(a as BookCopyCondition) -
-      CONDITION_ORDER.indexOf(b as BookCopyCondition),
-  );
-}
 
 export default function BookDetailPage() {
   const params = useParams();
@@ -88,12 +70,26 @@ export default function BookDetailPage() {
     return acc;
   }, {});
 
+  const pricedConditions = new Set(
+    (book?.conditionPrices ?? []).map((cp) => cp.condition),
+  );
   const buyableConditions = sortByCondition(
     Object.entries(conditionBreakdown)
-      .filter(([, counts]) => counts.available > 0)
+      .filter(
+        ([condition, counts]) =>
+          counts.available > 0 &&
+          pricedConditions.has(condition as BookCopyCondition),
+      )
       .map(([condition]) => condition as BookCopyCondition),
   );
-  const canBuy = buyableConditions.length > 0 && !!book?.salePrice;
+  const canBuy = buyableConditions.length > 0;
+  const selectedBuyPrice =
+    cartCondition === NO_PREFERENCE
+      ? null
+      : (findConditionPrice(
+          book?.conditionPrices ?? [],
+          cartCondition as BookCopyCondition,
+        )?.buyPrice ?? null);
 
   const handlePlaceHold = async () => {
     setIsPlacingHold(true);
@@ -181,9 +177,9 @@ export default function BookDetailPage() {
                   <h1 className="text-xl font-bold text-foreground">
                     {book.title}
                   </h1>
-                  {book.salePrice && (
+                  {book.conditionPrices.length > 0 && (
                     <p className="mt-1 text-lg font-semibold text-library-primary">
-                      ${book.salePrice}
+                      {formatPriceRange(getBuyPriceRange(book.conditionPrices))}
                     </p>
                   )}
                 </div>
@@ -322,11 +318,18 @@ export default function BookDetailPage() {
                 <SelectContent>
                   <SelectItem value={NO_PREFERENCE}>No preference</SelectItem>
                   {sortByCondition(Object.keys(conditionBreakdown)).map(
-                    (condition) => (
-                      <SelectItem key={condition} value={condition}>
-                        {CONDITION_LABELS[condition as BookCopyCondition]}
-                      </SelectItem>
-                    ),
+                    (condition) => {
+                      const price = findConditionPrice(
+                        book.conditionPrices,
+                        condition as BookCopyCondition,
+                      );
+                      return (
+                        <SelectItem key={condition} value={condition}>
+                          {CONDITION_LABELS[condition as BookCopyCondition]}
+                          {price && ` — $${price.rentPrice}`}
+                        </SelectItem>
+                      );
+                    },
                   )}
                 </SelectContent>
               </Select>
@@ -340,6 +343,9 @@ export default function BookDetailPage() {
                 {isPlacingHold ? 'Placing Hold...' : 'Reserve a Copy'}
               </Button>
               <p className="text-center text-xs text-muted-foreground">
+                {book.conditionPrices.length > 0
+                  ? `Rent from ${formatPriceRange(getRentPriceRange(book.conditionPrices))}. `
+                  : ''}
                 We&apos;ll notify you when a copy is ready for pickup.
               </p>
             </CardContent>
@@ -360,11 +366,18 @@ export default function BookDetailPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={NO_PREFERENCE}>No preference</SelectItem>
-                  {buyableConditions.map((condition) => (
-                    <SelectItem key={condition} value={condition}>
-                      {CONDITION_LABELS[condition]}
-                    </SelectItem>
-                  ))}
+                  {buyableConditions.map((condition) => {
+                    const price = findConditionPrice(
+                      book.conditionPrices,
+                      condition,
+                    );
+                    return (
+                      <SelectItem key={condition} value={condition}>
+                        {CONDITION_LABELS[condition]}
+                        {price && ` — $${price.buyPrice}`}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
               <Button
@@ -375,7 +388,14 @@ export default function BookDetailPage() {
                 <ShoppingCart className="h-4 w-4" />
                 {isAddingToCart ? 'Adding...' : 'Add to Cart'}
               </Button>
-              {!book.salePrice && (
+              {canBuy ? (
+                <p className="text-center text-xs text-muted-foreground">
+                  Price:{' '}
+                  {selectedBuyPrice
+                    ? `$${selectedBuyPrice}`
+                    : formatPriceRange(getBuyPriceRange(book.conditionPrices))}
+                </p>
+              ) : (
                 <p className="text-center text-xs text-muted-foreground">
                   This title isn&apos;t available for purchase.
                 </p>

@@ -1,16 +1,18 @@
 import { z } from 'zod';
 import { dateSchema } from '../common';
 import { rentalStatusSchema } from './rental-status.schema';
+import { bookCopyConditionSchema } from '../book-copies';
+import { bookConditionPriceResponseSchema } from '../books';
 
 const rentalBookCopySummarySchema = z.object({
   id: z.uuid(),
   barcode: z.string(),
+  condition: bookCopyConditionSchema,
   book: z.object({
     id: z.uuid(),
     title: z.string(),
     coverUrl: z.string().nullable(),
-    // Prisma Decimal serializes to a string over the wire (see BookResponse).
-    salePrice: z.string().nullable(),
+    conditionPrices: z.array(bookConditionPriceResponseSchema),
   }),
 });
 

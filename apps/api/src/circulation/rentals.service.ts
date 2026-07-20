@@ -25,8 +25,21 @@ const rentalInclude = {
     select: {
       id: true,
       barcode: true,
+      condition: true,
       book: {
-        select: { id: true, title: true, coverUrl: true, salePrice: true },
+        select: {
+          id: true,
+          title: true,
+          coverUrl: true,
+          conditionPrices: {
+            select: {
+              id: true,
+              condition: true,
+              rentPrice: true,
+              buyPrice: true,
+            },
+          },
+        },
       },
     },
   },
@@ -190,8 +203,9 @@ export class RentalsService {
   }
 
   /**
-   * Mark a rented book copy as lost. Fine defaults to the book's sale price
-   * (replacement cost), falling back to a flat fee if the book has none.
+   * Mark a rented book copy as lost. Fine defaults to the lost copy's own
+   * condition's buy price (replacement cost), falling back to a flat fee if
+   * that condition has no price row.
    */
   async markLost(
     organizationId: string,
@@ -202,12 +216,22 @@ export class RentalsService {
 
     const bookCopy = await this.prisma.bookCopy.findFirstOrThrow({
       where: { id: existing.bookCopyId },
-      include: { book: { select: { salePrice: true } } },
+      include: {
+        book: {
+          select: {
+            conditionPrices: { select: { condition: true, buyPrice: true } },
+          },
+        },
+      },
     });
+
+    const conditionPrice = bookCopy.book.conditionPrices.find(
+      (cp) => cp.condition === bookCopy.condition,
+    );
 
     const fineAmount =
       data.fineAmount ??
-      bookCopy.book.salePrice?.toString() ??
+      conditionPrice?.buyPrice.toString() ??
       FLAT_LOST_FEE.toFixed(2);
 
     await this.prisma.$transaction(async (tx) => {
@@ -289,7 +313,12 @@ export class RentalsService {
         ...rental.bookCopy,
         book: {
           ...rental.bookCopy.book,
-          salePrice: rental.bookCopy.book.salePrice?.toString() ?? null,
+          conditionPrices: rental.bookCopy.book.conditionPrices.map((cp) => ({
+            id: cp.id,
+            condition: cp.condition,
+            rentPrice: cp.rentPrice.toString(),
+            buyPrice: cp.buyPrice.toString(),
+          })),
         },
       },
     };

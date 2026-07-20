@@ -17,6 +17,7 @@ import type {
 import { useBook } from '@/hooks/use-books';
 import { useBookCopies } from '@/hooks/use-book-copies';
 import { ApiError } from '@/lib/api';
+import { CONDITION_ORDER, CONDITION_LABELS } from '@/lib/book-condition';
 import { RequireRole } from '@/components/require-role';
 import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
@@ -237,10 +238,6 @@ function BookDetail() {
                 : undefined
             }
           />
-          <InfoRow
-            label="Sale price"
-            value={book.salePrice ? `$${book.salePrice}` : undefined}
-          />
           {book.description && (
             <div className="pt-3">
               <p className="text-sm text-muted-foreground">
@@ -248,6 +245,34 @@ function BookDetail() {
               </p>
             </div>
           )}
+          <div className="pt-3">
+            <span className="text-sm text-muted-foreground">Pricing</span>
+            {book.conditionPrices.length === 0 ? (
+              <p className="mt-1 text-sm font-medium text-foreground">
+                Not priced
+              </p>
+            ) : (
+              <div className="mt-1 space-y-1">
+                {[...book.conditionPrices]
+                  .sort(
+                    (a, b) =>
+                      CONDITION_ORDER.indexOf(a.condition) -
+                      CONDITION_ORDER.indexOf(b.condition),
+                  )
+                  .map((cp) => (
+                    <div
+                      key={cp.id}
+                      className="flex justify-between text-sm text-foreground"
+                    >
+                      <span>{CONDITION_LABELS[cp.condition]}</span>
+                      <span>
+                        Buy ${cp.buyPrice} / Rent ${cp.rentPrice}
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 

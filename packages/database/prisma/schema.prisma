@@ -191,6 +191,7 @@ model Organization {
   bookAuthors    BookAuthor[]
   bookCategories BookCategory[]
   bookCopies     BookCopy[]
+  bookConditionPrices BookConditionPrice[]
   rentals        Rental[]
   reservations   Reservation[]
   carts          Cart[]
@@ -292,7 +293,6 @@ model Book {
   language       String?
   pageCount      Int?
   coverUrl       String?
-  salePrice      Decimal?  @db.Decimal(10, 2)
   edition        String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
@@ -302,6 +302,7 @@ model Book {
   authors      BookAuthor[]
   categories   BookCategory[]
   copies       BookCopy[]
+  conditionPrices BookConditionPrice[]
   reservations Reservation[]
   cartItems    CartItem[]
 
@@ -341,6 +342,23 @@ model BookCategory {
   @@unique([bookId, categoryId])
   @@index([organizationId])
   @@index([categoryId])
+  @@schema("public")
+}
+
+model BookConditionPrice {
+  id             String            @id @default(uuid())
+  organizationId String
+  bookId         String
+  condition      BookCopyCondition
+  rentPrice      Decimal           @db.Decimal(10, 2)
+  buyPrice       Decimal           @db.Decimal(10, 2)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  book         Book         @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@unique([bookId, condition])
+  @@index([organizationId])
+  @@index([bookId])
   @@schema("public")
 }
 
