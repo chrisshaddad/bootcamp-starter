@@ -44,7 +44,7 @@ export function TopNavbar() {
   };
 
   return (
-    <header className="border-border bg-card flex h-16 items-center justify-between border-b px-6">
+    <header className="border-border bg-card flex h-16 shrink-0 items-center justify-between border-b px-6">
       {/* Left Section - Sidebar Toggle & Search */}
       <div className="flex items-center gap-4">
         <SidebarTrigger className="text-muted-foreground hover:bg-accent hover:text-accent-foreground -ml-1 h-9 w-9" />
@@ -66,7 +66,7 @@ export function TopNavbar() {
       {/* Right Section - User */}
       <div className="flex items-center gap-3">
         {/* User Dropdown */}
-        <DropdownMenu>
+        <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
