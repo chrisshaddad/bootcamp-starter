@@ -3,6 +3,7 @@ import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { MailService } from './mail.service';
 import { MAIL_QUEUE, MAIL_JOBS } from './mail.constants';
+import { magicLinkEmail, invitationEmail, dueReminderEmail } from './templates';
 
 interface SendMagicLinkJobData {
   email: string;
@@ -30,6 +31,8 @@ type MailJobData =
   | SendMagicLinkJobData
   | SendInvitationJobData
   | SendDueReminderJobData;
+
+const FROM_ADDRESS = 'no-reply@nextshelf.local';
 
 @Processor(MAIL_QUEUE)
 export class MailProcessor extends WorkerHost {
@@ -59,15 +62,14 @@ export class MailProcessor extends WorkerHost {
 
   private async handleSendMagicLink(data: SendMagicLinkJobData): Promise<void> {
     const { email, magicLink, userName } = data;
-
-    const greeting = userName ? `Hello ${userName},` : 'Hello,';
-    const text = `${greeting}\n\nClick the link below to sign in to your account:\n\n${magicLink}\n\nThis link will expire in 15 minutes.\n\nIf you didn't request this link, you can safely ignore this email.`;
+    const { subject, text, html } = magicLinkEmail({ magicLink, userName });
 
     const success = await this.mailService.sendEmail({
       to: email,
-      from: 'no-reply@nextshelf.local',
-      subject: 'Sign in to NextShelf',
+      from: FROM_ADDRESS,
+      subject,
       text,
+      html,
     });
 
     if (success) {
@@ -82,14 +84,18 @@ export class MailProcessor extends WorkerHost {
     data: SendInvitationJobData,
   ): Promise<void> {
     const { email, inviterName, organizationName, invitationLink } = data;
-
-    const text = `Hello,\n\n${inviterName} has invited you to join ${organizationName} on NextShelf.\n\nClick the link below to accept the invitation and create your account:\n\n${invitationLink}\n\nThis invitation will expire in 7 days.\n\nIf you weren't expecting this invitation, you can safely ignore this email.`;
+    const { subject, text, html } = invitationEmail({
+      inviterName,
+      organizationName,
+      invitationLink,
+    });
 
     const success = await this.mailService.sendEmail({
       to: email,
-      from: 'no-reply@nextshelf.local',
-      subject: `You've been invited to join ${organizationName}`,
+      from: FROM_ADDRESS,
+      subject,
       text,
+      html,
     });
 
     if (success) {
@@ -104,32 +110,19 @@ export class MailProcessor extends WorkerHost {
     data: SendDueReminderJobData,
   ): Promise<void> {
     const { email, userName, bookTitle, dueDate, reminderType } = data;
-
-    const greeting = userName ? `Hello ${userName},` : 'Hello,';
-    const formattedDate = new Date(dueDate).toLocaleDateString();
-
-    const phraseByType: Record<SendDueReminderJobData['reminderType'], string> =
-      {
-        DUE_IN_5_DAYS: `is due in 5 days, on ${formattedDate}`,
-        DUE_TOMORROW: `is due tomorrow, ${formattedDate}`,
-        DUE_TODAY: `is due today, ${formattedDate}`,
-      };
-    const subjectByType: Record<
-      SendDueReminderJobData['reminderType'],
-      string
-    > = {
-      DUE_IN_5_DAYS: `Reminder: "${bookTitle}" is due in 5 days`,
-      DUE_TOMORROW: `Reminder: "${bookTitle}" is due tomorrow`,
-      DUE_TODAY: `Reminder: "${bookTitle}" is due today`,
-    };
-
-    const text = `${greeting}\n\nThis is a reminder that "${bookTitle}" ${phraseByType[reminderType]}. Please return it on time to avoid a late fee.\n\nIf you've already returned it, you can safely ignore this email.`;
+    const { subject, text, html } = dueReminderEmail({
+      userName,
+      bookTitle,
+      dueDate,
+      reminderType,
+    });
 
     const success = await this.mailService.sendEmail({
       to: email,
-      from: 'no-reply@nextshelf.local',
-      subject: subjectByType[reminderType],
+      from: FROM_ADDRESS,
+      subject,
       text,
+      html,
     });
 
     if (success) {
