@@ -291,6 +291,24 @@ export class PatientsService {
     return this.buildDetail(id);
   }
 
+  async setStatus(
+    id: string,
+    isActive: boolean,
+    actor: User,
+  ): Promise<PatientDetailResponse> {
+    const patient = await this.getInstitutionPatient(id, actor);
+
+    await this.prisma.user.update({
+      where: { id: patient.userId },
+      data: { isActive },
+    });
+    this.logger.log(
+      `Patient ${id} ${isActive ? 'reactivated' : 'deactivated'} by ${actor.id}`,
+    );
+
+    return this.buildDetail(id);
+  }
+
   // ---- helpers ---------------------------------------------------------
 
   private async assertCanView(

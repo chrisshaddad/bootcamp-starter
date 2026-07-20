@@ -9,6 +9,7 @@ import type {
   PatientCreateRequest,
   PatientAdminUpdateRequest,
   PatientClinicalUpdateRequest,
+  UserStatusRequest,
 } from '@repo/contracts';
 
 interface UsePatientsOptions {
@@ -59,6 +60,23 @@ export function useCreatePatient() {
   }, []);
 
   return { createPatient };
+}
+
+export function useSetPatientStatus() {
+  const setPatientStatus = useCallback(
+    async (id: string, isActive: boolean) => {
+      const payload: UserStatusRequest = { isActive };
+      const result = await apiPatch<PatientDetailResponse>(
+        `/patients/${id}/status`,
+        payload,
+      );
+      invalidatePatientsList();
+      return result;
+    },
+    [],
+  );
+
+  return { setPatientStatus };
 }
 
 export function usePatient(id: string, options: { enabled?: boolean } = {}) {

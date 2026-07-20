@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
 import {
-  Search,
   LogOut,
   ChevronDown,
   Bell,
@@ -15,7 +14,6 @@ import {
 import { useAuth, useUser } from '@/hooks/use-auth';
 import { useNotifications } from '@/hooks/use-notifications';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -30,7 +28,6 @@ export function TopNavbar() {
   const { user } = useUser({ redirectOnUnauthenticated: false });
   const { logout } = useAuth();
   const { unreadCount } = useNotifications({ enabled: !!user });
-  const [searchQuery, setSearchQuery] = useState('');
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -38,7 +35,6 @@ export function TopNavbar() {
     setMounted(true);
   }, []);
 
-  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   const isDark = mounted && resolvedTheme === 'dark';
 
   const getInitials = (name?: string | null, email?: string) => {
@@ -59,21 +55,10 @@ export function TopNavbar() {
   };
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-border bg-background px-6">
-      {/* Left Section - Sidebar Toggle & Search */}
+    <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-border bg-background px-6">
+      {/* Left Section - Sidebar Toggle */}
       <div className="flex items-center gap-4">
         <SidebarTrigger className="-ml-1 h-9 w-9 text-muted-foreground hover:bg-accent hover:text-accent-foreground" />
-
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder={isSuperAdmin ? 'Search institutions...' : 'Search...'}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-10 w-64 rounded-lg border-border bg-muted pl-10 text-sm placeholder:text-muted-foreground focus-visible:border-primary-base focus-visible:ring-primary-base/20"
-          />
-        </div>
       </div>
 
       {/* Right Section - User */}

@@ -11,10 +11,15 @@ import {
   type PatientCreateRequest,
 } from '@repo/contracts';
 import { useUser } from '@/hooks/use-auth';
-import { usePatients, useCreatePatient } from '@/hooks/use-patients';
+import {
+  usePatients,
+  useCreatePatient,
+  useSetPatientStatus,
+} from '@/hooks/use-patients';
 import { ApiError } from '@/lib/api';
 import { ForbiddenPage } from '@/components/forbidden-page';
 import { StatusBadge } from '@/components/status-badge';
+import { ActivationStatusBadge } from '@/components/activation-status-badge';
 import {
   Table,
   TableBody,
@@ -173,6 +178,7 @@ export default function PatientsPage() {
     unassigned: unassignedOnly || undefined,
     enabled: canAccess,
   });
+  const { setPatientStatus } = useSetPatientStatus();
 
   const toggleUnassignedOnly = (checked: boolean) => {
     setUnassignedOnly(checked);
@@ -289,9 +295,33 @@ export default function PatientsPage() {
                       {formatDate(p.dateOfBirth)}
                     </TableCell>
                     <TableCell>
-                      <StatusBadge
-                        status={p.isActive ? 'ACTIVE' : 'INACTIVE'}
-                      />
+                      {canCreate ? (
+                        <ActivationStatusBadge
+                          isActive={p.isActive}
+                          name={p.fullName}
+                          entityLabel="patient"
+                          onConfirm={async () => {
+                            try {
+                              await setPatientStatus(p.id, !p.isActive);
+                              toast.success(
+                                p.isActive
+                                  ? 'Patient deactivated'
+                                  : 'Patient reactivated',
+                              );
+                            } catch (error) {
+                              toast.error(
+                                error instanceof ApiError
+                                  ? error.message
+                                  : 'Failed to update status',
+                              );
+                            }
+                          }}
+                        />
+                      ) : (
+                        <StatusBadge
+                          status={p.isActive ? 'ACTIVE' : 'INACTIVE'}
+                        />
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

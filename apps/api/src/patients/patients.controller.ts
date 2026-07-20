@@ -15,12 +15,14 @@ import {
   patientAdminUpdateRequestSchema,
   patientClinicalUpdateRequestSchema,
   patientListQuerySchema,
+  userStatusRequestSchema,
   type PatientCreateRequest,
   type PatientAdminUpdateRequest,
   type PatientClinicalUpdateRequest,
   type PatientListQuery,
   type PatientListResponse,
   type PatientDetailResponse,
+  type UserStatusRequest,
 } from '@repo/contracts';
 import { ZodValidationPipe } from '../common/pipes';
 
@@ -84,5 +86,16 @@ export class PatientsController {
     @CurrentUser() user: User,
   ): Promise<PatientDetailResponse> {
     return this.patientsService.updateClinical(id, body, user);
+  }
+
+  @Patch(':id/status')
+  @Roles('INSTITUTION_ADMIN', 'STAFF')
+  async setStatus(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(userStatusRequestSchema))
+    body: UserStatusRequest,
+    @CurrentUser() user: User,
+  ): Promise<PatientDetailResponse> {
+    return this.patientsService.setStatus(id, body.isActive, user);
   }
 }

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import { Users as UsersIcon, Plus, MoreHorizontal } from 'lucide-react';
+import { Users as UsersIcon, Plus, Pencil } from 'lucide-react';
 import {
   userCreateRequestSchema,
   userUpdateRequestSchema,
@@ -22,7 +22,7 @@ import {
 } from '@/hooks/use-users';
 import { ApiError } from '@/lib/api';
 import { ForbiddenPage } from '@/components/forbidden-page';
-import { StatusBadge } from '@/components/status-badge';
+import { ActivationStatusBadge } from '@/components/activation-status-badge';
 import {
   Table,
   TableBody,
@@ -52,12 +52,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 
 const ROLE_LABELS: Record<string, string> = {
   STAFF: 'Staff',
@@ -278,40 +272,19 @@ function EditUserDialog({
 }
 
 function UserRowActions({ user }: { user: UserListItem }) {
-  const { setUserStatus } = useSetUserStatus();
   const [editOpen, setEditOpen] = useState(false);
-
-  const toggleStatus = async () => {
-    try {
-      await setUserStatus(user.id, !user.isActive);
-      toast.success(user.isActive ? 'User deactivated' : 'User reactivated');
-    } catch (error) {
-      toast.error(
-        error instanceof ApiError ? error.message : 'Failed to update status',
-      );
-    }
-  };
 
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8">
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => setEditOpen(true)}>
-            Edit
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={toggleStatus}
-            className={user.isActive ? 'text-error focus:text-error' : ''}
-          >
-            {user.isActive ? 'Deactivate' : 'Reactivate'}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8"
+        onClick={() => setEditOpen(true)}
+        aria-label="Edit"
+      >
+        <Pencil className="h-4 w-4" />
+      </Button>
       <EditUserDialog user={user} open={editOpen} onOpenChange={setEditOpen} />
     </>
   );
@@ -327,6 +300,7 @@ export default function UsersPage() {
     role: roleFilter === 'all' ? undefined : roleFilter,
     enabled: isAdmin,
   });
+  const { setUserStatus } = useSetUserStatus();
 
   if (userLoading) {
     return <Skeleton className="h-64 w-full" />;
@@ -419,8 +393,26 @@ export default function UsersPage() {
                       {u.specialty || <span className="text-muted-foreground">—</span>}
                     </TableCell>
                     <TableCell>
-                      <StatusBadge
-                        status={u.isActive ? 'ACTIVE' : 'INACTIVE'}
+                      <ActivationStatusBadge
+                        isActive={u.isActive}
+                        name={u.fullName}
+                        entityLabel={
+                          u.role === 'PROFESSIONAL' ? 'professional' : 'staff member'
+                        }
+                        onConfirm={async () => {
+                          try {
+                            await setUserStatus(u.id, !u.isActive);
+                            toast.success(
+                              u.isActive ? 'User deactivated' : 'User reactivated',
+                            );
+                          } catch (error) {
+                            toast.error(
+                              error instanceof ApiError
+                                ? error.message
+                                : 'Failed to update status',
+                            );
+                          }
+                        }}
                       />
                     </TableCell>
                     <TableCell>
