@@ -12,7 +12,11 @@ import {
 } from '@/common/building-access/building-access.service';
 import { TimelineService } from '@/modules/timeline/timeline.service';
 import { Role } from '@/common/enums';
-import { ExpenseCategory, ExpenseResponse } from '@repo/contracts';
+import {
+  ExpenseCategory,
+  ExpenseResponse,
+  formatWorkOrderNumber,
+} from '@repo/contracts';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
 
@@ -28,7 +32,14 @@ type ExpenseRow = {
   notes: string | null;
   createdAt: Date;
   updatedAt: Date;
+  workOrder?: { number: number } | null;
 };
+
+/** Shared across findAll/findOne/create/update so the linked Work Order's
+ * display number is always available to formatExpense. */
+const WORK_ORDER_NUMBER_INCLUDE = {
+  workOrder: { select: { number: true } },
+} as const;
 
 @Injectable()
 export class ExpensesService {
@@ -82,6 +93,9 @@ export class ExpensesService {
       buildingId: expense.buildingId,
       vendorId: expense.vendorId,
       workOrderId: expense.workOrderId,
+      workOrderNumberLabel: expense.workOrder
+        ? formatWorkOrderNumber(expense.workOrder.number)
+        : null,
       category: expense.category as ExpenseCategory,
       amount: expense.amount.toString(),
       incurredAt: expense.incurredAt.toISOString(),
@@ -109,6 +123,7 @@ export class ExpensesService {
         orgId,
         ...(allowedBuildingIds && { buildingId: { in: allowedBuildingIds } }),
       },
+      include: WORK_ORDER_NUMBER_INCLUDE,
       orderBy: { incurredAt: 'desc' },
     });
 
@@ -123,6 +138,7 @@ export class ExpensesService {
   ): Promise<{ data: ExpenseResponse }> {
     const expense = await this.prisma.expense.findFirst({
       where: { id: expenseId, orgId },
+      include: WORK_ORDER_NUMBER_INCLUDE,
     });
     if (!expense) throw new NotFoundException('Expense not found.');
 
@@ -176,6 +192,7 @@ export class ExpensesService {
         incurredAt: new Date(dto.incurredAt),
         notes: dto.notes,
       },
+      include: WORK_ORDER_NUMBER_INCLUDE,
     });
 
     await this.timeline.emit({
@@ -226,6 +243,7 @@ export class ExpensesService {
         }),
         ...(dto.notes !== undefined && { notes: dto.notes }),
       },
+      include: WORK_ORDER_NUMBER_INCLUDE,
     });
 
     await this.timeline.emit({

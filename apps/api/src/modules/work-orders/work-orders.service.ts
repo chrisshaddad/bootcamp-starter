@@ -10,7 +10,11 @@ import { BuildingAccessService } from '@/common/building-access/building-access.
 import { TimelineService } from '@/modules/timeline/timeline.service';
 import { WorkOrderApartmentStatusService } from './work-order-apartment-status.service';
 import { Role } from '@/common/enums';
-import { WorkOrderResponse } from '@repo/contracts';
+import {
+  AssignedWorkOrderListResponse,
+  MaintenanceRequestStatus,
+  WorkOrderResponse,
+} from '@repo/contracts';
 import { formatWorkOrder } from './work-order-formatter';
 import { CreateWorkOrderDto } from './dto/create-work-order.dto';
 import { UpdateWorkOrderDto } from './dto/update-work-order.dto';
@@ -81,6 +85,58 @@ export class WorkOrdersService {
     return { data: formatWorkOrder(workOrder) };
   }
 
+  /**
+   * All work orders assigned to the caller across every maintenance request
+   * in the org (Sprint F2.2 "My work orders" data source). Scoped by
+   * assignedUserId = callerId, so no separate building-access check is
+   * needed — a maintenance user can only ever see their own assignments.
+   */
+  async findAssignedToCaller(
+    orgId: string,
+    callerId: string,
+  ): Promise<AssignedWorkOrderListResponse> {
+    const workOrders = await this.prisma.workOrder.findMany({
+      where: { orgId, assignedUserId: callerId },
+      include: {
+        maintenanceRequest: {
+          select: {
+            title: true,
+            status: true,
+            buildingId: true,
+            apartmentId: true,
+            apartment: {
+              select: {
+                unitNumber: true,
+                building: { select: { name: true } },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // Active (scheduled/in_progress) work orders surface first; within each
+    // group the query's createdAt-desc order is preserved because
+    // Array#sort is a stable sort.
+    const activeRank = (status: string) => (OPEN_STATUSES.has(status) ? 0 : 1);
+    const sorted = [...workOrders].sort(
+      (a, b) => activeRank(a.status) - activeRank(b.status),
+    );
+
+    return {
+      data: sorted.map((w) => ({
+        ...formatWorkOrder(w),
+        requestTitle: w.maintenanceRequest.title,
+        requestStatus: w.maintenanceRequest.status as MaintenanceRequestStatus,
+        buildingId: w.maintenanceRequest.buildingId,
+        buildingName: w.maintenanceRequest.apartment.building.name,
+        apartmentId: w.maintenanceRequest.apartmentId,
+        apartmentUnit: w.maintenanceRequest.apartment.unitNumber,
+      })),
+    };
+  }
+
   // ── CRUD (write) ──────────────────────────────────────────────────────────
 
   async create(
@@ -110,16 +166,28 @@ export class WorkOrdersService {
       );
     }
 
-    const workOrder = await this.prisma.workOrder.create({
-      data: {
-        orgId,
-        maintenanceRequestId,
-        vendorId: dto.vendorId,
-        assignedUserId: dto.assignedUserId,
-        status: dto.status,
-        cost: dto.cost,
-        resolutionNotes: dto.resolutionNotes,
-      },
+    // Assign the next org-scoped sequential number under a per-org advisory lock
+    // so concurrent creates cannot collide on a number. The @@unique([orgId,
+    // number]) index is the backstop if two writers ever race the lock.
+    const workOrder = await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`work_order_number:${orgId}`}))`;
+      const { _max } = await tx.workOrder.aggregate({
+        where: { orgId },
+        _max: { number: true },
+      });
+      const nextNumber = (_max.number ?? 0) + 1;
+      return tx.workOrder.create({
+        data: {
+          orgId,
+          number: nextNumber,
+          maintenanceRequestId,
+          vendorId: dto.vendorId,
+          assignedUserId: dto.assignedUserId,
+          status: dto.status,
+          cost: dto.cost,
+          resolutionNotes: dto.resolutionNotes,
+        },
+      });
     });
 
     await this.workOrderApartmentStatus.onWorkOrderOpened(request.apartmentId);

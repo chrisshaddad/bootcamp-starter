@@ -173,6 +173,11 @@
         "medium": "Medium",
         "high": "High",
         "urgent": "Urgent"
+      },
+      "myWorkOrders": {
+        "title": "My work orders",
+        "subtitle": "Work orders assigned to you.",
+        "empty": "No work orders assigned to you yet."
       }
     },
     "tenant": {
@@ -1138,10 +1143,12 @@
         "assignee": "Vendor / Assignee",
         "cost": "Cost",
         "resolutionNotes": "Resolution notes",
-        "completed": "Completed"
+        "completed": "Completed",
+        "number": "Work order"
       },
       "empty": "No work orders yet.",
-      "updateStatusAction": "Update status"
+      "updateStatusAction": "Update status",
+      "assignedToYou": "Assigned to you"
     },
     "workOrder": {
       "fields": {
@@ -1213,7 +1220,8 @@
       "actions": {
         "view": "View"
       },
-      "loadError": "Failed to load maintenance requests. Please try again."
+      "loadError": "Failed to load maintenance requests. Please try again.",
+      "noMatch": "No maintenance requests match the current filters."
     },
     "empty": {
       "default": "No maintenance requests yet.",
@@ -1277,6 +1285,12 @@
         "success": "Maintenance request deleted.",
         "error": "Failed to delete maintenance request."
       }
+    },
+    "filters": {
+      "statusLabel": "Status",
+      "allStatuses": "All statuses",
+      "priorityLabel": "Priority",
+      "allPriorities": "All priorities"
     }
   },
   "expenses": {

@@ -12,9 +12,14 @@ import {
 } from 'lucide-react';
 import { useListMaintenanceRequestsQuery } from '@/store/api/endpoints/maintenance-requests.api';
 import { useListTimelineQuery } from '@/store/api/endpoints/timeline.api';
+import { useGetAssignedWorkOrdersQuery } from '@/store/api/endpoints/work-orders.api';
 import { maintenanceStats, topActiveRequests } from '@/lib/dashboard-kpis';
 import { KpiTile } from '@/components/dashboard/kpi-tile';
-import type { MaintenanceRequestPriority, MeResponse } from '@/types/api';
+import type {
+  MaintenanceRequestPriority,
+  MeResponse,
+  WorkOrderStatus,
+} from '@/types/api';
 import type { Dictionary } from '@/i18n/get-dictionary';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -38,16 +43,32 @@ const PRIORITY_CLASS: Record<MaintenanceRequestPriority, string> = {
   low: 'bg-gray-500/15 text-gray-600 border-gray-200',
 };
 
-export function StaffDashboard({ me, locale, dict }: StaffDashboardProps) {
+const WORK_ORDER_STATUS_CLASS: Record<WorkOrderStatus, string> = {
+  scheduled: 'bg-amber-50 text-amber-700 border-amber-200',
+  in_progress: 'bg-blue-50 text-blue-700 border-blue-200',
+  completed: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  canceled: 'bg-muted text-muted-foreground border-transparent',
+};
+
+export function StaffDashboard({
+  me,
+  locale,
+  role,
+  dict,
+}: StaffDashboardProps) {
   const t = dict.dashboard;
   const k = t.kpi;
+  const m = dict.maintenance;
   const dateLocale = locale === 'ar' ? ar : undefined;
   const base = `/${locale}/dashboard`;
+  const isMaintenance = role === 'maintenance';
 
   const { data: requests, isLoading: requestsLoading } =
     useListMaintenanceRequestsQuery();
   const { data: timelineData, isLoading: timelineLoading } =
     useListTimelineQuery({ limit: 5 });
+  const { data: assignedWorkOrders, isLoading: assignedLoading } =
+    useGetAssignedWorkOrdersQuery(undefined, { skip: !isMaintenance });
 
   const stats = maintenanceStats(requests);
   const attention = topActiveRequests(requests, 5);
@@ -65,22 +86,80 @@ export function StaffDashboard({ me, locale, dict }: StaffDashboardProps) {
         <p className="mt-1 text-sm text-muted-foreground">{k.staffOverview}</p>
       </div>
 
+      {/* My work orders — maintenance-role only. Surfaced above the KPI row
+          so a maintenance user sees their own assigned work first. */}
+      {isMaintenance && (
+        <section className="flex flex-col gap-3">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight">
+              {k.myWorkOrders.title}
+            </h2>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              {k.myWorkOrders.subtitle}
+            </p>
+          </div>
+          <div className="overflow-hidden rounded-xl border bg-card">
+            {assignedLoading ? (
+              <div className="flex flex-col gap-3 p-4">
+                {[0, 1, 2].map((i) => (
+                  <Skeleton key={i} className="h-10 w-full" />
+                ))}
+              </div>
+            ) : !assignedWorkOrders || assignedWorkOrders.length === 0 ? (
+              <p className="p-6 text-center text-sm text-muted-foreground">
+                {k.myWorkOrders.empty}
+              </p>
+            ) : (
+              <ul className="divide-y">
+                {assignedWorkOrders.map((row) => (
+                  <li key={row.id}>
+                    <Link
+                      href={`${base}/tasks/${row.maintenanceRequestId}`}
+                      className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-accent/40"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">
+                          {row.numberLabel} · {row.requestTitle}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {row.buildingName}
+                          {row.apartmentUnit
+                            ? ` · ${k.unit} ${row.apartmentUnit}`
+                            : ''}
+                        </p>
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className={WORK_ORDER_STATUS_CLASS[row.status]}
+                      >
+                        {m.workOrderStatus[row.status]}
+                      </Badge>
+                      <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground/60 rtl:rotate-180" />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </section>
+      )}
+
       {/* KPI row — live from the maintenance-request list (building-scoped
           server-side; the one org-wide list both supervisor and maintenance
-          can read). All tiles deep-link into the tasks module. */}
+          can read). All tiles deep-link into the filtered tasks module. */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiTile
           label={k.openRequests}
           value={String(stats.open)}
           icon={<WrenchIcon className="size-4" />}
-          href={`${base}/tasks`}
+          href={`${base}/tasks?status=open`}
           loading={requestsLoading}
         />
         <KpiTile
           label={k.inProgress}
           value={String(stats.inProgress)}
           icon={<LoaderIcon className="size-4" />}
-          href={`${base}/tasks`}
+          href={`${base}/tasks?status=in_progress`}
           loading={requestsLoading}
         />
         <KpiTile
@@ -88,7 +167,7 @@ export function StaffDashboard({ me, locale, dict }: StaffDashboardProps) {
           value={String(stats.activeUrgent)}
           tone={stats.activeUrgent > 0 ? 'negative' : 'neutral'}
           icon={<AlertTriangleIcon className="size-4" />}
-          href={`${base}/tasks`}
+          href={`${base}/tasks?priority=urgent`}
           loading={requestsLoading}
         />
         <KpiTile
@@ -96,7 +175,7 @@ export function StaffDashboard({ me, locale, dict }: StaffDashboardProps) {
           value={String(stats.resolved)}
           tone={stats.resolved > 0 ? 'positive' : 'neutral'}
           icon={<CheckCircle2Icon className="size-4" />}
-          href={`${base}/tasks`}
+          href={`${base}/tasks?status=resolved`}
           loading={requestsLoading}
         />
       </div>
@@ -122,7 +201,7 @@ export function StaffDashboard({ me, locale, dict }: StaffDashboardProps) {
               {attention.map((req) => (
                 <li key={req.id}>
                   <Link
-                    href={`${base}/tasks`}
+                    href={`${base}/tasks/${req.id}`}
                     className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-accent/40"
                   >
                     <div className="min-w-0 flex-1">

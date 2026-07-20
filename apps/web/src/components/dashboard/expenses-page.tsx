@@ -141,12 +141,6 @@ const EMPTY_VALUES: ExpenseFormValues = {
   notes: '',
 };
 
-// ── Work order label (WorkOrderResponse has no title/description) ────────────
-
-function workOrderLabel(id: string) {
-  return `#${id.slice(-6)}`;
-}
-
 // ── Shared form fields (create + edit dialogs) ────────────────────────────────
 
 function ExpenseFormFields({
@@ -173,7 +167,9 @@ function ExpenseFormFields({
   canLinkWorkOrder: boolean;
   maintenanceRequestId: string;
   onMaintenanceRequestChange: (id: string) => void;
-  workOrders: { id: string; vendorId?: string | null }[] | undefined;
+  workOrders:
+    | { id: string; vendorId?: string | null; numberLabel: string }[]
+    | undefined;
   setValue: ReturnType<typeof useForm<ExpenseFormValues>>['setValue'];
   getValues: ReturnType<typeof useForm<ExpenseFormValues>>['getValues'];
   dict: Dictionary;
@@ -381,7 +377,8 @@ function ExpenseFormFields({
                     {(value: string | null) =>
                       !value || value === NONE
                         ? t.workOrderSection.workOrderNone
-                        : workOrderLabel(value)
+                        : (workOrders?.find((w) => w.id === value)
+                            ?.numberLabel ?? value)
                     }
                   </SelectValue>
                 </SelectTrigger>
@@ -391,7 +388,7 @@ function ExpenseFormFields({
                   </SelectItem>
                   {workOrders?.map((w) => (
                     <SelectItem key={w.id} value={w.id}>
-                      {workOrderLabel(w.id)}
+                      {w.numberLabel}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -798,9 +795,7 @@ export function ExpensesPage({
                       : '—'}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {expense.workOrderId
-                      ? workOrderLabel(expense.workOrderId)
-                      : '—'}
+                    {expense.workOrderNumberLabel ?? '—'}
                   </TableCell>
                   {canWrite && (
                     <TableCell>

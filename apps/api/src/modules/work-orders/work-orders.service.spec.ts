@@ -38,6 +38,7 @@ describe('WorkOrdersService', () => {
       workOrder: {
         findFirst: jest.fn().mockResolvedValue(null),
         findMany: jest.fn().mockResolvedValue([]),
+        aggregate: jest.fn().mockResolvedValue({ _max: { number: 0 } }),
         create: jest.fn(),
         update: jest.fn(),
         delete: jest.fn(),
@@ -47,7 +48,12 @@ describe('WorkOrdersService', () => {
         count: jest.fn().mockResolvedValue(0),
         ...overrides.expense,
       },
+      // create() assigns the org-scoped number inside a transaction + advisory
+      // lock. Run the callback against the same mock and stub the raw lock.
+      $executeRaw: jest.fn().mockResolvedValue(1),
+      $transaction: jest.fn(),
     };
+    prisma.$transaction.mockImplementation((cb: any) => cb(prisma));
     const buildingAccess = {
       assertBuildingAccess: jest.fn().mockResolvedValue(undefined),
       ...overrides.buildingAccess,
@@ -76,6 +82,7 @@ describe('WorkOrdersService', () => {
   const workOrderRow = (overrides: Partial<Record<string, unknown>> = {}) => ({
     id: 'wo-1',
     orgId,
+    number: 1,
     maintenanceRequestId,
     vendorId: 'vendor-1',
     assignedUserId: null,
@@ -241,6 +248,128 @@ describe('WorkOrdersService', () => {
     });
   });
 
+  describe('findAssignedToCaller', () => {
+    const assignedRow = (overrides: Partial<Record<string, unknown>> = {}) => ({
+      ...workOrderRow({ assignedUserId: callerId, vendorId: null }),
+      maintenanceRequest: {
+        title: 'Leaking faucet',
+        status: 'open',
+        buildingId,
+        apartmentId,
+        apartment: {
+          unitNumber: '101',
+          building: { name: 'Tower A' },
+        },
+      },
+      ...overrides,
+    });
+
+    it("queries only work orders assigned to the caller, ordered by createdAt desc", async () => {
+      const { service, prisma } = makeService({
+        workOrder: { findMany: jest.fn().mockResolvedValue([assignedRow()]) },
+      });
+
+      await service.findAssignedToCaller(orgId, callerId);
+
+      expect(prisma.workOrder.findMany).toHaveBeenCalledWith({
+        where: { orgId, assignedUserId: callerId },
+        include: {
+          maintenanceRequest: {
+            select: {
+              title: true,
+              status: true,
+              buildingId: true,
+              apartmentId: true,
+              apartment: {
+                select: {
+                  unitNumber: true,
+                  building: { select: { name: true } },
+                },
+              },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+    });
+
+    it('enriches each row with request/apartment/building context and the numberLabel', async () => {
+      const { service } = makeService({
+        workOrder: {
+          findMany: jest
+            .fn()
+            .mockResolvedValue([assignedRow({ number: 123 })]),
+        },
+      });
+
+      const result = await service.findAssignedToCaller(orgId, callerId);
+
+      expect(result.data).toEqual([
+        expect.objectContaining({
+          id: 'wo-1',
+          number: 123,
+          numberLabel: 'WO-000123',
+          requestTitle: 'Leaking faucet',
+          requestStatus: 'open',
+          buildingId,
+          buildingName: 'Tower A',
+          apartmentId,
+          apartmentUnit: '101',
+        }),
+      ]);
+    });
+
+    it("returns an empty list when the caller has no assigned work orders", async () => {
+      const { service, prisma } = makeService({
+        workOrder: { findMany: jest.fn().mockResolvedValue([]) },
+      });
+
+      const result = await service.findAssignedToCaller(orgId, 'other-caller');
+
+      expect(prisma.workOrder.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { orgId, assignedUserId: 'other-caller' },
+        }),
+      );
+      expect(result.data).toEqual([]);
+    });
+
+    it('surfaces active (scheduled/in_progress) work orders before completed/canceled ones', async () => {
+      const completed = assignedRow({
+        id: 'wo-completed',
+        status: 'completed',
+        createdAt: new Date('2026-01-03T00:00:00.000Z'),
+      });
+      const scheduled = assignedRow({
+        id: 'wo-scheduled',
+        status: 'scheduled',
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      });
+      const inProgress = assignedRow({
+        id: 'wo-in-progress',
+        status: 'in_progress',
+        createdAt: new Date('2026-01-02T00:00:00.000Z'),
+      });
+      const { service } = makeService({
+        // Simulate the query's createdAt-desc ordering: completed (newest)
+        // first, then in_progress, then scheduled (oldest).
+        workOrder: {
+          findMany: jest
+            .fn()
+            .mockResolvedValue([completed, inProgress, scheduled]),
+        },
+      });
+
+      const result = await service.findAssignedToCaller(orgId, callerId);
+
+      expect(result.data.map((w) => w.id)).toEqual([
+        'wo-in-progress',
+        'wo-scheduled',
+        'wo-completed',
+      ]);
+    });
+  });
+
   describe('create', () => {
     it('creates a work order with a vendor assigned, opens the apartment, and emits work_order.created', async () => {
       const { service, prisma, timeline, workOrderApartmentStatus } =
@@ -262,6 +391,7 @@ describe('WorkOrdersService', () => {
       expect(prisma.workOrder.create).toHaveBeenCalledWith({
         data: {
           orgId,
+          number: 1,
           maintenanceRequestId,
           vendorId: 'vendor-1',
           assignedUserId: undefined,
@@ -269,6 +399,10 @@ describe('WorkOrdersService', () => {
           cost: undefined,
           resolutionNotes: undefined,
         },
+      });
+      expect(prisma.workOrder.aggregate).toHaveBeenCalledWith({
+        where: { orgId },
+        _max: { number: true },
       });
       expect(workOrderApartmentStatus.onWorkOrderOpened).toHaveBeenCalledWith(
         apartmentId,
@@ -293,6 +427,32 @@ describe('WorkOrdersService', () => {
       );
 
       expect(result.data.assignedUserId).toBe('user-1');
+    });
+
+    it('assigns the next org-scoped number (max + 1) and exposes a WO-000123 label', async () => {
+      const { service, prisma } = makeService({
+        workOrder: {
+          aggregate: jest.fn().mockResolvedValue({ _max: { number: 41 } }),
+          create: jest.fn().mockResolvedValue(
+            workOrderRow({ number: 42, vendorId: 'vendor-1' }),
+          ),
+        },
+      });
+
+      const result = await service.create(
+        orgId,
+        actorId,
+        Role.ORG_ADMIN,
+        maintenanceRequestId,
+        { vendorId: 'vendor-1' },
+      );
+
+      expect(prisma.$executeRaw).toHaveBeenCalled(); // advisory lock taken
+      expect(prisma.workOrder.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ number: 42 }) }),
+      );
+      expect(result.data.number).toBe(42);
+      expect(result.data.numberLabel).toBe('WO-000042');
     });
 
     it('rejects with BadRequestException when both vendorId and assignedUserId are set', async () => {

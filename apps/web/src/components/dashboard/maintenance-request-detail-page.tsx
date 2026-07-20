@@ -16,6 +16,8 @@ import {
   WrenchIcon,
 } from 'lucide-react';
 
+import { formatWorkOrderNumber } from '@repo/contracts';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -206,6 +208,13 @@ interface MaintenanceRequestDetailPageProps {
    * backend's per-row 403 + toast is the real enforcement.
    */
   isMaintenanceCaller: boolean;
+  /**
+   * The caller's Keycloak `sub`, used to highlight work orders assigned to
+   * them. Decoded server-side from the session access token (the session
+   * object itself does not expose `sub`/`id` for the JWT strategy) — undefined
+   * falls back to no highlight rather than a wrong one.
+   */
+  callerSub?: string;
   dict: Dictionary;
 }
 
@@ -214,6 +223,7 @@ export function MaintenanceRequestDetailPage({
   locale,
   canWrite,
   isMaintenanceCaller,
+  callerSub,
   dict,
 }: MaintenanceRequestDetailPageProps) {
   const t = dict.maintenance;
@@ -535,6 +545,7 @@ export function MaintenanceRequestDetailPage({
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>{t.detail.table.number}</TableHead>
               <TableHead>{t.detail.table.status}</TableHead>
               <TableHead>{t.detail.table.assignee}</TableHead>
               <TableHead>{t.detail.table.cost}</TableHead>
@@ -549,7 +560,7 @@ export function MaintenanceRequestDetailPage({
             {request.workOrders.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={canWrite || isMaintenanceCaller ? 6 : 5}
+                  colSpan={canWrite || isMaintenanceCaller ? 7 : 6}
                   className="text-center py-10 text-muted-foreground"
                 >
                   <WrenchIcon className="size-8 mx-auto mb-2 opacity-30" />
@@ -557,77 +568,100 @@ export function MaintenanceRequestDetailPage({
                 </TableCell>
               </TableRow>
             ) : (
-              request.workOrders.map((workOrder) => (
-                <TableRow key={workOrder.id}>
-                  <TableCell>
-                    <WorkOrderStatusBadge
-                      status={workOrder.status}
-                      labels={t.workOrderStatus}
-                    />
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {assigneeLabel(workOrder)}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {workOrder.cost ?? '—'}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {workOrder.resolutionNotes ?? '—'}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {workOrder.completedAt
-                      ? new Date(workOrder.completedAt).toLocaleDateString()
-                      : '—'}
-                  </TableCell>
-                  {(canWrite || isMaintenanceCaller) && (
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger
-                          render={
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              aria-label={t.detail.actionsLabel}
-                            >
-                              <MoreHorizontalIcon />
-                            </Button>
-                          }
-                        />
-                        <DropdownMenuContent align="end">
-                          {canWrite && (
-                            <DropdownMenuItem
-                              onClick={() => openEdit(workOrder)}
-                            >
-                              <PencilIcon className="size-3.5 mr-1.5" />
-                              {dict.common.edit}
-                            </DropdownMenuItem>
-                          )}
-                          {isMaintenanceCaller && !canWrite && (
-                            <DropdownMenuItem
-                              onClick={() => openStatusUpdate(workOrder)}
-                            >
-                              <PencilIcon className="size-3.5 mr-1.5" />
-                              {t.detail.updateStatusAction}
-                            </DropdownMenuItem>
-                          )}
-                          {canWrite && (
-                            <>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                variant="destructive"
-                                onClick={() => setDeleteTarget(workOrder)}
-                              >
-                                <TrashIcon className="size-3.5 mr-1.5" />
-                                {dict.common.delete}
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+              request.workOrders.map((workOrder) => {
+                const assignedToCaller =
+                  Boolean(callerSub) &&
+                  Boolean(workOrder.assignedUserId) &&
+                  workOrder.assignedUserId === callerSub;
+                return (
+                  <TableRow
+                    key={workOrder.id}
+                    className={assignedToCaller ? 'bg-primary/5' : undefined}
+                  >
+                    <TableCell className="text-sm font-medium">
+                      {workOrder.numberLabel ??
+                        formatWorkOrderNumber(workOrder.number)}
                     </TableCell>
-                  )}
-                </TableRow>
-              ))
+                    <TableCell>
+                      <WorkOrderStatusBadge
+                        status={workOrder.status}
+                        labels={t.workOrderStatus}
+                      />
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      <span className="inline-flex items-center gap-1.5">
+                        {assigneeLabel(workOrder)}
+                        {assignedToCaller && (
+                          <Badge
+                            variant="outline"
+                            className="bg-primary/10 text-primary border-primary/20"
+                          >
+                            {t.detail.assignedToYou}
+                          </Badge>
+                        )}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {workOrder.cost ?? '—'}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {workOrder.resolutionNotes ?? '—'}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {workOrder.completedAt
+                        ? new Date(workOrder.completedAt).toLocaleDateString()
+                        : '—'}
+                    </TableCell>
+                    {(canWrite || isMaintenanceCaller) && (
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            render={
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                aria-label={t.detail.actionsLabel}
+                              >
+                                <MoreHorizontalIcon />
+                              </Button>
+                            }
+                          />
+                          <DropdownMenuContent align="end">
+                            {canWrite && (
+                              <DropdownMenuItem
+                                onClick={() => openEdit(workOrder)}
+                              >
+                                <PencilIcon className="size-3.5 mr-1.5" />
+                                {dict.common.edit}
+                              </DropdownMenuItem>
+                            )}
+                            {isMaintenanceCaller && !canWrite && (
+                              <DropdownMenuItem
+                                onClick={() => openStatusUpdate(workOrder)}
+                              >
+                                <PencilIcon className="size-3.5 mr-1.5" />
+                                {t.detail.updateStatusAction}
+                              </DropdownMenuItem>
+                            )}
+                            {canWrite && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  variant="destructive"
+                                  onClick={() => setDeleteTarget(workOrder)}
+                                >
+                                  <TrashIcon className="size-3.5 mr-1.5" />
+                                  {dict.common.delete}
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>

@@ -583,6 +583,10 @@ export type WorkOrderStatus = z.infer<typeof workOrderStatusSchema>;
 export type WorkOrderResponse = {
   id: string;
   orgId: string;
+  /** Org-scoped sequential number (raw integer). */
+  number: number;
+  /** Pre-formatted display label, e.g. `WO-000123`. */
+  numberLabel: string;
   maintenanceRequestId: string;
   vendorId?: string | null;
   assignedUserId?: string | null;
@@ -594,9 +598,35 @@ export type WorkOrderResponse = {
   updatedAt: string;
 };
 
+/**
+ * Canonical work-order number formatter used on both the API and the web app so
+ * `WO-000123` renders identically everywhere a work order is referenced.
+ */
+export function formatWorkOrderNumber(n: number): string {
+  return `WO-${String(n).padStart(6, '0')}`;
+}
+
 /** GET /maintenance-requests/:id response — MaintenanceRequestResponse plus its full Work Order history. */
 export type MaintenanceRequestDetailResponse = MaintenanceRequestResponse & {
   workOrders: WorkOrderResponse[];
+};
+
+/**
+ * A work order assigned to the calling user, enriched with the parent request /
+ * apartment / building context so it can be surfaced as a standalone "My work
+ * orders" list (GET /work-orders/assigned-to-me) without drilling into a request.
+ */
+export type AssignedWorkOrderRow = WorkOrderResponse & {
+  requestTitle: string;
+  requestStatus: MaintenanceRequestStatus;
+  buildingId: string;
+  buildingName: string;
+  apartmentId: string;
+  apartmentUnit: string;
+};
+
+export type AssignedWorkOrderListResponse = {
+  data: AssignedWorkOrderRow[];
 };
 
 /**
@@ -640,6 +670,8 @@ export type ExpenseResponse = {
   buildingId?: string | null;
   vendorId?: string | null;
   workOrderId?: string | null;
+  /** Pre-formatted `WO-000123` for the linked work order, if any (display). */
+  workOrderNumberLabel?: string | null;
   category: ExpenseCategory;
   amount: string; // Decimal(12,2) serialized as string
   incurredAt: string;

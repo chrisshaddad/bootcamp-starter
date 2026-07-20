@@ -1,9 +1,10 @@
 import { Prisma } from '@repo/db';
-import { WorkOrderResponse } from '@repo/contracts';
+import { WorkOrderResponse, formatWorkOrderNumber } from '@repo/contracts';
 
 export type WorkOrderRow = {
   id: string;
   orgId: string;
+  number: number;
   maintenanceRequestId: string;
   vendorId: string | null;
   assignedUserId: string | null;
@@ -20,6 +21,8 @@ export function formatWorkOrder(workOrder: WorkOrderRow): WorkOrderResponse {
   return {
     id: workOrder.id,
     orgId: workOrder.orgId,
+    number: workOrder.number,
+    numberLabel: formatWorkOrderNumber(workOrder.number),
     maintenanceRequestId: workOrder.maintenanceRequestId,
     vendorId: workOrder.vendorId,
     assignedUserId: workOrder.assignedUserId,

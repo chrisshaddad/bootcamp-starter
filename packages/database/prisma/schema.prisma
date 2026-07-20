@@ -322,6 +322,10 @@ model MaintenanceRequest {
 model WorkOrder {
   id                   String             @id @default(cuid())
   orgId                String
+  /// Org-scoped sequential number, rendered as `WO-000123` everywhere a work
+  /// order is referenced. Assigned on create under a per-org advisory lock and
+  /// guaranteed unique per org by @@unique([orgId, number]).
+  number               Int
   maintenanceRequestId String
   vendorId             String?
   assignedUserId       String?
@@ -335,6 +339,7 @@ model WorkOrder {
   vendor               Vendor?            @relation(fields: [vendorId], references: [id], onDelete: Restrict)
   expenses             Expense[]
 
+  @@unique([orgId, number])
   @@index([maintenanceRequestId])
   @@index([vendorId])
   @@index([orgId])

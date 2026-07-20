@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -175,6 +175,8 @@ type EditFormValues = z.infer<ReturnType<typeof buildEditSchema>>;
 
 // ── Main component ────────────────────────────────────────────────────────────
 
+const ALL = '__all__';
+
 interface TasksPageProps {
   /** When false (non-admin), hide all write actions. */
   canWrite: boolean;
@@ -185,6 +187,7 @@ interface TasksPageProps {
 export function TasksPage({ canWrite, locale, dict }: TasksPageProps) {
   const t = dict.tasks;
   const router = useRouter();
+  const searchParams = useSearchParams();
   const {
     data: requests,
     isLoading,
@@ -192,6 +195,18 @@ export function TasksPage({ canWrite, locale, dict }: TasksPageProps) {
   } = useListMaintenanceRequestsQuery();
   const { data: buildings } = useListBuildingsQuery();
   const { data: renters } = useListRentersQuery();
+
+  // Dashboard KPI tiles deep-link here with `?status=` / `?priority=` to land
+  // pre-filtered (e.g. a supervisor's "urgent" tile). Unknown/absent values
+  // fall back to "all".
+  const [statusFilter, setStatusFilter] = useState<string>(() => {
+    const param = searchParams.get('status');
+    return param && (STATUSES as string[]).includes(param) ? param : ALL;
+  });
+  const [priorityFilter, setPriorityFilter] = useState<string>(() => {
+    const param = searchParams.get('priority');
+    return param && (PRIORITIES as string[]).includes(param) ? param : ALL;
+  });
 
   const [createMaintenanceRequest, { isLoading: creating }] =
     useCreateMaintenanceRequestMutation();
@@ -218,6 +233,7 @@ export function TasksPage({ canWrite, locale, dict }: TasksPageProps) {
     reset: resetCreate,
     watch: watchCreate,
     setValue: setCreateValue,
+    getValues: getCreateValues,
     formState: { errors: createErrors },
   } = useForm<CreateFormValues>({
     resolver: zodResolver(createSchema),
@@ -227,6 +243,7 @@ export function TasksPage({ canWrite, locale, dict }: TasksPageProps) {
   const createBuildingId = watchCreate('buildingId');
   const createFloorId = watchCreate('floorId');
   const createApartmentId = watchCreate('apartmentId');
+  const createRenterId = watchCreate('renterId');
 
   const { data: createFloors } = useListFloorsQuery(createBuildingId, {
     skip: !createBuildingId,
@@ -247,12 +264,41 @@ export function TasksPage({ canWrite, locale, dict }: TasksPageProps) {
       (l) =>
         l.apartmentId === createApartmentId && l.effectiveStatus === 'active',
     );
-    if (activeLease) {
+    // Guard against ping-ponging with the renter→apartment effect below: only
+    // write when the value actually needs to change.
+    if (
+      activeLease &&
+      getCreateValues('renterId') !== activeLease.renterId
+    ) {
       setCreateValue('renterId', activeLease.renterId, {
         shouldValidate: true,
       });
     }
-  }, [createApartmentId, allLeases, setCreateValue]);
+  }, [createApartmentId, allLeases, setCreateValue, getCreateValues]);
+
+  // Reverse of the above: picking a renter with exactly one active lease
+  // fills building → floor → apartment from that lease (building must be set
+  // first since floor/apartment options are dependent queries). A renter with
+  // zero or multiple active leases leaves the fields for manual selection.
+  useEffect(() => {
+    if (!createRenterId) return;
+    const matches = allLeases?.filter(
+      (l) => l.renterId === createRenterId && l.effectiveStatus === 'active',
+    );
+    if (!matches || matches.length !== 1) return;
+    const [lease] = matches;
+    if (getCreateValues('buildingId') !== lease.buildingId) {
+      setCreateValue('buildingId', lease.buildingId, { shouldValidate: true });
+    }
+    if (getCreateValues('floorId') !== lease.floorId) {
+      setCreateValue('floorId', lease.floorId, { shouldValidate: true });
+    }
+    if (getCreateValues('apartmentId') !== lease.apartmentId) {
+      setCreateValue('apartmentId', lease.apartmentId, {
+        shouldValidate: true,
+      });
+    }
+  }, [createRenterId, allLeases, setCreateValue, getCreateValues]);
 
   const editSchema = useMemo(
     () => buildEditSchema(t.dialog.edit),
@@ -334,6 +380,20 @@ export function TasksPage({ canWrite, locale, dict }: TasksPageProps) {
     router.push(`/${locale}/dashboard/tasks/${requestId}`);
   }
 
+  const hasAnyRequests = (requests?.length ?? 0) > 0;
+
+  const filteredRequests = useMemo(() => {
+    return (requests ?? []).filter((request) => {
+      if (statusFilter !== ALL && request.status !== statusFilter) {
+        return false;
+      }
+      if (priorityFilter !== ALL && request.priority !== priorityFilter) {
+        return false;
+      }
+      return true;
+    });
+  }, [requests, statusFilter, priorityFilter]);
+
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
@@ -364,6 +424,65 @@ export function TasksPage({ canWrite, locale, dict }: TasksPageProps) {
           )}
         </div>
       </div>
+
+      {/* Filters */}
+      {hasAnyRequests && (
+        <div className="flex flex-wrap items-end gap-3 rounded-xl border bg-card p-4">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="tasks-filter-status">{t.filters.statusLabel}</Label>
+            <Select
+              value={statusFilter}
+              onValueChange={(val) => setStatusFilter(val ?? ALL)}
+            >
+              <SelectTrigger id="tasks-filter-status" className="w-40">
+                <SelectValue>
+                  {(value: string | null) =>
+                    !value || value === ALL
+                      ? t.filters.allStatuses
+                      : (t.status[value as MaintenanceRequestStatus] ?? value)
+                  }
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>{t.filters.allStatuses}</SelectItem>
+                {STATUSES.map((status) => (
+                  <SelectItem key={status} value={status}>
+                    {t.status[status]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="tasks-filter-priority">
+              {t.filters.priorityLabel}
+            </Label>
+            <Select
+              value={priorityFilter}
+              onValueChange={(val) => setPriorityFilter(val ?? ALL)}
+            >
+              <SelectTrigger id="tasks-filter-priority" className="w-40">
+                <SelectValue>
+                  {(value: string | null) =>
+                    !value || value === ALL
+                      ? t.filters.allPriorities
+                      : (t.priority[value as MaintenanceRequestPriority] ??
+                        value)
+                  }
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>{t.filters.allPriorities}</SelectItem>
+                {PRIORITIES.map((priority) => (
+                  <SelectItem key={priority} value={priority}>
+                    {t.priority[priority]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      )}
 
       {/* Requests table */}
       <div className="rounded-xl border bg-card overflow-hidden">
@@ -411,7 +530,7 @@ export function TasksPage({ canWrite, locale, dict }: TasksPageProps) {
                   {t.list.loadError}
                 </TableCell>
               </TableRow>
-            ) : requests?.length === 0 ? (
+            ) : !hasAnyRequests ? (
               <TableRow>
                 <TableCell
                   colSpan={canWrite ? 6 : 5}
@@ -421,8 +540,17 @@ export function TasksPage({ canWrite, locale, dict }: TasksPageProps) {
                   {canWrite ? t.empty.write : t.empty.default}
                 </TableCell>
               </TableRow>
+            ) : filteredRequests.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={canWrite ? 6 : 5}
+                  className="text-center py-10 text-muted-foreground"
+                >
+                  {t.list.noMatch}
+                </TableCell>
+              </TableRow>
             ) : (
-              requests?.map((request) => (
+              filteredRequests.map((request) => (
                 <TableRow
                   key={request.id}
                   className="cursor-pointer hover:bg-muted/40"
