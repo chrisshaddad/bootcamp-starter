@@ -19,6 +19,22 @@ function isPrismaKnownError(error: unknown): error is PrismaKnownError {
   return typeof error === 'object' && error !== null && 'code' in error;
 }
 
+function isStudentCodeConflict(error: unknown): boolean {
+  if (!isPrismaKnownError(error) || error.code !== 'P2002') {
+    return false;
+  }
+
+  const target = error.meta?.target;
+
+  if (Array.isArray(target)) {
+    return target.some(
+      (field) => typeof field === 'string' && field.includes('studentCode'),
+    );
+  }
+
+  return typeof target === 'string' && target.includes('studentCode');
+}
+
 @Injectable()
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
@@ -87,7 +103,9 @@ export class UsersService {
       if (isPrismaKnownError(error) && error.code === 'P2002') {
         const target = Array.isArray(error.meta?.target)
           ? error.meta.target.join(', ')
-          : 'unique field';
+          : typeof error.meta?.target === 'string'
+            ? error.meta.target
+            : 'unique field';
 
         throw new ConflictException(
           `A record with this ${target} already exists`,
@@ -125,6 +143,7 @@ export class UsersService {
     });
 
     this.logger.log(`Created Teacher/Admin user ${user.id}`);
+
     return {
       message:
         'Teacher/Admin created successfully. They can now log in using magic link.',
@@ -140,6 +159,7 @@ export class UsersService {
     className?: string;
     sectionName?: string;
   }) {
+    const maxStudentCodeAttempts = 5;
     const className = input.className?.trim();
     const sectionName = input.sectionName?.trim();
 
@@ -159,93 +179,35 @@ export class UsersService {
       throw new BadRequestException('Invalid date of birth');
     }
 
-    const result = await this.prisma.$transaction(async (tx) => {
-      const gradeLevel = await tx.gradeLevel.upsert({
-        where: {
-          name: className,
-        },
-        update: {},
-        create: {
-          name: className,
-        },
-        select: {
-          id: true,
-          name: true,
-        },
-      });
-
-      const section = await tx.section.upsert({
-        where: {
-          gradeLevelId_name: {
-            gradeLevelId: gradeLevel.id,
-            name: sectionName,
-          },
-        },
-        update: {},
-        create: {
-          gradeLevelId: gradeLevel.id,
-          name: sectionName,
-        },
-        select: {
-          id: true,
-          name: true,
-          gradeLevel: {
+    for (let attempt = 1; attempt <= maxStudentCodeAttempts; attempt += 1) {
+      try {
+        const result = await this.prisma.$transaction(async (tx) => {
+          const gradeLevel = await tx.gradeLevel.upsert({
+            where: {
+              name: className,
+            },
+            update: {},
+            create: {
+              name: className,
+            },
             select: {
               id: true,
               name: true,
             },
-          },
-        },
-      });
+          });
 
-      const user = await tx.user.create({
-        data: {
-          name: input.name,
-          email: input.email,
-          role: 'MEMBER',
-          organizationId: input.organizationId,
-          isConfirmed: true,
-        },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          role: true,
-          organizationId: true,
-          createdAt: true,
-        },
-      });
-
-      let nextNumber = await tx.studentProfile.count();
-      let studentCode = '';
-
-      while (true) {
-        nextNumber += 1;
-        studentCode = `STU-${nextNumber.toString().padStart(4, '0')}`;
-
-        const existingProfile = await tx.studentProfile.findUnique({
-          where: {
-            studentCode,
-          },
-        });
-
-        if (!existingProfile) {
-          break;
-        }
-      }
-
-      const studentProfile = await tx.studentProfile.create({
-        data: {
-          userId: user.id,
-          studentCode,
-          dateOfBirth,
-          sectionId: section.id,
-        },
-        select: {
-          id: true,
-          studentCode: true,
-          dateOfBirth: true,
-          section: {
+          const section = await tx.section.upsert({
+            where: {
+              gradeLevelId_name: {
+                gradeLevelId: gradeLevel.id,
+                name: sectionName,
+              },
+            },
+            update: {},
+            create: {
+              gradeLevelId: gradeLevel.id,
+              name: sectionName,
+            },
             select: {
               id: true,
               name: true,
@@ -256,22 +218,105 @@ export class UsersService {
                 },
               },
             },
-          },
-        },
-      });
+          });
 
-      return {
-        user,
-        studentProfile,
-      };
-    });
+          const user = await tx.user.create({
+            data: {
+              name: input.name,
+              email: input.email,
+              role: 'MEMBER',
+              organizationId: input.organizationId,
+              isConfirmed: true,
+            },
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              role: true,
+              organizationId: true,
+              createdAt: true,
+            },
+          });
 
-    this.logger.log(`Created Student/User ${result.user.id}`);
+          let nextNumber = await tx.studentProfile.count();
+          let studentCode = '';
 
-    return {
-      message:
-        'Student created successfully. They can now log in using magic link.',
-      ...result,
-    };
+          while (true) {
+            nextNumber += 1;
+            studentCode = `STU-${nextNumber.toString().padStart(4, '0')}`;
+
+            const existingProfile = await tx.studentProfile.findUnique({
+              where: {
+                studentCode,
+              },
+              select: {
+                id: true,
+              },
+            });
+
+            if (!existingProfile) {
+              break;
+            }
+          }
+
+          const studentProfile = await tx.studentProfile.create({
+            data: {
+              userId: user.id,
+              studentCode,
+              dateOfBirth,
+              sectionId: section.id,
+            },
+            select: {
+              id: true,
+              studentCode: true,
+              dateOfBirth: true,
+              section: {
+                select: {
+                  id: true,
+                  name: true,
+                  gradeLevel: {
+                    select: {
+                      id: true,
+                      name: true,
+                    },
+                  },
+                },
+              },
+            },
+          });
+
+          return {
+            user,
+            studentProfile,
+          };
+        });
+
+        this.logger.log(`Created Student/User ${result.user.id}`);
+
+        return {
+          message:
+            'Student created successfully. They can now log in using magic link.',
+          ...result,
+        };
+      } catch (error: unknown) {
+        if (!isStudentCodeConflict(error)) {
+          throw error;
+        }
+
+        if (attempt === maxStudentCodeAttempts) {
+          throw new ConflictException(
+            'Unable to generate a unique student code. Please try again.',
+          );
+        }
+
+        this.logger.warn(
+          `Student code conflict. Retrying creation (${attempt}/${maxStudentCodeAttempts}).`,
+        );
+      }
+    }
+
+    throw new ConflictException(
+      'Unable to generate a unique student code. Please try again.',
+    );
   }
 }

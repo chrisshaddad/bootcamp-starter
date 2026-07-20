@@ -1,7 +1,7 @@
 import { prisma } from '../../src/client';
 import { seedSuperAdmins, seedOrgAdmins } from './seedUsers';
 import { seedOrganizations } from './seedOrganizations';
-import { seedLms } from './seedLm';
+import { seedLms } from './seedLms';
 
 async function main() {
   await seedSuperAdmins(prisma);

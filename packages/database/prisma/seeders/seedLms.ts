@@ -1,126 +1,161 @@
 import { PrismaClient } from '../../src/generated/prisma/client';
 
+const DEMO_STUDENTS = [
+  {
+    name: 'Mia Farchoukh',
+    email: 'mia@student.local',
+    className: 'Grade 9',
+    sectionName: 'A',
+    dateOfBirth: '2009-02-22',
+    studentCode: 'STU-0001',
+    phoneNumber: '+96170000001',
+  },
+  {
+    name: 'Adam Khoury',
+    email: 'adam@student.local',
+    className: 'Grade 9',
+    sectionName: 'A',
+    dateOfBirth: '2009-05-14',
+    studentCode: 'STU-0002',
+    phoneNumber: '+96170000002',
+  },
+  {
+    name: 'Lea Haddad',
+    email: 'lea@student.local',
+    className: 'Grade 9',
+    sectionName: 'B',
+    dateOfBirth: '2009-09-10',
+    studentCode: 'STU-0003',
+    phoneNumber: '+96170000003',
+  },
+  {
+    name: 'Karim Mansour',
+    email: 'karim@student.local',
+    className: 'Grade 10',
+    sectionName: 'A',
+    dateOfBirth: '2008-01-12',
+    studentCode: 'STU-0004',
+    phoneNumber: '+96170000004',
+  },
+  {
+    name: 'Nour Saliba',
+    email: 'nour@student.local',
+    className: 'Grade 10',
+    sectionName: 'C',
+    dateOfBirth: '2008-07-20',
+    studentCode: 'STU-0005',
+    phoneNumber: '+96170000005',
+  },
+  {
+    name: 'Elie Nader',
+    email: 'elie@student.local',
+    className: 'Grade 11',
+    sectionName: 'B',
+    dateOfBirth: '2007-03-18',
+    studentCode: 'STU-0006',
+    phoneNumber: '+96170000006',
+  },
+];
+
 export async function seedLms(prisma: PrismaClient) {
-  const superAdmin = await prisma.user.findUnique({
+  console.log('Seeding LMS demo students...');
+
+  const organization = await prisma.organization.findFirst({
     where: {
-      email: 'admin@bootcamp-starter.local',
+      status: 'ACTIVE',
+    },
+    orderBy: {
+      createdAt: 'asc',
     },
   });
 
-  if (!superAdmin) {
-    throw new Error('Super Admin user not found. Run seedUsers first.');
+  if (!organization) {
+    console.warn('No active organization found. Skipping LMS student seed.');
+    return;
   }
 
-  const organization = await prisma.organization.findFirst();
-
-  const gradeLevel = await prisma.gradeLevel.upsert({
-    where: { name: 'Grade 9' },
-    update: {},
-    create: {
-      name: 'Grade 9',
-    },
-  });
-
-  const section = await prisma.section.upsert({
-    where: {
-      gradeLevelId_name: {
-        gradeLevelId: gradeLevel.id,
-        name: 'Section A',
-      },
-    },
-    update: {},
-    create: {
-      gradeLevelId: gradeLevel.id,
-      name: 'Section A',
-    },
-  });
-
-  const subject = await prisma.subject.upsert({
-    where: { name: 'Mathematics' },
-    update: {},
-    create: {
-      name: 'Mathematics',
-      code: 'MATH-9',
-    },
-  });
-
-  const course = await prisma.course.upsert({
-    where: {
-      joinCode: 'MATH9A',
-    },
-    update: {},
-    create: {
-      teacherId: superAdmin.id,
-      subjectId: subject.id,
-      sectionId: section.id,
-      organizationId: organization?.id,
-      title: 'Mathematics - Grade 9 Section A',
-      description: 'Sample LMS course for Grade 9 Section A.',
-      joinCode: 'MATH9A',
-      status: 'published',
-    },
-  });
-
-  await prisma.enrollment.upsert({
-    where: {
-      courseId_studentId: {
-        courseId: course.id,
-        studentId: superAdmin.id,
-      },
-    },
-    update: {},
-    create: {
-      courseId: course.id,
-      studentId: superAdmin.id,
-      status: 'active',
-    },
-  });
-
-  await prisma.$transaction(async (tx) => {
-    let existingAssignment = await tx.assignment.findFirst({
-      where: {
-        courseId: course.id,
-        title: 'Sample Algebra Quiz',
-      },
-    });
-
-    if (!existingAssignment) {
-      existingAssignment = await tx.assignment.create({
-        data: {
-          courseId: course.id,
-          createdById: superAdmin.id,
-          type: 'quiz',
-          title: 'Sample Algebra Quiz',
-          instructions: 'Answer the following sample question.',
-          maxScore: 10,
-          status: 'published',
+  for (const student of DEMO_STUDENTS) {
+    await prisma.$transaction(async (tx) => {
+      const gradeLevel = await tx.gradeLevel.upsert({
+        where: {
+          name: student.className,
+        },
+        update: {},
+        create: {
+          name: student.className,
         },
       });
-    }
 
-    const existingQuestion = await tx.quizQuestion.findFirst({
-      where: {
-        assignmentId: existingAssignment.id,
-        position: 1,
-      },
-    });
-
-    if (!existingQuestion) {
-      await tx.quizQuestion.create({
-        data: {
-          assignmentId: existingAssignment.id,
-          questionText: 'What is 2 + 2?',
-          questionType: 'mcq',
-          options: [
-            { id: 'A', text: '3' },
-            { id: 'B', text: '4' },
-            { id: 'C', text: '5' },
-          ],
-          correctAnswer: { selectedOptionId: 'B' },
-          points: 10,
-          position: 1,
+      const section = await tx.section.upsert({
+        where: {
+          gradeLevelId_name: {
+            gradeLevelId: gradeLevel.id,
+            name: student.sectionName,
+          },
+        },
+        update: {},
+        create: {
+          gradeLevelId: gradeLevel.id,
+          name: student.sectionName,
         },
       });
-    }
-  });
+
+      const user = await tx.user.upsert({
+        where: {
+          email: student.email,
+        },
+        update: {
+          name: student.name,
+          role: 'MEMBER',
+          organizationId: organization.id,
+          isConfirmed: true,
+        },
+        create: {
+          name: student.name,
+          email: student.email,
+          role: 'MEMBER',
+          organizationId: organization.id,
+          isConfirmed: true,
+        },
+      });
+
+      await tx.userProfile.upsert({
+        where: {
+          userId: user.id,
+        },
+        update: {
+          dateOfBirth: new Date(student.dateOfBirth),
+          phoneNumber: student.phoneNumber,
+          city: 'Beirut',
+          country: 'Lebanon',
+        },
+        create: {
+          userId: user.id,
+          dateOfBirth: new Date(student.dateOfBirth),
+          phoneNumber: student.phoneNumber,
+          city: 'Beirut',
+          country: 'Lebanon',
+        },
+      });
+
+      await tx.studentProfile.upsert({
+        where: {
+          studentCode: student.studentCode,
+        },
+        update: {
+          userId: user.id,
+          sectionId: section.id,
+          dateOfBirth: new Date(student.dateOfBirth),
+        },
+        create: {
+          userId: user.id,
+          studentCode: student.studentCode,
+          sectionId: section.id,
+          dateOfBirth: new Date(student.dateOfBirth),
+        },
+      });
+    });
+  }
+
+  console.log('LMS demo students seeded.');
 }
