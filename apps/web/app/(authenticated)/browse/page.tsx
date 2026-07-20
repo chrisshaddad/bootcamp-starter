@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { useUser, useAuth } from '@/hooks/use-auth';
 import { usePortalBooks } from '@/hooks/use-portal-books';
@@ -21,11 +22,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { BookOpen, Search, Library } from 'lucide-react';
+import { ArrowLeft, BookOpen, Search, Library } from 'lucide-react';
 
 const ALL_FILTER_VALUE = 'all';
 
 export default function BrowsePage() {
+  const router = useRouter();
   const { user, isLoading: userLoading } = useUser();
   const { setActiveOrganization } = useAuth();
   const [search, setSearch] = useState('');
@@ -94,48 +96,66 @@ export default function BrowsePage() {
     return <Skeleton className="h-64 w-full" />;
   }
 
+  const backButton = (
+    <Button
+      variant="ghost"
+      size="sm"
+      className="-ml-2 gap-2"
+      onClick={() => router.push('/my-libraries')}
+    >
+      <ArrowLeft className="h-4 w-4" />
+      Back to My Libraries
+    </Button>
+  );
+
   if (activeMemberships.length === 0) {
     return (
-      <div className="py-20 text-center">
-        <BookOpen className="mx-auto h-12 w-12 text-muted-foreground/60" />
-        <h2 className="mt-4 text-lg font-semibold text-foreground">
-          No active library memberships yet
-        </h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Join a library to start browsing its catalog.
-        </p>
-        <a
-          href="/discover"
-          className="mt-4 inline-block text-sm text-library-primary hover:underline"
-        >
-          Discover libraries
-        </a>
+      <div className="space-y-6">
+        {backButton}
+        <div className="py-20 text-center">
+          <BookOpen className="mx-auto h-12 w-12 text-muted-foreground/60" />
+          <h2 className="mt-4 text-lg font-semibold text-foreground">
+            No active library memberships yet
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Join a library to start browsing its catalog.
+          </p>
+          <a
+            href="/discover"
+            className="mt-4 inline-block text-sm text-library-primary hover:underline"
+          >
+            Discover libraries
+          </a>
+        </div>
       </div>
     );
   }
 
   if (!hasActiveLibrary) {
     return (
-      <div className="py-20 text-center">
-        <Library className="mx-auto h-12 w-12 text-muted-foreground/60" />
-        <h2 className="mt-4 text-lg font-semibold text-foreground">
-          Choose a library to browse
-        </h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          You belong to {activeMemberships.length} libraries - pick one to see
-          its catalog.
-        </p>
-        <div className="mx-auto mt-4 flex max-w-xs flex-col gap-2">
-          {activeMemberships.map((membership) => (
-            <Button
-              key={membership.organization.id}
-              variant="outline"
-              disabled={isSwitching}
-              onClick={() => handleSwitchLibrary(membership.organization.id)}
-            >
-              {membership.organization.name}
-            </Button>
-          ))}
+      <div className="space-y-6">
+        {backButton}
+        <div className="py-20 text-center">
+          <Library className="mx-auto h-12 w-12 text-muted-foreground/60" />
+          <h2 className="mt-4 text-lg font-semibold text-foreground">
+            Choose a library to browse
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            You belong to {activeMemberships.length} libraries - pick one to see
+            its catalog.
+          </p>
+          <div className="mx-auto mt-4 flex max-w-xs flex-col gap-2">
+            {activeMemberships.map((membership) => (
+              <Button
+                key={membership.organization.id}
+                variant="outline"
+                disabled={isSwitching}
+                onClick={() => handleSwitchLibrary(membership.organization.id)}
+              >
+                {membership.organization.name}
+              </Button>
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -147,6 +167,7 @@ export default function BrowsePage() {
 
   return (
     <div className="space-y-6">
+      {backButton}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Browse Books</h1>
