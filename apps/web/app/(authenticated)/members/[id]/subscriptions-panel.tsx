@@ -71,13 +71,13 @@ function addDays(dateStr: string, days: number): string {
 
 const STATUS_STYLES: Record<string, { bg: string; label: string }> = {
   ACTIVE: { bg: 'bg-success/10 text-success', label: 'Active' },
-  EXPIRED: { bg: 'bg-gray-200 text-gray-600', label: 'Expired' },
-  CANCELLED: { bg: 'bg-red-100 text-red-700', label: 'Cancelled' },
+  EXPIRED: { bg: 'bg-muted text-muted-foreground', label: 'Expired' },
+  CANCELLED: { bg: 'bg-destructive/10 text-destructive', label: 'Cancelled' },
 };
 
 function SubscriptionStatusBadge({ status }: { status: string }) {
   const style = STATUS_STYLES[status] ?? {
-    bg: 'bg-gray-200 text-gray-700',
+    bg: 'bg-muted text-muted-foreground',
     label: status,
   };
   return (
@@ -164,7 +164,7 @@ function AddSubscriptionDialog({
 
           <div className="space-y-4 py-4">
             {noActivePlans && (
-              <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
+              <div className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-warning-dark">
                 No active plans available. Create an active plan first.
               </div>
             )}
@@ -192,7 +192,7 @@ function AddSubscriptionDialog({
                     <SelectContent>
                       {plans?.map((p) => (
                         <SelectItem key={p.id} value={p.id}>
-                          {p.name} — {formatPrice(p.price)}
+                          {p.name} ({formatPrice(p.price)})
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -207,22 +207,24 @@ function AddSubscriptionDialog({
             </div>
 
             {selectedPlan && (
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm space-y-1">
+              <div className="rounded-lg border border-border bg-muted p-3 text-sm space-y-1">
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Price (snapshot)</span>
+                  <span className="text-muted-foreground">
+                    Price (snapshot)
+                  </span>
                   <span className="font-medium">
                     {formatPrice(selectedPlan.price)}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Duration</span>
+                  <span className="text-muted-foreground">Duration</span>
                   <span className="font-medium">
                     {selectedPlan.durationDays} days
                   </span>
                 </div>
                 {computedEndDate && (
                   <div className="flex justify-between">
-                    <span className="text-gray-500">End date</span>
+                    <span className="text-muted-foreground">End date</span>
                     <span className="font-medium">
                       {formatDate(computedEndDate)}
                     </span>
@@ -351,7 +353,7 @@ export function SubscriptionsPanel({ memberId }: { memberId: string }) {
               <CreditCard className="h-5 w-5" />
               Subscriptions
               {total !== undefined && (
-                <span className="text-sm font-normal text-gray-500">
+                <span className="text-sm font-normal text-muted-foreground">
                   ({total} total)
                 </span>
               )}
@@ -397,8 +399,8 @@ export function SubscriptionsPanel({ memberId }: { memberId: string }) {
               Failed to load subscriptions
             </div>
           ) : !subscriptions?.length ? (
-            <div className="py-8 text-center text-gray-500">
-              <CreditCard className="mx-auto mb-3 h-8 w-8 text-gray-300" />
+            <div className="py-8 text-center text-muted-foreground">
+              <CreditCard className="mx-auto mb-3 h-8 w-8 text-muted-foreground/50" />
               <p>No subscriptions yet</p>
               <p className="mt-1 text-xs">
                 Add a subscription to track this member&apos;s membership
@@ -419,20 +421,20 @@ export function SubscriptionsPanel({ memberId }: { memberId: string }) {
               <TableBody>
                 {subscriptions.map((sub) => (
                   <TableRow key={sub.id}>
-                    <TableCell className="font-medium text-gray-900">
+                    <TableCell className="font-medium text-foreground">
                       {sub.plan?.name ?? (
-                        <span className="italic text-gray-400">
+                        <span className="italic text-muted-foreground">
                           Plan removed
                         </span>
                       )}
                     </TableCell>
-                    <TableCell className="text-gray-700">
+                    <TableCell className="text-muted-foreground">
                       {formatDate(sub.startDate)}
                     </TableCell>
-                    <TableCell className="text-gray-700">
+                    <TableCell className="text-muted-foreground">
                       {formatDate(sub.endDate)}
                     </TableCell>
-                    <TableCell className="text-gray-700">
+                    <TableCell className="text-muted-foreground">
                       {formatPrice(sub.price)}
                     </TableCell>
                     <TableCell>
@@ -443,7 +445,7 @@ export function SubscriptionsPanel({ memberId }: { memberId: string }) {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="gap-1 text-error hover:bg-red-50 hover:text-error"
+                          className="gap-1 text-destructive hover:bg-destructive/10 hover:text-destructive"
                           onClick={() => setCancelTarget(sub)}
                         >
                           <XCircle className="h-4 w-4" />
@@ -458,8 +460,8 @@ export function SubscriptionsPanel({ memberId }: { memberId: string }) {
           )}
 
           {!error && total !== undefined && totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-gray-100 pt-4 mt-2">
-              <p className="text-sm text-gray-500">
+            <div className="flex items-center justify-between border-t border-border pt-4 mt-2">
+              <p className="text-sm text-muted-foreground">
                 Showing {(page - 1) * SUBSCRIPTIONS_PAGE_SIZE + 1}–
                 {Math.min(page * SUBSCRIPTIONS_PAGE_SIZE, total)} of {total}
               </p>
@@ -472,7 +474,7 @@ export function SubscriptionsPanel({ memberId }: { memberId: string }) {
                 >
                   Previous
                 </Button>
-                <span className="text-sm text-gray-600">
+                <span className="text-sm text-muted-foreground">
                   Page {page} of {totalPages}
                 </span>
                 <Button

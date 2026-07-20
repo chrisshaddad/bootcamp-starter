@@ -6,7 +6,14 @@
       "dependsOn": ["^build", "^db:generate", "^db:build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "outputs": [".next/**", "!.next/cache/**", "dist/**"],
-      "env": ["DATABASE_URL", "REDIS_URL", "NODE_ENV", "NEXT_PUBLIC_API_URL"]
+      "env": [
+        "DATABASE_URL",
+        "REDIS_URL",
+        "NODE_ENV",
+        "NEXT_PUBLIC_API_URL",
+        "CHAT_LLM_API_KEY",
+        "CHAT_LLM_MODEL"
+      ]
     },
     "lint": {
       "dependsOn": ["^lint", "^build", "^db:generate", "^db:build"]

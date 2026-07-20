@@ -57,6 +57,13 @@ export class MembersController {
     description: 'Filter by member status',
   })
   @ApiQuery({
+    name: 'activeSubscription',
+    required: false,
+    type: Boolean,
+    description:
+      'Filter to members with a currently active (non-expired) subscription',
+  })
+  @ApiQuery({
     name: 'page',
     required: false,
     type: Number,
@@ -148,7 +155,7 @@ export class MembersController {
     dto: MemberCreateRequest,
     @CurrentUser() user: User,
   ): Promise<MemberResponse> {
-    return this.membersService.create(user.gymId!, dto);
+    return this.membersService.create(user.gymId!, dto, user);
   }
 
   @Post(':id/invite')
@@ -181,7 +188,7 @@ export class MembersController {
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: User,
   ): Promise<MessageResponse> {
-    return this.membersService.invite(id, user.gymId!);
+    return this.membersService.invite(id, user.gymId!, user);
   }
 
   @Patch(':id')
@@ -222,6 +229,6 @@ export class MembersController {
     dto: MemberUpdateRequest,
     @CurrentUser() user: User,
   ): Promise<MemberResponse> {
-    return this.membersService.update(id, user.gymId!, dto);
+    return this.membersService.update(id, user.gymId!, dto, user);
   }
 }

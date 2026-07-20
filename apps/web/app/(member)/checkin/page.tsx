@@ -63,32 +63,28 @@ export default function MemberCheckInLandingPage() {
   }, [token, scanCheckIn]);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 relative overflow-hidden">
-      {/* Background ambient glows */}
-      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-violet-600/10 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-cyan-600/10 blur-[120px] pointer-events-none" />
-
+    <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-6 relative overflow-hidden">
       <div className="w-full max-w-md z-10 space-y-8">
         <div className="text-center space-y-2">
-          <div className="inline-flex p-3 bg-violet-500/10 rounded-xl text-violet-400 mb-2">
+          <div className="inline-flex p-3 bg-primary/10 rounded-xl text-primary-base mb-2">
             <QrCode className="h-6 w-6" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight">Gym Check-in</h1>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-muted-foreground">
             Secure member check-in service
           </p>
         </div>
 
-        <Card className="bg-slate-900/90 border-slate-800 backdrop-blur-xl shadow-2xl rounded-2xl overflow-hidden">
+        <Card className="bg-card border-border shadow-2xl rounded-2xl overflow-hidden">
           <CardContent className="p-8 text-center min-h-[280px] flex flex-col items-center justify-center space-y-6">
             {status === 'loading' && (
               <div className="space-y-4 flex flex-col items-center">
-                <Loader2 className="h-12 w-12 animate-spin text-violet-500" />
+                <Loader2 className="h-12 w-12 animate-spin text-primary-base" />
                 <div className="space-y-1">
-                  <p className="font-semibold text-white">
+                  <p className="font-semibold text-foreground">
                     Validating QR Token
                   </p>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-muted-foreground">
                     Communicating with gym servers...
                   </p>
                 </div>
@@ -97,20 +93,20 @@ export default function MemberCheckInLandingPage() {
 
             {status === 'success' && (
               <div className="space-y-6 flex flex-col items-center w-full animate-in fade-in zoom-in duration-300">
-                <div className="p-1 rounded-full bg-emerald-500/20 text-emerald-400">
+                <div className="p-1 rounded-full bg-success/15 text-success">
                   <CheckCircle2 className="h-16 w-16" />
                 </div>
                 <div className="space-y-2">
-                  <h2 className="text-xl font-bold text-white">
+                  <h2 className="text-xl font-bold text-foreground">
                     Check-in Successful!
                   </h2>
-                  <p className="text-sm text-slate-400 max-w-xs mx-auto">
+                  <p className="text-sm text-muted-foreground max-w-xs mx-auto">
                     Welcome to the gym! Your check-in has been registered
                     successfully.
                   </p>
                 </div>
                 <Link href="/portal" className="w-full pt-4">
-                  <Button className="w-full bg-emerald-600 hover:bg-emerald-500 text-white gap-2">
+                  <Button className="w-full bg-primary-base hover:bg-primary-base/90 text-white gap-2">
                     Go to Portal Dashboard
                     <ArrowRight className="h-4 w-4" />
                   </Button>
@@ -120,14 +116,14 @@ export default function MemberCheckInLandingPage() {
 
             {status === 'error' && (
               <div className="space-y-6 flex flex-col items-center w-full animate-in fade-in zoom-in duration-300">
-                <div className="p-1 rounded-full bg-rose-500/20 text-rose-400">
+                <div className="p-1 rounded-full bg-error/15 text-error">
                   <XCircle className="h-16 w-16" />
                 </div>
                 <div className="space-y-2">
-                  <h2 className="text-xl font-bold text-white">
+                  <h2 className="text-xl font-bold text-foreground">
                     Check-in Failed
                   </h2>
-                  <p className="text-sm text-rose-200 bg-rose-950/30 border border-rose-900/30 px-4 py-2.5 rounded-lg max-w-xs mx-auto text-center font-medium">
+                  <p className="text-sm text-error bg-error-light border border-error/20 px-4 py-2.5 rounded-lg max-w-xs mx-auto text-center font-medium">
                     {errorMsg}
                   </p>
                 </div>
@@ -135,7 +131,7 @@ export default function MemberCheckInLandingPage() {
                   {token && (
                     <Button
                       onClick={() => router.refresh()}
-                      className="w-full bg-slate-800 hover:bg-slate-700 text-white"
+                      className="w-full bg-muted hover:bg-muted/80 text-foreground"
                     >
                       Try Again
                     </Button>
@@ -143,7 +139,7 @@ export default function MemberCheckInLandingPage() {
                   <Link href="/portal" className="w-full">
                     <Button
                       variant="ghost"
-                      className="w-full text-slate-400 hover:text-white hover:bg-slate-800"
+                      className="w-full text-muted-foreground hover:text-foreground"
                     >
                       Go to Portal Dashboard
                     </Button>

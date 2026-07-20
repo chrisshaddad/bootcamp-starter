@@ -2,8 +2,9 @@ import { deriveThemeTokens, isValidHex, type ThemeTokens } from './color-utils';
 
 const STYLE_TAG_ID = 'gym-theme-overrides';
 
-/** 12 gym-relevant presets. Hex values live in globals.css (--theme-preset-*), never hardcoded here. */
+/** 13 gym-relevant presets. Hex values live in globals.css (--theme-preset-*), never hardcoded here. */
 export const THEME_PRESETS = [
+  { slug: 'garnet', label: 'Garnet', cssVar: '--theme-preset-garnet' },
   { slug: 'green', label: 'Green', cssVar: '--theme-preset-green' },
   { slug: 'blue', label: 'Blue', cssVar: '--theme-preset-blue' },
   { slug: 'purple', label: 'Purple', cssVar: '--theme-preset-purple' },

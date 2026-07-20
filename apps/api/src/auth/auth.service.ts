@@ -219,6 +219,7 @@ export class AuthService {
       include: {
         gym: { select: { status: true, statusReason: true, themeColor: true } },
         member: { select: { status: true } },
+        profile: { select: { phoneNumber: true } },
       },
     });
 
@@ -229,6 +230,7 @@ export class AuthService {
       role: user.role,
       gymId: user.gymId,
       isConfirmed: user.isConfirmed,
+      phoneNumber: user.profile?.phoneNumber ?? null,
       gymStatus: user.gym?.status ?? null,
       gymStatusReason: user.gym?.statusReason ?? null,
       memberStatus: user.member?.status ?? null,

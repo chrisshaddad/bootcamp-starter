@@ -227,6 +227,9 @@ export class MePortalService {
       throw new BadRequestException('This QR code is for a different gym');
     }
 
-    return this.checkInsService.checkIn(gymId, member.id);
+    return this.checkInsService.checkIn(gymId, member.id, {
+      id: userId,
+      name: member.name,
+    });
   }
 }

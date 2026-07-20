@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import { Users, Plus, CalendarIcon } from 'lucide-react';
+import { Users, Plus, CalendarIcon, X } from 'lucide-react';
 import { format } from 'date-fns';
 import {
   memberCreateRequestSchema,
@@ -58,13 +58,13 @@ type StatusFilter = 'all' | MemberStatus;
 
 const STATUS_COLORS: Record<string, string> = {
   ACTIVE: 'bg-success/10 text-success',
-  INACTIVE: 'bg-gray-200 text-gray-700',
+  INACTIVE: 'bg-muted text-muted-foreground',
 };
 
 function StatusBadge({ status }: { status: string }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[status] ?? 'bg-gray-200 text-gray-700'}`}
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[status] ?? 'bg-muted text-muted-foreground'}`}
     >
       {status === 'ACTIVE' ? 'Active' : 'Inactive'}
     </span>
@@ -84,9 +84,21 @@ function LoadingSkeleton() {
   );
 }
 
-export default function MembersPage() {
+function MembersContent() {
   const router = useRouter();
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const searchParams = useSearchParams();
+  const initialStatus = searchParams.get('status');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(
+    initialStatus === 'ACTIVE' || initialStatus === 'INACTIVE'
+      ? initialStatus
+      : 'all',
+  );
+  // Distinct from `statusFilter` (member account status): true only when
+  // deep-linked from the dashboard's "Active Members" card, which counts
+  // members holding a currently active *subscription*.
+  const [activeSubscriptionOnly, setActiveSubscriptionOnly] = useState(
+    searchParams.get('activeSubscription') === 'true',
+  );
   const [page, setPage] = useState(1);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -94,6 +106,7 @@ export default function MembersPage() {
 
   const { members, total, isLoading, error } = useMembers({
     status: statusFilter === 'all' ? undefined : statusFilter,
+    activeSubscription: activeSubscriptionOnly || undefined,
     page,
   });
   const totalPages = Math.ceil((total ?? 0) / MEMBERS_PAGE_SIZE);
@@ -146,8 +159,28 @@ export default function MembersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Members</h1>
-          <p className="mt-1 text-sm text-gray-500">Manage your gym members</p>
+          <h1 className="text-2xl font-bold text-foreground">Members</h1>
+          {activeSubscriptionOnly ? (
+            <span className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-primary-100/10 px-2.5 py-1 text-xs font-medium text-primary-base">
+              Active subscription only
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveSubscriptionOnly(false);
+                  setPage(1);
+                  router.replace('/members');
+                }}
+                className="cursor-pointer rounded-full hover:bg-primary-base/10"
+                aria-label="Clear active-subscription filter"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ) : (
+            <p className="mt-1 text-sm text-muted-foreground">
+              Manage your gym members
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-3">
           <Select
@@ -182,7 +215,7 @@ export default function MembersPage() {
             <Users className="h-5 w-5" />
             Members
             {total !== undefined && (
-              <span className="text-sm font-normal text-gray-500">
+              <span className="text-sm font-normal text-muted-foreground">
                 ({total} total)
               </span>
             )}
@@ -194,7 +227,7 @@ export default function MembersPage() {
               Failed to load members
             </div>
           ) : !members?.length ? (
-            <div className="py-10 text-center text-gray-500">
+            <div className="py-10 text-center text-muted-foreground">
               No members found
             </div>
           ) : (
@@ -215,19 +248,19 @@ export default function MembersPage() {
                     className="cursor-pointer"
                     onClick={() => router.push(`/members/${member.id}`)}
                   >
-                    <TableCell className="font-medium text-gray-900">
+                    <TableCell className="font-medium text-foreground">
                       {member.name}
                     </TableCell>
-                    <TableCell className="text-gray-600">
+                    <TableCell className="text-muted-foreground">
                       {member.email}
                     </TableCell>
-                    <TableCell className="text-gray-500">
+                    <TableCell className="text-muted-foreground">
                       {member.phoneNumber}
                     </TableCell>
                     <TableCell>
                       <StatusBadge status={member.status} />
                     </TableCell>
-                    <TableCell className="text-sm text-gray-500">
+                    <TableCell className="text-sm text-muted-foreground">
                       {new Date(member.joinedAt).toLocaleDateString()}
                     </TableCell>
                   </TableRow>
@@ -236,8 +269,8 @@ export default function MembersPage() {
             </Table>
           )}
           {!isLoading && !error && total !== undefined && totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-gray-100 pt-4 mt-2">
-              <p className="text-sm text-gray-500">
+            <div className="flex items-center justify-between border-t border-border pt-4 mt-2">
+              <p className="text-sm text-muted-foreground">
                 Showing {(page - 1) * MEMBERS_PAGE_SIZE + 1}–
                 {Math.min(page * MEMBERS_PAGE_SIZE, total)} of {total}
               </p>
@@ -250,7 +283,7 @@ export default function MembersPage() {
                 >
                   Previous
                 </Button>
-                <span className="text-sm text-gray-600">
+                <span className="text-sm text-muted-foreground">
                   Page {page} of {totalPages}
                 </span>
                 <Button
@@ -440,5 +473,13 @@ export default function MembersPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+export default function MembersPage() {
+  return (
+    <Suspense fallback={<LoadingSkeleton />}>
+      <MembersContent />
+    </Suspense>
   );
 }

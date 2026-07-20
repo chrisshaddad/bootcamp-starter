@@ -3,6 +3,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import type { User } from '@repo/db';
+import { AuditService } from '../audit/audit.service';
 import { DatabaseService } from '../database/database.service';
 import { Logger } from '@nestjs/common';
 import type {
@@ -51,7 +53,10 @@ const SESSION_SELECT = {
 export class SessionsService {
   private readonly logger = new Logger(SessionsService.name);
 
-  constructor(private readonly prisma: DatabaseService) {}
+  constructor(
+    private readonly prisma: DatabaseService,
+    private readonly auditService: AuditService,
+  ) {}
 
   /** List all sessions for a gym with optional date and status filtering */
   async findAll(
@@ -102,6 +107,7 @@ export class SessionsService {
   async create(
     gymId: string,
     dto: SessionCreateRequest,
+    actor: User,
   ): Promise<SessionResponse> {
     const startsAt = new Date(dto.startsAt);
     const endsAt = new Date(dto.endsAt);
@@ -134,6 +140,18 @@ export class SessionsService {
       select: SESSION_SELECT,
     });
 
+    this.auditService
+      .log({
+        gymId,
+        userId: actor.id,
+        userName: actor.name,
+        action: 'session.created',
+        entityType: 'GymSession',
+        entityId: session.id,
+        entityName: session.title,
+      })
+      .catch(() => {});
+
     return session as unknown as SessionResponse;
   }
 
@@ -145,6 +163,7 @@ export class SessionsService {
     id: string,
     gymId: string,
     dto: SessionUpdateRequest,
+    actor: User,
   ): Promise<SessionResponse> {
     const existing = await this.prisma.gymSession.findFirst({
       where: { id, gymId },
@@ -200,11 +219,27 @@ export class SessionsService {
       select: SESSION_SELECT,
     });
 
+    this.auditService
+      .log({
+        gymId,
+        userId: actor.id,
+        userName: actor.name,
+        action: 'session.updated',
+        entityType: 'GymSession',
+        entityId: session.id,
+        entityName: session.title,
+      })
+      .catch(() => {});
+
     return session as unknown as SessionResponse;
   }
 
   /** Cancel a session, marking its status as CANCELLED */
-  async cancel(id: string, gymId: string): Promise<SessionResponse> {
+  async cancel(
+    id: string,
+    gymId: string,
+    actor: User,
+  ): Promise<SessionResponse> {
     const result = await this.prisma.gymSession.updateMany({
       where: { id, gymId },
       data: { status: 'CANCELLED' },
@@ -218,6 +253,19 @@ export class SessionsService {
       where: { id, gymId },
       select: SESSION_SELECT,
     });
+
+    this.auditService
+      .log({
+        gymId,
+        userId: actor.id,
+        userName: actor.name,
+        action: 'session.cancelled',
+        entityType: 'GymSession',
+        entityId: session.id,
+        entityName: session.title,
+      })
+      .catch(() => {});
+
     return session as unknown as SessionResponse;
   }
 }

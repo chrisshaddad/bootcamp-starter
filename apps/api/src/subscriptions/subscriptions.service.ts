@@ -3,7 +3,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '@repo/db';
+import { Prisma, User } from '@repo/db';
+import { AuditService } from '../audit/audit.service';
 import { DatabaseService } from '../database/database.service';
 import type {
   SubscriptionListResponse,
@@ -29,13 +30,21 @@ const SUBSCRIPTION_SELECT = {
       isActive: true,
     },
   },
+  member: {
+    select: {
+      name: true,
+    },
+  },
   createdAt: true,
   updatedAt: true,
 } as const;
 
 @Injectable()
 export class SubscriptionsService {
-  constructor(private readonly prisma: DatabaseService) {}
+  constructor(
+    private readonly prisma: DatabaseService,
+    private readonly auditService: AuditService,
+  ) {}
 
   /** List all subscriptions for a member, scoped to the caller's gym */
   async findAllByMember(
@@ -78,10 +87,11 @@ export class SubscriptionsService {
   async create(
     gymId: string,
     dto: SubscriptionCreateRequest,
+    actor: User,
   ): Promise<SubscriptionResponse> {
     const member = await this.prisma.member.findFirst({
       where: { id: dto.memberId, gymId },
-      select: { id: true },
+      select: { id: true, name: true },
     });
     if (!member) {
       throw new NotFoundException(`Member with ID ${dto.memberId} not found`);
@@ -89,7 +99,13 @@ export class SubscriptionsService {
 
     const plan = await this.prisma.membershipPlan.findFirst({
       where: { id: dto.planId, gymId },
-      select: { id: true, price: true, durationDays: true, isActive: true },
+      select: {
+        id: true,
+        name: true,
+        price: true,
+        durationDays: true,
+        isActive: true,
+      },
     });
     if (!plan) {
       throw new NotFoundException(`Plan with ID ${dto.planId} not found`);
@@ -123,7 +139,7 @@ export class SubscriptionsService {
     endDate.setUTCDate(endDate.getUTCDate() + plan.durationDays);
 
     try {
-      return await this.prisma.subscription.create({
+      const created = await this.prisma.subscription.create({
         data: {
           gymId,
           memberId: dto.memberId,
@@ -135,6 +151,20 @@ export class SubscriptionsService {
         },
         select: SUBSCRIPTION_SELECT,
       });
+
+      this.auditService
+        .log({
+          gymId,
+          userId: actor.id,
+          userName: actor.name,
+          action: 'subscription.created',
+          entityType: 'Subscription',
+          entityId: created.id,
+          entityName: `${member.name} — ${plan.name}`,
+        })
+        .catch(() => {});
+
+      return created;
     } catch (err) {
       if (
         err instanceof Prisma.PrismaClientKnownRequestError &&
@@ -149,7 +179,11 @@ export class SubscriptionsService {
   }
 
   /** Cancel an active subscription, scoped to the caller's gym */
-  async cancel(id: string, gymId: string): Promise<SubscriptionResponse> {
+  async cancel(
+    id: string,
+    gymId: string,
+    actor: User,
+  ): Promise<SubscriptionResponse> {
     const subscription = await this.prisma.subscription.findFirst({
       where: { id, gymId },
       select: { id: true, status: true },
@@ -163,10 +197,24 @@ export class SubscriptionsService {
       );
     }
 
-    return this.prisma.subscription.update({
+    const cancelled = await this.prisma.subscription.update({
       where: { id },
       data: { status: 'CANCELLED' },
       select: SUBSCRIPTION_SELECT,
     });
+
+    this.auditService
+      .log({
+        gymId,
+        userId: actor.id,
+        userName: actor.name,
+        action: 'subscription.cancelled',
+        entityType: 'Subscription',
+        entityId: cancelled.id,
+        entityName: `${cancelled.member.name} — ${cancelled.plan?.name ?? 'Unknown plan'}`,
+      })
+      .catch(() => {});
+
+    return cancelled;
   }
 }

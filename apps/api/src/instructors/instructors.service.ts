@@ -3,6 +3,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import type { User } from '@repo/db';
+import { AuditService } from '../audit/audit.service';
 import { DatabaseService } from '../database/database.service';
 import type {
   InstructorListResponse,
@@ -27,7 +29,10 @@ const INSTRUCTOR_SELECT = {
  */
 @Injectable()
 export class InstructorsService {
-  constructor(private readonly prisma: DatabaseService) {}
+  constructor(
+    private readonly prisma: DatabaseService,
+    private readonly auditService: AuditService,
+  ) {}
 
   /** List all instructors for a gym with pagination */
   async findAll(
@@ -73,8 +78,9 @@ export class InstructorsService {
   async create(
     gymId: string,
     dto: InstructorCreateRequest,
+    actor: User,
   ): Promise<InstructorResponse> {
-    return this.prisma.instructor.create({
+    const created = await this.prisma.instructor.create({
       data: {
         gymId,
         name: dto.name,
@@ -84,6 +90,20 @@ export class InstructorsService {
       },
       select: INSTRUCTOR_SELECT,
     });
+
+    this.auditService
+      .log({
+        gymId,
+        userId: actor.id,
+        userName: actor.name,
+        action: 'instructor.created',
+        entityType: 'Instructor',
+        entityId: created.id,
+        entityName: created.name,
+      })
+      .catch(() => {});
+
+    return created;
   }
 
   /** Update an instructor's details or active status, scoped to the caller's gym */
@@ -91,6 +111,7 @@ export class InstructorsService {
     id: string,
     gymId: string,
     dto: InstructorUpdateRequest,
+    actor: User,
   ): Promise<InstructorResponse> {
     const result = await this.prisma.instructor.updateMany({
       where: { id, gymId },
@@ -110,10 +131,26 @@ export class InstructorsService {
       throw new NotFoundException(`Instructor with ID ${id} not found`);
     }
 
-    return this.prisma.instructor.findUniqueOrThrow({
+    const updated = await this.prisma.instructor.findUniqueOrThrow({
       where: { id },
       select: INSTRUCTOR_SELECT,
     });
+
+    const action =
+      dto.isActive === false ? 'instructor.deactivated' : 'instructor.updated';
+    this.auditService
+      .log({
+        gymId,
+        userId: actor.id,
+        userName: actor.name,
+        action,
+        entityType: 'Instructor',
+        entityId: updated.id,
+        entityName: updated.name,
+      })
+      .catch(() => {});
+
+    return updated;
   }
 
   /**

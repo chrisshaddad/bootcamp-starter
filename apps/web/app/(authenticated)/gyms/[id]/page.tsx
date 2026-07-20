@@ -46,17 +46,17 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  PENDING: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  ACTIVE: 'bg-green-100 text-green-800 border-green-200',
-  REJECTED: 'bg-red-100 text-red-800 border-red-200',
+  PENDING: 'bg-warning/15 text-warning-dark border-warning/30',
+  ACTIVE: 'bg-success/15 text-success border-success/30',
+  REJECTED: 'bg-error/15 text-error border-error/30',
   SUSPENDED: 'bg-orange/15 text-orange border-orange/30',
-  INACTIVE: 'bg-gray-100 text-gray-800 border-gray-200',
+  INACTIVE: 'bg-muted text-muted-foreground border-border',
 };
 
 function StatusBadge({ status }: { status: string }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full border px-3 py-1 text-sm font-medium ${STATUS_COLORS[status] || 'bg-gray-100 text-gray-800'}`}
+      className={`inline-flex items-center rounded-full border px-3 py-1 text-sm font-medium ${STATUS_COLORS[status] || 'bg-muted text-muted-foreground'}`}
     >
       {STATUS_LABELS[status] || status}
     </span>
@@ -66,9 +66,9 @@ function StatusBadge({ status }: { status: string }) {
 function ForbiddenPage() {
   return (
     <div className="flex flex-col items-center justify-center py-20">
-      <ShieldX className="h-16 w-16 text-red-400 mb-4" />
-      <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
-      <p className="text-gray-500 text-center max-w-md">
+      <ShieldX className="h-16 w-16 text-error mb-4" />
+      <h1 className="text-2xl font-bold text-foreground mb-2">Access Denied</h1>
+      <p className="text-muted-foreground text-center max-w-md">
         You don&apos;t have permission to access this page. Only Super Admins
         can manage gyms.
       </p>
@@ -99,11 +99,13 @@ function InfoRow({
   value: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start gap-3 py-3 border-b border-gray-100 last:border-0">
-      <Icon className="h-5 w-5 text-gray-400 mt-0.5 shrink-0" />
+    <div className="flex items-start gap-3 py-3 border-b border-border last:border-0">
+      <Icon className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
       <div className="min-w-0 flex-1">
-        <div className="text-sm text-gray-500">{label}</div>
-        <div className="text-sm font-medium text-gray-900 mt-0.5">{value}</div>
+        <div className="text-sm text-muted-foreground">{label}</div>
+        <div className="text-sm font-medium text-foreground mt-0.5">
+          {value}
+        </div>
       </div>
     </div>
   );
@@ -234,7 +236,7 @@ export default function GymDetailPage() {
   if (!gym) {
     return (
       <div className="py-10 text-center">
-        <div className="text-gray-500 mb-4">Gym not found</div>
+        <div className="text-muted-foreground mb-4">Gym not found</div>
         <Button variant="outline" onClick={() => router.back()}>
           Go Back
         </Button>
@@ -263,7 +265,7 @@ export default function GymDetailPage() {
           className={`rounded-lg border p-4 text-sm ${
             isSuspended
               ? 'border-orange/30 bg-orange/10 text-orange'
-              : 'border-red-200 bg-red-50 text-red-800'
+              : 'border-error/30 bg-error-light text-error'
           }`}
         >
           <span className="font-medium">
@@ -275,7 +277,7 @@ export default function GymDetailPage() {
 
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{gym.name}</h1>
+          <h1 className="text-2xl font-bold text-foreground">{gym.name}</h1>
           <div className="mt-2">
             <StatusBadge status={gym.status} />
           </div>
@@ -286,14 +288,14 @@ export default function GymDetailPage() {
             <>
               <Button
                 variant="outline"
-                className="gap-2 text-red-600 border-red-200 hover:bg-red-50"
+                className="gap-2 text-error border-error/30 hover:bg-error-light"
                 onClick={() => setShowRejectDialog(true)}
               >
                 <XCircle className="h-4 w-4" />
                 Reject
               </Button>
               <Button
-                className="gap-2 bg-green-600 hover:bg-green-700"
+                className="gap-2 bg-success hover:bg-success/90 text-white"
                 onClick={() => setShowApproveDialog(true)}
               >
                 <CheckCircle className="h-4 w-4" />
@@ -313,7 +315,7 @@ export default function GymDetailPage() {
           )}
           {isSuspended && (
             <Button
-              className="gap-2 bg-green-600 hover:bg-green-700"
+              className="gap-2 bg-success hover:bg-success/90 text-white"
               onClick={handleReactivate}
               disabled={isReactivating}
             >
@@ -334,9 +336,11 @@ export default function GymDetailPage() {
           </CardHeader>
           <CardContent className="pt-0">
             {gym.description && (
-              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                <div className="text-sm text-gray-500 mb-1">Description</div>
-                <p className="text-sm text-gray-700">{gym.description}</p>
+              <div className="mb-4 p-3 bg-muted rounded-lg">
+                <div className="text-sm text-muted-foreground mb-1">
+                  Description
+                </div>
+                <p className="text-sm text-foreground">{gym.description}</p>
               </div>
             )}
             <InfoRow icon={Phone} label="Phone" value={gym.phone} />
@@ -355,7 +359,7 @@ export default function GymDetailPage() {
                     {gym.website}
                   </a>
                 ) : (
-                  <span className="text-gray-400">Not provided</span>
+                  <span className="text-muted-foreground">Not provided</span>
                 )
               }
             />
@@ -401,39 +405,39 @@ export default function GymDetailPage() {
           </CardHeader>
           <CardContent className="pt-0">
             <div className="space-y-4">
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">
+              <div className="p-4 bg-muted rounded-lg">
+                <div className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
                   Created By
                 </div>
-                <div className="font-medium text-gray-900">
+                <div className="font-medium text-foreground">
                   {gym.createdBy.name}
                 </div>
-                <div className="flex items-center gap-2 mt-1 text-sm text-gray-500">
+                <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
                   <Mail className="h-4 w-4" />
                   {gym.createdBy.email}
                 </div>
               </div>
 
               {gym.approvedBy ? (
-                <div className="p-4 bg-green-50 rounded-lg">
-                  <div className="text-xs text-green-600 uppercase tracking-wide mb-2">
+                <div className="p-4 bg-success/10 rounded-lg">
+                  <div className="text-xs text-success uppercase tracking-wide mb-2">
                     Approved By
                   </div>
-                  <div className="font-medium text-gray-900">
+                  <div className="font-medium text-foreground">
                     {gym.approvedBy.name}
                   </div>
-                  <div className="flex items-center gap-2 mt-1 text-sm text-gray-500">
+                  <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
                     <Mail className="h-4 w-4" />
                     {gym.approvedBy.email}
                   </div>
                 </div>
               ) : isPending ? (
-                <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                  <div className="flex items-center gap-2 text-yellow-700">
+                <div className="p-4 bg-warning/10 rounded-lg border border-warning/30">
+                  <div className="flex items-center gap-2 text-warning-dark">
                     <Clock className="h-5 w-5" />
                     <span className="font-medium">Awaiting Approval</span>
                   </div>
-                  <p className="mt-1 text-sm text-yellow-600">
+                  <p className="mt-1 text-sm text-warning-dark">
                     This gym is waiting for a super admin to review and approve
                     the registration.
                   </p>
@@ -463,7 +467,7 @@ export default function GymDetailPage() {
               Cancel
             </Button>
             <Button
-              className="bg-green-600 hover:bg-green-700"
+              className="bg-success hover:bg-success/90 text-white"
               onClick={handleApprove}
               disabled={isApproving}
             >
@@ -504,7 +508,7 @@ export default function GymDetailPage() {
                 </p>
               ) : (
                 <div
-                  className={`text-xs text-right ${charCount(rejectReasonValue) > 500 ? 'text-error' : 'text-gray-400'}`}
+                  className={`text-xs text-right ${charCount(rejectReasonValue) > 500 ? 'text-error' : 'text-muted-foreground'}`}
                 >
                   {charCount(rejectReasonValue)} / 500 characters
                 </div>
@@ -565,7 +569,7 @@ export default function GymDetailPage() {
                 </p>
               ) : (
                 <div
-                  className={`text-xs text-right ${charCount(suspendReasonValue) > 500 ? 'text-error' : 'text-gray-400'}`}
+                  className={`text-xs text-right ${charCount(suspendReasonValue) > 500 ? 'text-error' : 'text-muted-foreground'}`}
                 >
                   {charCount(suspendReasonValue)} / 500 characters
                 </div>

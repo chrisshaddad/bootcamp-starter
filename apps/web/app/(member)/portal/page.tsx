@@ -14,7 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 const STATUS_COLORS: Record<string, string> = {
   ACTIVE: 'bg-success/10 text-success border border-success/20',
-  EXPIRED: 'bg-gray-200 text-gray-600 border border-gray-300',
+  EXPIRED: 'bg-muted text-muted-foreground border border-border',
   CANCELLED: 'bg-error-light text-error border border-error/20',
 };
 
@@ -29,9 +29,11 @@ function CardLoadingSkeleton() {
 
 function CardErrorState({ message }: { message: string }) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-center">
+    <div className="rounded-lg border border-border bg-muted p-4 text-center">
       <p className="text-sm font-medium text-error">{message}</p>
-      <p className="mt-1 text-sm text-gray-500">Please refresh the page.</p>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Please refresh the page.
+      </p>
     </div>
   );
 }
@@ -51,12 +53,12 @@ function ActiveSubscriptionCard() {
 
   if (active.length === 0) {
     return (
-      <div className="rounded-lg border border-gray-200 bg-gray-50 p-6 text-center">
-        <ClipboardList className="mx-auto h-8 w-8 text-gray-300" />
-        <p className="mt-2 text-sm font-medium text-gray-700">
+      <div className="rounded-lg border border-border bg-muted p-6 text-center">
+        <ClipboardList className="mx-auto h-8 w-8 text-muted-foreground/50" />
+        <p className="mt-2 text-sm font-medium text-foreground">
           No active subscription
         </p>
-        <p className="mt-1 text-xs text-gray-500">
+        <p className="mt-1 text-xs text-muted-foreground">
           Contact your gym desk to get a membership plan.
         </p>
       </div>
@@ -79,9 +81,11 @@ function ActiveSubscriptionCard() {
                   <p className="truncate text-sm font-semibold text-primary-base">
                     {sub.plan?.name ?? 'Membership Plan'}
                   </p>
-                  <p className="mt-0.5 text-xs text-gray-600">
+                  <p className="mt-0.5 text-xs text-primary-base/70">
                     Active until{' '}
-                    <span className="font-medium text-gray-800">{endDate}</span>
+                    <span className="font-medium text-primary-base">
+                      {endDate}
+                    </span>
                   </p>
                 </div>
                 <span
@@ -97,7 +101,7 @@ function ActiveSubscriptionCard() {
       <Button
         asChild
         variant="ghost"
-        className="w-full justify-between text-xs text-primary-base hover:bg-primary-50 hover:text-primary-base"
+        className="w-full justify-between text-xs text-primary-base hover:bg-primary-100 hover:text-primary-base"
       >
         <Link href="/portal/subscriptions">
           <span>View all subscriptions</span>
@@ -127,12 +131,12 @@ function UpcomingBookingsCard() {
 
   if (upcoming.length === 0) {
     return (
-      <div className="rounded-lg border border-gray-200 bg-gray-50 p-6 text-center">
-        <Calendar className="mx-auto h-8 w-8 text-gray-300" />
-        <p className="mt-2 text-sm font-medium text-gray-700">
+      <div className="rounded-lg border border-border bg-muted p-6 text-center">
+        <Calendar className="mx-auto h-8 w-8 text-muted-foreground/50" />
+        <p className="mt-2 text-sm font-medium text-foreground">
           No upcoming bookings
         </p>
-        <p className="mt-1 text-xs text-gray-500">
+        <p className="mt-1 text-xs text-muted-foreground">
           Contact your gym desk to register for scheduled sessions.
         </p>
       </div>
@@ -150,20 +154,20 @@ function UpcomingBookingsCard() {
           return (
             <div
               key={booking.id}
-              className="rounded-lg border border-gray-100 bg-gray-50/50 p-3.5 transition-colors hover:bg-gray-50"
+              className="rounded-lg border border-border bg-muted/50 p-3.5 transition-colors hover:bg-muted"
             >
               <div className="flex items-center justify-between gap-2">
-                <p className="truncate text-sm font-semibold text-gray-900">
+                <p className="truncate text-sm font-semibold text-foreground">
                   {session.title}
                 </p>
-                <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+                <span className="shrink-0 rounded-full bg-primary-100 px-2 py-0.5 text-xs font-medium text-primary-base">
                   {startTime}
                 </span>
               </div>
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-muted-foreground">
                 {startDate}
                 {session.instructor && (
-                  <span className="ml-1 text-gray-400">
+                  <span className="ml-1 text-muted-foreground/70">
                     · {session.instructor.name}
                   </span>
                 )}
@@ -175,7 +179,7 @@ function UpcomingBookingsCard() {
       <Button
         asChild
         variant="ghost"
-        className="w-full justify-between text-xs text-primary-base hover:bg-primary-50 hover:text-primary-base"
+        className="w-full justify-between text-xs text-primary-base hover:bg-primary-100 hover:text-primary-base"
       >
         <Link href="/portal/bookings">
           <span>View all bookings</span>
@@ -195,11 +199,11 @@ export default function PortalHomePage() {
         {isLoading ? (
           <Skeleton className="h-8 w-48" />
         ) : (
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-foreground">
             Welcome back{profile?.name ? `, ${profile.name}` : ''}!
           </h1>
         )}
-        <p className="mt-1 text-sm text-gray-500">
+        <p className="mt-1 text-sm text-muted-foreground">
           Here&apos;s an overview of your membership and schedule.
         </p>
       </div>
@@ -207,8 +211,8 @@ export default function PortalHomePage() {
       <div className="grid gap-6 sm:grid-cols-2 items-start">
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base font-semibold text-gray-700">
-              <ClipboardList className="h-4 w-4 text-gray-500" />
+            <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
+              <ClipboardList className="h-4 w-4 text-muted-foreground" />
               Active Subscriptions
             </CardTitle>
           </CardHeader>
@@ -219,8 +223,8 @@ export default function PortalHomePage() {
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base font-semibold text-gray-700">
-              <Calendar className="h-4 w-4 text-gray-500" />
+            <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
               Upcoming Bookings
             </CardTitle>
           </CardHeader>

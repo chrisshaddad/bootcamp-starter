@@ -1,4 +1,14 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(curl -s \"http://localhost:3000/login\")",
+      "Bash(kill 15075 15064)",
+      "Bash(rm -rf .next/dev)",
+      "Bash(nohup npx next dev --port 3000)",
+      "Bash(disown)",
+      "Bash(echo \"started, pid=$!\")"
+    ]
+  },
   "hooks": {
     "Stop": [
       {

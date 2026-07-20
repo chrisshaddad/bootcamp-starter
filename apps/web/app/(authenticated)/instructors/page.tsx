@@ -55,7 +55,9 @@ function ActiveBadge({ isActive }: { isActive: boolean }) {
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-        isActive ? 'bg-success/10 text-success' : 'bg-gray-200 text-gray-700'
+        isActive
+          ? 'bg-success/10 text-success'
+          : 'bg-muted text-muted-foreground'
       }`}
     >
       {isActive ? (
@@ -410,10 +412,10 @@ export function EditInstructorDialog({
               )}
             </div>
 
-            <div className="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 mt-4">
+            <div className="flex items-center justify-between rounded-lg border border-border px-4 py-3 mt-4">
               <div>
-                <p className="text-sm font-medium text-gray-900">Status</p>
-                <p className="text-xs text-gray-500">
+                <p className="text-sm font-medium text-foreground">Status</p>
+                <p className="text-xs text-muted-foreground">
                   {instructor?.isActive
                     ? 'Active and available for new sessions.'
                     : 'Inactive and hidden from scheduling.'}
@@ -427,7 +429,7 @@ export function EditInstructorDialog({
                 onClick={() => setShowConfirmDialog(true)}
                 className={
                   instructor?.isActive
-                    ? 'border-error text-error hover:bg-red-50'
+                    ? 'border-error text-error hover:bg-error-light'
                     : 'border-primary-base text-primary-base hover:bg-primary-100'
                 }
               >
@@ -543,8 +545,8 @@ export default function InstructorsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Instructors</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-foreground">Instructors</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Manage your gym instructors
           </p>
         </div>
@@ -583,7 +585,7 @@ export default function InstructorsPage() {
             <Users className="h-5 w-5" />
             Instructors
             {total !== undefined && (
-              <span className="text-sm font-normal text-gray-500">
+              <span className="text-sm font-normal text-muted-foreground">
                 ({total} total)
               </span>
             )}
@@ -596,8 +598,10 @@ export default function InstructorsPage() {
             </div>
           ) : !instructors || instructors.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-              <Users className="h-10 w-10 text-gray-300" />
-              <p className="text-sm text-gray-500">No instructors yet.</p>
+              <Users className="h-10 w-10 text-muted-foreground/50" />
+              <p className="text-sm text-muted-foreground">
+                No instructors yet.
+              </p>
               <Button
                 variant="outline"
                 size="sm"
@@ -628,11 +632,11 @@ export default function InstructorsPage() {
                     <TableCell className="font-medium">
                       {instructor.name}
                     </TableCell>
-                    <TableCell className="text-gray-500">
-                      {instructor.email ?? '—'}
+                    <TableCell className="text-muted-foreground">
+                      {instructor.email ?? 'Not provided'}
                     </TableCell>
-                    <TableCell className="text-gray-500">
-                      {instructor.specialization ?? '—'}
+                    <TableCell className="text-muted-foreground">
+                      {instructor.specialization ?? 'Not provided'}
                     </TableCell>
                     <TableCell>
                       <ActiveBadge isActive={instructor.isActive} />
@@ -644,8 +648,8 @@ export default function InstructorsPage() {
           )}
           {/* Pagination */}
           {!isLoading && !error && total !== undefined && totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-gray-100 pt-4 mt-2">
-              <p className="text-sm text-gray-500">
+            <div className="flex items-center justify-between border-t border-border pt-4 mt-2">
+              <p className="text-sm text-muted-foreground">
                 Showing {(page - 1) * INSTRUCTORS_PAGE_SIZE + 1}–
                 {Math.min(page * INSTRUCTORS_PAGE_SIZE, total)} of {total}
               </p>
@@ -659,7 +663,7 @@ export default function InstructorsPage() {
                 >
                   Previous
                 </Button>
-                <span className="text-sm text-gray-600">
+                <span className="text-sm text-muted-foreground">
                   Page {page} of {totalPages}
                 </span>
                 <Button

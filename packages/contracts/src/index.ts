@@ -11,3 +11,5 @@ export * from './sessions';
 export * from './bookings';
 export * from './checkins';
 export * from './dashboard';
+export * from './audit-log';
+export * from './chat';

@@ -77,7 +77,7 @@ export class CheckInsController {
     dto: CheckInCreateRequest,
     @CurrentUser() user: User,
   ): Promise<CheckInResponse> {
-    return this.checkInsService.checkIn(user.gymId!, dto.memberId);
+    return this.checkInsService.checkIn(user.gymId!, dto.memberId, user);
   }
 
   @Patch(':id/checkout')
@@ -101,7 +101,7 @@ export class CheckInsController {
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: User,
   ): Promise<CheckInResponse> {
-    return this.checkInsService.checkOut(id, user.gymId!);
+    return this.checkInsService.checkOut(id, user.gymId!, user);
   }
 
   @Get('qr-token')
