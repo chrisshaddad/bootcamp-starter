@@ -241,7 +241,7 @@ describe('ProjectsService GitHub import', () => {
       USER_ID,
       'https://github.com/vercel/next.js',
     );
-    expect(prisma.projectMember.upsert).toHaveBeenCalledWith({
+    expect(tx.projectMember.upsert).toHaveBeenCalledWith({
       where: {
         projectId_userId: {
           projectId: PROJECT_ID,
@@ -267,7 +267,7 @@ describe('ProjectsService GitHub import', () => {
         verifiedAt: expect.any(Date),
       }),
     });
-    expect(prisma.project.update).toHaveBeenCalledWith(
+    expect(tx.project.update).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           status: 'PUBLISHED',
@@ -486,6 +486,10 @@ function createTransactionMock() {
     project: {
       findUnique: jest.fn().mockResolvedValue(null),
       findMany: jest.fn().mockResolvedValue([]),
+      update: jest.fn().mockResolvedValue({
+        id: PROJECT_ID,
+        status: 'PUBLISHED',
+      }),
       create: jest.fn((input: unknown) => {
         captured.projectCreate = input;
         return Promise.resolve({
@@ -501,6 +505,7 @@ function createTransactionMock() {
       }),
     },
     projectMember: {
+      upsert: jest.fn().mockResolvedValue({ id: 'member-id' }),
       create: jest.fn((input: unknown) => {
         captured.memberCreate = input;
         return Promise.resolve({ id: 'member-id' });
@@ -546,9 +551,6 @@ function createPrismaMock(tx: ReturnType<typeof createTransactionMock>) {
         id: PROJECT_ID,
         status: 'PUBLISHED',
       }),
-    },
-    projectMember: {
-      upsert: jest.fn().mockResolvedValue({ id: 'member-id' }),
     },
     $transaction: jest.fn((callback: (client: typeof tx) => Promise<unknown>) =>
       callback(tx),
