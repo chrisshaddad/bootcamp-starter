@@ -70,9 +70,18 @@ function addDays(dateStr: string, days: number): string {
 }
 
 const STATUS_STYLES: Record<string, { bg: string; label: string }> = {
-  ACTIVE: { bg: 'bg-success/10 text-success border border-success/20', label: 'Active' },
-  EXPIRED: { bg: 'bg-muted text-muted-foreground border border-border', label: 'Expired' },
-  CANCELLED: { bg: 'bg-error/10 text-error border border-error/20', label: 'Cancelled' },
+  ACTIVE: {
+    bg: 'bg-success/10 text-success border border-success/20',
+    label: 'Active',
+  },
+  EXPIRED: {
+    bg: 'bg-muted text-muted-foreground border border-border',
+    label: 'Expired',
+  },
+  CANCELLED: {
+    bg: 'bg-error/10 text-error border border-error/20',
+    label: 'Cancelled',
+  },
 };
 
 function SubscriptionStatusBadge({ status }: { status: string }) {
@@ -209,7 +218,9 @@ function AddSubscriptionDialog({
             {selectedPlan && (
               <div className="rounded-lg border border-border bg-muted/50 p-3 text-sm space-y-1">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Price (snapshot)</span>
+                  <span className="text-muted-foreground">
+                    Price (snapshot)
+                  </span>
                   <span className="font-medium text-foreground">
                     {formatPrice(selectedPlan.price)}
                   </span>

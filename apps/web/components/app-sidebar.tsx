@@ -150,9 +150,7 @@ export function AppSidebar() {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-base">
             <span className="text-lg font-bold text-white">🏋️</span>
           </div>
-          <span className="text-xl font-semibold text-foreground">
-            GymFlow
-          </span>
+          <span className="text-xl font-semibold text-foreground">GymFlow</span>
         </Link>
       </SidebarHeader>
 

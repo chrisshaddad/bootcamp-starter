@@ -12,9 +12,5 @@ export function AnimateStagger({
   children: ReactNode;
   className?: string;
 }) {
-  return (
-    <div className={cn('animate-stagger', className)}>
-      {children}
-    </div>
-  );
+  return <div className={cn('animate-stagger', className)}>{children}</div>;
 }

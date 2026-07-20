@@ -64,19 +64,21 @@ export function useChat(): UseChatReturn {
         prev.map((msg) =>
           msg.id === assistantMessageId
             ? { ...msg, content: response.reply, isLoading: false }
-            : msg
-        )
+            : msg,
+        ),
       );
     } catch (error) {
       const errorMessage =
-        error instanceof ApiError ? error.message : 'An error occurred. Please try again.';
-      
+        error instanceof ApiError
+          ? error.message
+          : 'An error occurred. Please try again.';
+
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === assistantMessageId
             ? { ...msg, content: errorMessage, isLoading: false, isError: true }
-            : msg
-        )
+            : msg,
+        ),
       );
     }
   }, []);

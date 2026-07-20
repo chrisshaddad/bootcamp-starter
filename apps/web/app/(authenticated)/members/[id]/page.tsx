@@ -75,7 +75,9 @@ function InfoRow({
       <Icon className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
       <div className="min-w-0 flex-1">
         <div className="text-sm text-muted-foreground">{label}</div>
-        <div className="mt-0.5 text-sm font-medium text-foreground">{value}</div>
+        <div className="mt-0.5 text-sm font-medium text-foreground">
+          {value}
+        </div>
       </div>
     </div>
   );
@@ -267,11 +269,7 @@ export default function MemberDetailPage() {
               {isInviting ? 'Inviting...' : 'Invite to Portal'}
             </Button>
           )}
-          <Button
-            variant="outline"
-            className="gap-2"
-            onClick={openEdit}
-          >
+          <Button variant="outline" className="gap-2" onClick={openEdit}>
             <Edit2 className="h-4 w-4" /> Edit Details
           </Button>
           <Button
@@ -549,9 +547,11 @@ export default function MemberDetailPage() {
             <DialogTitle>Invite to Member Portal</DialogTitle>
             <DialogDescription>
               A magic-link login email will be sent to{' '}
-              <span className="font-medium text-foreground">{member.email}</span>.
-              The member will be able to log in and view their subscriptions and
-              available plans.
+              <span className="font-medium text-foreground">
+                {member.email}
+              </span>
+              . The member will be able to log in and view their subscriptions
+              and available plans.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

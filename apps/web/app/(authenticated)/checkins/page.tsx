@@ -173,9 +173,7 @@ function MemberRow({
                   {format(new Date(checkIn.checkedOutAt), 'p — MMM d, yyyy')}
                 </>
               ) : (
-                <span className="badge-pill badge-active">
-                  Still in
-                </span>
+                <span className="badge-pill badge-active">Still in</span>
               )}
             </TableCell>
             <TableCell />

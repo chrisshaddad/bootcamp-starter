@@ -74,7 +74,9 @@ function InfoRow({
       <Icon className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
       <div className="min-w-0 flex-1">
         <div className="text-sm text-muted-foreground">{label}</div>
-        <div className="mt-0.5 text-sm font-medium text-foreground">{value}</div>
+        <div className="mt-0.5 text-sm font-medium text-foreground">
+          {value}
+        </div>
       </div>
     </div>
   );
@@ -598,7 +600,9 @@ export default function SessionDetailPage() {
 
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">{session.title}</h1>
+          <h1 className="text-2xl font-bold text-foreground">
+            {session.title}
+          </h1>
           <div className="mt-2 flex items-center gap-2">
             <span
               className={`inline-flex items-center rounded-full border px-3 py-1 text-sm font-medium ${
@@ -612,7 +616,9 @@ export default function SessionDetailPage() {
               {session.status}
             </span>
             {isPast && !isCancelled && !isCompleted && (
-              <span className="text-xs text-muted-foreground italic">Past session</span>
+              <span className="text-xs text-muted-foreground italic">
+                Past session
+              </span>
             )}
             {session.description && (
               <span className="text-sm text-muted-foreground ml-2">

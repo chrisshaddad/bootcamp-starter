@@ -124,7 +124,10 @@ function StatCard({
       </CardHeader>
       <CardContent>
         {typeof value === 'number' ? (
-          <AnimatedCounter value={value} className="text-3xl font-extrabold text-foreground" />
+          <AnimatedCounter
+            value={value}
+            className="text-3xl font-extrabold text-foreground"
+          />
         ) : (
           <p className="text-3xl font-extrabold text-foreground">{value}</p>
         )}
@@ -152,7 +155,10 @@ function ActiveMembersCard({
         </div>
       </CardHeader>
       <CardContent>
-        <AnimatedCounter value={count} className="text-3xl font-extrabold text-foreground" />
+        <AnimatedCounter
+          value={count}
+          className="text-3xl font-extrabold text-foreground"
+        />
         <p className="mt-1 text-xs text-muted-foreground">
           With an active subscription
         </p>
@@ -210,9 +216,14 @@ function CapacityCard({
       </CardHeader>
       <CardContent>
         <div className="flex items-baseline gap-1.5">
-          <AnimatedCounter value={current} className="text-3xl font-extrabold text-foreground" />
+          <AnimatedCounter
+            value={current}
+            className="text-3xl font-extrabold text-foreground"
+          />
           {max !== null && (
-            <span className="text-lg font-medium text-muted-foreground">/ {max}</span>
+            <span className="text-lg font-medium text-muted-foreground">
+              / {max}
+            </span>
           )}
         </div>
         <p className="mt-1 text-xs font-medium text-muted-foreground">
@@ -297,7 +308,10 @@ function ExpiringSoonCard({
           </div>
         </CardHeader>
         <CardContent>
-          <AnimatedCounter value={count} className="text-3xl font-extrabold text-foreground" />
+          <AnimatedCounter
+            value={count}
+            className="text-3xl font-extrabold text-foreground"
+          />
           <p className="mt-1 text-xs text-muted-foreground">
             subscriptions expiring in 30 days
           </p>
@@ -329,7 +343,9 @@ function ExpiringSoonCard({
                           {item.memberName}
                         </span>
                       </div>
-                      <span className={`badge-pill shrink-0 ${daysLeft <= 7 ? 'badge-expired' : 'badge-cancelled'}`}>
+                      <span
+                        className={`badge-pill shrink-0 ${daysLeft <= 7 ? 'badge-expired' : 'badge-cancelled'}`}
+                      >
                         {daysLeft <= 0 ? 'Today' : `${daysLeft}d`}
                       </span>
                     </li>
@@ -453,7 +469,10 @@ function RecentActivityCard() {
         <CardTitle className="text-lg font-bold text-foreground">
           Recent Activity
         </CardTitle>
-        <Link href="/audit-logs" className="text-sm font-medium text-primary-base hover:underline">
+        <Link
+          href="/audit-logs"
+          className="text-sm font-medium text-primary-base hover:underline"
+        >
           View all
         </Link>
       </CardHeader>
@@ -472,11 +491,20 @@ function RecentActivityCard() {
           <div className="space-y-4">
             {auditLogs.map((log) => (
               <div key={log.id} className="flex items-center gap-3">
-                <div className={`h-2.5 w-2.5 rounded-full shrink-0 ${getActionDotColor(log.action)}`} />
+                <div
+                  className={`h-2.5 w-2.5 rounded-full shrink-0 ${getActionDotColor(log.action)}`}
+                />
                 <p className="flex-1 text-sm text-foreground truncate">
-                  <span className="font-semibold">{log.userName || 'System'}</span>
-                  {' '}{formatActionShort(log.action)}
-                  {log.entityName && <span className="text-muted-foreground"> — {log.entityName}</span>}
+                  <span className="font-semibold">
+                    {log.userName || 'System'}
+                  </span>{' '}
+                  {formatActionShort(log.action)}
+                  {log.entityName && (
+                    <span className="text-muted-foreground">
+                      {' '}
+                      — {log.entityName}
+                    </span>
+                  )}
                 </p>
                 <span className="text-xs font-medium text-muted-foreground shrink-0">
                   {formatRelativeTime(log.createdAt)}

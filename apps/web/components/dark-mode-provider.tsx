@@ -20,6 +20,7 @@ export function DarkModeProvider({ children }: { children: ReactNode }) {
 /** Access dark mode state from any component within the provider */
 export function useDarkModeContext() {
   const ctx = useContext(DarkModeContext);
-  if (!ctx) throw new Error('useDarkModeContext must be used within DarkModeProvider');
+  if (!ctx)
+    throw new Error('useDarkModeContext must be used within DarkModeProvider');
   return ctx;
 }

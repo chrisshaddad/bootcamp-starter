@@ -584,7 +584,9 @@ export default function InstructorsPage() {
           ) : !instructors || instructors.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
               <Users className="h-10 w-10 text-muted-foreground/30" />
-              <p className="text-sm text-muted-foreground">No instructors yet.</p>
+              <p className="text-sm text-muted-foreground">
+                No instructors yet.
+              </p>
               <Button
                 variant="outline"
                 size="sm"

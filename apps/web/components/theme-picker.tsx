@@ -111,7 +111,9 @@ export function ThemePicker() {
   return (
     <div className="space-y-6">
       <div>
-        <Label className="text-sm font-medium text-foreground">Brand color</Label>
+        <Label className="text-sm font-medium text-foreground">
+          Brand color
+        </Label>
         <p className="mt-1 text-sm text-muted-foreground">
           Pick a color to recolor buttons, links, and accents across your
           dashboard and member portal. Everyone at your gym sees this color.
@@ -151,7 +153,10 @@ export function ThemePicker() {
 
       <div className="flex items-end gap-3 border-t border-border pt-4">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="custom-theme-color" className="text-xs text-muted-foreground">
+          <Label
+            htmlFor="custom-theme-color"
+            className="text-xs text-muted-foreground"
+          >
             Custom color
           </Label>
           <div className="flex items-center gap-2">

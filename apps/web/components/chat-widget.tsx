@@ -3,12 +3,19 @@
 import { useState, useRef, useEffect } from 'react';
 import { useChat } from '@/hooks/use-chat';
 import { Button } from '@/components/ui/button';
-import { MessageCircle, X, Sparkles, Send, Trash2, AlertCircle } from 'lucide-react';
+import {
+  MessageCircle,
+  X,
+  Sparkles,
+  Send,
+  Trash2,
+  AlertCircle,
+} from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 
 const SUGGESTIONS = [
   '👥 How many active members?',
-  '📊 Show today\'s check-ins',
+  "📊 Show today's check-ins",
   '📅 What sessions are coming up?',
   '⚠️ Any expiring subscriptions?',
   '💰 How many active plans?',
@@ -57,7 +64,9 @@ export function ChatWidget() {
           <div className="flex items-center justify-between p-4 border-b border-border bg-card">
             <div className="flex items-center gap-2 text-primary">
               <Sparkles className="w-5 h-5" />
-              <span className="font-semibold text-foreground">GymFlow Assistant</span>
+              <span className="font-semibold text-foreground">
+                GymFlow Assistant
+              </span>
             </div>
             <div className="flex items-center gap-1">
               <Button
@@ -86,7 +95,9 @@ export function ChatWidget() {
               <div
                 key={msg.id}
                 className={`flex flex-col max-w-[80%] ${
-                  msg.role === 'user' ? 'self-end items-end' : 'self-start items-start'
+                  msg.role === 'user'
+                    ? 'self-end items-end'
+                    : 'self-start items-start'
                 }`}
               >
                 <div
@@ -108,7 +119,11 @@ export function ChatWidget() {
                       <div className="whitespace-pre-wrap">{msg.content}</div>
                     </div>
                   ) : msg.role === 'assistant' ? (
-                    <div dangerouslySetInnerHTML={{ __html: formatChatMarkdown(msg.content) }} />
+                    <div
+                      dangerouslySetInnerHTML={{
+                        __html: formatChatMarkdown(msg.content),
+                      }}
+                    />
                   ) : (
                     <div className="whitespace-pre-wrap">{msg.content}</div>
                   )}
@@ -167,7 +182,11 @@ export function ChatWidget() {
         className="btn-gradient w-14 h-14 rounded-full shadow-lg flex items-center justify-center hover:scale-105 transition-transform"
         aria-label="Toggle chat"
       >
-        {isOpen ? <X className="w-6 h-6" /> : <MessageCircle className="w-6 h-6" />}
+        {isOpen ? (
+          <X className="w-6 h-6" />
+        ) : (
+          <MessageCircle className="w-6 h-6" />
+        )}
       </Button>
     </div>
   );

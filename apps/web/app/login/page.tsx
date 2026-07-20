@@ -65,9 +65,7 @@ export default function LoginPage() {
             <div className="flex h-6 w-6 items-center justify-center">
               <span className="text-2xl text-primary-base">🏋️</span>
             </div>
-            <span className="text-xl font-semibold text-white">
-              GymFlow
-            </span>
+            <span className="text-xl font-semibold text-white">GymFlow</span>
           </div>
 
           {/* Headline */}
@@ -156,8 +154,7 @@ export default function LoginPage() {
         <footer className="px-6 py-6">
           <div className="flex flex-wrap items-center justify-center gap-2.5 text-sm font-medium leading-[1.6]">
             <span className="text-muted-foreground">
-              © {new Date().getFullYear()} GymFlow. All rights
-              reserved.
+              © {new Date().getFullYear()} GymFlow. All rights reserved.
             </span>
             <a
               href="/terms"

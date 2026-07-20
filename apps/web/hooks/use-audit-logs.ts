@@ -22,30 +22,29 @@ interface UseAuditLogsReturn {
 }
 
 /** Fetch paginated audit logs with optional filters */
-export function useAuditLogs(options: UseAuditLogsOptions = {}): UseAuditLogsReturn {
+export function useAuditLogs(
+  options: UseAuditLogsOptions = {},
+): UseAuditLogsReturn {
   const { page = 1, limit = 20, entityType, action, enabled = true } = options;
 
-  const params = new URLSearchParams({ 
+  const params = new URLSearchParams({
     page: String(page),
-    limit: String(limit)
+    limit: String(limit),
   });
-  
+
   if (entityType && entityType !== 'All') {
     params.set('entityType', entityType);
   }
-  
+
   if (action) {
     params.set('action', action);
   }
-  
+
   const endpoint = `/audit-logs?${params.toString()}`;
 
-  const {
-    data,
-    error,
-    isLoading,
-    mutate,
-  } = useSWR<AuditLogListResponse>(enabled ? endpoint : null);
+  const { data, error, isLoading, mutate } = useSWR<AuditLogListResponse>(
+    enabled ? endpoint : null,
+  );
 
   return {
     auditLogs: data?.data,

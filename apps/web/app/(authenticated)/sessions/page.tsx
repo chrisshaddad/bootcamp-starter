@@ -265,10 +265,7 @@ function AddSessionDialog({
               control={form.control}
               name="date"
               render={({ field }) => (
-                <DatePicker
-                  value={field.value}
-                  onChange={field.onChange}
-                />
+                <DatePicker value={field.value} onChange={field.onChange} />
               )}
             />
             {form.formState.errors.date && (
@@ -580,9 +577,12 @@ export default function SessionsPage() {
                             {session.title}
                           </CardTitle>
                           <span
-                            className={STATUS_CONFIG[session.status]?.className ?? ''}
+                            className={
+                              STATUS_CONFIG[session.status]?.className ?? ''
+                            }
                           >
-                            • {STATUS_CONFIG[session.status]?.label ??
+                            •{' '}
+                            {STATUS_CONFIG[session.status]?.label ??
                               session.status}
                           </span>
                         </div>
