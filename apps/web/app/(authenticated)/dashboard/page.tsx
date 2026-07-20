@@ -114,12 +114,14 @@ function StatCard({
 }) {
   return (
     <Card className="glass-card card-elevated rounded-xl border-border bg-card">
-      <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          {label}
-        </CardTitle>
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-100">
-          <Icon className={`h-5 w-5 ${color}`} />
+      <CardHeader className="pb-2">
+        <div className="flex w-full items-center justify-between">
+          <CardTitle className="text-sm font-medium text-muted-foreground">
+            {label}
+          </CardTitle>
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-100">
+            <Icon className={`h-5 w-5 ${color}`} />
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -146,12 +148,14 @@ function ActiveMembersCard({
 }) {
   return (
     <Card className="glass-card card-elevated rounded-xl border-border bg-card">
-      <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          Active Members
-        </CardTitle>
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-100">
-          <UserCheck className="h-5 w-5 text-green-600" />
+      <CardHeader className="pb-2">
+        <div className="flex w-full items-center justify-between">
+          <CardTitle className="text-sm font-medium text-muted-foreground">
+            Active Members
+          </CardTitle>
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-100">
+            <UserCheck className="h-5 w-5 text-green-600" />
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -204,14 +208,16 @@ function CapacityCard({
 
   return (
     <Card className="glass-card card-elevated rounded-xl border-border bg-card">
-      <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          Live Capacity
-        </CardTitle>
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-100">
-          <Building2
-            className={`h-5 w-5 ${isFull ? 'text-red-500' : isNearFull ? 'text-amber-500' : 'text-primary-base'}`}
-          />
+      <CardHeader className="pb-2">
+        <div className="flex w-full items-center justify-between">
+          <CardTitle className="text-sm font-medium text-muted-foreground">
+            Live Capacity
+          </CardTitle>
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-100">
+            <Building2
+              className={`h-5 w-5 ${isFull ? 'text-red-500' : isNearFull ? 'text-amber-500' : 'text-primary-base'}`}
+            />
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -299,12 +305,14 @@ function ExpiringSoonCard({
     <Card className="glass-card card-elevated rounded-xl relative overflow-hidden">
       <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-amber-400 to-orange-500" />
       <div className="pl-2">
-        <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            Expiring Soon
-          </CardTitle>
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/20">
-            <AlertTriangle className="h-5 w-5 text-amber-500" />
+        <CardHeader className="pb-2">
+          <div className="flex w-full items-center justify-between">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Expiring Soon
+            </CardTitle>
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/20">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -465,16 +473,20 @@ function RecentActivityCard() {
 
   return (
     <Card className="glass-card card-elevated rounded-xl border-border bg-card">
-      <CardHeader className="pb-4 flex-row items-center justify-between space-y-0 border-b border-border/50">
-        <CardTitle className="text-lg font-bold text-foreground">
-          Recent Activity
-        </CardTitle>
-        <Link
-          href="/audit-logs"
-          className="text-sm font-medium text-primary-base hover:underline"
-        >
-          View all
-        </Link>
+      <CardHeader className="pb-4 border-b border-border/50">
+        <div className="flex w-full items-center justify-between">
+          <CardTitle className="text-lg font-bold text-foreground">
+            Recent Activity
+          </CardTitle>
+          <Button
+            variant="outline"
+            size="sm"
+            asChild
+            className="h-8 gap-1.5 text-xs font-medium"
+          >
+            <Link href="/audit-logs">View all</Link>
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="pt-4">
         {isLoading ? (
