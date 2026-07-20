@@ -600,11 +600,44 @@ export class ProjectsService {
 
     let githubOwnershipVerifiedAt: Date | undefined;
     if (newStatus === ProjectStatus.PUBLISHED) {
-      await this.githubService.verifyRepositoryOwnership(
-        project.createdByUserId,
-        project.repository.htmlUrl,
-      );
+      const verifiedRepository =
+        await this.githubService.verifyRepositoryOwnership(
+          project.createdByUserId,
+          project.repository.htmlUrl,
+        );
       githubOwnershipVerifiedAt = new Date();
+
+      // Projects created before verified collaborator memberships were added
+      // may not have an OWNER row yet. Publishing is the point at which we
+      // revalidate GitHub ownership, so repair that invariant with the same
+      // verified identity before exposing the project publicly.
+      await this.prisma.projectMember.upsert({
+        where: {
+          projectId_userId: {
+            projectId,
+            userId: project.createdByUserId,
+          },
+        },
+        create: {
+          projectId,
+          userId: project.createdByUserId,
+          githubUserId: verifiedRepository.ownerGithubUserId,
+          githubUsername: verifiedRepository.ownerLogin,
+          role: ProjectRoleKey.OWNER,
+          verificationStatus: VerificationStatus.VERIFIED,
+          verificationSource: VerificationSource.GITHUB_OWNER,
+          verifiedAt: githubOwnershipVerifiedAt,
+          addedByUserId: project.createdByUserId,
+        },
+        update: {
+          githubUserId: verifiedRepository.ownerGithubUserId,
+          githubUsername: verifiedRepository.ownerLogin,
+          role: ProjectRoleKey.OWNER,
+          verificationStatus: VerificationStatus.VERIFIED,
+          verificationSource: VerificationSource.GITHUB_OWNER,
+          verifiedAt: githubOwnershipVerifiedAt,
+        },
+      });
     }
 
     let publishedAt: Date | null | undefined = undefined;

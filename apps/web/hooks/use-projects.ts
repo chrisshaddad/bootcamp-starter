@@ -74,7 +74,11 @@ export function useUpdateProject() {
     const project = projectResponseSchema.parse(
       await apiPatch<unknown>(`/projects/${id}`, data),
     );
-    await Promise.all([refreshProjectLists(), globalMutate(projectKey(id))]);
+    await Promise.all([
+      refreshProjectLists(),
+      globalMutate(projectKey(id)),
+      globalMutate(`/projects/slug/${project.slug}`),
+    ]);
     return project;
   }, []);
 }

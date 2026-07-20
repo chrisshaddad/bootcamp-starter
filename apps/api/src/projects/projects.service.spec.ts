@@ -241,6 +241,32 @@ describe('ProjectsService GitHub import', () => {
       USER_ID,
       'https://github.com/vercel/next.js',
     );
+    expect(prisma.projectMember.upsert).toHaveBeenCalledWith({
+      where: {
+        projectId_userId: {
+          projectId: PROJECT_ID,
+          userId: USER_ID,
+        },
+      },
+      create: expect.objectContaining({
+        projectId: PROJECT_ID,
+        userId: USER_ID,
+        githubUserId: 100n,
+        githubUsername: 'vercel',
+        role: 'OWNER',
+        verificationStatus: 'VERIFIED',
+        verificationSource: 'GITHUB_OWNER',
+        verifiedAt: expect.any(Date),
+      }),
+      update: expect.objectContaining({
+        githubUserId: 100n,
+        githubUsername: 'vercel',
+        role: 'OWNER',
+        verificationStatus: 'VERIFIED',
+        verificationSource: 'GITHUB_OWNER',
+        verifiedAt: expect.any(Date),
+      }),
+    });
     expect(prisma.project.update).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -520,6 +546,9 @@ function createPrismaMock(tx: ReturnType<typeof createTransactionMock>) {
         id: PROJECT_ID,
         status: 'PUBLISHED',
       }),
+    },
+    projectMember: {
+      upsert: jest.fn().mockResolvedValue({ id: 'member-id' }),
     },
     $transaction: jest.fn((callback: (client: typeof tx) => Promise<unknown>) =>
       callback(tx),
