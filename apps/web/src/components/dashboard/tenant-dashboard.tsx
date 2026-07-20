@@ -161,7 +161,7 @@ export function TenantDashboard({ me, locale, dict }: TenantDashboardProps) {
     defaultValues: EMPTY_VALUES,
   });
 
-  const events = timelineData?.data ?? [];
+  const events = timelineData?.items ?? [];
   const requests = overview?.maintenanceRequests ?? [];
   const openCount = requests.filter((r) =>
     OPEN_STATUSES.includes(r.status),

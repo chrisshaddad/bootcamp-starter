@@ -57,7 +57,7 @@ export function FinanceDashboard({ me, locale, dict }: FinanceDashboardProps) {
   const { data: timelineData, isLoading: timelineLoading } =
     useListTimelineQuery({ limit: 5 });
 
-  const timelineEvents = (timelineData?.data ?? []).slice(0, 5);
+  const timelineEvents = (timelineData?.items ?? []).slice(0, 5);
   const overdueTotal = overdueOutstanding(overdue);
   const overdueCount = overdue?.length ?? 0;
   const netMtd = summary ? Number(summary.mtdNet) : 0;

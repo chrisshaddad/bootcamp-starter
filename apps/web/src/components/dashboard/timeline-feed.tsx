@@ -41,7 +41,7 @@ export function TimelineFeed({ locale, limit = 10 }: TimelineFeedProps) {
     );
   }
 
-  const events = data?.data ?? [];
+  const events = data?.items ?? [];
 
   if (events.length === 0) {
     return (

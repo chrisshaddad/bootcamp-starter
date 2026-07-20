@@ -21,8 +21,15 @@ export type ApiEnvelope<TData> = {
   message?: string;
 };
 
+/**
+ * Paginated list envelope. The array field is `items` (NOT `data`) — this must
+ * match the backend list services (payments.service, timeline.service) exactly,
+ * or FE consumers reading the array get an empty list. Do not rename to `data`:
+ * the `unwrap` transform on the client keys on a top-level `data` property to
+ * peel the optional ApiEnvelope, so a `data` array here would be mis-unwrapped.
+ */
 export type PaginatedResponse<T> = {
-  data: T[];
+  items: T[];
   total: number;
   page: number;
   limit: number;

@@ -55,7 +55,7 @@ export function PaymentsPage({ locale, readonly = false }: PaymentsPageProps) {
   const dateLocale = locale === 'ar' ? ar : undefined;
   const { data: paymentsData, isLoading } = useListPaymentsQuery();
 
-  const payments = paymentsData?.data ?? [];
+  const payments = paymentsData?.items ?? [];
 
   const now = new Date();
   const currentMonth = now.getMonth();

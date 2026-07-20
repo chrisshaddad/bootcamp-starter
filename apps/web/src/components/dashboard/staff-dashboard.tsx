@@ -51,7 +51,7 @@ export function StaffDashboard({ me, locale, dict }: StaffDashboardProps) {
 
   const stats = maintenanceStats(requests);
   const attention = topActiveRequests(requests, 5);
-  const timelineEvents = timelineData?.data ?? [];
+  const timelineEvents = timelineData?.items ?? [];
   const userName = me?.user?.fullName ?? '';
 
   return (
