@@ -40,14 +40,18 @@ function PatronSettings() {
           {userLoading ? (
             <Skeleton className="h-16 w-full" />
           ) : (
-            <dl className="grid grid-cols-2 gap-4 text-sm">
+            <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
               <div>
                 <dt className="text-muted-foreground">Name</dt>
-                <dd className="font-medium text-foreground">{user?.name}</dd>
+                <dd className="wrap-break-word font-medium text-foreground">
+                  {user?.name}
+                </dd>
               </div>
               <div>
                 <dt className="text-muted-foreground">Email</dt>
-                <dd className="font-medium text-foreground">{user?.email}</dd>
+                <dd className="wrap-break-word font-medium text-foreground">
+                  {user?.email}
+                </dd>
               </div>
             </dl>
           )}

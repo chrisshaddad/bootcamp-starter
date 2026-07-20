@@ -104,22 +104,22 @@ function PublishersManager() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Publishers</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Manage the publishers in your library&apos;s catalog
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="relative">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative flex-1 sm:flex-none">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by name..."
-              className="w-56 pl-9"
+              className="w-full pl-9 sm:w-56"
               aria-label="Search publishers by name"
             />
           </div>

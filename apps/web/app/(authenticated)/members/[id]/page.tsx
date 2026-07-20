@@ -56,8 +56,8 @@ export default function MemberDetailPage() {
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex justify-between gap-4 border-b border-border py-2 last:border-0">
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <span className="text-right text-sm font-medium text-foreground">
+      <span className="shrink-0 text-sm text-muted-foreground">{label}</span>
+      <span className="wrap-break-word text-right text-sm font-medium text-foreground">
         {value || '—'}
       </span>
     </div>
@@ -156,7 +156,7 @@ function MemberDetail() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <Button
             variant="ghost"
