@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -62,6 +62,7 @@ import { useListBuildingsQuery } from '@/store/api/endpoints/buildings.api';
 import { useListFloorsQuery } from '@/store/api/endpoints/floors.api';
 import { useListApartmentsQuery } from '@/store/api/endpoints/apartments.api';
 import { useListRentersQuery } from '@/store/api/endpoints/renters.api';
+import { useListAllLeasesQuery } from '@/store/api/endpoints/leases.api';
 import type {
   MaintenanceRequestPriority,
   MaintenanceRequestResponse,
@@ -225,6 +226,7 @@ export function TasksPage({ canWrite, locale, dict }: TasksPageProps) {
 
   const createBuildingId = watchCreate('buildingId');
   const createFloorId = watchCreate('floorId');
+  const createApartmentId = watchCreate('apartmentId');
 
   const { data: createFloors } = useListFloorsQuery(createBuildingId, {
     skip: !createBuildingId,
@@ -233,6 +235,24 @@ export function TasksPage({ canWrite, locale, dict }: TasksPageProps) {
     { buildingId: createBuildingId, floorId: createFloorId },
     { skip: !createBuildingId || !createFloorId },
   );
+
+  // A maintenance request belongs to a property; the renter is derived from it.
+  // When the user picks an apartment that has an active lease, auto-fill the
+  // renter from that lease so they don't have to hand-pick (and can't mismatch)
+  // it. Apartments with no active lease fall back to manual selection.
+  const { data: allLeases } = useListAllLeasesQuery();
+  useEffect(() => {
+    if (!createApartmentId) return;
+    const activeLease = allLeases?.find(
+      (l) =>
+        l.apartmentId === createApartmentId && l.effectiveStatus === 'active',
+    );
+    if (activeLease) {
+      setCreateValue('renterId', activeLease.renterId, {
+        shouldValidate: true,
+      });
+    }
+  }, [createApartmentId, allLeases, setCreateValue]);
 
   const editSchema = useMemo(
     () => buildEditSchema(t.dialog.edit),

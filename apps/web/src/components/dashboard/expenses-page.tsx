@@ -798,7 +798,9 @@ export function ExpensesPage({
                       : '—'}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {expense.workOrderId ?? '—'}
+                    {expense.workOrderId
+                      ? workOrderLabel(expense.workOrderId)
+                      : '—'}
                   </TableCell>
                   {canWrite && (
                     <TableCell>

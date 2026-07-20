@@ -49,7 +49,11 @@ export default async function DashboardLayout({
   const userName = session.user?.name ?? session.user?.email ?? '';
 
   return (
-    <div className="flex min-h-screen bg-background">
+    // h-screen + overflow-hidden turns this into a fixed app-shell: the sidebar
+    // stays viewport-height and the main column scrolls on its own, so a long
+    // page (e.g. the Activity feed) can never push the sidebar's Sign-out
+    // control below the fold. See dashboard-sidebar for the internal nav scroll.
+    <div className="flex h-screen overflow-hidden bg-background">
       <DashboardSidebar
         locale={locale}
         role={role}
@@ -63,7 +67,7 @@ export default async function DashboardLayout({
           role={role}
           dict={dict}
         />
-        <main className="flex-1 p-6 lg:p-8">{children}</main>
+        <main className="flex-1 overflow-y-auto p-6 lg:p-8">{children}</main>
       </div>
     </div>
   );

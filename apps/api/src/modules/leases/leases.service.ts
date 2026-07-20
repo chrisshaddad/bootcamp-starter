@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -54,6 +55,28 @@ export class LeasesService {
       select: { id: true },
     });
     if (!renter) throw new NotFoundException('Renter not found.');
+  }
+
+  /**
+   * Server-side invariant: a lease must end strictly after it starts. The FE
+   * enforces this too, but a direct API call previously bypassed it (the DTO
+   * only validated each date in isolation), so a lease with endDate <= startDate
+   * could be persisted.
+   */
+  private assertValidDateRange(
+    startDate: string | Date,
+    endDate: string | Date,
+  ): void {
+    const startMs = new Date(startDate).getTime();
+    const endMs = new Date(endDate).getTime();
+    if (Number.isNaN(startMs) || Number.isNaN(endMs)) {
+      throw new BadRequestException('Invalid lease start or end date.');
+    }
+    if (endMs <= startMs) {
+      throw new BadRequestException(
+        'Lease end date must be after the start date.',
+      );
+    }
   }
 
   // ── CRUD ──────────────────────────────────────────────────────────────────
@@ -186,6 +209,7 @@ export class LeasesService {
   ): Promise<{ data: LeaseResponse }> {
     await this.assertApartmentInScope(orgId, buildingId, floorId, apartmentId);
     await this.assertRenterInOrg(orgId, dto.renterId);
+    this.assertValidDateRange(dto.startDate, dto.endDate);
 
     const resolvedStatus = dto.status ?? 'active';
     const now = new Date();
@@ -260,6 +284,13 @@ export class LeasesService {
       where: { id: leaseId, orgId, buildingId, floorId, apartmentId },
     });
     if (!existing) throw new NotFoundException('Lease not found.');
+
+    // Validate the resulting date range against whichever dates are being
+    // changed, falling back to the stored values for the untouched one.
+    this.assertValidDateRange(
+      dto.startDate ?? existing.startDate,
+      dto.endDate ?? existing.endDate,
+    );
 
     const isTerminating =
       dto.status === 'terminated' && existing.status !== 'terminated';

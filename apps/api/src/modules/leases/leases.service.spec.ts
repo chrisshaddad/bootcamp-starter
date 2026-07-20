@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   NotFoundException,
@@ -144,6 +145,20 @@ describe('LeasesService', () => {
         where: { id: apartmentId },
         data: { status: 'occupied' },
       });
+    });
+
+    it('rejects creating a lease whose end date is not after its start date', async () => {
+      const { service, prisma } = makeService();
+
+      await expect(
+        service.create(orgId, actorId, buildingId, floorId, apartmentId, {
+          ...dto,
+          startDate: '2026-06-01T00:00:00.000Z',
+          endDate: '2026-06-01T00:00:00.000Z',
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+
+      expect(prisma.lease.create).not.toHaveBeenCalled();
     });
 
     it('does not sync the apartment when created with an explicit non-active status', async () => {
