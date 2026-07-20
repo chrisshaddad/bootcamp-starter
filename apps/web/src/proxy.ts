@@ -2,6 +2,11 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 import { auth } from '@/auth/auth';
 import { dashboardPathForRole, normalizeRole, ROLES } from '@/auth/roles';
+import {
+  PERMISSION_MATRIX,
+  getAccess,
+  type DashboardArea,
+} from '@/auth/permissions';
 import { defaultLocale, isLocale } from '@/i18n/config';
 import type { Role } from '@/auth/roles';
 
@@ -37,48 +42,26 @@ const SESSION_COOKIE_NAMES = [
  */
 
 // ---------------------------------------------------------------------------
-// Inline permissions map (mirrors auth/permissions.ts — kept minimal so the
-// middleware stays edge-runtime-safe with no complex imports).
-// Roles listed here are the ONLY roles that MAY access each sub-area.
-// Omitting a sub-area means all authenticated users are allowed through
-// (the per-page guard handles finer gating).
+// Sub-area gating sources DIRECTLY from the authoritative permission matrix
+// (auth/permissions.ts) — no inline copy. A hand-maintained duplicate here
+// previously drifted (it omitted supervisor's readonly `tasks` access), so the
+// edge bounced supervisors off /dashboard/tasks even though the sidebar showed
+// the link. Importing the real matrix makes divergence structurally impossible.
+// permissions.ts is a plain object + pure functions (type-only Role import) →
+// edge-runtime safe.
+//
+// `renters` has no dedicated area — it reuses the `buildings` permission.
+// A sub-path not present in the matrix at all is let through (the per-page
+// guard remains the authoritative gate).
 // ---------------------------------------------------------------------------
 
-type AccessLevel = 'full' | 'readonly' | 'none';
+const SUBAREA_ALIASES: Record<string, DashboardArea> = { renters: 'buildings' };
+const KNOWN_AREAS = new Set<string>(Object.keys(PERMISSION_MATRIX.org_admin));
 
-const AREA_PERMISSIONS: Record<string, Partial<Record<Role, AccessLevel>>> = {
-  users: {
-    org_admin: 'full',
-    supervisor: 'readonly',
-    // finance, maintenance, tenant → "none" (not listed ⇒ default none)
-  },
-  payments: {
-    org_admin: 'full',
-    finance: 'full',
-    supervisor: 'readonly',
-    // maintenance, tenant → none
-  },
-  reports: {
-    org_admin: 'full',
-    finance: 'full',
-    // supervisor, maintenance, tenant → none
-  },
-  billing: {
-    org_admin: 'full',
-    // supervisor, finance, maintenance, tenant → none
-  },
-  tasks: {
-    org_admin: 'full',
-    maintenance: 'full',
-    // supervisor, finance, tenant → none
-  },
-};
-
-function roleCanAccessArea(role: Role, area: string): boolean {
-  const areaMap = AREA_PERMISSIONS[area];
-  if (!areaMap) return true; // unknown area → let it through, page guard decides
-  const level = areaMap[role] ?? 'none';
-  return level !== 'none';
+function roleCanAccessArea(role: Role, subArea: string): boolean {
+  const area = SUBAREA_ALIASES[subArea] ?? subArea;
+  if (!KNOWN_AREAS.has(area)) return true; // unknown sub-area → page guard decides
+  return getAccess(role, area as DashboardArea) !== 'none';
 }
 
 // ---------------------------------------------------------------------------
