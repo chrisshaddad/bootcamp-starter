@@ -16,6 +16,8 @@ import { SessionsModule } from './sessions/sessions.module';
 import { BookingsModule } from './bookings/bookings.module';
 import { CheckInsModule } from './checkins/checkins.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { AuditModule } from './audit/audit.module';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -31,6 +33,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     GymsModule,
     MembersModule,
     PlansModule,
+    AuditModule,
     SubscriptionsModule,
     MePortalModule,
     InstructorsModule,
@@ -38,6 +41,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     BookingsModule,
     CheckInsModule,
     DashboardModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -5,11 +5,12 @@ import {
   BadRequestException,
   ConflictException,
 } from '@nestjs/common';
-import { Prisma } from '@repo/db';
+import { Prisma, User } from '@repo/db';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import * as crypto from 'crypto';
 import { DatabaseService } from '../database/database.service';
+import { AuditService } from '../audit/audit.service';
 import { MAIL_QUEUE, MAIL_JOBS } from '../mail/mail.constants';
 import type { GymStatus } from '@repo/db';
 import type {
@@ -49,6 +50,7 @@ export class GymsService {
   constructor(
     private readonly prisma: DatabaseService,
     @InjectQueue(MAIL_QUEUE) private readonly mailQueue: Queue,
+    private readonly auditService: AuditService,
   ) {}
 
   /** Get all gyms with optional status filter */
@@ -105,7 +107,11 @@ export class GymsService {
   }
 
   /** Approve a gym (set status to ACTIVE) and send the owner a login link */
-  async approve(id: string, approvedById: string): Promise<GymDetailResponse> {
+  async approve(
+    id: string,
+    approvedById: string,
+    actor: User,
+  ): Promise<GymDetailResponse> {
     const existing = await this.prisma.gym.findUnique({ where: { id } });
     if (!existing) {
       throw new NotFoundException(`Gym with ID ${id} not found`);
@@ -121,6 +127,18 @@ export class GymsService {
       },
       select: GYM_DETAIL_SELECT,
     });
+
+    this.auditService
+      .log({
+        gymId: null, // platform-level action, not this gym's own tenant-internal activity
+        userId: actor.id,
+        userName: actor.name,
+        action: 'gym.approved',
+        entityType: 'Gym',
+        entityId: id,
+        entityName: gym.name,
+      })
+      .catch(() => {});
 
     const owner = gym.createdBy;
     if (owner) {
@@ -152,7 +170,11 @@ export class GymsService {
   }
 
   /** Reject a gym with a mandatory reason */
-  async reject(id: string, reason: string): Promise<GymDetailResponse> {
+  async reject(
+    id: string,
+    reason: string,
+    actor: User,
+  ): Promise<GymDetailResponse> {
     const existing = await this.prisma.gym.findUnique({ where: { id } });
     if (!existing) {
       throw new NotFoundException(`Gym with ID ${id} not found`);
@@ -164,11 +186,29 @@ export class GymsService {
       select: GYM_DETAIL_SELECT,
     });
     this.logger.log(`Gym rejected: ${id}`);
+
+    this.auditService
+      .log({
+        gymId: null, // platform-level action, not this gym's own tenant-internal activity
+        userId: actor.id,
+        userName: actor.name,
+        action: 'gym.rejected',
+        entityType: 'Gym',
+        entityId: id,
+        entityName: gym.name,
+        metadata: { reason },
+      })
+      .catch(() => {});
+
     return gym;
   }
 
   /** Suspend an active gym with a mandatory reason and immediately log out the owner */
-  async suspend(id: string, reason: string): Promise<GymDetailResponse> {
+  async suspend(
+    id: string,
+    reason: string,
+    actor: User,
+  ): Promise<GymDetailResponse> {
     const gym = await this.prisma.gym.findUnique({
       where: { id },
       select: { createdById: true },
@@ -184,11 +224,25 @@ export class GymsService {
     });
 
     this.logger.log(`Gym suspended: ${id}`);
+
+    this.auditService
+      .log({
+        gymId: null, // platform-level action, not this gym's own tenant-internal activity
+        userId: actor.id,
+        userName: actor.name,
+        action: 'gym.suspended',
+        entityType: 'Gym',
+        entityId: id,
+        entityName: updated.name,
+        metadata: { reason },
+      })
+      .catch(() => {});
+
     return updated;
   }
 
   /** Reactivate a suspended gym and send the owner a new login link */
-  async reactivate(id: string): Promise<GymDetailResponse> {
+  async reactivate(id: string, actor: User): Promise<GymDetailResponse> {
     const existing = await this.prisma.gym.findUnique({ where: { id } });
     if (!existing) {
       throw new NotFoundException(`Gym with ID ${id} not found`);
@@ -226,6 +280,19 @@ export class GymsService {
     }
 
     this.logger.log(`Gym reactivated: ${id}`);
+
+    this.auditService
+      .log({
+        gymId: null, // platform-level action, not this gym's own tenant-internal activity
+        userId: actor.id,
+        userName: actor.name,
+        action: 'gym.reactivated',
+        entityType: 'Gym',
+        entityId: id,
+        entityName: gym.name,
+      })
+      .catch(() => {});
+
     return gym;
   }
 
@@ -302,11 +369,38 @@ export class GymsService {
   async updateSettings(
     gymId: string,
     settings: GymSettingsUpdateRequest,
+    actor: User,
   ): Promise<{ message: string }> {
     await this.prisma.gym.updateMany({
       where: { id: gymId },
       data: settings,
     });
+
+    const changes: string[] = [];
+    if (settings.maxCapacity !== undefined) {
+      changes.push(
+        `Max capacity: ${settings.maxCapacity === null ? 'removed' : settings.maxCapacity}`,
+      );
+    }
+    if (settings.themeColor !== undefined) {
+      changes.push(
+        `Brand color: ${settings.themeColor === null ? 'reset to default' : settings.themeColor}`,
+      );
+    }
+
+    this.auditService
+      .log({
+        gymId,
+        userId: actor.id,
+        userName: actor.name,
+        action: 'gym.settings-updated',
+        entityType: 'Gym',
+        entityId: gymId,
+        entityName: changes.length > 0 ? changes.join(', ') : 'No changes',
+        metadata: settings,
+      })
+      .catch(() => {});
+
     return { message: 'Settings updated successfully' };
   }
 }

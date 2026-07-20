@@ -14,6 +14,7 @@ import {
   GraduationCap,
   CalendarDays,
   Fingerprint,
+  ScrollText,
 } from 'lucide-react';
 import { useAuth, useUser } from '@/hooks/use-auth';
 import { LogoMark } from '@/components/logo-mark';
@@ -77,6 +78,12 @@ const orgNavItems: NavItem[] = [
     icon: Fingerprint,
     roles: ['ORG_ADMIN'],
   },
+  {
+    title: 'Audit Log',
+    url: '/audit-logs',
+    icon: ScrollText,
+    roles: ['ORG_ADMIN'],
+  },
 ];
 
 // Navigation items for SUPER_ADMIN role
@@ -91,6 +98,11 @@ const superAdminNavItems: NavItem[] = [
     url: '/users',
     icon: Users,
     disabled: true, // Placeholder for future implementation
+  },
+  {
+    title: 'Audit Log',
+    url: '/audit-logs',
+    icon: ScrollText,
   },
 ];
 

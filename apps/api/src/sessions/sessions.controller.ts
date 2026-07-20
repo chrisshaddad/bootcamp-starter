@@ -147,7 +147,7 @@ export class SessionsController {
     dto: SessionCreateRequest,
     @CurrentUser() user: User,
   ): Promise<SessionResponse> {
-    return this.sessionsService.create(user.gymId!, dto);
+    return this.sessionsService.create(user.gymId!, dto, user);
   }
 
   /** Update a session's details */
@@ -186,7 +186,7 @@ export class SessionsController {
     dto: SessionUpdateRequest,
     @CurrentUser() user: User,
   ): Promise<SessionResponse> {
-    return this.sessionsService.update(id, user.gymId!, dto);
+    return this.sessionsService.update(id, user.gymId!, dto, user);
   }
 
   /** Cancel a session */
@@ -209,6 +209,6 @@ export class SessionsController {
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: User,
   ): Promise<SessionResponse> {
-    return this.sessionsService.cancel(id, user.gymId!);
+    return this.sessionsService.cancel(id, user.gymId!, user);
   }
 }

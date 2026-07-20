@@ -151,7 +151,7 @@ export class SubscriptionsController {
     dto: SubscriptionCreateRequest,
     @CurrentUser() user: User,
   ): Promise<SubscriptionResponse> {
-    return this.subscriptionsService.create(this.assertGymId(user), dto);
+    return this.subscriptionsService.create(this.assertGymId(user), dto, user);
   }
 
   /** Cancel an active subscription */
@@ -183,6 +183,6 @@ export class SubscriptionsController {
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: User,
   ): Promise<SubscriptionResponse> {
-    return this.subscriptionsService.cancel(id, this.assertGymId(user));
+    return this.subscriptionsService.cancel(id, this.assertGymId(user), user);
   }
 }

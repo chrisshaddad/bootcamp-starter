@@ -107,7 +107,7 @@ export class BookingsController {
     dto: BookingCreateRequest,
     @CurrentUser() user: User,
   ): Promise<BookingResponse> {
-    return this.bookingsService.create(user.gymId!, dto);
+    return this.bookingsService.create(user.gymId!, dto, user);
   }
 
   /** Cancel a booking */
@@ -131,7 +131,7 @@ export class BookingsController {
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: User,
   ): Promise<BookingResponse> {
-    return this.bookingsService.cancel(id, user.gymId!);
+    return this.bookingsService.cancel(id, user.gymId!, user);
   }
 
   /** Check in a booked member */

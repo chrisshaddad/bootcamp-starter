@@ -7,6 +7,7 @@ import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { MemberSidebar } from '@/components/member-sidebar';
 import { TopNavbar } from '@/components/top-navbar';
 import { ThemeProvider } from '@/components/theme-provider';
+import { ChatWidget } from '@/components/chat-widget';
 
 export default function MemberPortalLayout({
   children,
@@ -67,6 +68,7 @@ export default function MemberPortalLayout({
         <TopNavbar />
         <main className="flex-1 bg-background p-6">{children}</main>
       </SidebarInset>
+      <ChatWidget />
     </SidebarProvider>
   );
 }

@@ -5,6 +5,7 @@ import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/app-sidebar';
 import { TopNavbar } from '@/components/top-navbar';
 import { ThemeProvider } from '@/components/theme-provider';
+import { ChatWidget } from '@/components/chat-widget';
 
 export default function DashboardLayout({
   children,
@@ -51,6 +52,7 @@ export default function DashboardLayout({
         <TopNavbar />
         <main className="flex-1 bg-background p-6">{children}</main>
       </SidebarInset>
+      <ChatWidget />
     </SidebarProvider>
   );
 }

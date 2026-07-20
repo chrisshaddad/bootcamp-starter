@@ -4,6 +4,8 @@ import {
   NotFoundException,
   Logger,
 } from '@nestjs/common';
+import type { User } from '@repo/db';
+import { AuditService } from '../audit/audit.service';
 import { DatabaseService } from '../database/database.service';
 
 import type {
@@ -28,13 +30,21 @@ const BOOKING_SELECT = {
       email: true,
     },
   },
+  session: {
+    select: {
+      title: true,
+    },
+  },
 } as const;
 
 @Injectable()
 export class BookingsService {
   private readonly logger = new Logger(BookingsService.name);
 
-  constructor(private readonly prisma: DatabaseService) {}
+  constructor(
+    private readonly prisma: DatabaseService,
+    private readonly auditService: AuditService,
+  ) {}
 
   /** List all bookings for a specific session, scoped to the caller's gym */
   async findAllBySession(
@@ -63,9 +73,10 @@ export class BookingsService {
   async create(
     gymId: string,
     dto: BookingCreateRequest,
+    actor: User,
   ): Promise<BookingResponse> {
     // 1-6. Transaction wrapper for capacity safe-check
-    return this.prisma.$transaction(async (tx) => {
+    const created = await this.prisma.$transaction(async (tx) => {
       // 1. Verify session belongs to gym and is bookable
       const session = await tx.gymSession.findFirst({
         where: { id: dto.sessionId, gymId },
@@ -181,10 +192,28 @@ export class BookingsService {
 
       return booking as unknown as BookingResponse;
     });
+
+    this.auditService
+      .log({
+        gymId,
+        userId: actor.id,
+        userName: actor.name,
+        action: 'booking.created',
+        entityType: 'SessionBooking',
+        entityId: created.id,
+        entityName: `${created.member.name} — ${(created as unknown as { session: { title: string } }).session.title}`,
+      })
+      .catch(() => {});
+
+    return created;
   }
 
   /** Cancel a booking, scoped to the caller's gym */
-  async cancel(id: string, gymId: string): Promise<BookingResponse> {
+  async cancel(
+    id: string,
+    gymId: string,
+    actor: User,
+  ): Promise<BookingResponse> {
     const booking = await this.prisma.sessionBooking.findFirst({
       where: { id, gymId },
     });
@@ -205,6 +234,20 @@ export class BookingsService {
       where: { id, gymId },
       select: BOOKING_SELECT,
     });
+
+    this.auditService
+      .log({
+        gymId,
+        userId: actor.id,
+        userName: actor.name,
+        action: 'booking.cancelled',
+        entityType: 'SessionBooking',
+        entityId: id,
+        entityName: updated
+          ? `${updated.member.name} — ${updated.session.title}`
+          : null,
+      })
+      .catch(() => {});
 
     return updated as unknown as BookingResponse;
   }

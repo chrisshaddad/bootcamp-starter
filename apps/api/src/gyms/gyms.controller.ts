@@ -213,7 +213,7 @@ export class GymsController {
     @Param('id') id: string,
     @CurrentUser() user: User,
   ): Promise<GymActionResponse> {
-    const gym = await this.gymsService.approve(id, user.id);
+    const gym = await this.gymsService.approve(id, user.id, user);
     return { message: 'Gym approved successfully', gym };
   }
 
@@ -251,8 +251,9 @@ export class GymsController {
   async reject(
     @Param('id') id: string,
     @Body(new ZodValidationPipe(gymReasonRequestSchema)) body: GymReasonRequest,
+    @CurrentUser() user: User,
   ): Promise<GymActionResponse> {
-    const gym = await this.gymsService.reject(id, body.reason);
+    const gym = await this.gymsService.reject(id, body.reason, user);
     return { message: 'Gym rejected successfully', gym };
   }
 
@@ -287,8 +288,9 @@ export class GymsController {
   async suspend(
     @Param('id') id: string,
     @Body(new ZodValidationPipe(gymReasonRequestSchema)) body: GymReasonRequest,
+    @CurrentUser() user: User,
   ): Promise<GymActionResponse> {
-    const gym = await this.gymsService.suspend(id, body.reason);
+    const gym = await this.gymsService.suspend(id, body.reason, user);
     return { message: 'Gym suspended successfully', gym };
   }
 
@@ -312,8 +314,11 @@ export class GymsController {
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   @ApiResponse({ status: 403, description: 'Insufficient role' })
   @ApiResponse({ status: 404, description: 'Gym not found' })
-  async reactivate(@Param('id') id: string): Promise<GymActionResponse> {
-    const gym = await this.gymsService.reactivate(id);
+  async reactivate(
+    @Param('id') id: string,
+    @CurrentUser() user: User,
+  ): Promise<GymActionResponse> {
+    const gym = await this.gymsService.reactivate(id, user);
     return { message: 'Gym reactivated successfully', gym };
   }
 
@@ -343,6 +348,6 @@ export class GymsController {
     body: GymSettingsUpdateRequest,
     @CurrentUser() user: User,
   ): Promise<{ message: string }> {
-    return this.gymsService.updateSettings(user.gymId!, body);
+    return this.gymsService.updateSettings(user.gymId!, body, user);
   }
 }

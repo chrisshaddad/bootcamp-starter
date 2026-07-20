@@ -155,7 +155,7 @@ export class PlansController {
     dto: PlanCreateRequest,
     @CurrentUser() user: User,
   ): Promise<PlanResponse> {
-    return this.plansService.create(user.gymId!, dto);
+    return this.plansService.create(user.gymId!, dto, user);
   }
 
   @Patch(':id')
@@ -196,6 +196,6 @@ export class PlansController {
     dto: PlanUpdateRequest,
     @CurrentUser() user: User,
   ): Promise<PlanResponse> {
-    return this.plansService.update(id, user.gymId!, dto);
+    return this.plansService.update(id, user.gymId!, dto, user);
   }
 }
