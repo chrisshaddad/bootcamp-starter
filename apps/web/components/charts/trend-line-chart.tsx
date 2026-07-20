@@ -30,7 +30,11 @@ function formatShortDate(dateStr: string): string {
  * otherwise `preserveAspectRatio`'s default letterboxing leaves dead space
  * on wide containers and throws off the pointer-to-point hit testing.
  */
-export function TrendLineChart({ data, title, className }: TrendLineChartProps) {
+export function TrendLineChart({
+  data,
+  title,
+  className,
+}: TrendLineChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [width, setWidth] = useState(DEFAULT_WIDTH);
@@ -55,7 +59,8 @@ export function TrendLineChart({ data, title, className }: TrendLineChartProps) 
     () =>
       data.map((d, i) => {
         const x =
-          PADDING + (data.length === 1 ? 0 : (i / (data.length - 1)) * innerWidth);
+          PADDING +
+          (data.length === 1 ? 0 : (i / (data.length - 1)) * innerWidth);
         const y = PADDING + innerHeight - (d.value / maxValue) * innerHeight;
         return { x, y, ...d };
       }),
@@ -63,7 +68,9 @@ export function TrendLineChart({ data, title, className }: TrendLineChartProps) 
   );
 
   const lastPoint = points[points.length - 1];
-  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x},${p.y}`).join(' ');
+  const linePath = points
+    .map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x},${p.y}`)
+    .join(' ');
   const areaPath = `${linePath} L ${lastPoint?.x ?? 0},${PADDING + innerHeight} L ${points[0]?.x ?? 0},${PADDING + innerHeight} Z`;
 
   const handlePointerMove = (e: React.PointerEvent<SVGSVGElement>) => {

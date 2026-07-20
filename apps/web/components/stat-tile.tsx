@@ -17,7 +17,8 @@ export function StatTile({ label, value, icon: Icon, href }: StatTileProps) {
     <Card
       className={cn(
         'border-border bg-card shadow-sm',
-        href && 'transition-colors hover:border-primary-300 hover:bg-primary-100/30',
+        href &&
+          'transition-colors hover:border-primary-300 hover:bg-primary-100/30',
       )}
     >
       <CardContent className="flex items-center gap-4">
@@ -37,7 +38,11 @@ export function StatTile({ label, value, icon: Icon, href }: StatTileProps) {
   if (!href) return card;
 
   return (
-    <Link href={href} className="block" aria-label={`${label}: ${value}. View filtered list.`}>
+    <Link
+      href={href}
+      className="block"
+      aria-label={`${label}: ${value}. View filtered list.`}
+    >
       {card}
     </Link>
   );

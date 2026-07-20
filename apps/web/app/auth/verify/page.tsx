@@ -30,7 +30,8 @@ function VerifyContent() {
         const { user } = await verifyMagicLink({ token });
         setStatus('success');
         toast.success('Successfully logged in!');
-        const destination = user.role === 'PATIENT' ? '/my-health' : '/dashboard';
+        const destination =
+          user.role === 'PATIENT' ? '/my-health' : '/dashboard';
         // Small delay to show success state before redirecting
         setTimeout(() => {
           router.replace(destination);

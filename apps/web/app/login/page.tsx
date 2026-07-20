@@ -89,8 +89,8 @@ export default function LoginPage() {
                 Check your email
               </h2>
               <p className="text-sm text-muted-foreground">
-                We sent a magic link to <strong>{sentEmail}</strong>. Open it
-                on this device to sign in — you can close this tab now.
+                We sent a magic link to <strong>{sentEmail}</strong>. Open it on
+                this device to sign in — you can close this tab now.
               </p>
               <Button
                 variant="outline"
@@ -133,9 +133,7 @@ export default function LoginPage() {
                     {...register('email')}
                   />
                   {errors.email && (
-                    <p className="text-sm text-error">
-                      {errors.email.message}
-                    </p>
+                    <p className="text-sm text-error">{errors.email.message}</p>
                   )}
                 </div>
 

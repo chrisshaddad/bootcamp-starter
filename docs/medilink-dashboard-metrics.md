@@ -8,12 +8,12 @@ cards with real metrics — stat tiles, charts, and a filtered patients link.
 
 ## What changed, at a glance
 
-| Area | Before | After |
-| --- | --- | --- |
-| Settings page | Empty "Coming Soon" placeholder, shown to every role | Removed entirely (nav item + route) — avatar upload (its only planned use) was cancelled; theme toggle already lives in the navbar |
-| Notifications | Linked in 3 places (dashboard quick-link card, sidebar nav item, navbar bell) | 2 places: sidebar nav (now the **first** item for every role that has it) + navbar bell; dashboard quick-links removed |
-| Dashboard | Static per-role "quick link" cards duplicating sidebar nav | Real metrics: stat tiles, a records-by-type bar chart, a 30-day new-patients trend line, and follow-up/vaccination due-lists |
-| Patients list | `search` filter only | Added an `unassigned` filter (URL-syncable via `?unassigned=true`); the dashboard's "Patients with no care team" stat tile links straight into it |
+| Area          | Before                                                                        | After                                                                                                                                             |
+| ------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Settings page | Empty "Coming Soon" placeholder, shown to every role                          | Removed entirely (nav item + route) — avatar upload (its only planned use) was cancelled; theme toggle already lives in the navbar                |
+| Notifications | Linked in 3 places (dashboard quick-link card, sidebar nav item, navbar bell) | 2 places: sidebar nav (now the **first** item for every role that has it) + navbar bell; dashboard quick-links removed                            |
+| Dashboard     | Static per-role "quick link" cards duplicating sidebar nav                    | Real metrics: stat tiles, a records-by-type bar chart, a 30-day new-patients trend line, and follow-up/vaccination due-lists                      |
+| Patients list | `search` filter only                                                          | Added an `unassigned` filter (URL-syncable via `?unassigned=true`); the dashboard's "Patients with no care team" stat tile links straight into it |
 
 ## Design decisions worth knowing
 

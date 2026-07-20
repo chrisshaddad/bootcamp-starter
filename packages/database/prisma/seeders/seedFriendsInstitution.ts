@@ -36,7 +36,12 @@ interface RecordSeed {
   patient: string; // PatientSeed key
   uploadedBy: string; // PROFESSIONAL key
   daysAgoCreated: number;
-  recordType: 'LAB_RESULT' | 'CONSULTATION' | 'PRESCRIPTION' | 'SCAN' | 'VACCINATION';
+  recordType:
+    | 'LAB_RESULT'
+    | 'CONSULTATION'
+    | 'PRESCRIPTION'
+    | 'SCAN'
+    | 'VACCINATION';
   labResult?: { testName: string; labName: string };
   consultation?: {
     chiefComplaint: string;
@@ -45,7 +50,11 @@ interface RecordSeed {
     plan: string;
     followUpInDays: number; // negative = overdue
   };
-  scan?: { modalityType: 'XRAY' | 'MRI' | 'CT' | 'ULTRASOUND' | 'OTHER'; bodyPart: string; radiologistName: string };
+  scan?: {
+    modalityType: 'XRAY' | 'MRI' | 'CT' | 'ULTRASOUND' | 'OTHER';
+    bodyPart: string;
+    radiologistName: string;
+  };
   prescriptionItems?: {
     medicationName: string;
     dosage: string;
@@ -53,7 +62,11 @@ interface RecordSeed {
     duration: string;
     route: 'ORAL' | 'IV' | 'TOPICAL' | 'INHALATION' | 'OTHER';
   }[];
-  vaccination?: { vaccineName: string; doseNumber: number; nextDoseInDays: number };
+  vaccination?: {
+    vaccineName: string;
+    doseNumber: number;
+    nextDoseInDays: number;
+  };
 }
 
 const MAIN_CHARACTERS: MainCharacterSeed[] = [
@@ -275,7 +288,10 @@ const RECORDS: RecordSeed[] = [
     uploadedBy: 'ross',
     daysAgoCreated: 2,
     recordType: 'LAB_RESULT',
-    labResult: { testName: 'Complete Blood Count', labName: 'Central Perk Labs' },
+    labResult: {
+      testName: 'Complete Blood Count',
+      labName: 'Central Perk Labs',
+    },
   },
   {
     patient: 'emily',
@@ -308,7 +324,11 @@ const RECORDS: RecordSeed[] = [
     uploadedBy: 'ross',
     daysAgoCreated: 4,
     recordType: 'SCAN',
-    scan: { modalityType: 'XRAY', bodyPart: 'Chest', radiologistName: 'Dr. Ross Geller' },
+    scan: {
+      modalityType: 'XRAY',
+      bodyPart: 'Chest',
+      radiologistName: 'Dr. Ross Geller',
+    },
   },
   {
     patient: 'susan',
@@ -330,14 +350,22 @@ const RECORDS: RecordSeed[] = [
     uploadedBy: 'ross',
     daysAgoCreated: 3,
     recordType: 'VACCINATION',
-    vaccination: { vaccineName: 'Influenza', doseNumber: 1, nextDoseInDays: 10 },
+    vaccination: {
+      vaccineName: 'Influenza',
+      doseNumber: 1,
+      nextDoseInDays: 10,
+    },
   },
   {
     patient: 'mike',
     uploadedBy: 'ross',
     daysAgoCreated: 20,
     recordType: 'VACCINATION',
-    vaccination: { vaccineName: 'Tetanus Booster', doseNumber: 2, nextDoseInDays: -5 }, // overdue
+    vaccination: {
+      vaccineName: 'Tetanus Booster',
+      doseNumber: 2,
+      nextDoseInDays: -5,
+    }, // overdue
   },
 
   // Joey Tribbiani's uploads
@@ -379,7 +407,11 @@ const RECORDS: RecordSeed[] = [
     uploadedBy: 'joey',
     daysAgoCreated: 1,
     recordType: 'SCAN',
-    scan: { modalityType: 'MRI', bodyPart: 'Brain', radiologistName: 'Dr. Joey Tribbiani' },
+    scan: {
+      modalityType: 'MRI',
+      bodyPart: 'Brain',
+      radiologistName: 'Dr. Joey Tribbiani',
+    },
   },
   {
     patient: 'carol',
@@ -401,7 +433,11 @@ const RECORDS: RecordSeed[] = [
     uploadedBy: 'joey',
     daysAgoCreated: 4,
     recordType: 'VACCINATION',
-    vaccination: { vaccineName: 'MMR Booster', doseNumber: 1, nextDoseInDays: 13 },
+    vaccination: {
+      vaccineName: 'MMR Booster',
+      doseNumber: 1,
+      nextDoseInDays: 13,
+    },
   },
 ];
 

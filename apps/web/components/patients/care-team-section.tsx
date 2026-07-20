@@ -118,7 +118,11 @@ function AssignDialog({
                   </div>
                 )}
               </div>
-              <Button variant="ghost" size="sm" onClick={() => setSelected(null)}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelected(null)}
+              >
                 Change
               </Button>
             </div>

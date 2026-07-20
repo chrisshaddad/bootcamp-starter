@@ -9,12 +9,12 @@ click-the-status-badge-and-confirm pattern.
 
 ## What changed, at a glance
 
-| Area | Before | After |
-| --- | --- | --- |
-| Account profile | No self-service profile of any kind for any role | New `/profile` page + `Profile` sidebar/navbar entry for **every** role |
-| Staff/Professional activation (Users page) | "..." menu → Edit / Deactivate-Reactivate | "..." menu → **Edit only**; status badge itself is now clickable |
-| Patient activation | Didn't exist at all | Status badge clickable (Institution Admin / Staff only; read-only for Professional) |
-| Confirmation | Deactivating a Staff/Professional happened instantly on menu click, no confirmation | Clicking any activation-capable status badge opens a confirm dialog ("Deactivate X? They'll no longer be able to log in...") before anything happens |
+| Area                                       | Before                                                                              | After                                                                                                                                                |
+| ------------------------------------------ | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Account profile                            | No self-service profile of any kind for any role                                    | New `/profile` page + `Profile` sidebar/navbar entry for **every** role                                                                              |
+| Staff/Professional activation (Users page) | "..." menu → Edit / Deactivate-Reactivate                                           | "..." menu → **Edit only**; status badge itself is now clickable                                                                                     |
+| Patient activation                         | Didn't exist at all                                                                 | Status badge clickable (Institution Admin / Staff only; read-only for Professional)                                                                  |
+| Confirmation                               | Deactivating a Staff/Professional happened instantly on menu click, no confirmation | Clicking any activation-capable status badge opens a confirm dialog ("Deactivate X? They'll no longer be able to log in...") before anything happens |
 
 ## Design decisions worth knowing
 
@@ -22,15 +22,16 @@ click-the-status-badge-and-confirm pattern.
 
 - New `/profile` page (`GET`/`PATCH /profile/me`, no `@Roles` restriction — self-scoped via `@CurrentUser()`) is deliberately narrower than the admin-facing user-update contract:
 
-  | Role | Can edit | Read-only |
-  | --- | --- | --- |
-  | Super Admin | Full name, Phone | Email, Role, Institution |
-  | Institution Admin | Full name, Phone | Email, Role, Institution |
-  | Staff | Full name, Phone | Email, Role, Institution |
-  | Professional | Full name, Phone, **Bio** | Email, Role, Institution, **Specialty** |
-  | Patient | Full name, Phone | Email, Role, Institution |
+  | Role              | Can edit                  | Read-only                               |
+  | ----------------- | ------------------------- | --------------------------------------- |
+  | Super Admin       | Full name, Phone          | Email, Role, Institution                |
+  | Institution Admin | Full name, Phone          | Email, Role, Institution                |
+  | Staff             | Full name, Phone          | Email, Role, Institution                |
+  | Professional      | Full name, Phone, **Bio** | Email, Role, Institution, **Specialty** |
+  | Patient           | Full name, Phone          | Email, Role, Institution                |
 
   Email is never self-editable anywhere (it's the magic-link login identity; no update path exists for it even for admins today). Specialty stays admin-controlled for Professionals — it's a formal classification — while bio is the one field they write themselves, and it's exactly what patients see on the care-team profile view (`medilink-patient-record-views.md`).
+
 - The "Save Changes" button is disabled until something actually differs from the loaded profile (compares `fullName`/`phone`/`bio` against the fetched values) — no submitting a no-op update.
 - This page lives in the sidebar/navbar slot vacated by the removed Settings page (`medilink-dashboard-metrics.md`).
 

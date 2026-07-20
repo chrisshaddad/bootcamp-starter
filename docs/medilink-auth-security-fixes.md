@@ -9,9 +9,9 @@ failed to switch accounts.
 
 ## What changed, at a glance
 
-| Area | Before | After |
-| --- | --- | --- |
-| Requesting a magic link for an unregistered email | Always returned success (anti-enumeration: never reveals whether an email exists) | Returns a 404 "No account found with this email address" |
+| Area                                                                           | Before                                                                                                                         | After                                                                                                           |
+| ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| Requesting a magic link for an unregistered email                              | Always returned success (anti-enumeration: never reveals whether an email exists)                                              | Returns a 404 "No account found with this email address"                                                        |
 | Accepting an invite/magic link while already authenticated in the same browser | Middleware redirected straight to `/dashboard` **before** the token was ever verified — the old session silently stayed active | `/auth/verify` always runs and correctly switches to the new session, regardless of any existing session cookie |
 
 ## Design decisions worth knowing
@@ -24,9 +24,9 @@ failed to switch accounts.
 ### Invite-link login bug (critical)
 
 - **Symptom**: an Institution Admin creates a Staff/Professional/Patient user, the invitation email goes out, but clicking the magic link (most commonly, an admin testing their own invite in the same browser they're already logged into) logs the browser in as **the admin**, not the new user.
-- **Root cause**: `apps/web/proxy.ts` (the Next.js middleware) listed `/auth/verify` in `publicRoutes` (routes that don't require authentication) and then had a rule: "if a public route is visited by an already-authenticated visitor, redirect them to `/dashboard`." That rule fired for `/auth/verify` too — so if the browser already held *any* valid session cookie, the middleware redirected away **before the verify page's client-side code ever ran the token-verification API call**. The token was never consumed, no new session was created, and the browser just kept whatever session it already had.
+- **Root cause**: `apps/web/proxy.ts` (the Next.js middleware) listed `/auth/verify` in `publicRoutes` (routes that don't require authentication) and then had a rule: "if a public route is visited by an already-authenticated visitor, redirect them to `/dashboard`." That rule fired for `/auth/verify` too — so if the browser already held _any_ valid session cookie, the middleware redirected away **before the verify page's client-side code ever ran the token-verification API call**. The token was never consumed, no new session was created, and the browser just kept whatever session it already had.
 - The backend side (`AuthService.verifyMagicLink`, `SessionService.createSession`, the cookie-setting in `AuthController`) was already correct — the token correctly resolves to the invited user's id and a new session cookie correctly overwrites the old one. The bug was entirely in the middleware short-circuiting the page before that code path ever ran.
-- **Fix**: split the "public routes" concept into two lists — `publicRoutes` (routes that don't require authentication, used for the *unauthenticated → redirect to `/login`* check) and a smaller `authRedirectRoutes` (routes that should bounce an *already-authenticated* visitor away — just `/login`). `/auth/verify` is deliberately excluded from the second list: it must always be allowed to run, because it's the mechanism for switching sessions, which is a completely valid thing to do even while already logged in as someone else.
+- **Fix**: split the "public routes" concept into two lists — `publicRoutes` (routes that don't require authentication, used for the _unauthenticated → redirect to `/login`_ check) and a smaller `authRedirectRoutes` (routes that should bounce an _already-authenticated_ visitor away — just `/login`). `/auth/verify` is deliberately excluded from the second list: it must always be allowed to run, because it's the mechanism for switching sessions, which is a completely valid thing to do even while already logged in as someone else.
 
 ## QA steps
 

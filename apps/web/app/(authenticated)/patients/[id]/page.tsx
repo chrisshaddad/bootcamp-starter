@@ -96,9 +96,7 @@ export default function PatientDetailPage() {
         <TabsList>
           <TabsTrigger value="clinical">Clinical</TabsTrigger>
           <TabsTrigger value="care-team">Care Team</TabsTrigger>
-          {canViewRecords && (
-            <TabsTrigger value="records">Records</TabsTrigger>
-          )}
+          {canViewRecords && <TabsTrigger value="records">Records</TabsTrigger>}
           <TabsTrigger value="administrative">Administrative</TabsTrigger>
         </TabsList>
 

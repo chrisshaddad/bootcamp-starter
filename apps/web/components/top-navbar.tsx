@@ -3,14 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
-import {
-  LogOut,
-  ChevronDown,
-  Bell,
-  Sun,
-  Moon,
-  UserCircle,
-} from 'lucide-react';
+import { LogOut, ChevronDown, Bell, Sun, Moon, UserCircle } from 'lucide-react';
 import { useAuth, useUser } from '@/hooks/use-auth';
 import { useNotifications } from '@/hooks/use-notifications';
 import { Button } from '@/components/ui/button';

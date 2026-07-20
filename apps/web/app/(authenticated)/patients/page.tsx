@@ -221,9 +221,14 @@ export default function PatientsPage() {
               <Checkbox
                 id="unassigned-filter"
                 checked={unassignedOnly}
-                onCheckedChange={(checked) => toggleUnassignedOnly(checked === true)}
+                onCheckedChange={(checked) =>
+                  toggleUnassignedOnly(checked === true)
+                }
               />
-              <Label htmlFor="unassigned-filter" className="text-sm font-normal text-foreground">
+              <Label
+                htmlFor="unassigned-filter"
+                className="text-sm font-normal text-foreground"
+              >
                 No care team
               </Label>
             </div>
@@ -286,10 +291,14 @@ export default function PatientsPage() {
                       <div className="font-medium text-foreground">
                         {p.fullName}
                       </div>
-                      <div className="text-sm text-muted-foreground">{p.email}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {p.email}
+                      </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {p.nationalId || <span className="text-muted-foreground">—</span>}
+                      {p.nationalId || (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {formatDate(p.dateOfBirth)}

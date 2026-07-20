@@ -97,8 +97,16 @@ function InstitutionAdminDashboard() {
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile label="Total patients" value={stats.totalPatients} icon={UsersRound} />
-        <StatTile label="Active staff" value={stats.activeStaffCount} icon={Users} />
+        <StatTile
+          label="Total patients"
+          value={stats.totalPatients}
+          icon={UsersRound}
+        />
+        <StatTile
+          label="Active staff"
+          value={stats.activeStaffCount}
+          icon={Users}
+        />
         <StatTile
           label="Active professionals"
           value={stats.activeProfessionalCount}
@@ -126,7 +134,9 @@ function InstitutionAdminDashboard() {
         </Card>
         <Card className="border-border bg-card shadow-sm">
           <CardHeader>
-            <CardTitle className="text-base">New patients (last 30 days)</CardTitle>
+            <CardTitle className="text-base">
+              New patients (last 30 days)
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <TrendLineChart
@@ -175,7 +185,10 @@ function StaffDashboard() {
           ) : (
             <ul className="divide-y divide-border">
               {stats.recentRegistrations.map((p) => (
-                <li key={p.id} className="flex items-center justify-between py-2">
+                <li
+                  key={p.id}
+                  className="flex items-center justify-between py-2"
+                >
                   <span className="text-sm text-foreground">{p.fullName}</span>
                   <span className="text-sm text-muted-foreground">
                     {formatDate(p.createdAt)}
@@ -219,7 +232,9 @@ function ProfessionalDashboard() {
 
       <Card className="border-border bg-card shadow-sm">
         <CardHeader>
-          <CardTitle className="text-base">Records this week, by type</CardTitle>
+          <CardTitle className="text-base">
+            Records this week, by type
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <SimpleBarChart
@@ -245,8 +260,13 @@ function ProfessionalDashboard() {
             ) : (
               <ul className="divide-y divide-border">
                 {stats.followUpsDue.map((f) => (
-                  <li key={f.recordId} className="flex items-center justify-between py-2">
-                    <span className="text-sm text-foreground">{f.patientName}</span>
+                  <li
+                    key={f.recordId}
+                    className="flex items-center justify-between py-2"
+                  >
+                    <span className="text-sm text-foreground">
+                      {f.patientName}
+                    </span>
                     <span
                       className={
                         isOverdue(f.followUpDate)
@@ -278,7 +298,10 @@ function ProfessionalDashboard() {
             ) : (
               <ul className="divide-y divide-border">
                 {stats.vaccinationsDue.map((v) => (
-                  <li key={v.recordId} className="flex items-center justify-between py-2">
+                  <li
+                    key={v.recordId}
+                    className="flex items-center justify-between py-2"
+                  >
                     <span className="text-sm text-foreground">
                       {v.patientName} · {v.vaccineName}
                     </span>

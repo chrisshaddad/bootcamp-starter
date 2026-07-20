@@ -316,7 +316,9 @@ export default function UsersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Staff & Doctors</h1>
+          <h1 className="text-2xl font-bold text-foreground">
+            Staff & Doctors
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Manage staff and professional accounts
           </p>
@@ -384,26 +386,34 @@ export default function UsersPage() {
                       <div className="font-medium text-foreground">
                         {u.fullName}
                       </div>
-                      <div className="text-sm text-muted-foreground">{u.email}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {u.email}
+                      </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {ROLE_LABELS[u.role] || u.role}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {u.specialty || <span className="text-muted-foreground">—</span>}
+                      {u.specialty || (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <ActivationStatusBadge
                         isActive={u.isActive}
                         name={u.fullName}
                         entityLabel={
-                          u.role === 'PROFESSIONAL' ? 'professional' : 'staff member'
+                          u.role === 'PROFESSIONAL'
+                            ? 'professional'
+                            : 'staff member'
                         }
                         onConfirm={async () => {
                           try {
                             await setUserStatus(u.id, !u.isActive);
                             toast.success(
-                              u.isActive ? 'User deactivated' : 'User reactivated',
+                              u.isActive
+                                ? 'User deactivated'
+                                : 'User reactivated',
                             );
                           } catch (error) {
                             toast.error(

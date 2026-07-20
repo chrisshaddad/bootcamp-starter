@@ -84,7 +84,9 @@ export function AppSidebar() {
   // Super Admin manages every institution, so it keeps the MediLink brand.
   // Every other role belongs to exactly one institution, which takes over
   // the sidebar header instead.
-  const { institution } = useMyInstitution({ enabled: !!role && !isSuperAdmin });
+  const { institution } = useMyInstitution({
+    enabled: !!role && !isSuperAdmin,
+  });
   const brandName = isSuperAdmin ? 'MediLink' : institution?.name || 'MediLink';
 
   const isActive = (url: string) => {

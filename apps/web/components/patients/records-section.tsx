@@ -61,7 +61,9 @@ export function RecordsSection({ patientId, canAdd }: Props) {
             Failed to load records
           </div>
         ) : !records?.length ? (
-          <div className="py-8 text-center text-muted-foreground">No records yet</div>
+          <div className="py-8 text-center text-muted-foreground">
+            No records yet
+          </div>
         ) : (
           <ul className="divide-y divide-gray-100">
             {records.map((r) => (

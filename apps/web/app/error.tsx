@@ -31,7 +31,9 @@ export default function GlobalError({
           problem persists.
         </p>
         {error.digest && (
-          <p className="font-mono text-xs text-muted-foreground">id: {error.digest}</p>
+          <p className="font-mono text-xs text-muted-foreground">
+            id: {error.digest}
+          </p>
         )}
       </div>
       <div className="flex gap-3">

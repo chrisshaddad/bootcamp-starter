@@ -198,7 +198,9 @@ export function RecordDetailDialog({
                         {item.route}
                       </div>
                       {item.notes && (
-                        <div className="mt-1 text-muted-foreground">{item.notes}</div>
+                        <div className="mt-1 text-muted-foreground">
+                          {item.notes}
+                        </div>
                       )}
                     </div>
                   ))}

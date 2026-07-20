@@ -132,7 +132,9 @@ export function ClinicalSection({ patient, canEdit, onSave }: Props) {
           </div>
         </div>
         <div>
-          <div className="text-sm text-muted-foreground">Chronic Conditions</div>
+          <div className="text-sm text-muted-foreground">
+            Chronic Conditions
+          </div>
           <div className="mt-1">
             <Chips items={patient.chronicConditions} />
           </div>
@@ -140,7 +142,9 @@ export function ClinicalSection({ patient, canEdit, onSave }: Props) {
         <div>
           <div className="text-sm text-muted-foreground">Clinical Notes</div>
           <div className="mt-0.5 whitespace-pre-wrap text-sm font-medium text-foreground">
-            {patient.clinicalNotes || <span className="text-muted-foreground">—</span>}
+            {patient.clinicalNotes || (
+              <span className="text-muted-foreground">—</span>
+            )}
           </div>
         </div>
       </CardContent>

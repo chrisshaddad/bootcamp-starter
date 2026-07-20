@@ -3,7 +3,10 @@
 import useSWR from 'swr';
 import { useCallback } from 'react';
 import { apiPatch } from '@/lib/api';
-import type { SelfProfileResponse, SelfProfileUpdateRequest } from '@repo/contracts';
+import type {
+  SelfProfileResponse,
+  SelfProfileUpdateRequest,
+} from '@repo/contracts';
 
 /** The logged-in user's own account profile (every role). */
 export function useProfile() {
@@ -12,7 +15,10 @@ export function useProfile() {
 
   const updateProfile = useCallback(
     async (payload: SelfProfileUpdateRequest) => {
-      const result = await apiPatch<SelfProfileResponse>('/profile/me', payload);
+      const result = await apiPatch<SelfProfileResponse>(
+        '/profile/me',
+        payload,
+      );
       mutate(result);
       return result;
     },

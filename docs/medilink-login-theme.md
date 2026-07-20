@@ -11,14 +11,14 @@ and a round of navbar/dark-mode visual polish. See also
 
 ## What changed, at a glance
 
-| Area | Before | After |
-| --- | --- | --- |
-| Theme | Green/yellow "bootcamp starter" color tokens | Blue primary theme; secondary demoted to a neutral slate scale |
-| Dark mode | Hardcoded Tailwind grays (`bg-white`, `text-gray-900`, …) across authenticated pages | Semantic shadcn tokens (`bg-background`, `text-foreground`, `border-border`, …) so `.dark` renders correctly everywhere |
-| Dark mode sidebar/cards | Sidebar background matched cards/popovers; `shadow-sm` on cards | Sidebar background darkened a step for more depth; cards use `shadow-md` |
-| Login page | Stock Unsplash photo + "Bootcamp Starter" wordmark; toast + form reset on submit | Real hospital photo + gradient overlay (both themes); inline "Check your email" confirmation screen |
-| Sidebar branding | Always read "MediLink" | Super Admin still sees "MediLink"; every other role sees their own institution's name |
-| Top navbar | Static header with a search box | `sticky top-0` (stays visible on scroll); search box removed (it had no real search behind it) |
+| Area                    | Before                                                                               | After                                                                                                                   |
+| ----------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| Theme                   | Green/yellow "bootcamp starter" color tokens                                         | Blue primary theme; secondary demoted to a neutral slate scale                                                          |
+| Dark mode               | Hardcoded Tailwind grays (`bg-white`, `text-gray-900`, …) across authenticated pages | Semantic shadcn tokens (`bg-background`, `text-foreground`, `border-border`, …) so `.dark` renders correctly everywhere |
+| Dark mode sidebar/cards | Sidebar background matched cards/popovers; `shadow-sm` on cards                      | Sidebar background darkened a step for more depth; cards use `shadow-md`                                                |
+| Login page              | Stock Unsplash photo + "Bootcamp Starter" wordmark; toast + form reset on submit     | Real hospital photo + gradient overlay (both themes); inline "Check your email" confirmation screen                     |
+| Sidebar branding        | Always read "MediLink"                                                               | Super Admin still sees "MediLink"; every other role sees their own institution's name                                   |
+| Top navbar              | Static header with a search box                                                      | `sticky top-0` (stays visible on scroll); search box removed (it had no real search behind it)                          |
 
 ## Design decisions worth knowing
 

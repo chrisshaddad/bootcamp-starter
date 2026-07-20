@@ -15,7 +15,11 @@ interface SimpleBarChartProps {
 const TRACK_HEIGHT = 140; // px — the bars' plotting height, excludes labels
 
 /** A single-series bar chart — one hue, direct value labels, no legend needed. */
-export function SimpleBarChart({ data, title, className }: SimpleBarChartProps) {
+export function SimpleBarChart({
+  data,
+  title,
+  className,
+}: SimpleBarChartProps) {
   const maxValue = Math.max(1, ...data.map((d) => d.value));
 
   if (data.every((d) => d.value === 0)) {
@@ -38,7 +42,8 @@ export function SimpleBarChart({ data, title, className }: SimpleBarChartProps) 
       aria-label={title}
     >
       {data.map((d) => {
-        const heightPct = d.value === 0 ? 0 : Math.max(6, (d.value / maxValue) * 100);
+        const heightPct =
+          d.value === 0 ? 0 : Math.max(6, (d.value / maxValue) * 100);
 
         return (
           <div
@@ -47,7 +52,9 @@ export function SimpleBarChart({ data, title, className }: SimpleBarChartProps) 
             title={`${d.label}: ${d.value}`}
             tabIndex={0}
           >
-            <span className="text-xs font-medium text-foreground">{d.value}</span>
+            <span className="text-xs font-medium text-foreground">
+              {d.value}
+            </span>
             <div
               className="flex w-full items-end justify-center"
               style={{ height: TRACK_HEIGHT }}

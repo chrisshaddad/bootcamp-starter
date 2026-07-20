@@ -8,12 +8,12 @@ pass on the existing generic sample institutions.
 
 ## What changed, at a glance
 
-| Area | Before | After |
-| --- | --- | --- |
-| Platform Super Admin | Named "Super Admin" | Named "Hoda Faour" |
-| Sample institutions | 6 generic ones (`TechCorp Medical Center`, `DataSync Radiology`, joke admin names like "John Suspicious") | Trimmed to exactly 2 colleague-admin institutions with real-sounding names |
-| Fully-populated test data | None | New: **Central Perk Medical Center**, staffed and patronized by Friends characters |
-| Total institutions | 7 (platform + 6 samples) | 4 (platform + Central Perk + 2 colleague institutions) |
+| Area                      | Before                                                                                                    | After                                                                              |
+| ------------------------- | --------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Platform Super Admin      | Named "Super Admin"                                                                                       | Named "Hoda Faour"                                                                 |
+| Sample institutions       | 6 generic ones (`TechCorp Medical Center`, `DataSync Radiology`, joke admin names like "John Suspicious") | Trimmed to exactly 2 colleague-admin institutions with real-sounding names         |
+| Fully-populated test data | None                                                                                                      | New: **Central Perk Medical Center**, staffed and patronized by Friends characters |
+| Total institutions        | 7 (platform + 6 samples)                                                                                  | 4 (platform + Central Perk + 2 colleague institutions)                             |
 
 ## Design decisions worth knowing
 

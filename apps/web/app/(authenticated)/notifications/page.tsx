@@ -90,7 +90,9 @@ export default function NotificationsPage() {
                         {timeAgo(n.createdAt)}
                       </span>
                     </div>
-                    <p className="mt-0.5 text-sm text-muted-foreground">{n.body}</p>
+                    <p className="mt-0.5 text-sm text-muted-foreground">
+                      {n.body}
+                    </p>
                   </div>
                 </li>
               ))}
