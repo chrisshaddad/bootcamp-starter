@@ -11,6 +11,13 @@ import {
   Settings,
   ChevronDown,
   Loader2,
+  UserPlus,
+  FileEdit,
+  Trash2,
+  Fingerprint,
+  Calendar,
+  Dumbbell,
+  Activity,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -302,68 +309,65 @@ function ExpiringSoonCard({
   }[];
 }) {
   return (
-    <Card className="glass-card card-elevated rounded-xl relative overflow-hidden">
-      <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-amber-400 to-orange-500" />
-      <div className="pl-2">
-        <CardHeader className="pb-2">
-          <div className="flex w-full items-center justify-between">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Expiring Soon
-            </CardTitle>
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/20">
-              <AlertTriangle className="h-5 w-5 text-amber-500" />
-            </div>
+    <Card className="glass-card card-elevated rounded-xl border-border bg-card">
+      <CardHeader className="pb-2">
+        <div className="flex w-full items-center justify-between">
+          <CardTitle className="text-sm font-medium text-muted-foreground">
+            Expiring Soon
+          </CardTitle>
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/20">
+            <AlertTriangle className="h-5 w-5 text-amber-500" />
           </div>
-        </CardHeader>
-        <CardContent>
-          <AnimatedCounter
-            value={count}
-            className="text-3xl font-extrabold text-foreground"
-          />
-          <p className="mt-1 text-xs text-muted-foreground">
-            subscriptions expiring in 30 days
-          </p>
-          {items.length > 0 && (
-            <ListDialog
-              triggerLabel={`View ${items.length} expiring`}
-              triggerClassName="bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:hover:bg-amber-900/30"
-              title={`Expiring Soon (${items.length})`}
-              description="Active subscriptions ending within 30 days."
-              itemCount={items.length}
-              emptyMessage="No subscriptions expiring soon."
-            >
-              <ul className="space-y-2 py-1">
-                {items.map((item) => {
-                  const daysLeft = differenceInDays(
-                    new Date(item.endDate),
-                    new Date(),
-                  );
-                  return (
-                    <li
-                      key={item.subscriptionId}
-                      className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card p-3 transition-colors hover:bg-muted"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs font-semibold text-amber-700 dark:bg-amber-900/20 dark:text-amber-400">
-                          {getInitials(item.memberName)}
-                        </div>
-                        <span className="min-w-0 truncate font-medium text-foreground text-sm">
-                          {item.memberName}
-                        </span>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <AnimatedCounter
+          value={count}
+          className="text-3xl font-extrabold text-foreground"
+        />
+        <p className="mt-1 text-xs text-muted-foreground">
+          subscriptions expiring in 30 days
+        </p>
+        {items.length > 0 && (
+          <ListDialog
+            triggerLabel={`View ${items.length} expiring`}
+            triggerClassName="bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:hover:bg-amber-900/30"
+            title={`Expiring Soon (${items.length})`}
+            description="Active subscriptions ending within 30 days."
+            itemCount={items.length}
+            emptyMessage="No subscriptions expiring soon."
+          >
+            <ul className="space-y-2 py-1">
+              {items.map((item) => {
+                const daysLeft = differenceInDays(
+                  new Date(item.endDate),
+                  new Date(),
+                );
+                return (
+                  <li
+                    key={item.subscriptionId}
+                    className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card p-3 transition-colors hover:bg-muted"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs font-semibold text-amber-700 dark:bg-amber-900/20 dark:text-amber-400">
+                        {getInitials(item.memberName)}
                       </div>
-                      <span
-                        className={`badge-pill shrink-0 ${daysLeft <= 7 ? 'badge-expired' : 'badge-cancelled'}`}
-                      >
-                        {daysLeft <= 0 ? 'Today' : `${daysLeft}d`}
+                      <span className="min-w-0 truncate font-medium text-foreground text-sm">
+                        {item.memberName}
                       </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </ListDialog>
-          )}
-        </CardContent>
-      </div>
+                    </div>
+                    <span
+                      className={`badge-pill shrink-0 ${daysLeft <= 7 ? 'badge-expired' : 'badge-cancelled'}`}
+                    >
+                      {daysLeft <= 0 ? 'Today' : `${daysLeft}d`}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </ListDialog>
+        )}
+      </CardContent>
     </Card>
   );
 }
@@ -441,21 +445,68 @@ function SettingsPanel({
   );
 }
 
+function getActionDetails(action: string, entityType: string) {
+  const normalizedAction = action.toUpperCase();
+
+  if (normalizedAction.includes('CREATE')) {
+    return {
+      icon: UserPlus,
+      colorClass:
+        'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400',
+    };
+  }
+  if (normalizedAction.includes('UPDATE')) {
+    return {
+      icon: FileEdit,
+      colorClass:
+        'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
+    };
+  }
+  if (
+    normalizedAction.includes('DELETE') ||
+    normalizedAction.includes('CANCEL')
+  ) {
+    return {
+      icon: Trash2,
+      colorClass:
+        'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400',
+    };
+  }
+  if (entityType === 'CHECK_IN') {
+    return {
+      icon: Fingerprint,
+      colorClass:
+        'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400',
+    };
+  }
+  if (entityType === 'SESSION' || entityType === 'BOOKING') {
+    return {
+      icon: Calendar,
+      colorClass:
+        'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400',
+    };
+  }
+  if (entityType === 'INSTRUCTOR') {
+    return {
+      icon: Dumbbell,
+      colorClass:
+        'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400',
+    };
+  }
+
+  return {
+    icon: Activity,
+    colorClass:
+      'bg-primary-100 text-primary-base dark:bg-primary-950/40 dark:text-primary-300',
+  };
+}
+
 /** Recent Activity Card */
 function RecentActivityCard() {
   const { auditLogs, isLoading } = useAuditLogs({ limit: 5 });
 
   const formatActionShort = (action: string) => {
     return action.toLowerCase().replace(/_/g, ' ');
-  };
-
-  const getActionDotColor = (action: string) => {
-    const a = action.toUpperCase();
-    if (a.includes('CREATE')) return 'bg-green-500';
-    if (a.includes('UPDATE')) return 'bg-blue-500';
-    if (a.includes('CANCEL') || a.includes('DELETE')) return 'bg-red-500';
-    if (a.includes('DEACTIVATE')) return 'bg-amber-500';
-    return 'bg-gray-400';
   };
 
   const formatRelativeTime = (dateStr: string | Date) => {
@@ -468,7 +519,10 @@ function RecentActivityCard() {
     if (diffInHours < 24) return `${diffInHours}h ago`;
     const diffInDays = Math.floor(diffInHours / 24);
     if (diffInDays < 7) return `${diffInDays}d ago`;
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+    });
   };
 
   return (
@@ -492,37 +546,57 @@ function RecentActivityCard() {
         {isLoading ? (
           <div className="space-y-4">
             {[...Array(5)].map((_, i) => (
-              <Skeleton key={i} className="h-8 w-full" />
+              <Skeleton key={i} className="h-12 w-full rounded-xl" />
             ))}
           </div>
         ) : !auditLogs || auditLogs.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">
+          <p className="text-sm text-muted-foreground text-center py-6">
             No activity yet
           </p>
         ) : (
-          <div className="space-y-4">
-            {auditLogs.map((log) => (
-              <div key={log.id} className="flex items-center gap-3">
+          <div className="space-y-3">
+            {auditLogs.map((log) => {
+              const { icon: ActionIcon, colorClass } = getActionDetails(
+                log.action,
+                log.entityType,
+              );
+              return (
                 <div
-                  className={`h-2.5 w-2.5 rounded-full shrink-0 ${getActionDotColor(log.action)}`}
-                />
-                <p className="flex-1 text-sm text-foreground truncate">
-                  <span className="font-semibold">
-                    {log.userName || 'System'}
-                  </span>{' '}
-                  {formatActionShort(log.action)}
-                  {log.entityName && (
-                    <span className="text-muted-foreground">
-                      {' '}
-                      — {log.entityName}
-                    </span>
-                  )}
-                </p>
-                <span className="text-xs font-medium text-muted-foreground shrink-0">
-                  {formatRelativeTime(log.createdAt)}
-                </span>
-              </div>
-            ))}
+                  key={log.id}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-card/60 p-3 transition-colors hover:bg-muted/50"
+                >
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl font-semibold ${colorClass}`}
+                    >
+                      <ActionIcon className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="truncate font-semibold text-sm text-foreground">
+                          {log.userName || 'System'}
+                        </span>
+                        <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground shrink-0">
+                          {log.entityType.replace(/_/g, ' ')}
+                        </span>
+                      </div>
+                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                        {formatActionShort(log.action)}
+                        {log.entityName && (
+                          <span className="font-medium text-foreground">
+                            {' '}
+                            — {log.entityName}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="shrink-0 rounded-md bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">
+                    {formatRelativeTime(log.createdAt)}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         )}
       </CardContent>

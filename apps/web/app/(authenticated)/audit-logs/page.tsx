@@ -243,25 +243,38 @@ export default function AuditLogsPage() {
       )}
 
       {totalPages && totalPages > 1 && (
-        <div className="flex items-center justify-between pt-6 border-t border-border">
-          <p className="text-sm text-muted-foreground">
-            Showing {(currentPage - 1) * 20 + 1} to{' '}
-            {Math.min(currentPage * 20, total || 0)} of {total} entries
-          </p>
-          <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-border">
+          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3.5 py-1.5 text-xs font-medium text-muted-foreground shadow-2xs">
+            <span>Showing</span>
+            <span className="font-semibold text-foreground">
+              {(currentPage - 1) * 20 + 1} –{' '}
+              {Math.min(currentPage * 20, total || 0)}
+            </span>
+            <span>of</span>
+            <span className="rounded-md bg-primary-100 dark:bg-primary-950/60 px-1.5 py-0.5 font-bold text-primary-base">
+              {total}
+            </span>
+            <span>entries</span>
+          </div>
+          <div className="flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1}
+              className="h-8 rounded-lg px-3 text-xs font-medium"
             >
               Previous
             </Button>
+            <span className="text-xs font-semibold text-foreground px-2">
+              Page {currentPage} of {totalPages}
+            </span>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
+              className="h-8 rounded-lg px-3 text-xs font-medium"
             >
               Next
             </Button>
