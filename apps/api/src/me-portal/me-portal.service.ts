@@ -1,3 +1,4 @@
+import type { User } from '@repo/db';
 import {
   Injectable,
   NotFoundException,
@@ -215,6 +216,7 @@ export class MePortalService {
     userId: string,
     gymId: string,
     token: string,
+    user: User,
   ): Promise<CheckInResponse> {
     const member = await this.resolveMember(userId, gymId);
 
@@ -227,6 +229,6 @@ export class MePortalService {
       throw new BadRequestException('This QR code is for a different gym');
     }
 
-    return this.checkInsService.checkIn(gymId, member.id);
+    return this.checkInsService.checkIn(gymId, member.id, user);
   }
 }

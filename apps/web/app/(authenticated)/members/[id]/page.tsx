@@ -48,13 +48,13 @@ import { cn } from '@/lib/utils';
 
 const STATUS_COLORS: Record<string, string> = {
   ACTIVE: 'bg-success/10 text-success border-success/20',
-  INACTIVE: 'bg-gray-200 text-gray-700 border-gray-300',
+  INACTIVE: 'bg-muted text-muted-foreground border-border',
 };
 
 function StatusBadge({ status }: { status: string }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full border px-3 py-1 text-sm font-medium ${STATUS_COLORS[status] ?? 'bg-gray-200 text-gray-700'}`}
+      className={`inline-flex items-center rounded-full border px-3 py-1 text-sm font-medium ${STATUS_COLORS[status] ?? 'bg-muted text-muted-foreground border-border'}`}
     >
       {status === 'ACTIVE' ? 'Active' : 'Inactive'}
     </span>
@@ -71,11 +71,11 @@ function InfoRow({
   value: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start gap-3 border-b border-gray-100 py-3 last:border-0">
-      <Icon className="mt-0.5 h-5 w-5 shrink-0 text-gray-400" />
+    <div className="flex items-start gap-3 border-b border-border/50 py-3 last:border-0">
+      <Icon className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
       <div className="min-w-0 flex-1">
-        <div className="text-sm text-gray-500">{label}</div>
-        <div className="mt-0.5 text-sm font-medium text-gray-900">{value}</div>
+        <div className="text-sm text-muted-foreground">{label}</div>
+        <div className="mt-0.5 text-sm font-medium text-foreground">{value}</div>
       </div>
     </div>
   );
@@ -226,7 +226,7 @@ export default function MemberDetailPage() {
   if (!member) {
     return (
       <div className="py-10 text-center">
-        <div className="mb-4 text-gray-500">Member not found</div>
+        <div className="mb-4 text-muted-foreground">Member not found</div>
         <Button variant="outline" onClick={() => router.back()}>
           Go Back
         </Button>
@@ -250,7 +250,7 @@ export default function MemberDetailPage() {
 
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{member.name}</h1>
+          <h1 className="text-2xl font-bold text-foreground">{member.name}</h1>
           <div className="mt-2">
             <StatusBadge status={member.status} />
           </div>
@@ -259,39 +259,41 @@ export default function MemberDetailPage() {
         <div className="flex gap-3">
           {!member.userId && isActive && (
             <Button
-              variant="outline"
-              className="gap-2 border-primary-200 text-primary-base hover:bg-primary-100"
+              className="gap-2 bg-primary-base hover:bg-primary-400 text-white"
               onClick={() => setShowInviteDialog(true)}
               disabled={isInviting}
             >
-              <Send className="h-4 w-4" />
-              Invite to Portal
+              <Mail className="h-4 w-4" />
+              {isInviting ? 'Inviting...' : 'Invite to Portal'}
             </Button>
           )}
-          <Button variant="outline" className="gap-2" onClick={openEdit}>
-            <Edit2 className="h-4 w-4" />
-            Edit
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={openEdit}
+          >
+            <Edit2 className="h-4 w-4" /> Edit Details
           </Button>
-          {isActive ? (
-            <Button
-              variant="outline"
-              className="gap-2 border-error/30 text-error hover:bg-error-light"
-              onClick={() => setShowConfirmDialog(true)}
-              disabled={isTogglingStatus}
-            >
-              <UserX className="h-4 w-4" />
-              Deactivate
-            </Button>
-          ) : (
-            <Button
-              className="gap-2 bg-primary-base hover:bg-primary-400 text-white"
-              onClick={() => setShowConfirmDialog(true)}
-              disabled={isTogglingStatus}
-            >
-              <UserCheck className="h-4 w-4" />
-              Reactivate
-            </Button>
-          )}
+          <Button
+            variant="outline"
+            className={
+              isActive
+                ? 'gap-2 border-error/30 text-error hover:bg-error-light'
+                : 'gap-2 border-success/30 text-success hover:bg-success/10'
+            }
+            onClick={() => setShowConfirmDialog(true)}
+            disabled={isTogglingStatus}
+          >
+            {isActive ? (
+              <>
+                <UserX className="h-4 w-4" /> Deactivate
+              </>
+            ) : (
+              <>
+                <UserCheck className="h-4 w-4" /> Reactivate
+              </>
+            )}
+          </Button>
         </div>
       </div>
 
@@ -300,7 +302,7 @@ export default function MemberDetailPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <User className="h-5 w-5" />
-              Member Details
+              Personal Information
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
@@ -310,7 +312,7 @@ export default function MemberDetailPage() {
               label="Phone"
               value={
                 member.phoneNumber ?? (
-                  <span className="text-gray-400">Not provided</span>
+                  <span className="text-muted-foreground">Not provided</span>
                 )
               }
             />
@@ -325,7 +327,7 @@ export default function MemberDetailPage() {
                     day: 'numeric',
                   })
                 ) : (
-                  <span className="text-gray-400">Not provided</span>
+                  <span className="text-muted-foreground">Not provided</span>
                 )
               }
             />
@@ -350,22 +352,22 @@ export default function MemberDetailPage() {
           </CardHeader>
           <CardContent className="pt-0">
             {member.userId ? (
-              <div className="rounded-lg bg-primary-100 p-4">
+              <div className="rounded-lg bg-primary-100 p-4 dark:bg-primary-900/20">
                 <div className="text-sm font-medium text-primary-base">
                   Portal access active
                 </div>
-                <p className="mt-1 text-sm text-gray-600">
+                <p className="mt-1 text-sm text-muted-foreground">
                   This member has been invited and can log in to the member
                   portal.
                 </p>
               </div>
             ) : (
               <div className="space-y-3">
-                <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-                  <div className="text-sm font-medium text-gray-700">
+                <div className="rounded-lg border border-border bg-muted/50 p-4">
+                  <div className="text-sm font-medium text-foreground">
                     No portal access yet
                   </div>
-                  <p className="mt-1 text-sm text-gray-500">
+                  <p className="mt-1 text-sm text-muted-foreground">
                     Send an invite so this member can log in and view their
                     subscriptions.
                   </p>
@@ -547,7 +549,7 @@ export default function MemberDetailPage() {
             <DialogTitle>Invite to Member Portal</DialogTitle>
             <DialogDescription>
               A magic-link login email will be sent to{' '}
-              <span className="font-medium text-gray-900">{member.email}</span>.
+              <span className="font-medium text-foreground">{member.email}</span>.
               The member will be able to log in and view their subscriptions and
               available plans.
             </DialogDescription>

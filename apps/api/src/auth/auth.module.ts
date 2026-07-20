@@ -16,7 +16,7 @@ import { MailModule } from '../mail/mail.module';
     {
       provide: 'REDIS_CLIENT',
       useFactory: () => {
-        return new Redis(process.env.REDIS_URL);
+        return new Redis(process.env.REDIS_URL || 'redis://localhost:6380');
       },
     },
     {

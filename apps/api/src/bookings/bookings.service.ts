@@ -1,3 +1,5 @@
+import type { User } from '@repo/db';
+import { AuditService } from '../audit/audit.service';
 import {
   BadRequestException,
   Injectable,
@@ -34,7 +36,10 @@ const BOOKING_SELECT = {
 export class BookingsService {
   private readonly logger = new Logger(BookingsService.name);
 
-  constructor(private readonly prisma: DatabaseService) {}
+  constructor(
+    private readonly prisma: DatabaseService,
+    private readonly auditService: AuditService,
+  ) {}
 
   /** List all bookings for a specific session, scoped to the caller's gym */
   async findAllBySession(
@@ -63,9 +68,10 @@ export class BookingsService {
   async create(
     gymId: string,
     dto: BookingCreateRequest,
+    actor: User,
   ): Promise<BookingResponse> {
     // 1-6. Transaction wrapper for capacity safe-check
-    return this.prisma.$transaction(async (tx) => {
+    const created = await this.prisma.$transaction(async (tx) => {
       // 1. Verify session belongs to gym and is bookable
       const session = await tx.gymSession.findFirst({
         where: { id: dto.sessionId, gymId },
@@ -181,10 +187,28 @@ export class BookingsService {
 
       return booking as unknown as BookingResponse;
     });
+
+    this.auditService
+      .log({
+        gymId,
+        userId: actor.id,
+        userName: actor.name,
+        action: 'booking.created',
+        entityType: 'SessionBooking',
+        entityId: created.id,
+        entityName: `Booking ${created.id}`,
+      })
+      .catch(() => {});
+
+    return created;
   }
 
   /** Cancel a booking, scoped to the caller's gym */
-  async cancel(id: string, gymId: string): Promise<BookingResponse> {
+  async cancel(
+    id: string,
+    gymId: string,
+    actor: User,
+  ): Promise<BookingResponse> {
     const booking = await this.prisma.sessionBooking.findFirst({
       where: { id, gymId },
     });

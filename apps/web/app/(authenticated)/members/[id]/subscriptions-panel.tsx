@@ -70,14 +70,14 @@ function addDays(dateStr: string, days: number): string {
 }
 
 const STATUS_STYLES: Record<string, { bg: string; label: string }> = {
-  ACTIVE: { bg: 'bg-success/10 text-success', label: 'Active' },
-  EXPIRED: { bg: 'bg-gray-200 text-gray-600', label: 'Expired' },
-  CANCELLED: { bg: 'bg-red-100 text-red-700', label: 'Cancelled' },
+  ACTIVE: { bg: 'bg-success/10 text-success border border-success/20', label: 'Active' },
+  EXPIRED: { bg: 'bg-muted text-muted-foreground border border-border', label: 'Expired' },
+  CANCELLED: { bg: 'bg-error/10 text-error border border-error/20', label: 'Cancelled' },
 };
 
 function SubscriptionStatusBadge({ status }: { status: string }) {
   const style = STATUS_STYLES[status] ?? {
-    bg: 'bg-gray-200 text-gray-700',
+    bg: 'bg-muted text-muted-foreground border border-border',
     label: status,
   };
   return (
@@ -207,23 +207,23 @@ function AddSubscriptionDialog({
             </div>
 
             {selectedPlan && (
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm space-y-1">
+              <div className="rounded-lg border border-border bg-muted/50 p-3 text-sm space-y-1">
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Price (snapshot)</span>
-                  <span className="font-medium">
+                  <span className="text-muted-foreground">Price (snapshot)</span>
+                  <span className="font-medium text-foreground">
                     {formatPrice(selectedPlan.price)}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Duration</span>
-                  <span className="font-medium">
+                  <span className="text-muted-foreground">Duration</span>
+                  <span className="font-medium text-foreground">
                     {selectedPlan.durationDays} days
                   </span>
                 </div>
                 {computedEndDate && (
                   <div className="flex justify-between">
-                    <span className="text-gray-500">End date</span>
-                    <span className="font-medium">
+                    <span className="text-muted-foreground">End date</span>
+                    <span className="font-medium text-foreground">
                       {formatDate(computedEndDate)}
                     </span>
                   </div>
@@ -351,7 +351,7 @@ export function SubscriptionsPanel({ memberId }: { memberId: string }) {
               <CreditCard className="h-5 w-5" />
               Subscriptions
               {total !== undefined && (
-                <span className="text-sm font-normal text-gray-500">
+                <span className="text-sm font-normal text-muted-foreground">
                   ({total} total)
                 </span>
               )}
@@ -364,11 +364,11 @@ export function SubscriptionsPanel({ memberId }: { memberId: string }) {
                   setPage(1);
                 }}
               >
-                <SelectTrigger className="w-36 h-8 text-sm">
+                <SelectTrigger className="w-32">
                   <SelectValue placeholder="All statuses" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ALL">All statuses</SelectItem>
+                  <SelectItem value="ALL">All</SelectItem>
                   <SelectItem value="ACTIVE">Active</SelectItem>
                   <SelectItem value="EXPIRED">Expired</SelectItem>
                   <SelectItem value="CANCELLED">Cancelled</SelectItem>
@@ -376,18 +376,18 @@ export function SubscriptionsPanel({ memberId }: { memberId: string }) {
               </Select>
               <Button
                 size="sm"
-                className="gap-2 bg-primary-base hover:bg-primary-400 text-white"
+                className="gap-1.5 bg-primary-base hover:bg-primary-400 text-white"
                 onClick={() => setShowAddDialog(true)}
               >
                 <Plus className="h-4 w-4" />
-                Add Subscription
+                Add
               </Button>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="space-y-2">
+            <div className="space-y-3 py-4">
               {[...Array(3)].map((_, i) => (
                 <Skeleton key={i} className="h-12 w-full" />
               ))}
@@ -397,15 +397,15 @@ export function SubscriptionsPanel({ memberId }: { memberId: string }) {
               Failed to load subscriptions
             </div>
           ) : !subscriptions?.length ? (
-            <div className="py-8 text-center text-gray-500">
-              <CreditCard className="mx-auto mb-3 h-8 w-8 text-gray-300" />
+            <div className="py-8 text-center text-muted-foreground">
+              <CreditCard className="mx-auto mb-3 h-8 w-8 text-muted-foreground/40" />
               <p>No subscriptions yet</p>
-              <p className="mt-1 text-xs">
+              <p className="mt-1 text-xs text-muted-foreground">
                 Add a subscription to track this member&apos;s membership
               </p>
             </div>
           ) : (
-            <Table>
+            <Table className="table-premium">
               <TableHeader>
                 <TableRow>
                   <TableHead>Plan</TableHead>
@@ -419,20 +419,20 @@ export function SubscriptionsPanel({ memberId }: { memberId: string }) {
               <TableBody>
                 {subscriptions.map((sub) => (
                   <TableRow key={sub.id}>
-                    <TableCell className="font-medium text-gray-900">
+                    <TableCell className="font-medium text-foreground">
                       {sub.plan?.name ?? (
-                        <span className="italic text-gray-400">
+                        <span className="italic text-muted-foreground">
                           Plan removed
                         </span>
                       )}
                     </TableCell>
-                    <TableCell className="text-gray-700">
+                    <TableCell className="text-muted-foreground">
                       {formatDate(sub.startDate)}
                     </TableCell>
-                    <TableCell className="text-gray-700">
+                    <TableCell className="text-muted-foreground">
                       {formatDate(sub.endDate)}
                     </TableCell>
-                    <TableCell className="text-gray-700">
+                    <TableCell className="text-muted-foreground font-medium">
                       {formatPrice(sub.price)}
                     </TableCell>
                     <TableCell>
@@ -443,7 +443,7 @@ export function SubscriptionsPanel({ memberId }: { memberId: string }) {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="gap-1 text-error hover:bg-red-50 hover:text-error"
+                          className="gap-1 text-error hover:bg-error/10 hover:text-error"
                           onClick={() => setCancelTarget(sub)}
                         >
                           <XCircle className="h-4 w-4" />
@@ -458,8 +458,8 @@ export function SubscriptionsPanel({ memberId }: { memberId: string }) {
           )}
 
           {!error && total !== undefined && totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-gray-100 pt-4 mt-2">
-              <p className="text-sm text-gray-500">
+            <div className="flex items-center justify-between border-t border-border pt-4 mt-2">
+              <p className="text-sm text-muted-foreground">
                 Showing {(page - 1) * SUBSCRIPTIONS_PAGE_SIZE + 1}–
                 {Math.min(page * SUBSCRIPTIONS_PAGE_SIZE, total)} of {total}
               </p>
@@ -472,7 +472,7 @@ export function SubscriptionsPanel({ memberId }: { memberId: string }) {
                 >
                   Previous
                 </Button>
-                <span className="text-sm text-gray-600">
+                <span className="text-sm text-muted-foreground">
                   Page {page} of {totalPages}
                 </span>
                 <Button

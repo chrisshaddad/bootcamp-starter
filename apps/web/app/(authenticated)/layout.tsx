@@ -6,6 +6,9 @@ import { AppSidebar } from '@/components/app-sidebar';
 import { TopNavbar } from '@/components/top-navbar';
 import { ThemeProvider } from '@/components/theme-provider';
 
+import { PageTransition } from '@/components/page-transition';
+import { ChatWidget } from '@/components/chat-widget';
+
 export default function DashboardLayout({
   children,
 }: {
@@ -17,9 +20,9 @@ export default function DashboardLayout({
   // error state rather than leaving the user on an infinite spinner.
   if (!isLoading && error && error.status !== 401) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <p className="text-gray-600 mb-4">
+          <p className="text-muted-foreground mb-4">
             Something went wrong. Please try again.
           </p>
           <button
@@ -37,8 +40,8 @@ export default function DashboardLayout({
   // The redirect itself is triggered by useUser (401 → /login, SUSPENDED → /suspended).
   if (isLoading || !isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-gray-600" />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-foreground" />
       </div>
     );
   }
@@ -49,8 +52,11 @@ export default function DashboardLayout({
       <AppSidebar />
       <SidebarInset>
         <TopNavbar />
-        <main className="flex-1 bg-gray-50 p-6">{children}</main>
+        <main className="flex-1 bg-background bg-mesh-gradient p-6">
+          <PageTransition>{children}</PageTransition>
+        </main>
       </SidebarInset>
+      <ChatWidget />
     </SidebarProvider>
   );
 }

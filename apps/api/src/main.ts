@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
@@ -41,7 +42,9 @@ async function bootstrap() {
     .addTag('bookings', 'Session bookings + capacity (ORG_ADMIN)')
     .addTag('checkins', 'Live occupancy + QR check-in (ORG_ADMIN / MEMBER)')
     .addTag('dashboard', 'Gym analytics dashboard (ORG_ADMIN)')
+    .addTag('audit-logs', 'Audit logging system (ORG_ADMIN / SUPER_ADMIN)')
     .addTag('me', 'Member self-service portal (MEMBER)')
+    .addTag('chat', 'AI Chat Assistant (ALL)')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

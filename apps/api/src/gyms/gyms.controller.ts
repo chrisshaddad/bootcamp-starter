@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   DefaultValuePipe,
+  ForbiddenException,
   Get,
   HttpCode,
   Param,
@@ -343,6 +344,9 @@ export class GymsController {
     body: GymSettingsUpdateRequest,
     @CurrentUser() user: User,
   ): Promise<{ message: string }> {
-    return this.gymsService.updateSettings(user.gymId!, body);
+    if (!user.gymId) {
+      throw new ForbiddenException('User is not associated with an active gym');
+    }
+    return this.gymsService.updateSettings(user.gymId, body, user);
   }
 }

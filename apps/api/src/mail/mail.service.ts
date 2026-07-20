@@ -42,7 +42,7 @@ export class MailService {
             signal: controller.signal,
             body: JSON.stringify({
               To: [{ Email: params.to }],
-              From: { Email: params.from || 'no-reply@bootcamp-starter.local' },
+              From: { Email: params.from || 'no-reply@gymflow.io' },
               Subject: params.subject,
               Text: params.text || '',
               HTML: params.html || '',

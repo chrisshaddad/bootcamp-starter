@@ -5,7 +5,8 @@ import {
   BadRequestException,
   ConflictException,
 } from '@nestjs/common';
-import { Prisma } from '@repo/db';
+import { Prisma, User } from '@repo/db';
+import { AuditService } from '../audit/audit.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import * as crypto from 'crypto';
@@ -49,6 +50,7 @@ export class GymsService {
   constructor(
     private readonly prisma: DatabaseService,
     @InjectQueue(MAIL_QUEUE) private readonly mailQueue: Queue,
+    private readonly auditService: AuditService,
   ) {}
 
   /** Get all gyms with optional status filter */
@@ -105,7 +107,11 @@ export class GymsService {
   }
 
   /** Approve a gym (set status to ACTIVE) and send the owner a login link */
-  async approve(id: string, approvedById: string): Promise<GymDetailResponse> {
+  async approve(
+    id: string,
+    approvedById: string,
+    actor?: User,
+  ): Promise<GymDetailResponse> {
     const existing = await this.prisma.gym.findUnique({ where: { id } });
     if (!existing) {
       throw new NotFoundException(`Gym with ID ${id} not found`);
@@ -152,7 +158,11 @@ export class GymsService {
   }
 
   /** Reject a gym with a mandatory reason */
-  async reject(id: string, reason: string): Promise<GymDetailResponse> {
+  async reject(
+    id: string,
+    reason: string,
+    actor?: User,
+  ): Promise<GymDetailResponse> {
     const existing = await this.prisma.gym.findUnique({ where: { id } });
     if (!existing) {
       throw new NotFoundException(`Gym with ID ${id} not found`);
@@ -168,7 +178,11 @@ export class GymsService {
   }
 
   /** Suspend an active gym with a mandatory reason and immediately log out the owner */
-  async suspend(id: string, reason: string): Promise<GymDetailResponse> {
+  async suspend(
+    id: string,
+    reason: string,
+    actor?: User,
+  ): Promise<GymDetailResponse> {
     const gym = await this.prisma.gym.findUnique({
       where: { id },
       select: { createdById: true },
@@ -302,11 +316,35 @@ export class GymsService {
   async updateSettings(
     gymId: string,
     settings: GymSettingsUpdateRequest,
+    actor?: User,
   ): Promise<{ message: string }> {
+    if (!gymId) {
+      throw new BadRequestException('Gym ID is required to update settings');
+    }
+    const gym = await this.prisma.gym.findUnique({
+      where: { id: gymId },
+    });
+    if (!gym) {
+      throw new NotFoundException(`Gym with ID ${gymId} not found`);
+    }
     await this.prisma.gym.updateMany({
       where: { id: gymId },
       data: settings,
     });
+    if (actor) {
+      this.auditService
+        .log({
+          gymId,
+          userId: actor.id,
+          userName: actor.name,
+          action: 'gym.settings-updated',
+          entityType: 'Gym',
+          entityId: gymId,
+          entityName: 'Settings',
+          metadata: settings,
+        })
+        .catch(() => {});
+    }
     return { message: 'Settings updated successfully' };
   }
 }

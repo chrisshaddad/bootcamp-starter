@@ -81,39 +81,39 @@ function MemberRow({
     <>
       {/* Summary row — one per member */}
       <TableRow
-        className="cursor-pointer hover:bg-gray-50 transition-colors"
+        className="cursor-pointer hover:bg-muted/50 transition-colors"
         onClick={() => setExpanded((prev) => !prev)}
       >
         {/* Expand chevron */}
         <TableCell className="w-8 pr-0">
           {expanded ? (
-            <ChevronDown className="h-4 w-4 text-gray-400" />
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
           ) : (
-            <ChevronRight className="h-4 w-4 text-gray-400" />
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
           )}
         </TableCell>
 
         {/* Name + visit count */}
         <TableCell>
-          <p className="font-semibold text-gray-900">{group.name}</p>
-          <p className="text-xs text-gray-400">
+          <p className="font-semibold text-foreground">{group.name}</p>
+          <p className="text-xs text-muted-foreground">
             {group.history.length} visit
             {group.history.length !== 1 ? 's' : ''} total
           </p>
         </TableCell>
 
         {/* Email */}
-        <TableCell className="text-gray-600">{group.email}</TableCell>
+        <TableCell className="text-muted-foreground">{group.email}</TableCell>
 
         {/* Status badge */}
         <TableCell>
           {isCurrentlyIn ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700">
+            <span className="badge-pill badge-active">
               <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
               Currently In
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-500">
+            <span className="badge-pill badge-inactive">
               Last visit:{' '}
               {group.history[0]
                 ? format(new Date(group.history[0].checkedInAt), 'MMM d')
@@ -152,28 +152,28 @@ function MemberRow({
         group.history.map((checkIn) => (
           <TableRow
             key={checkIn.id}
-            className="bg-gray-50 border-l-2 border-primary-base"
+            className="bg-muted/30 border-l-2 border-primary-base"
           >
             {/* Indent spacer */}
             <TableCell />
             <TableCell className="pl-6">
-              <span className="flex items-center gap-1.5 text-xs text-gray-500">
+              <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Clock className="h-3 w-3" />
                 Session
               </span>
             </TableCell>
-            <TableCell className="text-xs text-gray-600">
+            <TableCell className="text-xs text-muted-foreground">
               <span className="font-medium">In:</span>{' '}
               {format(new Date(checkIn.checkedInAt), 'p — MMM d, yyyy')}
             </TableCell>
-            <TableCell className="text-xs text-gray-600">
+            <TableCell className="text-xs text-muted-foreground">
               {checkIn.checkedOutAt ? (
                 <>
                   <span className="font-medium">Out:</span>{' '}
                   {format(new Date(checkIn.checkedOutAt), 'p — MMM d, yyyy')}
                 </>
               ) : (
-                <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                <span className="badge-pill badge-active">
                   Still in
                 </span>
               )}
@@ -315,10 +315,10 @@ export default function CheckInsPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-foreground">
             Check-ins &amp; Occupancy
           </h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-muted-foreground">
             Monitor live gym occupancy and check in members manually.
           </p>
         </div>
@@ -332,32 +332,32 @@ export default function CheckInsPage() {
 
       <div className="grid gap-6 md:grid-cols-2">
         {/* Live occupancy counter */}
-        <Card className="border-gray-200">
+        <Card className="glass-card card-elevated rounded-xl">
           <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-gray-800">
+            <CardTitle className="flex items-center gap-2 text-foreground">
               <Users className="h-5 w-5 text-primary-base" />
               Live Occupancy
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-baseline gap-2">
-              <span className="text-4xl font-extrabold text-gray-900">
+              <span className="text-4xl font-extrabold text-foreground">
                 {activeOccupancy}
               </span>
-              <span className="text-sm font-medium text-gray-500">
+              <span className="text-sm font-medium text-muted-foreground">
                 members currently in the gym
               </span>
             </div>
-            <p className="mt-3 text-xs text-gray-400">
+            <p className="mt-3 text-xs text-muted-foreground">
               Updated automatically upon check-in or check-out.
             </p>
           </CardContent>
         </Card>
 
         {/* Check-in search */}
-        <Card className="border-gray-200 relative overflow-visible">
+        <Card className="glass-card card-elevated rounded-xl relative overflow-visible">
           <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-gray-800">
+            <CardTitle className="flex items-center gap-2 text-foreground">
               <UserCheck className="h-5 w-5 text-primary-base" />
               Check In Member
             </CardTitle>
@@ -365,38 +365,38 @@ export default function CheckInsPage() {
           <CardContent className="space-y-4">
             <div className="relative">
               <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                <Search className="h-4 w-4 text-gray-400" />
+                <Search className="h-4 w-4 text-muted-foreground" />
               </div>
               <Input
                 type="text"
                 placeholder="Search active members by name or email..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-4 border-gray-300 focus:ring-primary-base focus:border-primary-base"
+                className="pl-9 pr-4 focus:ring-primary-base focus:border-primary-base"
               />
             </div>
 
             {searchQuery.trim() && (
-              <div className="absolute left-6 right-6 z-10 mt-1 rounded-md border border-gray-200 bg-white shadow-lg">
+              <div className="absolute left-6 right-6 z-10 mt-1 rounded-md border border-border bg-card shadow-lg">
                 {filteredMembers.length === 0 ? (
-                  <div className="px-4 py-3 text-sm text-gray-500">
+                  <div className="px-4 py-3 text-sm text-muted-foreground">
                     No active members found matching &quot;{searchQuery}&quot;
                   </div>
                 ) : (
-                  <ul className="divide-y divide-gray-100 max-h-60 overflow-y-auto">
+                  <ul className="divide-y divide-border max-h-60 overflow-y-auto">
                     {filteredMembers.map((member) => (
                       <li key={member.id}>
                         <button
                           type="button"
                           onClick={() => handleCheckIn(member.id)}
                           disabled={isCheckingIn !== null}
-                          className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+                          className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-muted/50 transition-colors"
                         >
                           <div>
-                            <p className="text-sm font-semibold text-gray-900">
+                            <p className="text-sm font-semibold text-foreground">
                               {member.name}
                             </p>
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs text-muted-foreground">
                               {member.email}
                             </p>
                           </div>
@@ -419,13 +419,13 @@ export default function CheckInsPage() {
       </div>
 
       {/* Member list — one row per member, expandable history */}
-      <Card className="border-gray-200">
+      <Card className="glass-card card-elevated rounded-xl">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Fingerprint className="h-5 w-5 text-gray-600" />
+            <Fingerprint className="h-5 w-5 text-muted-foreground" />
             Member Check-in History
           </CardTitle>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Click a member to expand their full visit history.
           </p>
         </CardHeader>
@@ -461,7 +461,7 @@ export default function CheckInsPage() {
                     className={`rounded-full border px-4 py-1.5 text-sm font-medium transition-colors ${
                       statusFilter === key
                         ? 'bg-primary-base text-white border-primary-base'
-                        : 'border-gray-200 text-gray-600 hover:border-primary-base hover:text-primary-base'
+                        : 'border-border text-muted-foreground hover:border-primary-base hover:text-primary-base'
                     }`}
                   >
                     {label}
@@ -469,7 +469,7 @@ export default function CheckInsPage() {
                 ))}
               </div>
 
-              <Table>
+              <Table className="table-premium">
                 <TableHeader>
                   <TableRow>
                     {/* chevron column */}

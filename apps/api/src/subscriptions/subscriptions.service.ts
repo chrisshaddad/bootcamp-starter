@@ -3,7 +3,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '@repo/db';
+import { Prisma, User } from '@repo/db';
+import { AuditService } from '../audit/audit.service';
 import { DatabaseService } from '../database/database.service';
 import type {
   SubscriptionListResponse,
@@ -35,7 +36,10 @@ const SUBSCRIPTION_SELECT = {
 
 @Injectable()
 export class SubscriptionsService {
-  constructor(private readonly prisma: DatabaseService) {}
+  constructor(
+    private readonly prisma: DatabaseService,
+    private readonly auditService: AuditService,
+  ) {}
 
   /** List all subscriptions for a member, scoped to the caller's gym */
   async findAllByMember(
@@ -78,6 +82,7 @@ export class SubscriptionsService {
   async create(
     gymId: string,
     dto: SubscriptionCreateRequest,
+    actor: User,
   ): Promise<SubscriptionResponse> {
     const member = await this.prisma.member.findFirst({
       where: { id: dto.memberId, gymId },
@@ -123,7 +128,7 @@ export class SubscriptionsService {
     endDate.setUTCDate(endDate.getUTCDate() + plan.durationDays);
 
     try {
-      return await this.prisma.subscription.create({
+      const created = await this.prisma.subscription.create({
         data: {
           gymId,
           memberId: dto.memberId,
@@ -135,6 +140,20 @@ export class SubscriptionsService {
         },
         select: SUBSCRIPTION_SELECT,
       });
+
+      this.auditService
+        .log({
+          gymId,
+          userId: actor.id,
+          userName: actor.name,
+          action: 'subscription.created',
+          entityType: 'Subscription',
+          entityId: created.id,
+          entityName: `Subscription ${created.id}`,
+        })
+        .catch(() => {});
+
+      return created;
     } catch (err) {
       if (
         err instanceof Prisma.PrismaClientKnownRequestError &&
@@ -149,7 +168,11 @@ export class SubscriptionsService {
   }
 
   /** Cancel an active subscription, scoped to the caller's gym */
-  async cancel(id: string, gymId: string): Promise<SubscriptionResponse> {
+  async cancel(
+    id: string,
+    gymId: string,
+    actor: User,
+  ): Promise<SubscriptionResponse> {
     const subscription = await this.prisma.subscription.findFirst({
       where: { id, gymId },
       select: { id: true, status: true },
@@ -163,10 +186,24 @@ export class SubscriptionsService {
       );
     }
 
-    return this.prisma.subscription.update({
+    const cancelled = await this.prisma.subscription.update({
       where: { id },
       data: { status: 'CANCELLED' },
       select: SUBSCRIPTION_SELECT,
     });
+
+    this.auditService
+      .log({
+        gymId,
+        userId: actor.id,
+        userName: actor.name,
+        action: 'subscription.cancelled',
+        entityType: 'Subscription',
+        entityId: cancelled.id,
+        entityName: `Subscription ${cancelled.id}`,
+      })
+      .catch(() => {});
+
+    return cancelled;
   }
 }

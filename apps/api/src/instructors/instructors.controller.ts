@@ -216,7 +216,7 @@ export class InstructorsController {
     dto: InstructorCreateRequest,
     @CurrentUser() user: User,
   ): Promise<InstructorResponse> {
-    return this.instructorsService.create(user.gymId!, dto);
+    return this.instructorsService.create(user.gymId!, dto, user);
   }
 
   /** Update an instructor's details or active status */
@@ -257,6 +257,6 @@ export class InstructorsController {
     dto: InstructorUpdateRequest,
     @CurrentUser() user: User,
   ): Promise<InstructorResponse> {
-    return this.instructorsService.update(id, user.gymId!, dto);
+    return this.instructorsService.update(id, user.gymId!, dto, user);
   }
 }

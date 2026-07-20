@@ -1,3 +1,5 @@
+import type { User } from '@repo/db';
+import { AuditService } from '../audit/audit.service';
 import {
   BadRequestException,
   Injectable,
@@ -27,7 +29,10 @@ const INSTRUCTOR_SELECT = {
  */
 @Injectable()
 export class InstructorsService {
-  constructor(private readonly prisma: DatabaseService) {}
+  constructor(
+    private readonly prisma: DatabaseService,
+    private readonly auditService: AuditService,
+  ) {}
 
   /** List all instructors for a gym with pagination */
   async findAll(
@@ -73,6 +78,7 @@ export class InstructorsService {
   async create(
     gymId: string,
     dto: InstructorCreateRequest,
+    actor: User,
   ): Promise<InstructorResponse> {
     return this.prisma.instructor.create({
       data: {
@@ -91,6 +97,7 @@ export class InstructorsService {
     id: string,
     gymId: string,
     dto: InstructorUpdateRequest,
+    actor: User,
   ): Promise<InstructorResponse> {
     const result = await this.prisma.instructor.updateMany({
       where: { id, gymId },

@@ -76,6 +76,12 @@ const orgNavItems: NavItem[] = [
     icon: Fingerprint,
     roles: ['ORG_ADMIN'],
   },
+  {
+    title: 'Activity Log',
+    url: '/audit-logs',
+    icon: ClipboardList,
+    roles: ['ORG_ADMIN'],
+  },
 ];
 
 // Navigation items for SUPER_ADMIN role
@@ -137,15 +143,15 @@ export function AppSidebar() {
   const homeUrl = isSuperAdmin ? '/gyms' : '/dashboard';
 
   return (
-    <Sidebar className="border-r border-gray-200 bg-white">
+    <Sidebar className="border-r border-border bg-card">
       <SidebarHeader className="px-5 py-6">
         {/* Logo */}
         <Link href={homeUrl} className="flex items-center gap-2.5">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-base">
-            <span className="text-lg font-bold text-white">✦</span>
+            <span className="text-lg font-bold text-white">🏋️</span>
           </div>
-          <span className="text-xl font-semibold text-gray-900">
-            Bootcamp Starter
+          <span className="text-xl font-semibold text-foreground">
+            GymFlow
           </span>
         </Link>
       </SidebarHeader>
@@ -153,7 +159,7 @@ export function AppSidebar() {
       <SidebarContent className="overflow-x-hidden px-3">
         {/* Main Navigation */}
         <SidebarGroup>
-          <SidebarGroupLabel className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-gray-500">
+          <SidebarGroupLabel className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
             {isSuperAdmin ? 'Administration' : 'Main'}
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -165,24 +171,24 @@ export function AppSidebar() {
                     isActive={isActive(item.url)}
                     disabled={item.disabled}
                     className={cn(
-                      'h-11 gap-3 rounded-lg px-3 text-sm font-medium transition-colors',
+                      'h-11 gap-3 rounded-lg px-3 text-sm font-medium transition-all duration-200',
                       item.disabled && 'cursor-not-allowed opacity-50',
                       isActive(item.url)
-                        ? 'bg-primary-100 text-gray-900 hover:bg-primary-200'
-                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+                        ? 'bg-primary-100 text-foreground hover:bg-primary-200 dark:bg-primary-900/20 dark:hover:bg-primary-900/40'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                     )}
                   >
                     {item.disabled ? (
                       <div className="flex items-center gap-3">
-                        <item.icon className="h-5 w-5 text-gray-400" />
+                        <item.icon className="h-5 w-5 text-muted-foreground" />
                         <span>{item.title}</span>
-                        <span className="ml-auto text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
+                        <span className="ml-auto text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded">
                           Soon
                         </span>
                       </div>
                     ) : (
                       <Link href={item.url}>
-                        <item.icon className="h-5 w-5 text-gray-500" />
+                        <item.icon className="h-5 w-5 text-muted-foreground" />
                         <span>{item.title}</span>
                       </Link>
                     )}
@@ -197,7 +203,7 @@ export function AppSidebar() {
 
         {/* Secondary Navigation */}
         <SidebarGroup>
-          <SidebarGroupLabel className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-gray-500">
+          <SidebarGroupLabel className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Support
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -208,14 +214,14 @@ export function AppSidebar() {
                     asChild
                     isActive={isActive(item.url)}
                     className={cn(
-                      'h-11 gap-3 rounded-lg px-3 text-sm font-medium transition-colors',
+                      'h-11 gap-3 rounded-lg px-3 text-sm font-medium transition-all duration-200',
                       isActive(item.url)
-                        ? 'bg-primary-100 text-gray-900 hover:bg-primary-200'
-                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+                        ? 'bg-primary-100 text-foreground hover:bg-primary-200 dark:bg-primary-900/20 dark:hover:bg-primary-900/40'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                     )}
                   >
                     <Link href={item.url}>
-                      <item.icon className="h-5 w-5 text-gray-500" />
+                      <item.icon className="h-5 w-5 text-muted-foreground" />
                       <span>{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
@@ -231,9 +237,9 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={() => logout()}
-              className="h-11 gap-3 rounded-lg px-3 text-sm font-medium text-gray-600 transition-colors hover:bg-red-50 hover:text-red-600"
+              className="h-11 gap-3 rounded-lg px-3 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400"
             >
-              <LogOut className="h-5 w-5 text-gray-500" />
+              <LogOut className="h-5 w-5 text-muted-foreground" />
               <span>Logout</span>
             </SidebarMenuButton>
           </SidebarMenuItem>

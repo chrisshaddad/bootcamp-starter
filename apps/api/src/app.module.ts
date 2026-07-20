@@ -15,14 +15,19 @@ import { DatabaseModule } from './database/database.module';
 import { SessionsModule } from './sessions/sessions.module';
 import { BookingsModule } from './bookings/bookings.module';
 import { CheckInsModule } from './checkins/checkins.module';
+import { AuditModule } from './audit/audit.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot(),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: ['apps/api/.env', '.env'],
+    }),
     BullModule.forRoot({
       connection: {
-        url: process.env.REDIS_URL,
+        url: process.env.REDIS_URL || 'redis://localhost:6380',
       },
     }),
     DatabaseModule,
@@ -31,6 +36,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     GymsModule,
     MembersModule,
     PlansModule,
+    AuditModule,
     SubscriptionsModule,
     MePortalModule,
     InstructorsModule,
@@ -38,6 +44,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     BookingsModule,
     CheckInsModule,
     DashboardModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [AppService],

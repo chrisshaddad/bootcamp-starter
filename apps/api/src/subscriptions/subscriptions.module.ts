@@ -1,3 +1,4 @@
+import { AuditModule } from '../audit/audit.module';
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { SubscriptionsService } from './subscriptions.service';
@@ -7,6 +8,7 @@ import { SUBSCRIPTION_EXPIRY_QUEUE } from './subscriptions.constants';
 
 @Module({
   imports: [
+    AuditModule,
     BullModule.registerQueue({
       name: SUBSCRIPTION_EXPIRY_QUEUE,
     }),

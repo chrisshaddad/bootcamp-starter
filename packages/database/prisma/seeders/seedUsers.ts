@@ -2,7 +2,7 @@ import { PrismaClient, Prisma } from '../../src/generated/prisma/client';
 
 const SUPER_ADMINS: Prisma.UserCreateManyInput[] = [
   {
-    email: 'admin@bootcamp-starter.local',
+    email: 'admin@gymflow.io',
     name: 'Super Admin',
   },
   // Add more super admins as needed
@@ -12,27 +12,27 @@ const SUPER_ADMINS: Prisma.UserCreateManyInput[] = [
 // The order here matches the order in seedGyms.ts
 const ORG_ADMINS: Prisma.UserCreateManyInput[] = [
   {
-    email: 'admin@ironpeak.example.com',
+    email: 'sarah.chen@ironpeakfitness.com',
     name: 'Sarah Chen',
   },
   {
-    email: 'admin@flexzone.example.com',
+    email: 'michael@flexzonegym.com',
     name: 'Michael Torres',
   },
   {
-    email: 'admin@mountainwellness.example.com',
+    email: 'emily.watson@mountainwellness.co',
     name: 'Dr. Emily Watson',
   },
   {
-    email: 'admin@cityboxing.example.com',
+    email: 'roberto@cityboxingclub.com',
     name: 'Roberto Martinez',
   },
   {
-    email: 'admin@velocitysports.example.com',
+    email: 'jake@velocitysports.fit',
     name: 'Jake Williams',
   },
   {
-    email: 'admin@profitraining.example.com',
+    email: 'anna.davis@profittraining.com',
     name: 'Anna Davis',
   },
 ];

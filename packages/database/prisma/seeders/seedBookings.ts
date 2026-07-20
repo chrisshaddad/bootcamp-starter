@@ -12,64 +12,64 @@ const BOOKINGS: BookingSeed[] = [
   {
     gymName: 'Iron Peak Fitness',
     sessionTitle: 'Morning Bootcamp',
-    memberEmail: 'alex.johnson@example.com',
+    memberEmail: 'alex.johnson92@gmail.com',
     status: 'CHECKED_IN',
   },
   {
     gymName: 'Iron Peak Fitness',
     sessionTitle: 'Morning Bootcamp',
-    memberEmail: 'maria.smith@example.com',
+    memberEmail: 'maria.s.fitness@outlook.com',
     status: 'CHECKED_IN',
   },
   {
     gymName: 'Iron Peak Fitness',
     sessionTitle: 'Morning Bootcamp',
-    memberEmail: 'david.park@example.com',
+    memberEmail: 'dpark88@yahoo.com',
     status: 'BOOKED', // booked but never showed
   },
   {
     gymName: 'Iron Peak Fitness',
     sessionTitle: 'Morning Bootcamp',
-    memberEmail: 'emma.wilson@example.com',
+    memberEmail: 'emmawilson.fit@icloud.com',
     status: 'CANCELLED',
   },
   // Yoga Flow (SCHEDULED)
   {
     gymName: 'Iron Peak Fitness',
     sessionTitle: 'Yoga Flow',
-    memberEmail: 'maria.smith@example.com',
+    memberEmail: 'maria.s.fitness@outlook.com',
     status: 'BOOKED',
   },
   {
     gymName: 'Iron Peak Fitness',
     sessionTitle: 'Yoga Flow',
-    memberEmail: 'emma.wilson@example.com',
+    memberEmail: 'emmawilson.fit@icloud.com',
     status: 'BOOKED',
   },
   // HIIT Circuit (SCHEDULED)
   {
     gymName: 'Iron Peak Fitness',
     sessionTitle: 'HIIT Circuit',
-    memberEmail: 'alex.johnson@example.com',
+    memberEmail: 'alex.johnson92@gmail.com',
     status: 'BOOKED',
   },
   {
     gymName: 'Iron Peak Fitness',
     sessionTitle: 'HIIT Circuit',
-    memberEmail: 'david.park@example.com',
+    memberEmail: 'dpark88@yahoo.com',
     status: 'BOOKED',
   },
   // CrossFit WOD (SCHEDULED)
   {
     gymName: 'FlexZone Gym',
     sessionTitle: 'CrossFit WOD',
-    memberEmail: 'james.brown@example.com',
+    memberEmail: 'jbrown.athlete@gmail.com',
     status: 'BOOKED',
   },
   {
     gymName: 'FlexZone Gym',
     sessionTitle: 'CrossFit WOD',
-    memberEmail: 'sofia.rodriguez@example.com',
+    memberEmail: 'sofia.rdz@outlook.com',
     status: 'BOOKED',
   },
 ];

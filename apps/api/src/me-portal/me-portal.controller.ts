@@ -230,6 +230,11 @@ export class MePortalController {
     @Body(new ZodValidationPipe(checkinScanRequestSchema))
     dto: CheckinScanRequest,
   ): Promise<CheckInResponse> {
-    return this.mePortalService.scanCheckIn(user.id, user.gymId!, dto.token);
+    return this.mePortalService.scanCheckIn(
+      user.id,
+      user.gymId!,
+      dto.token,
+      user,
+    );
   }
 }

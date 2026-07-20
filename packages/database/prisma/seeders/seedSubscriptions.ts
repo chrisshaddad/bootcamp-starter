@@ -14,7 +14,7 @@ const SUBSCRIPTIONS: SubscriptionSeed[] = [
   // Iron Peak Fitness
   {
     gymName: 'Iron Peak Fitness',
-    memberEmail: 'alex.johnson@example.com',
+    memberEmail: 'alex.johnson92@gmail.com',
     planName: 'Monthly',
     price: 4999,
     startDate: new Date('2026-06-01'),
@@ -23,7 +23,7 @@ const SUBSCRIPTIONS: SubscriptionSeed[] = [
   },
   {
     gymName: 'Iron Peak Fitness',
-    memberEmail: 'maria.smith@example.com',
+    memberEmail: 'maria.s.fitness@outlook.com',
     planName: 'Quarterly',
     price: 12999,
     startDate: new Date('2026-05-01'),
@@ -32,7 +32,7 @@ const SUBSCRIPTIONS: SubscriptionSeed[] = [
   },
   {
     gymName: 'Iron Peak Fitness',
-    memberEmail: 'david.park@example.com',
+    memberEmail: 'dpark88@yahoo.com',
     planName: 'Monthly',
     price: 4999,
     startDate: new Date('2025-12-01'),
@@ -41,7 +41,7 @@ const SUBSCRIPTIONS: SubscriptionSeed[] = [
   },
   {
     gymName: 'Iron Peak Fitness',
-    memberEmail: 'emma.wilson@example.com',
+    memberEmail: 'emmawilson.fit@icloud.com',
     planName: 'Annual',
     price: 39999,
     startDate: new Date('2025-10-01'),
@@ -51,7 +51,7 @@ const SUBSCRIPTIONS: SubscriptionSeed[] = [
   // FlexZone Gym
   {
     gymName: 'FlexZone Gym',
-    memberEmail: 'james.brown@example.com',
+    memberEmail: 'jbrown.athlete@gmail.com',
     planName: 'Starter Monthly',
     price: 5499,
     startDate: new Date('2026-06-01'),
@@ -60,7 +60,7 @@ const SUBSCRIPTIONS: SubscriptionSeed[] = [
   },
   {
     gymName: 'FlexZone Gym',
-    memberEmail: 'sofia.rodriguez@example.com',
+    memberEmail: 'sofia.rdz@outlook.com',
     planName: 'Annual',
     price: 44999,
     startDate: new Date('2026-01-10'),
@@ -69,7 +69,7 @@ const SUBSCRIPTIONS: SubscriptionSeed[] = [
   },
   {
     gymName: 'FlexZone Gym',
-    memberEmail: 'liam.chen@example.com',
+    memberEmail: 'liamchen97@gmail.com',
     planName: 'Starter Monthly',
     price: 5499,
     startDate: new Date('2026-02-01'),
@@ -79,7 +79,7 @@ const SUBSCRIPTIONS: SubscriptionSeed[] = [
   // ProFit Training — manually-priced (no plan), gym was suspended before plans were formalised
   {
     gymName: 'ProFit Training',
-    memberEmail: 'kenji.tanaka@example.com',
+    memberEmail: 'kenji.tanaka@protonmail.com',
     planName: null,
     price: 6000, // bespoke deal: $60/month
     startDate: new Date('2026-05-01'),
@@ -88,7 +88,7 @@ const SUBSCRIPTIONS: SubscriptionSeed[] = [
   },
   {
     gymName: 'ProFit Training',
-    memberEmail: 'priya.patel@example.com',
+    memberEmail: 'priya.p93@gmail.com',
     planName: null,
     price: 6000,
     startDate: new Date('2025-09-15'),

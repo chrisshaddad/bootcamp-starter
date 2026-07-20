@@ -1,3 +1,5 @@
+import type { User } from '@repo/db';
+import { AuditService } from '../audit/audit.service';
 import {
   BadRequestException,
   Injectable,
@@ -51,7 +53,10 @@ const SESSION_SELECT = {
 export class SessionsService {
   private readonly logger = new Logger(SessionsService.name);
 
-  constructor(private readonly prisma: DatabaseService) {}
+  constructor(
+    private readonly prisma: DatabaseService,
+    private readonly auditService: AuditService,
+  ) {}
 
   /** List all sessions for a gym with optional date and status filtering */
   async findAll(
@@ -102,6 +107,7 @@ export class SessionsService {
   async create(
     gymId: string,
     dto: SessionCreateRequest,
+    actor: User,
   ): Promise<SessionResponse> {
     const startsAt = new Date(dto.startsAt);
     const endsAt = new Date(dto.endsAt);
@@ -145,6 +151,7 @@ export class SessionsService {
     id: string,
     gymId: string,
     dto: SessionUpdateRequest,
+    actor: User,
   ): Promise<SessionResponse> {
     const existing = await this.prisma.gymSession.findFirst({
       where: { id, gymId },
@@ -204,7 +211,11 @@ export class SessionsService {
   }
 
   /** Cancel a session, marking its status as CANCELLED */
-  async cancel(id: string, gymId: string): Promise<SessionResponse> {
+  async cancel(
+    id: string,
+    gymId: string,
+    actor: User,
+  ): Promise<SessionResponse> {
     const result = await this.prisma.gymSession.updateMany({
       where: { id, gymId },
       data: { status: 'CANCELLED' },

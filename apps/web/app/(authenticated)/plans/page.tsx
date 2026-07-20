@@ -50,20 +50,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 type ActiveFilter = 'all' | 'active' | 'inactive';
 
-const STATUS_COLORS = {
-  active: 'bg-success/10 text-success',
-  inactive: 'bg-gray-200 text-gray-700',
-} as const;
-
 function StatusBadge({ isActive }: { isActive: boolean }) {
-  const key = isActive ? 'active' : 'inactive';
-  return (
-    <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[key]}`}
-    >
-      {isActive ? 'Active' : 'Inactive'}
-    </span>
-  );
+  if (isActive) {
+    return <span className="badge-pill badge-active">• Active</span>;
+  }
+  return <span className="badge-pill badge-inactive">• Inactive</span>;
 }
 
 function formatPrice(cents: number): string {
@@ -454,10 +445,10 @@ function EditPlanDialog({
                 </div>
               </div>
 
-              <div className="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3">
+              <div className="flex items-center justify-between rounded-lg border border-border bg-muted/50 px-4 py-3">
                 <div>
-                  <p className="text-sm font-medium text-gray-900">Status</p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-sm font-medium text-foreground">Status</p>
+                  <p className="text-xs text-muted-foreground">
                     {plan.isActive
                       ? 'Visible in the plan catalog.'
                       : 'Hidden from the plan catalog.'}
@@ -577,8 +568,8 @@ export default function PlansPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Membership Plans</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-foreground">Membership Plans</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Manage your gym&apos;s membership plan catalog
           </p>
         </div>
@@ -609,13 +600,13 @@ export default function PlansPage() {
         </div>
       </div>
 
-      <Card>
+      <Card className="glass-card card-elevated rounded-xl">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5" />
             Plans
             {total !== undefined && (
-              <span className="text-sm font-normal text-gray-500">
+              <span className="text-sm font-normal text-muted-foreground">
                 ({total} total)
               </span>
             )}
@@ -627,15 +618,15 @@ export default function PlansPage() {
               Failed to load plans
             </div>
           ) : !plans?.length ? (
-            <div className="py-10 text-center text-gray-500">
-              <Tag className="mx-auto mb-3 h-8 w-8 text-gray-300" />
+            <div className="py-10 text-center text-muted-foreground">
+              <Tag className="mx-auto mb-3 h-8 w-8 text-muted-foreground/30" />
               <p>No plans found</p>
               <p className="mt-1 text-xs">
                 Create your first membership plan to get started
               </p>
             </div>
           ) : (
-            <Table>
+            <Table className="table-premium">
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
@@ -652,18 +643,18 @@ export default function PlansPage() {
                     className="cursor-pointer"
                     onClick={() => setEditingPlan(plan)}
                   >
-                    <TableCell className="font-medium text-gray-900">
+                    <TableCell className="font-medium text-foreground">
                       {plan.name}
                     </TableCell>
-                    <TableCell className="max-w-xs truncate text-sm text-gray-500">
+                    <TableCell className="max-w-xs truncate text-sm text-muted-foreground">
                       {plan.description ?? (
-                        <span className="italic text-gray-300">—</span>
+                        <span className="italic text-muted-foreground/50">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-gray-700">
+                    <TableCell className="text-foreground">
                       {formatDuration(plan.durationDays)}
                     </TableCell>
-                    <TableCell className="font-medium text-gray-900">
+                    <TableCell className="font-bold text-lg text-primary-base">
                       {formatPrice(plan.price)}
                     </TableCell>
                     <TableCell>
@@ -675,8 +666,8 @@ export default function PlansPage() {
             </Table>
           )}
           {!error && total !== undefined && totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-gray-100 pt-4 mt-2">
-              <p className="text-sm text-gray-500">
+            <div className="flex items-center justify-between border-t border-border pt-4 mt-2">
+              <p className="text-sm text-muted-foreground">
                 Showing {(page - 1) * PLANS_PAGE_SIZE + 1}–
                 {Math.min(page * PLANS_PAGE_SIZE, total)} of {total}
               </p>
@@ -689,7 +680,7 @@ export default function PlansPage() {
                 >
                   Previous
                 </Button>
-                <span className="text-sm text-gray-600">
+                <span className="text-sm text-muted-foreground">
                   Page {page} of {totalPages}
                 </span>
                 <Button

@@ -310,3 +310,23 @@ model CheckIn {
   @@index([checkedInAt])
   @@schema("public")
 }
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  gymId      String?  // null for platform-level actions (SUPER_ADMIN)
+  userId     String   // who performed the action
+  userName   String   // denormalized for display (user name at time of action)
+  action     String   // e.g. 'member.created', 'subscription.cancelled'
+  entityType String   // e.g. 'Member', 'Subscription', 'GymSession'
+  entityId   String   // UUID of the affected entity
+  entityName String?  // human-readable label (e.g. member name, session title)
+  metadata   Json?    // optional structured diff (old/new values)
+  ipAddress  String?  // request IP for security audits
+  createdAt  DateTime @default(now())
+
+  @@index([gymId])
+  @@index([userId])
+  @@index([entityType])
+  @@index([createdAt])
+  @@schema("public")
+}

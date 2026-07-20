@@ -8,7 +8,8 @@ import {
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import * as crypto from 'crypto';
-import { Prisma } from '@repo/db';
+import { Prisma, User } from '@repo/db';
+import { AuditService } from '../audit/audit.service';
 import { DatabaseService } from '../database/database.service';
 import type { MemberStatus } from '@repo/db';
 import type {
@@ -42,6 +43,7 @@ export class MembersService {
 
   constructor(
     private readonly prisma: DatabaseService,
+    private readonly auditService: AuditService,
     @InjectQueue(MAIL_QUEUE) private readonly mailQueue: Queue,
   ) {}
 
@@ -89,6 +91,7 @@ export class MembersService {
   async create(
     gymId: string,
     dto: MemberCreateRequest,
+    actor: User,
   ): Promise<MemberResponse> {
     const normalizedEmail = dto.email.toLowerCase();
 
@@ -113,7 +116,7 @@ export class MembersService {
     }
 
     try {
-      return await this.prisma.member.create({
+      const created = await this.prisma.member.create({
         data: {
           gymId,
           name: dto.name,
@@ -123,6 +126,20 @@ export class MembersService {
         },
         select: MEMBER_SELECT,
       });
+
+      this.auditService
+        .log({
+          gymId,
+          userId: actor.id,
+          userName: actor.name,
+          action: 'member.created',
+          entityType: 'Member',
+          entityId: created.id,
+          entityName: created.name,
+        })
+        .catch(() => {});
+
+      return created;
     } catch (err) {
       if (
         err instanceof Prisma.PrismaClientKnownRequestError &&
@@ -137,7 +154,11 @@ export class MembersService {
   }
 
   /** Provision a portal User for the member and send a magic-link invite email */
-  async invite(memberId: string, gymId: string): Promise<MessageResponse> {
+  async invite(
+    memberId: string,
+    gymId: string,
+    actor: User,
+  ): Promise<MessageResponse> {
     const member = await this.prisma.member.findFirst({
       where: { id: memberId, gymId },
     });
@@ -216,6 +237,18 @@ export class MembersService {
       `Portal invite sent to member ${memberId} (user ${portalUser.id})`,
     );
 
+    this.auditService
+      .log({
+        gymId,
+        userId: actor.id,
+        userName: actor.name,
+        action: 'member.portal-invited',
+        entityType: 'Member',
+        entityId: member.id,
+        entityName: member.name,
+      })
+      .catch(() => {});
+
     return { message: 'Portal invite sent successfully' };
   }
 
@@ -224,6 +257,7 @@ export class MembersService {
     id: string,
     gymId: string,
     dto: MemberUpdateRequest,
+    actor: User,
   ): Promise<MemberResponse> {
     const existing = await this.prisma.member.findFirst({
       where: { id, gymId },
@@ -248,7 +282,7 @@ export class MembersService {
     }
 
     try {
-      return await this.prisma.member.update({
+      const updated = await this.prisma.member.update({
         where: { id },
         data: {
           ...(dto.name !== undefined && { name: dto.name }),
@@ -262,6 +296,24 @@ export class MembersService {
         },
         select: MEMBER_SELECT,
       });
+
+      const action =
+        dto.status === 'INACTIVE' && existing.status === 'ACTIVE'
+          ? 'member.deactivated'
+          : 'member.updated';
+      this.auditService
+        .log({
+          gymId,
+          userId: actor.id,
+          userName: actor.name,
+          action,
+          entityType: 'Member',
+          entityId: updated.id,
+          entityName: updated.name,
+        })
+        .catch(() => {});
+
+      return updated;
     } catch (err) {
       if (
         err instanceof Prisma.PrismaClientKnownRequestError &&

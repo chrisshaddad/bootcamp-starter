@@ -11,51 +11,51 @@ const CHECK_INS: CheckInSeed[] = [
   // Iron Peak Fitness
   {
     gymName: 'Iron Peak Fitness',
-    memberEmail: 'alex.johnson@example.com',
+    memberEmail: 'alex.johnson92@gmail.com',
     checkedInAt: new Date('2026-06-16T07:00:00Z'),
     checkedOutAt: new Date('2026-06-16T08:15:00Z'),
   },
   {
     gymName: 'Iron Peak Fitness',
-    memberEmail: 'alex.johnson@example.com',
+    memberEmail: 'alex.johnson92@gmail.com',
     checkedInAt: new Date('2026-06-18T07:05:00Z'),
     checkedOutAt: new Date('2026-06-18T08:20:00Z'),
   },
   {
     gymName: 'Iron Peak Fitness',
-    memberEmail: 'maria.smith@example.com',
+    memberEmail: 'maria.s.fitness@outlook.com',
     checkedInAt: new Date('2026-06-16T07:02:00Z'),
     checkedOutAt: new Date('2026-06-16T08:10:00Z'),
   },
   {
     gymName: 'Iron Peak Fitness',
-    memberEmail: 'maria.smith@example.com',
+    memberEmail: 'maria.s.fitness@outlook.com',
     checkedInAt: new Date('2026-06-19T09:00:00Z'),
     checkedOutAt: null, // still checked in
   },
   {
     gymName: 'Iron Peak Fitness',
-    memberEmail: 'david.park@example.com',
+    memberEmail: 'dpark88@yahoo.com',
     checkedInAt: new Date('2026-06-10T17:30:00Z'),
     checkedOutAt: new Date('2026-06-10T19:00:00Z'),
   },
   // FlexZone Gym
   {
     gymName: 'FlexZone Gym',
-    memberEmail: 'james.brown@example.com',
+    memberEmail: 'jbrown.athlete@gmail.com',
     checkedInAt: new Date('2026-06-17T10:00:00Z'),
     checkedOutAt: new Date('2026-06-17T11:05:00Z'),
   },
   {
     gymName: 'FlexZone Gym',
-    memberEmail: 'sofia.rodriguez@example.com',
+    memberEmail: 'sofia.rdz@outlook.com',
     checkedInAt: new Date('2026-06-19T10:30:00Z'),
     checkedOutAt: null, // still checked in
   },
   // ProFit Training
   {
     gymName: 'ProFit Training',
-    memberEmail: 'kenji.tanaka@example.com',
+    memberEmail: 'kenji.tanaka@protonmail.com',
     checkedInAt: new Date('2026-06-15T08:00:00Z'),
     checkedOutAt: new Date('2026-06-15T10:00:00Z'),
   },

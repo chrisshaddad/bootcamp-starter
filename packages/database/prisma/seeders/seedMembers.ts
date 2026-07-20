@@ -17,27 +17,27 @@ const MEMBERS: MemberSeed[] = [
   {
     gymName: 'Iron Peak Fitness',
     name: 'Alex Johnson',
-    email: 'alex.johnson@example.com',
+    email: 'alex.johnson92@gmail.com',
     phoneNumber: '+1-555-0101',
     dateOfBirth: new Date('1990-03-14'),
     status: 'ACTIVE',
     joinedAt: new Date('2025-11-01'),
-    portalEmail: 'alex.johnson@example.com', // has portal access
+    portalEmail: 'alex.johnson92@gmail.com', // has portal access
   },
   {
     gymName: 'Iron Peak Fitness',
     name: 'Maria Smith',
-    email: 'maria.smith@example.com',
+    email: 'maria.s.fitness@outlook.com',
     phoneNumber: '+1-555-0102',
     dateOfBirth: new Date('1995-07-22'),
     status: 'ACTIVE',
     joinedAt: new Date('2025-11-15'),
-    portalEmail: 'maria.smith@example.com', // has portal access
+    portalEmail: 'maria.s.fitness@outlook.com', // has portal access
   },
   {
     gymName: 'Iron Peak Fitness',
     name: 'David Park',
-    email: 'david.park@example.com',
+    email: 'dpark88@yahoo.com',
     phoneNumber: '+1-555-0103',
     dateOfBirth: new Date('1988-01-09'),
     status: 'ACTIVE',
@@ -47,7 +47,7 @@ const MEMBERS: MemberSeed[] = [
   {
     gymName: 'Iron Peak Fitness',
     name: 'Emma Wilson',
-    email: 'emma.wilson@example.com',
+    email: 'emmawilson.fit@icloud.com',
     phoneNumber: '+1-555-0104',
     dateOfBirth: null,
     status: 'INACTIVE',
@@ -58,17 +58,17 @@ const MEMBERS: MemberSeed[] = [
   {
     gymName: 'FlexZone Gym',
     name: 'James Brown',
-    email: 'james.brown@example.com',
+    email: 'jbrown.athlete@gmail.com',
     phoneNumber: '+1-555-0201',
     dateOfBirth: new Date('1992-11-30'),
     status: 'ACTIVE',
     joinedAt: new Date('2025-12-01'),
-    portalEmail: 'james.brown@example.com', // has portal access
+    portalEmail: 'jbrown.athlete@gmail.com', // has portal access
   },
   {
     gymName: 'FlexZone Gym',
     name: 'Sofia Rodriguez',
-    email: 'sofia.rodriguez@example.com',
+    email: 'sofia.rdz@outlook.com',
     phoneNumber: '+1-555-0202',
     dateOfBirth: new Date('1998-05-18'),
     status: 'ACTIVE',
@@ -78,7 +78,7 @@ const MEMBERS: MemberSeed[] = [
   {
     gymName: 'FlexZone Gym',
     name: 'Liam Chen',
-    email: 'liam.chen@example.com',
+    email: 'liamchen97@gmail.com',
     phoneNumber: '+1-555-0203',
     dateOfBirth: null,
     status: 'ACTIVE',
@@ -89,7 +89,7 @@ const MEMBERS: MemberSeed[] = [
   {
     gymName: 'ProFit Training',
     name: 'Kenji Tanaka',
-    email: 'kenji.tanaka@example.com',
+    email: 'kenji.tanaka@protonmail.com',
     phoneNumber: '+1-555-0301',
     dateOfBirth: new Date('1985-09-05'),
     status: 'ACTIVE',
@@ -98,7 +98,7 @@ const MEMBERS: MemberSeed[] = [
   {
     gymName: 'ProFit Training',
     name: 'Priya Patel',
-    email: 'priya.patel@example.com',
+    email: 'priya.p93@gmail.com',
     phoneNumber: '+1-555-0302',
     dateOfBirth: new Date('1993-04-12'),
     status: 'INACTIVE',

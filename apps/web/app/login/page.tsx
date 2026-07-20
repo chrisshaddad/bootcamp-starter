@@ -46,12 +46,12 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen bg-white">
       {/* Left Panel - Hero Section */}
-      <div className="relative hidden w-1/2 bg-gray-900 lg:flex lg:flex-col lg:justify-end">
+      <div className="relative hidden w-1/2 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 lg:flex lg:flex-col lg:justify-end">
         {/* Background Image */}
         <div className="relative flex-1">
           <Image
-            src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1200&q=80"
-            alt="Team collaboration"
+            src="/images/gym-hero.jpg"
+            alt="Modern gym interior with members working out"
             fill
             className="object-cover"
             priority
@@ -59,36 +59,36 @@ export default function LoginPage() {
         </div>
 
         {/* Content Section with green top border */}
-        <div className="flex flex-col gap-6 border-t-[5px] border-primary-base bg-gray-900 px-12.5 pb-15 pt-10">
+        <div className="flex flex-col gap-6 border-t-[5px] border-primary-base bg-gradient-to-br from-gray-900 to-gray-800 px-12.5 pb-15 pt-10">
           {/* Logo */}
           <div className="flex items-center gap-2.5">
             <div className="flex h-6 w-6 items-center justify-center">
-              <span className="text-2xl text-primary-base">✦</span>
+              <span className="text-2xl text-primary-base">🏋️</span>
             </div>
             <span className="text-xl font-semibold text-white">
-              Bootcamp Starter
+              GymFlow
             </span>
           </div>
 
           {/* Headline */}
           <h1 className="text-5xl font-bold leading-[1.2] tracking-[-0.5px] text-white">
-            Build your next project on a solid foundation.
+            Manage your gym like a pro.
           </h1>
 
           {/* Subtext */}
           <p className="text-lg leading-normal text-white">
-            A generic full-stack starter for your bootcamp project.
+            The modern platform for gym owners and fitness managers.
           </p>
         </div>
       </div>
 
       {/* Right Panel - Login Form */}
-      <div className="relative flex w-full flex-col justify-between lg:w-1/2">
+      <div className="relative flex w-full flex-col justify-between bg-background lg:w-1/2">
         {/* Form Section */}
         <div className="flex flex-1 items-center justify-center px-6 py-12">
-          <div className="flex w-full max-w-120 flex-col items-center gap-8">
+          <div className="glass-card flex w-full max-w-120 flex-col items-center gap-8 rounded-2xl p-8 sm:p-10 shadow-lg border border-border bg-card">
             {/* Title */}
-            <h2 className="w-full text-center text-2xl font-bold leading-[1.3] text-gray-900">
+            <h2 className="w-full text-center text-2xl font-bold leading-[1.3] text-foreground">
               Login first to your account
             </h2>
 
@@ -100,7 +100,7 @@ export default function LoginPage() {
               <div className="flex flex-col gap-2.5">
                 <Label
                   htmlFor="email"
-                  className="flex gap-0.5 text-sm font-medium leading-[1.6] text-gray-900"
+                  className="flex gap-0.5 text-sm font-medium leading-[1.6] text-foreground"
                 >
                   <span>Email Address</span>
                   <span className="text-error">*</span>
@@ -119,7 +119,7 @@ export default function LoginPage() {
 
               <Button
                 type="submit"
-                className="h-14 w-full rounded-[10px] bg-gray-900 text-base font-bold leading-normal tracking-[0.3px] text-white hover:bg-gray-900/90 disabled:bg-gray-200 disabled:text-gray-500"
+                className="btn-gradient h-14 w-full rounded-[10px] text-base font-bold leading-normal tracking-[0.3px] text-white disabled:bg-gray-200 disabled:text-gray-500"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (
@@ -134,7 +134,7 @@ export default function LoginPage() {
             </form>
 
             {/* Info Text */}
-            <p className="text-center text-sm font-medium leading-[1.6] text-gray-500">
+            <p className="text-center text-sm font-medium leading-[1.6] text-muted-foreground">
               We&apos;ll send you a magic link to sign in instantly.
               <br />
               No password required.
@@ -142,7 +142,7 @@ export default function LoginPage() {
 
             {/* Register Link */}
             <p className="text-center text-sm font-medium leading-[1.6]">
-              <span className="text-gray-500">
+              <span className="text-muted-foreground">
                 Don&apos;t have a gym account?{' '}
               </span>
               <a href="/register" className="text-primary-base hover:underline">
@@ -155,19 +155,19 @@ export default function LoginPage() {
         {/* Footer */}
         <footer className="px-6 py-6">
           <div className="flex flex-wrap items-center justify-center gap-2.5 text-sm font-medium leading-[1.6]">
-            <span className="text-gray-500">
-              © {new Date().getFullYear()} Bootcamp Starter. All rights
+            <span className="text-muted-foreground">
+              © {new Date().getFullYear()} GymFlow. All rights
               reserved.
             </span>
             <a
               href="/terms"
-              className="text-gray-900 hover:text-primary-base hover:underline"
+              className="text-foreground hover:text-primary-base hover:underline"
             >
               Terms & Conditions
             </a>
             <a
               href="/privacy"
-              className="text-gray-900 hover:text-primary-base hover:underline"
+              className="text-foreground hover:text-primary-base hover:underline"
             >
               Privacy Policy
             </a>

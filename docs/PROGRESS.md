@@ -20,7 +20,7 @@ updates in place).
 
 ## Overview
 
-Current overall state: **Phase 0 complete** — schema, migration, and all seeders done. Feature work (A/B/C) is now unblocked. **Feature D (gym theme customization) is complete.**
+Current overall state: **Phase 0 complete** — schema, migration, and all seeders done. Features A–D all ✅. **Enhancement round (E–I) is now planned and ready to start.** See [`enhancement-plan.md`](enhancement-plan.md) for the full spec.
 
 | Area                                                                          | Owner       | Done  | Status | Details (edit here)                                                                        |
 | ----------------------------------------------------------------------------- | ----------- | ----- | ------ | ------------------------------------------------------------------------------------------ |
@@ -29,6 +29,11 @@ Current overall state: **Phase 0 complete** — schema, migration, and all seede
 | Feature B — Instructors / Sessions / Bookings + My-bookings                   | Antigravity | 4 / 4 | ✅     | [`progress/PROGRESS-B.md`](progress/PROGRESS-B.md) — B0-B3 ✅ all done                     |
 | Feature C — Check-ins / Dashboard + QR check-in                               | Antigravity | 3 / 3 | ✅     | [`progress/PROGRESS-C.md`](progress/PROGRESS-C.md) — C1–C3 ✅ all done                     |
 | Feature D — Gym theme customization (ORG_ADMIN, post-launch)                  | Claude      | 4 / 4 | ✅     | [`progress/PROGRESS-D.md`](progress/PROGRESS-D.md) — D0–D3 ✅ all done, user-verified      |
+| Feature E — UI Overhaul & Branding                                            | Antigravity | 4 / 4 | ✅     | [`progress/PROGRESS-E.md`](progress/PROGRESS-E.md) — E0–E3 ✅                                |
+| Feature F — Dark Mode                                                         | Antigravity | 2 / 2 | ✅     | [`progress/PROGRESS-F.md`](progress/PROGRESS-F.md) — F0–F1 ✅                                |
+| Feature G — Animations & Transitions                                          | Antigravity | 2 / 2 | ✅     | [`progress/PROGRESS-G.md`](progress/PROGRESS-G.md) — G0–G1 ✅                        |
+| Feature H — AI Chat / RAG System                                              | Antigravity | 4 / 4 | ✅     | [`progress/PROGRESS-H.md`](progress/PROGRESS-H.md) — H0–H3 ✅ all done                              |
+| Feature I — Audit Log                                                         | Antigravity | 3 / 3 | ✅     | [`progress/PROGRESS-I.md`](progress/PROGRESS-I.md) — I0–I2 ✅ all done                                |
 
 ## How to use these files
 

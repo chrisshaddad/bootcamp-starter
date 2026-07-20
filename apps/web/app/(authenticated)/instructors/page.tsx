@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import { Users, Plus, CheckCircle2, XCircle } from 'lucide-react';
+import { Users, Plus } from 'lucide-react';
 import {
   instructorCreateRequestSchema,
   instructorUpdateRequestSchema,
@@ -52,23 +52,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 /** Renders a coloured badge showing whether an instructor is active or inactive */
 function ActiveBadge({ isActive }: { isActive: boolean }) {
-  return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-        isActive ? 'bg-success/10 text-success' : 'bg-gray-200 text-gray-700'
-      }`}
-    >
-      {isActive ? (
-        <>
-          <CheckCircle2 className="h-3 w-3" /> Active
-        </>
-      ) : (
-        <>
-          <XCircle className="h-3 w-3" /> Inactive
-        </>
-      )}
-    </span>
-  );
+  if (isActive) {
+    return <span className="badge-pill badge-active">• Active</span>;
+  }
+  return <span className="badge-pill badge-inactive">• Inactive</span>;
 }
 
 /** Renders a skeleton placeholder for the instructors list while data is loading */
@@ -410,10 +397,10 @@ export function EditInstructorDialog({
               )}
             </div>
 
-            <div className="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 mt-4">
+            <div className="flex items-center justify-between rounded-lg border border-border bg-muted/50 px-4 py-3 mt-4">
               <div>
-                <p className="text-sm font-medium text-gray-900">Status</p>
-                <p className="text-xs text-gray-500">
+                <p className="text-sm font-medium text-foreground">Status</p>
+                <p className="text-xs text-muted-foreground">
                   {instructor?.isActive
                     ? 'Active and available for new sessions.'
                     : 'Inactive and hidden from scheduling.'}
@@ -543,8 +530,8 @@ export default function InstructorsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Instructors</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-foreground">Instructors</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Manage your gym instructors
           </p>
         </div>
@@ -577,13 +564,13 @@ export default function InstructorsPage() {
       </div>
 
       {/* Table card */}
-      <Card>
+      <Card className="glass-card card-elevated rounded-xl">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
             Instructors
             {total !== undefined && (
-              <span className="text-sm font-normal text-gray-500">
+              <span className="text-sm font-normal text-muted-foreground">
                 ({total} total)
               </span>
             )}
@@ -596,8 +583,8 @@ export default function InstructorsPage() {
             </div>
           ) : !instructors || instructors.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-              <Users className="h-10 w-10 text-gray-300" />
-              <p className="text-sm text-gray-500">No instructors yet.</p>
+              <Users className="h-10 w-10 text-muted-foreground/30" />
+              <p className="text-sm text-muted-foreground">No instructors yet.</p>
               <Button
                 variant="outline"
                 size="sm"
@@ -608,7 +595,7 @@ export default function InstructorsPage() {
               </Button>
             </div>
           ) : (
-            <Table>
+            <Table className="table-premium">
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
@@ -625,13 +612,13 @@ export default function InstructorsPage() {
                     className="cursor-pointer"
                     onClick={() => setEditingInstructor(instructor)}
                   >
-                    <TableCell className="font-medium">
+                    <TableCell className="font-medium text-foreground">
                       {instructor.name}
                     </TableCell>
-                    <TableCell className="text-gray-500">
+                    <TableCell className="text-muted-foreground">
                       {instructor.email ?? '—'}
                     </TableCell>
-                    <TableCell className="text-gray-500">
+                    <TableCell className="text-muted-foreground">
                       {instructor.specialization ?? '—'}
                     </TableCell>
                     <TableCell>
@@ -644,8 +631,8 @@ export default function InstructorsPage() {
           )}
           {/* Pagination */}
           {!isLoading && !error && total !== undefined && totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-gray-100 pt-4 mt-2">
-              <p className="text-sm text-gray-500">
+            <div className="flex items-center justify-between border-t border-border pt-4 mt-2">
+              <p className="text-sm text-muted-foreground">
                 Showing {(page - 1) * INSTRUCTORS_PAGE_SIZE + 1}–
                 {Math.min(page * INSTRUCTORS_PAGE_SIZE, total)} of {total}
               </p>
@@ -659,7 +646,7 @@ export default function InstructorsPage() {
                 >
                   Previous
                 </Button>
-                <span className="text-sm text-gray-600">
+                <span className="text-sm text-muted-foreground">
                   Page {page} of {totalPages}
                 </span>
                 <Button

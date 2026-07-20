@@ -62,7 +62,7 @@ export class MailProcessor extends WorkerHost {
 
     const success = await this.mailService.sendEmail({
       to: email,
-      from: 'no-reply@bootcamp-starter.local',
+      from: 'no-reply@gymflow.io',
       subject: 'Sign in to Bootcamp Starter',
       text,
     });
@@ -84,7 +84,7 @@ export class MailProcessor extends WorkerHost {
 
     const success = await this.mailService.sendEmail({
       to: email,
-      from: 'no-reply@bootcamp-starter.local',
+      from: 'no-reply@gymflow.io',
       subject: 'Gym registration received — pending approval',
       text,
     });
@@ -106,7 +106,7 @@ export class MailProcessor extends WorkerHost {
 
     const success = await this.mailService.sendEmail({
       to: email,
-      from: 'no-reply@bootcamp-starter.local',
+      from: 'no-reply@gymflow.io',
       subject: `You've been invited to join ${organizationName}`,
       text,
     });

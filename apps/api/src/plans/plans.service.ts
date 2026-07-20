@@ -3,7 +3,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '@repo/db';
+import { Prisma, User } from '@repo/db';
+import { AuditService } from '../audit/audit.service';
 import { DatabaseService } from '../database/database.service';
 import type {
   PlanListResponse,
@@ -26,7 +27,10 @@ const PLAN_SELECT = {
 
 @Injectable()
 export class PlansService {
-  constructor(private readonly prisma: DatabaseService) {}
+  constructor(
+    private readonly prisma: DatabaseService,
+    private readonly auditService: AuditService,
+  ) {}
 
   /** List all membership plans for a gym with optional isActive filter and pagination */
   async findAll(
@@ -69,9 +73,13 @@ export class PlansService {
   }
 
   /** Create a new membership plan in the caller's gym */
-  async create(gymId: string, dto: PlanCreateRequest): Promise<PlanResponse> {
+  async create(
+    gymId: string,
+    dto: PlanCreateRequest,
+    actor: User,
+  ): Promise<PlanResponse> {
     try {
-      return await this.prisma.membershipPlan.create({
+      const created = await this.prisma.membershipPlan.create({
         data: {
           gymId,
           name: dto.name,
@@ -81,6 +89,20 @@ export class PlansService {
         },
         select: PLAN_SELECT,
       });
+
+      this.auditService
+        .log({
+          gymId,
+          userId: actor.id,
+          userName: actor.name,
+          action: 'plan.created',
+          entityType: 'MembershipPlan',
+          entityId: created.id,
+          entityName: created.name,
+        })
+        .catch(() => {});
+
+      return created;
     } catch (err) {
       if (
         err instanceof Prisma.PrismaClientKnownRequestError &&
@@ -97,6 +119,7 @@ export class PlansService {
     id: string,
     gymId: string,
     dto: PlanUpdateRequest,
+    actor: User,
   ): Promise<PlanResponse> {
     let count: number;
     try {
@@ -128,9 +151,27 @@ export class PlansService {
       throw new NotFoundException(`Plan with ID ${id} not found`);
     }
 
-    return this.prisma.membershipPlan.findFirstOrThrow({
+    const updated = await this.prisma.membershipPlan.findFirstOrThrow({
       where: { id, gymId },
       select: PLAN_SELECT,
     });
+
+    const action =
+      dto.isActive === false && updated.isActive === false
+        ? 'plan.deactivated'
+        : 'plan.updated';
+    this.auditService
+      .log({
+        gymId,
+        userId: actor.id,
+        userName: actor.name,
+        action,
+        entityType: 'MembershipPlan',
+        entityId: updated.id,
+        entityName: updated.name,
+      })
+      .catch(() => {});
+
+    return updated;
   }
 }

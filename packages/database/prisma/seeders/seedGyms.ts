@@ -26,7 +26,7 @@ const GYMS: GymSeed[] = [
     status: 'ACTIVE',
     createdAt: new Date('2025-10-15'),
     approvedAt: new Date('2025-10-18'),
-    adminEmail: 'admin@ironpeak.example.com',
+    adminEmail: 'sarah.chen@ironpeakfitness.com',
   },
   {
     name: 'FlexZone Gym',
@@ -39,7 +39,7 @@ const GYMS: GymSeed[] = [
     status: 'ACTIVE',
     createdAt: new Date('2025-11-01'),
     approvedAt: new Date('2025-11-03'),
-    adminEmail: 'admin@flexzone.example.com',
+    adminEmail: 'michael@flexzonegym.com',
   },
   {
     name: 'Mountain Wellness Center',
@@ -51,7 +51,7 @@ const GYMS: GymSeed[] = [
     maxCapacity: null,
     status: 'PENDING',
     createdAt: new Date('2026-01-20'),
-    adminEmail: 'admin@mountainwellness.example.com',
+    adminEmail: 'emily.watson@mountainwellness.co',
   },
   {
     name: 'City Boxing Club',
@@ -63,7 +63,7 @@ const GYMS: GymSeed[] = [
     maxCapacity: null,
     status: 'PENDING',
     createdAt: new Date('2026-01-28'),
-    adminEmail: 'admin@cityboxing.example.com',
+    adminEmail: 'roberto@cityboxingclub.com',
   },
   {
     name: 'Velocity Sports',
@@ -77,7 +77,7 @@ const GYMS: GymSeed[] = [
     statusReason:
       'Unable to verify business registration documents submitted with the application.',
     createdAt: new Date('2025-12-10'),
-    adminEmail: 'admin@velocitysports.example.com',
+    adminEmail: 'jake@velocitysports.fit',
   },
   {
     name: 'ProFit Training',
@@ -92,7 +92,7 @@ const GYMS: GymSeed[] = [
       'Facility safety inspection flagged non-compliant emergency exit signage. Suspended pending remediation.',
     createdAt: new Date('2025-09-05'),
     approvedAt: new Date('2025-09-08'),
-    adminEmail: 'admin@profitraining.example.com',
+    adminEmail: 'anna.davis@profittraining.com',
   },
 ];
 

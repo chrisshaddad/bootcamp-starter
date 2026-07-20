@@ -56,19 +56,11 @@ import { cn } from '@/lib/utils';
 
 type StatusFilter = 'all' | MemberStatus;
 
-const STATUS_COLORS: Record<string, string> = {
-  ACTIVE: 'bg-success/10 text-success',
-  INACTIVE: 'bg-gray-200 text-gray-700',
-};
-
 function StatusBadge({ status }: { status: string }) {
-  return (
-    <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[status] ?? 'bg-gray-200 text-gray-700'}`}
-    >
-      {status === 'ACTIVE' ? 'Active' : 'Inactive'}
-    </span>
-  );
+  if (status === 'ACTIVE') {
+    return <span className="badge-pill badge-active">• Active</span>;
+  }
+  return <span className="badge-pill badge-inactive">• Inactive</span>;
 }
 
 function LoadingSkeleton() {
@@ -146,8 +138,8 @@ export default function MembersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Members</h1>
-          <p className="mt-1 text-sm text-gray-500">Manage your gym members</p>
+          <h1 className="text-2xl font-bold text-foreground">Members</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Manage your gym members</p>
         </div>
         <div className="flex items-center gap-3">
           <Select
@@ -176,13 +168,13 @@ export default function MembersPage() {
         </div>
       </div>
 
-      <Card>
+      <Card className="glass-card card-elevated rounded-xl">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
             Members
             {total !== undefined && (
-              <span className="text-sm font-normal text-gray-500">
+              <span className="text-sm font-normal text-muted-foreground">
                 ({total} total)
               </span>
             )}
@@ -194,11 +186,11 @@ export default function MembersPage() {
               Failed to load members
             </div>
           ) : !members?.length ? (
-            <div className="py-10 text-center text-gray-500">
+            <div className="py-10 text-center text-muted-foreground">
               No members found
             </div>
           ) : (
-            <Table>
+            <Table className="table-premium">
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
@@ -215,19 +207,19 @@ export default function MembersPage() {
                     className="cursor-pointer"
                     onClick={() => router.push(`/members/${member.id}`)}
                   >
-                    <TableCell className="font-medium text-gray-900">
+                    <TableCell className="font-medium text-foreground">
                       {member.name}
                     </TableCell>
-                    <TableCell className="text-gray-600">
+                    <TableCell className="text-muted-foreground">
                       {member.email}
                     </TableCell>
-                    <TableCell className="text-gray-500">
+                    <TableCell className="text-muted-foreground">
                       {member.phoneNumber}
                     </TableCell>
                     <TableCell>
                       <StatusBadge status={member.status} />
                     </TableCell>
-                    <TableCell className="text-sm text-gray-500">
+                    <TableCell className="text-sm text-muted-foreground">
                       {new Date(member.joinedAt).toLocaleDateString()}
                     </TableCell>
                   </TableRow>
@@ -236,8 +228,8 @@ export default function MembersPage() {
             </Table>
           )}
           {!isLoading && !error && total !== undefined && totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-gray-100 pt-4 mt-2">
-              <p className="text-sm text-gray-500">
+            <div className="flex items-center justify-between border-t border-border pt-4 mt-2">
+              <p className="text-sm text-muted-foreground">
                 Showing {(page - 1) * MEMBERS_PAGE_SIZE + 1}–
                 {Math.min(page * MEMBERS_PAGE_SIZE, total)} of {total}
               </p>
@@ -250,7 +242,7 @@ export default function MembersPage() {
                 >
                   Previous
                 </Button>
-                <span className="text-sm text-gray-600">
+                <span className="text-sm text-muted-foreground">
                   Page {page} of {totalPages}
                 </span>
                 <Button

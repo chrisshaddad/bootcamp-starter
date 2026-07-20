@@ -8,6 +8,8 @@ import {
 import { randomBytes } from 'crypto';
 import Redis from 'ioredis';
 import { DatabaseService } from '../database/database.service';
+import { AuditService } from '../audit/audit.service';
+import { User } from '@repo/db';
 import type {
   CheckInResponse,
   CheckInListResponse,
@@ -45,6 +47,7 @@ export class CheckInsService {
   constructor(
     private readonly prisma: DatabaseService,
     @Inject('REDIS_CLIENT') private readonly redis: Redis,
+    private readonly auditService: AuditService,
   ) {}
 
   async getQrToken(gymId: string): Promise<CheckinQrTokenResponse> {
@@ -75,7 +78,11 @@ export class CheckInsService {
     };
   }
 
-  async checkIn(gymId: string, memberId: string): Promise<CheckInResponse> {
+  async checkIn(
+    gymId: string,
+    memberId: string,
+    actor: User,
+  ): Promise<CheckInResponse> {
     const lockKey = `checkin-lock:${memberId}`;
     const acquired = await this.redis.set(lockKey, '1', 'PX', 5000, 'NX');
     this.logger.log(
@@ -117,13 +124,29 @@ export class CheckInsService {
         select: CHECKIN_SELECT,
       });
 
+      this.auditService
+        .log({
+          gymId,
+          userId: actor.id,
+          userName: actor.name,
+          action: 'checkin.created',
+          entityType: 'CheckIn',
+          entityId: checkIn.id,
+          entityName: `CheckIn ${checkIn.id}`,
+        })
+        .catch(() => {});
+
       return checkIn as unknown as CheckInResponse;
     } finally {
       await this.redis.del(lockKey);
     }
   }
 
-  async checkOut(id: string, gymId: string): Promise<CheckInResponse> {
+  async checkOut(
+    id: string,
+    gymId: string,
+    actor: User,
+  ): Promise<CheckInResponse> {
     const checkIn = await this.prisma.checkIn.findFirst({
       where: { id, gymId },
     });
@@ -147,6 +170,18 @@ export class CheckInsService {
       where: { id, gymId },
       select: CHECKIN_SELECT,
     });
+
+    this.auditService
+      .log({
+        gymId,
+        userId: actor.id,
+        userName: actor.name,
+        action: 'checkin.checked-out',
+        entityType: 'CheckIn',
+        entityId: id,
+        entityName: `CheckIn ${id}`,
+      })
+      .catch(() => {});
 
     return updated as unknown as CheckInResponse;
   }
