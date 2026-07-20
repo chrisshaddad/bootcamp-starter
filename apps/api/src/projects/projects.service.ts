@@ -732,33 +732,37 @@ export class ProjectsService {
       )
       .slice(0, MAX_SEARCH_TERMS);
 
+    const andFilters: Prisma.ProjectWhereInput[] = [
+      ...searchTerms.map((term) => ({
+        OR: [
+          { title: { contains: term, mode: 'insensitive' as const } },
+          {
+            shortDescription: { contains: term, mode: 'insensitive' as const },
+          },
+          {
+            fullDescription: { contains: term, mode: 'insensitive' as const },
+          },
+          {
+            technologies: {
+              some: {
+                technology: {
+                  name: { contains: term, mode: 'insensitive' as const },
+                },
+              },
+            },
+          },
+        ],
+      })),
+      ...query.technology.map((slug) => ({
+        technologies: { some: { technology: { slug } } },
+      })),
+    ];
+
     const where: Prisma.ProjectWhereInput = {
       status: ProjectStatus.PUBLISHED,
       // 1. Filter by userId if it's passed in the query
       ...(query.userId ? { createdByUserId: query.userId } : {}),
-      ...(query.technology
-        ? { technologies: { some: { technology: { slug: query.technology } } } }
-        : {}),
-      ...(searchTerms.length > 0
-        ? {
-            AND: searchTerms.map((term) => ({
-              OR: [
-                { title: { contains: term, mode: 'insensitive' } },
-                { shortDescription: { contains: term, mode: 'insensitive' } },
-                { fullDescription: { contains: term, mode: 'insensitive' } },
-                {
-                  technologies: {
-                    some: {
-                      technology: {
-                        name: { contains: term, mode: 'insensitive' },
-                      },
-                    },
-                  },
-                },
-              ],
-            })),
-          }
-        : {}),
+      ...(andFilters.length > 0 ? { AND: andFilters } : {}),
     };
 
     let orderBy: Prisma.ProjectOrderByWithRelationInput[] = [

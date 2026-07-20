@@ -196,7 +196,7 @@ export function useExploreProjects(query?: Partial<ProjectsExploreQuery>) {
   if (query?.limit) params.append('limit', query.limit.toString());
   if (query?.search) params.append('search', query.search);
   if (query?.sort) params.append('sort', query.sort);
-  if (query?.technology) params.append('technology', query.technology);
+  query?.technology?.forEach((slug) => params.append('technology', slug));
 
   const queryString = params.toString() ? `?${params.toString()}` : '';
   const { data, error, isLoading } = useSWR(
