@@ -62,6 +62,7 @@ import { useListVendorsQuery } from '@/store/api/endpoints/vendors.api';
 import { useListMaintenanceRequestsQuery } from '@/store/api/endpoints/maintenance-requests.api';
 import { useListWorkOrdersQuery } from '@/store/api/endpoints/work-orders.api';
 import type { ExpenseCategory, ExpenseResponse } from '@/types/api';
+import type { Dictionary } from '@/i18n/get-dictionary';
 
 // ── Category badge ───────────────────────────────────────────────────────────
 
@@ -74,15 +75,6 @@ const CATEGORIES: ExpenseCategory[] = [
   'other',
 ];
 
-const CATEGORY_LABELS: Record<ExpenseCategory, string> = {
-  repairs: 'Repairs',
-  vendor_payment: 'Vendor payment',
-  utilities: 'Utilities',
-  taxes: 'Taxes',
-  insurance: 'Insurance',
-  other: 'Other',
-};
-
 const CATEGORY_STYLES: Record<ExpenseCategory, string> = {
   repairs: 'bg-orange-50 text-orange-700 border-orange-200',
   vendor_payment: 'bg-blue-50 text-blue-700 border-blue-200',
@@ -92,10 +84,16 @@ const CATEGORY_STYLES: Record<ExpenseCategory, string> = {
   other: 'bg-muted text-muted-foreground border-transparent',
 };
 
-function CategoryBadge({ category }: { category: ExpenseCategory }) {
+function CategoryBadge({
+  category,
+  labels,
+}: {
+  category: ExpenseCategory;
+  labels: Dictionary['expenses']['category'];
+}) {
   return (
     <Badge variant="outline" className={CATEGORY_STYLES[category]}>
-      {CATEGORY_LABELS[category] ?? category}
+      {labels[category] ?? category}
     </Badge>
   );
 }
@@ -104,30 +102,34 @@ function CategoryBadge({ category }: { category: ExpenseCategory }) {
 
 const NONE = '__none__';
 
-const expenseSchema = z.object({
-  category: z.enum([
-    'repairs',
-    'vendor_payment',
-    'utilities',
-    'taxes',
-    'insurance',
-    'other',
-  ]),
-  amount: z
-    .string()
-    .min(1, 'Amount is required')
-    .refine(
-      (v) => !Number.isNaN(Number(v)) && Number(v) >= 0,
-      'Amount must be a positive number',
-    ),
-  incurredAt: z.string().min(1, 'Incurred date is required'),
-  buildingId: z.string().optional(),
-  vendorId: z.string().optional(),
-  workOrderId: z.string().optional(),
-  notes: z.string().optional(),
-});
+function buildExpenseSchema(
+  errors: Dictionary['expenses']['dialog']['errors'],
+) {
+  return z.object({
+    category: z.enum([
+      'repairs',
+      'vendor_payment',
+      'utilities',
+      'taxes',
+      'insurance',
+      'other',
+    ]),
+    amount: z
+      .string()
+      .min(1, errors.amountRequired)
+      .refine(
+        (v) => !Number.isNaN(Number(v)) && Number(v) >= 0,
+        errors.amountInvalid,
+      ),
+    incurredAt: z.string().min(1, errors.incurredDateRequired),
+    buildingId: z.string().optional(),
+    vendorId: z.string().optional(),
+    workOrderId: z.string().optional(),
+    notes: z.string().optional(),
+  });
+}
 
-type ExpenseFormValues = z.infer<typeof expenseSchema>;
+type ExpenseFormValues = z.infer<ReturnType<typeof buildExpenseSchema>>;
 
 const EMPTY_VALUES: ExpenseFormValues = {
   category: 'repairs',
@@ -138,6 +140,12 @@ const EMPTY_VALUES: ExpenseFormValues = {
   workOrderId: '',
   notes: '',
 };
+
+// ── Work order label (WorkOrderResponse has no title/description) ────────────
+
+function workOrderLabel(id: string) {
+  return `#${id.slice(-6)}`;
+}
 
 // ── Shared form fields (create + edit dialogs) ────────────────────────────────
 
@@ -154,6 +162,7 @@ function ExpenseFormFields({
   workOrders,
   setValue,
   getValues,
+  dict,
 }: {
   idPrefix: string;
   register: ReturnType<typeof useForm<ExpenseFormValues>>['register'];
@@ -167,17 +176,20 @@ function ExpenseFormFields({
   workOrders: { id: string; vendorId?: string | null }[] | undefined;
   setValue: ReturnType<typeof useForm<ExpenseFormValues>>['setValue'];
   getValues: ReturnType<typeof useForm<ExpenseFormValues>>['getValues'];
+  dict: Dictionary;
 }) {
   const { data: maintenanceRequests } = useListMaintenanceRequestsQuery(
     undefined,
     { skip: !canLinkWorkOrder },
   );
+  const categoryLabels = dict.expenses.category;
+  const t = dict.expenses.dialog;
 
   return (
     <>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={`${idPrefix}-category`}>
-          Category <span className="text-destructive">*</span>
+          {t.category} <span className="text-destructive">*</span>
         </Label>
         <Controller
           control={control}
@@ -185,12 +197,18 @@ function ExpenseFormFields({
           render={({ field }) => (
             <Select value={field.value} onValueChange={field.onChange}>
               <SelectTrigger id={`${idPrefix}-category`} className="w-full">
-                <SelectValue placeholder="Select a category" />
+                <SelectValue>
+                  {(value: string | null) =>
+                    !value
+                      ? t.selectCategory
+                      : (categoryLabels[value as ExpenseCategory] ?? value)
+                  }
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {CATEGORIES.map((c) => (
                   <SelectItem key={c} value={c}>
-                    {CATEGORY_LABELS[c]}
+                    {categoryLabels[c]}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -200,14 +218,14 @@ function ExpenseFormFields({
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={`${idPrefix}-amount`}>
-          Amount <span className="text-destructive">*</span>
+          {t.amount} <span className="text-destructive">*</span>
         </Label>
         <Input
           id={`${idPrefix}-amount`}
           type="number"
           step="0.01"
           min="0"
-          placeholder="0.00"
+          placeholder={t.amountPlaceholder}
           aria-invalid={!!errors.amount}
           {...register('amount')}
         />
@@ -217,7 +235,7 @@ function ExpenseFormFields({
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={`${idPrefix}-incurredAt`}>
-          Incurred date <span className="text-destructive">*</span>
+          {t.incurredDate} <span className="text-destructive">*</span>
         </Label>
         <Input
           id={`${idPrefix}-incurredAt`}
@@ -233,8 +251,10 @@ function ExpenseFormFields({
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={`${idPrefix}-building`}>
-          Building{' '}
-          <span className="text-muted-foreground font-normal">(optional)</span>
+          {t.building}{' '}
+          <span className="text-muted-foreground font-normal">
+            {t.optional}
+          </span>
         </Label>
         <Controller
           control={control}
@@ -245,10 +265,16 @@ function ExpenseFormFields({
               onValueChange={(v) => field.onChange(v === NONE ? '' : v)}
             >
               <SelectTrigger id={`${idPrefix}-building`} className="w-full">
-                <SelectValue placeholder="Org-wide (no building)" />
+                <SelectValue>
+                  {(value: string | null) =>
+                    !value || value === NONE
+                      ? t.orgWideNoBuilding
+                      : (buildings?.find((b) => b.id === value)?.name ?? value)
+                  }
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={NONE}>Org-wide (no building)</SelectItem>
+                <SelectItem value={NONE}>{t.orgWideNoBuilding}</SelectItem>
                 {buildings?.map((b) => (
                   <SelectItem key={b.id} value={b.id}>
                     {b.name}
@@ -261,8 +287,10 @@ function ExpenseFormFields({
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={`${idPrefix}-vendor`}>
-          Vendor{' '}
-          <span className="text-muted-foreground font-normal">(optional)</span>
+          {t.vendor}{' '}
+          <span className="text-muted-foreground font-normal">
+            {t.optional}
+          </span>
         </Label>
         <Controller
           control={control}
@@ -273,10 +301,17 @@ function ExpenseFormFields({
               onValueChange={(v) => field.onChange(v === NONE ? '' : v)}
             >
               <SelectTrigger id={`${idPrefix}-vendor`} className="w-full">
-                <SelectValue placeholder="No vendor" />
+                <SelectValue>
+                  {(value: string | null) =>
+                    !value || value === NONE
+                      ? t.noVendor
+                      : (vendors?.find((v) => v.id === value)?.companyName ??
+                        value)
+                  }
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={NONE}>No vendor</SelectItem>
+                <SelectItem value={NONE}>{t.noVendor}</SelectItem>
                 {vendors?.map((v) => (
                   <SelectItem key={v.id} value={v.id}>
                     {v.companyName}
@@ -290,14 +325,13 @@ function ExpenseFormFields({
       {canLinkWorkOrder && (
         <div className="flex flex-col gap-1.5 rounded-lg border p-3">
           <Label>
-            Link to work order{' '}
+            {t.workOrderSection.label}{' '}
             <span className="text-muted-foreground font-normal">
-              (optional)
+              {t.optional}
             </span>
           </Label>
           <p className="text-xs text-muted-foreground">
-            Pick the maintenance request, then the work order. Leaving vendor
-            blank above will auto-fill it from the work order.
+            {t.workOrderSection.hint}
           </p>
           <Select
             value={maintenanceRequestId || NONE}
@@ -306,10 +340,19 @@ function ExpenseFormFields({
             }
           >
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select a maintenance request" />
+              <SelectValue>
+                {(value: string | null) =>
+                  !value || value === NONE
+                    ? t.workOrderSection.maintenanceRequestNone
+                    : (maintenanceRequests?.find((r) => r.id === value)
+                        ?.title ?? value)
+                }
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={NONE}>None</SelectItem>
+              <SelectItem value={NONE}>
+                {t.workOrderSection.maintenanceRequestNone}
+              </SelectItem>
               {maintenanceRequests?.map((r) => (
                 <SelectItem key={r.id} value={r.id}>
                   {r.title}
@@ -334,13 +377,21 @@ function ExpenseFormFields({
                 disabled={!maintenanceRequestId}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a work order" />
+                  <SelectValue>
+                    {(value: string | null) =>
+                      !value || value === NONE
+                        ? t.workOrderSection.workOrderNone
+                        : workOrderLabel(value)
+                    }
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={NONE}>No work order</SelectItem>
+                  <SelectItem value={NONE}>
+                    {t.workOrderSection.workOrderNone}
+                  </SelectItem>
                   {workOrders?.map((w) => (
                     <SelectItem key={w.id} value={w.id}>
-                      {w.id}
+                      {workOrderLabel(w.id)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -351,12 +402,14 @@ function ExpenseFormFields({
       )}
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={`${idPrefix}-notes`}>
-          Notes{' '}
-          <span className="text-muted-foreground font-normal">(optional)</span>
+          {t.notes}{' '}
+          <span className="text-muted-foreground font-normal">
+            {t.optional}
+          </span>
         </Label>
         <Textarea
           id={`${idPrefix}-notes`}
-          placeholder="Any notes…"
+          placeholder={t.notesPlaceholder}
           rows={2}
           {...register('notes')}
         />
@@ -374,12 +427,16 @@ interface ExpensesPageProps {
   canWrite: boolean;
   /** Only org_admin can read Maintenance Requests/Work Orders to build the picker. */
   canLinkWorkOrder: boolean;
+  dict: Dictionary;
 }
 
 export function ExpensesPage({
   canWrite,
   canLinkWorkOrder,
+  dict,
 }: ExpensesPageProps) {
+  const t = dict.expenses;
+  const categoryLabels = dict.expenses.category;
   const { data: expenses, isLoading, isError } = useListExpensesQuery();
   const { data: buildings } = useListBuildingsQuery();
   const { data: vendors } = useListVendorsQuery();
@@ -408,6 +465,11 @@ export function ExpensesPage({
   const { data: editWorkOrders } = useListWorkOrdersQuery(
     { maintenanceRequestId: editMrId },
     { skip: !editMrId },
+  );
+
+  const expenseSchema = useMemo(
+    () => buildExpenseSchema(dict.expenses.dialog.errors),
+    [dict],
   );
 
   const {
@@ -476,12 +538,12 @@ export function ExpensesPage({
         workOrderId: values.workOrderId || undefined,
         notes: values.notes || undefined,
       }).unwrap();
-      toast.success('Expense created.');
+      toast.success(t.dialog.createSuccess);
       setCreateOpen(false);
       resetCreate(EMPTY_VALUES);
       setCreateMrId('');
     } catch {
-      toast.error('Failed to create expense. Please try again.');
+      toast.error(t.dialog.createError);
     }
   }
 
@@ -514,10 +576,10 @@ export function ExpensesPage({
           notes: values.notes || null,
         },
       }).unwrap();
-      toast.success('Expense updated.');
+      toast.success(t.dialog.updateSuccess);
       setEditTarget(null);
     } catch {
-      toast.error('Failed to update expense.');
+      toast.error(t.dialog.updateError);
     }
   }
 
@@ -525,10 +587,10 @@ export function ExpensesPage({
     if (!deleteTarget) return;
     try {
       await deleteExpense(deleteTarget.id).unwrap();
-      toast.success('Expense deleted.');
+      toast.success(t.deleteDialog.success);
       setDeleteTarget(null);
     } catch {
-      toast.error('Failed to delete expense. It may be referenced elsewhere.');
+      toast.error(t.deleteDialog.error);
     }
   }
 
@@ -537,10 +599,8 @@ export function ExpensesPage({
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Expenses</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Money spent running your organization&apos;s properties.
-          </p>
+          <h1 className="text-2xl font-semibold tracking-tight">{t.title}</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">{t.subtitle}</p>
         </div>
         <div className="flex items-center gap-2">
           {!canWrite && (
@@ -549,13 +609,13 @@ export function ExpensesPage({
               className="gap-1.5 text-xs text-muted-foreground"
             >
               <EyeIcon className="size-3" />
-              Read-only
+              {t.readOnly}
             </Badge>
           )}
           {canWrite && (
             <Button onClick={() => setCreateOpen(true)}>
               <PlusIcon />
-              New expense
+              {t.newExpense}
             </Button>
           )}
         </div>
@@ -565,16 +625,24 @@ export function ExpensesPage({
       {hasAnyExpenses && (
         <div className="flex flex-wrap items-end gap-3 rounded-xl border bg-card p-4">
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="expenses-filter-building">Building</Label>
+            <Label htmlFor="expenses-filter-building">
+              {t.filters.building}
+            </Label>
             <Select
               value={buildingFilter}
               onValueChange={(val) => setBuildingFilter(val ?? ALL)}
             >
               <SelectTrigger id="expenses-filter-building" className="w-44">
-                <SelectValue placeholder="All buildings" />
+                <SelectValue>
+                  {(value: string | null) =>
+                    !value || value === ALL
+                      ? t.filters.allBuildings
+                      : (buildingNameById.get(value) ?? value)
+                  }
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL}>All buildings</SelectItem>
+                <SelectItem value={ALL}>{t.filters.allBuildings}</SelectItem>
                 {(buildings ?? []).map((b) => (
                   <SelectItem key={b.id} value={b.id}>
                     {b.name}
@@ -584,26 +652,34 @@ export function ExpensesPage({
             </Select>
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="expenses-filter-category">Category</Label>
+            <Label htmlFor="expenses-filter-category">
+              {t.filters.category}
+            </Label>
             <Select
               value={categoryFilter}
               onValueChange={(val) => setCategoryFilter(val ?? ALL)}
             >
               <SelectTrigger id="expenses-filter-category" className="w-44">
-                <SelectValue placeholder="All categories" />
+                <SelectValue>
+                  {(value: string | null) =>
+                    !value || value === ALL
+                      ? t.filters.allCategories
+                      : (categoryLabels[value as ExpenseCategory] ?? value)
+                  }
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL}>All categories</SelectItem>
+                <SelectItem value={ALL}>{t.filters.allCategories}</SelectItem>
                 {CATEGORIES.map((c) => (
                   <SelectItem key={c} value={c}>
-                    {CATEGORY_LABELS[c]}
+                    {categoryLabels[c]}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="expenses-filter-from">From</Label>
+            <Label htmlFor="expenses-filter-from">{t.filters.from}</Label>
             <Input
               id="expenses-filter-from"
               type="date"
@@ -613,7 +689,7 @@ export function ExpensesPage({
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="expenses-filter-to">To</Label>
+            <Label htmlFor="expenses-filter-to">{t.filters.to}</Label>
             <Input
               id="expenses-filter-to"
               type="date"
@@ -630,12 +706,12 @@ export function ExpensesPage({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Category</TableHead>
-              <TableHead>Amount</TableHead>
-              <TableHead>Incurred date</TableHead>
-              <TableHead>Building</TableHead>
-              <TableHead>Vendor</TableHead>
-              <TableHead>Work order</TableHead>
+              <TableHead>{t.table.category}</TableHead>
+              <TableHead>{t.table.amount}</TableHead>
+              <TableHead>{t.table.incurredDate}</TableHead>
+              <TableHead>{t.table.building}</TableHead>
+              <TableHead>{t.table.vendor}</TableHead>
+              <TableHead>{t.table.workOrder}</TableHead>
               {canWrite && <TableHead className="w-10" />}
             </TableRow>
           </TableHeader>
@@ -672,7 +748,7 @@ export function ExpensesPage({
                   colSpan={canWrite ? 7 : 6}
                   className="text-center py-10 text-muted-foreground"
                 >
-                  Failed to load expenses. Please try again.
+                  {t.loadError}
                 </TableCell>
               </TableRow>
             ) : !hasAnyExpenses ? (
@@ -682,9 +758,7 @@ export function ExpensesPage({
                   className="text-center py-10 text-muted-foreground"
                 >
                   <ReceiptIcon className="size-8 mx-auto mb-2 opacity-30" />
-                  {canWrite
-                    ? 'No expenses recorded yet. Record your first expense.'
-                    : 'No expenses recorded yet.'}
+                  {canWrite ? t.emptyWrite : t.empty}
                 </TableCell>
               </TableRow>
             ) : filteredExpenses.length === 0 ? (
@@ -693,14 +767,17 @@ export function ExpensesPage({
                   colSpan={canWrite ? 7 : 6}
                   className="text-center py-10 text-muted-foreground"
                 >
-                  No expenses match the selected filters.
+                  {t.noMatch}
                 </TableCell>
               </TableRow>
             ) : (
               filteredExpenses.map((expense) => (
                 <TableRow key={expense.id}>
                   <TableCell>
-                    <CategoryBadge category={expense.category} />
+                    <CategoryBadge
+                      category={expense.category}
+                      labels={categoryLabels}
+                    />
                   </TableCell>
                   <TableCell className="text-sm font-medium">
                     {expense.amount}
@@ -712,7 +789,7 @@ export function ExpensesPage({
                     {expense.buildingId
                       ? (buildingNameById.get(expense.buildingId) ??
                         expense.buildingId)
-                      : 'Org-wide'}
+                      : t.orgWide}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {expense.vendorId
@@ -731,7 +808,7 @@ export function ExpensesPage({
                             <Button
                               variant="ghost"
                               size="icon-sm"
-                              aria-label="Expense actions"
+                              aria-label={t.table.actionsLabel}
                             />
                           }
                         >
@@ -740,7 +817,7 @@ export function ExpensesPage({
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => openEdit(expense)}>
                             <PencilIcon className="size-3.5 mr-1.5" />
-                            Edit
+                            {dict.common.edit}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
@@ -748,7 +825,7 @@ export function ExpensesPage({
                             onClick={() => setDeleteTarget(expense)}
                           >
                             <TrashIcon className="size-3.5 mr-1.5" />
-                            Delete
+                            {dict.common.delete}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -765,7 +842,7 @@ export function ExpensesPage({
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>New expense</DialogTitle>
+            <DialogTitle>{t.dialog.newTitle}</DialogTitle>
           </DialogHeader>
           <form
             onSubmit={handleCreate(onCreateSubmit)}
@@ -787,6 +864,7 @@ export function ExpensesPage({
               workOrders={createWorkOrders}
               setValue={setCreateValue}
               getValues={getCreateValues}
+              dict={dict}
             />
             <DialogFooter>
               <DialogClose
@@ -797,10 +875,10 @@ export function ExpensesPage({
                   setCreateMrId('');
                 }}
               >
-                Cancel
+                {dict.common.cancel}
               </DialogClose>
               <Button type="submit" disabled={creating}>
-                {creating ? 'Creating…' : 'Create'}
+                {creating ? t.dialog.creating : t.dialog.create}
               </Button>
             </DialogFooter>
           </form>
@@ -816,7 +894,7 @@ export function ExpensesPage({
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit expense</DialogTitle>
+            <DialogTitle>{t.dialog.editTitle}</DialogTitle>
           </DialogHeader>
           <form
             onSubmit={handleEdit(onEditSubmit)}
@@ -838,16 +916,17 @@ export function ExpensesPage({
               workOrders={editWorkOrders}
               setValue={setEditValue}
               getValues={getEditValues}
+              dict={dict}
             />
             <DialogFooter>
               <DialogClose
                 render={<Button variant="outline" type="button" />}
                 onClick={() => setEditTarget(null)}
               >
-                Cancel
+                {dict.common.cancel}
               </DialogClose>
               <Button type="submit" disabled={updating}>
-                {updating ? 'Saving…' : 'Save'}
+                {updating ? t.dialog.saving : dict.common.save}
               </Button>
             </DialogFooter>
           </form>
@@ -863,15 +942,15 @@ export function ExpensesPage({
       >
         <DialogContent className="sm:max-w-xs">
           <DialogHeader>
-            <DialogTitle>Delete expense</DialogTitle>
+            <DialogTitle>{t.deleteDialog.title}</DialogTitle>
           </DialogHeader>
           <div className="py-1">
             <p className="text-sm text-muted-foreground">
-              Are you sure you want to delete this{' '}
+              {t.deleteDialog.confirm.split('{category}')[0]}
               <span className="font-medium text-foreground">
-                {deleteTarget && CATEGORY_LABELS[deleteTarget.category]}
-              </span>{' '}
-              expense? This action cannot be undone.
+                {deleteTarget && categoryLabels[deleteTarget.category]}
+              </span>
+              {t.deleteDialog.confirm.split('{category}')[1]}
             </p>
           </div>
           <DialogFooter>
@@ -879,14 +958,14 @@ export function ExpensesPage({
               render={<Button variant="outline" type="button" />}
               onClick={() => setDeleteTarget(null)}
             >
-              Cancel
+              {dict.common.cancel}
             </DialogClose>
             <Button
               variant="destructive"
               onClick={handleDelete}
               disabled={deleting}
             >
-              {deleting ? 'Deleting…' : 'Delete'}
+              {deleting ? t.deleteDialog.deleting : dict.common.delete}
             </Button>
           </DialogFooter>
         </DialogContent>

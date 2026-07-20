@@ -3,6 +3,7 @@ import { normalizeRole } from '@/auth/roles';
 import { canAccess, canWrite } from '@/auth/permissions';
 import { redirect } from 'next/navigation';
 import { isLocale } from '@/i18n/config';
+import { getDictionary } from '@/i18n/get-dictionary';
 import { VendorsPage } from '@/components/dashboard/vendors-page';
 
 export default async function VendorsPageRoute({
@@ -20,6 +21,7 @@ export default async function VendorsPageRoute({
   }
 
   const writeAccess = canWrite(role, 'vendors');
+  const dict = await getDictionary(locale);
 
-  return <VendorsPage canWrite={writeAccess} />;
+  return <VendorsPage canWrite={writeAccess} dict={dict} />;
 }

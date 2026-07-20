@@ -69,17 +69,11 @@ import type {
   InvoiceResponse,
   InvoiceStatus,
 } from '@/types/api';
+import type { Dictionary } from '@/i18n/get-dictionary';
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 
 const STATUSES: InvoiceStatus[] = ['open', 'partially_paid', 'paid', 'overdue'];
-
-const STATUS_LABELS: Record<InvoiceStatus, string> = {
-  open: 'Open',
-  partially_paid: 'Partially paid',
-  paid: 'Paid',
-  overdue: 'Overdue',
-};
 
 const STATUS_STYLES: Record<InvoiceStatus, string> = {
   open: 'bg-blue-50 text-blue-700 border-blue-200',
@@ -88,10 +82,16 @@ const STATUS_STYLES: Record<InvoiceStatus, string> = {
   overdue: 'bg-red-50 text-red-700 border-red-200',
 };
 
-function StatusBadge({ status }: { status: InvoiceStatus }) {
+function StatusBadge({
+  status,
+  labels,
+}: {
+  status: InvoiceStatus;
+  labels: Dictionary['invoices']['status'];
+}) {
   return (
     <Badge variant="outline" className={STATUS_STYLES[status]}>
-      {STATUS_LABELS[status] ?? status}
+      {labels[status] ?? status}
     </Badge>
   );
 }
@@ -107,48 +107,41 @@ const LINE_ITEM_CATEGORIES: InvoiceLineItemCategory[] = [
   'other',
 ];
 
-const LINE_ITEM_CATEGORY_LABELS: Record<InvoiceLineItemCategory, string> = {
-  rent: 'Rent',
-  late_fee: 'Late fee',
-  utilities: 'Utilities',
-  damages: 'Damages',
-  deposit: 'Deposit',
-  other: 'Other',
-};
-
 // ── Form schema ──────────────────────────────────────────────────────────────
 
 const NONE = '__none__';
 
-const lineItemSchema = z.object({
-  category: z.enum([
-    'rent',
-    'late_fee',
-    'utilities',
-    'damages',
-    'deposit',
-    'other',
-  ]),
-  description: z.string().optional(),
-  amount: z
-    .string()
-    .min(1, 'Amount is required')
-    .refine(
-      (v) => !Number.isNaN(Number(v)) && Number(v) >= 0,
-      'Amount must be a positive number',
-    ),
-});
+function buildInvoiceSchema(
+  errors: Dictionary['invoices']['list']['form']['errors'],
+) {
+  const lineItemSchema = z.object({
+    category: z.enum([
+      'rent',
+      'late_fee',
+      'utilities',
+      'damages',
+      'deposit',
+      'other',
+    ]),
+    description: z.string().optional(),
+    amount: z
+      .string()
+      .min(1, errors.amountRequired)
+      .refine(
+        (v) => !Number.isNaN(Number(v)) && Number(v) >= 0,
+        errors.amountPositive,
+      ),
+  });
 
-const invoiceSchema = z.object({
-  leaseId: z.string().min(1, 'Lease is required'),
-  dueDate: z.string().min(1, 'Due date is required'),
-  notes: z.string().optional(),
-  lineItems: z
-    .array(lineItemSchema)
-    .min(1, 'At least one line item is required'),
-});
+  return z.object({
+    leaseId: z.string().min(1, errors.leaseRequired),
+    dueDate: z.string().min(1, errors.dueDateRequired),
+    notes: z.string().optional(),
+    lineItems: z.array(lineItemSchema).min(1, errors.lineItemsRequired),
+  });
+}
 
-type InvoiceFormValues = z.infer<typeof invoiceSchema>;
+type InvoiceFormValues = z.infer<ReturnType<typeof buildInvoiceSchema>>;
 
 const EMPTY_LINE_ITEM = {
   category: 'rent' as const,
@@ -170,11 +163,15 @@ function LineItemsFields({
   control,
   register,
   errors,
+  categoryLabels,
+  t,
 }: {
   idPrefix: string;
   control: ReturnType<typeof useForm<InvoiceFormValues>>['control'];
   register: ReturnType<typeof useForm<InvoiceFormValues>>['register'];
   errors: ReturnType<typeof useForm<InvoiceFormValues>>['formState']['errors'];
+  categoryLabels: Dictionary['invoices']['lineItemCategory'];
+  t: Dictionary['invoices']['list']['form']['lineItems'];
 }) {
   const { fields, append, remove } = useFieldArray({
     control,
@@ -185,7 +182,7 @@ function LineItemsFields({
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
         <Label>
-          Line items <span className="text-destructive">*</span>
+          {t.label} <span className="text-destructive">*</span>
         </Label>
         <Button
           type="button"
@@ -194,7 +191,7 @@ function LineItemsFields({
           onClick={() => append(EMPTY_LINE_ITEM)}
         >
           <PlusIcon className="size-3.5" />
-          Add row
+          {t.addRow}
         </Button>
       </div>
       {errors.lineItems?.root && (
@@ -223,15 +220,26 @@ function LineItemsFields({
                     >
                       <SelectTrigger
                         id={`${idPrefix}-li-${index}-category`}
-                        aria-label={`Line item ${index + 1} category`}
+                        aria-label={t.categoryAriaLabel.replace(
+                          '{n}',
+                          String(index + 1),
+                        )}
                         className="w-full"
                       >
-                        <SelectValue placeholder="Category" />
+                        <SelectValue>
+                          {(value: string | null) =>
+                            !value
+                              ? t.categoryPlaceholder
+                              : (categoryLabels[
+                                  value as InvoiceLineItemCategory
+                                ] ?? value)
+                          }
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {LINE_ITEM_CATEGORIES.map((c) => (
                           <SelectItem key={c} value={c}>
-                            {LINE_ITEM_CATEGORY_LABELS[c]}
+                            {categoryLabels[c]}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -241,8 +249,11 @@ function LineItemsFields({
               </div>
               <div className="flex flex-1 flex-col gap-1">
                 <Input
-                  placeholder="Description (optional)"
-                  aria-label={`Line item ${index + 1} description`}
+                  placeholder={t.descriptionPlaceholder}
+                  aria-label={t.descriptionAriaLabel.replace(
+                    '{n}',
+                    String(index + 1),
+                  )}
                   {...register(`lineItems.${index}.description`)}
                 />
               </div>
@@ -251,8 +262,11 @@ function LineItemsFields({
                   type="number"
                   step="0.01"
                   min="0"
-                  placeholder="0.00"
-                  aria-label={`Line item ${index + 1} amount`}
+                  placeholder={t.amountPlaceholder}
+                  aria-label={t.amountAriaLabel.replace(
+                    '{n}',
+                    String(index + 1),
+                  )}
                   aria-invalid={!!errors.lineItems?.[index]?.amount}
                   {...register(`lineItems.${index}.amount`)}
                 />
@@ -267,7 +281,7 @@ function LineItemsFields({
               type="button"
               variant="ghost"
               size="icon-sm"
-              aria-label="Remove line item"
+              aria-label={t.removeAriaLabel}
               disabled={fields.length === 1}
               onClick={() => remove(index)}
             >
@@ -286,10 +300,12 @@ function LeasePicker({
   value,
   onChange,
   error,
+  t,
 }: {
   value: string;
   onChange: (leaseId: string) => void;
   error?: string;
+  t: Dictionary['invoices']['list']['form']['leasePicker'];
 }) {
   const { data: buildings } = useListBuildingsQuery();
   const [buildingId, setBuildingId] = useState('');
@@ -319,7 +335,7 @@ function LeasePicker({
     <div className="flex flex-col gap-3 rounded-lg border p-3">
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         <div className="flex flex-col gap-1.5">
-          <Label>Building</Label>
+          <Label>{t.building}</Label>
           <Select
             value={buildingId || NONE}
             onValueChange={(v) => {
@@ -331,10 +347,16 @@ function LeasePicker({
             }}
           >
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select a building" />
+              <SelectValue>
+                {(value: string | null) =>
+                  !value || value === NONE
+                    ? t.selectBuilding
+                    : (buildings?.find((b) => b.id === value)?.name ?? value)
+                }
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={NONE}>Select a building</SelectItem>
+              <SelectItem value={NONE}>{t.selectBuilding}</SelectItem>
               {buildings?.map((b) => (
                 <SelectItem key={b.id} value={b.id}>
                   {b.name}
@@ -344,7 +366,7 @@ function LeasePicker({
           </Select>
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label>Floor</Label>
+          <Label>{t.floor}</Label>
           <Select
             value={floorId || NONE}
             onValueChange={(v) => {
@@ -356,10 +378,16 @@ function LeasePicker({
             disabled={!buildingId}
           >
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select a floor" />
+              <SelectValue>
+                {(value: string | null) =>
+                  !value || value === NONE
+                    ? t.selectFloor
+                    : (floors?.find((f) => f.id === value)?.name ?? value)
+                }
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={NONE}>Select a floor</SelectItem>
+              <SelectItem value={NONE}>{t.selectFloor}</SelectItem>
               {floors?.map((f) => (
                 <SelectItem key={f.id} value={f.id}>
                   {f.name}
@@ -369,7 +397,7 @@ function LeasePicker({
           </Select>
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label>Apartment</Label>
+          <Label>{t.apartment}</Label>
           <Select
             value={apartmentId || NONE}
             onValueChange={(v) => {
@@ -380,10 +408,17 @@ function LeasePicker({
             disabled={!floorId}
           >
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select an apartment" />
+              <SelectValue>
+                {(value: string | null) =>
+                  !value || value === NONE
+                    ? t.selectApartment
+                    : (apartments?.find((a) => a.id === value)?.unitNumber ??
+                      value)
+                }
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={NONE}>Select an apartment</SelectItem>
+              <SelectItem value={NONE}>{t.selectApartment}</SelectItem>
               {apartments?.map((a) => (
                 <SelectItem key={a.id} value={a.id}>
                   {a.unitNumber}
@@ -395,7 +430,7 @@ function LeasePicker({
       </div>
       <div className="flex flex-col gap-1.5">
         <Label>
-          Lease <span className="text-destructive">*</span>
+          {t.lease} <span className="text-destructive">*</span>
         </Label>
         <Select
           value={value || NONE}
@@ -403,10 +438,17 @@ function LeasePicker({
           disabled={!apartmentId}
         >
           <SelectTrigger className="w-full" aria-invalid={!!error}>
-            <SelectValue placeholder="Select a lease" />
+            <SelectValue>
+              {(leaseId: string | null) => {
+                if (!leaseId || leaseId === NONE) return t.selectLease;
+                const lease = leases?.find((l) => l.id === leaseId);
+                if (!lease) return leaseId;
+                return `${renterNameById.get(lease.renterId) ?? lease.renterId} · ${lease.effectiveStatus}`;
+              }}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={NONE}>Select a lease</SelectItem>
+            <SelectItem value={NONE}>{t.selectLease}</SelectItem>
             {leases?.map((l) => (
               <SelectItem key={l.id} value={l.id}>
                 {renterNameById.get(l.renterId) ?? l.renterId} ·{' '}
@@ -429,9 +471,11 @@ interface InvoicesPageProps {
   /** When false (supervisor), hide all write actions. */
   canWrite: boolean;
   locale: string;
+  dict: Dictionary;
 }
 
-export function InvoicesPage({ canWrite, locale }: InvoicesPageProps) {
+export function InvoicesPage({ canWrite, locale, dict }: InvoicesPageProps) {
+  const t = dict.invoices;
   const router = useRouter();
   const { data: invoices, isLoading, isError } = useListInvoicesQuery();
   const { data: buildings } = useListBuildingsQuery();
@@ -451,6 +495,11 @@ export function InvoicesPage({ canWrite, locale }: InvoicesPageProps) {
     null,
   );
 
+  const schema = useMemo(
+    () => buildInvoiceSchema(t.list.form.errors),
+    [t.list.form.errors],
+  );
+
   const {
     control: createControl,
     register: registerCreate,
@@ -458,7 +507,7 @@ export function InvoicesPage({ canWrite, locale }: InvoicesPageProps) {
     reset: resetCreate,
     formState: { errors: createErrors },
   } = useForm<InvoiceFormValues>({
-    resolver: zodResolver(invoiceSchema),
+    resolver: zodResolver(schema),
     defaultValues: EMPTY_VALUES,
   });
 
@@ -469,7 +518,7 @@ export function InvoicesPage({ canWrite, locale }: InvoicesPageProps) {
     reset: resetEdit,
     formState: { errors: editErrors },
   } = useForm<InvoiceFormValues>({
-    resolver: zodResolver(invoiceSchema),
+    resolver: zodResolver(schema),
     defaultValues: EMPTY_VALUES,
   });
 
@@ -512,11 +561,11 @@ export function InvoicesPage({ canWrite, locale }: InvoicesPageProps) {
           amount: Number(li.amount),
         })),
       }).unwrap();
-      toast.success('Invoice created.');
+      toast.success(t.list.dialog.create.success);
       setCreateOpen(false);
       resetCreate(EMPTY_VALUES);
     } catch {
-      toast.error('Failed to create invoice. Please try again.');
+      toast.error(t.list.dialog.create.error);
     }
   }
 
@@ -549,10 +598,10 @@ export function InvoicesPage({ canWrite, locale }: InvoicesPageProps) {
           })),
         },
       }).unwrap();
-      toast.success('Invoice updated.');
+      toast.success(t.list.dialog.edit.success);
       setEditTarget(null);
     } catch {
-      toast.error('Failed to update invoice.');
+      toast.error(t.list.dialog.edit.error);
     }
   }
 
@@ -560,10 +609,10 @@ export function InvoicesPage({ canWrite, locale }: InvoicesPageProps) {
     if (!deleteTarget) return;
     try {
       await deleteInvoice(deleteTarget.id).unwrap();
-      toast.success('Invoice deleted.');
+      toast.success(t.list.dialog.delete.success);
       setDeleteTarget(null);
     } catch {
-      toast.error('Failed to delete invoice. Please try again.');
+      toast.error(t.list.dialog.delete.error);
     }
   }
 
@@ -572,9 +621,11 @@ export function InvoicesPage({ canWrite, locale }: InvoicesPageProps) {
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Invoices</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {t.list.title}
+          </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Bills issued to renters — rent, late fees, utilities, and more.
+            {t.list.subtitle}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -584,7 +635,7 @@ export function InvoicesPage({ canWrite, locale }: InvoicesPageProps) {
               className="gap-1.5 text-xs text-muted-foreground"
             >
               <EyeIcon className="size-3" />
-              Read-only
+              {t.list.readOnly}
             </Badge>
           )}
           {canWrite && (
@@ -595,7 +646,7 @@ export function InvoicesPage({ canWrite, locale }: InvoicesPageProps) {
               }}
             >
               <PlusIcon />
-              New invoice
+              {t.list.newInvoice}
             </Button>
           )}
         </div>
@@ -605,16 +656,26 @@ export function InvoicesPage({ canWrite, locale }: InvoicesPageProps) {
       {hasAnyInvoices && (
         <div className="flex flex-wrap items-end gap-3 rounded-xl border bg-card p-4">
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="invoices-filter-building">Building</Label>
+            <Label htmlFor="invoices-filter-building">
+              {t.list.filters.buildingLabel}
+            </Label>
             <Select
               value={buildingFilter}
               onValueChange={(val) => setBuildingFilter(val ?? ALL)}
             >
               <SelectTrigger id="invoices-filter-building" className="w-44">
-                <SelectValue placeholder="All buildings" />
+                <SelectValue>
+                  {(value: string | null) =>
+                    !value || value === ALL
+                      ? t.list.filters.allBuildings
+                      : (buildingNameById.get(value) ?? value)
+                  }
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL}>All buildings</SelectItem>
+                <SelectItem value={ALL}>
+                  {t.list.filters.allBuildings}
+                </SelectItem>
                 {(buildings ?? []).map((b) => (
                   <SelectItem key={b.id} value={b.id}>
                     {b.name}
@@ -624,26 +685,38 @@ export function InvoicesPage({ canWrite, locale }: InvoicesPageProps) {
             </Select>
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="invoices-filter-status">Status</Label>
+            <Label htmlFor="invoices-filter-status">
+              {t.list.filters.statusLabel}
+            </Label>
             <Select
               value={statusFilter}
               onValueChange={(val) => setStatusFilter(val ?? ALL)}
             >
               <SelectTrigger id="invoices-filter-status" className="w-44">
-                <SelectValue placeholder="All statuses" />
+                <SelectValue>
+                  {(value: string | null) =>
+                    !value || value === ALL
+                      ? t.list.filters.allStatuses
+                      : (t.status[value as InvoiceStatus] ?? value)
+                  }
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL}>All statuses</SelectItem>
+                <SelectItem value={ALL}>
+                  {t.list.filters.allStatuses}
+                </SelectItem>
                 {STATUSES.map((s) => (
                   <SelectItem key={s} value={s}>
-                    {STATUS_LABELS[s]}
+                    {t.status[s]}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="invoices-filter-from">Due from</Label>
+            <Label htmlFor="invoices-filter-from">
+              {t.list.filters.dueFromLabel}
+            </Label>
             <Input
               id="invoices-filter-from"
               type="date"
@@ -653,7 +726,9 @@ export function InvoicesPage({ canWrite, locale }: InvoicesPageProps) {
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="invoices-filter-to">Due to</Label>
+            <Label htmlFor="invoices-filter-to">
+              {t.list.filters.dueToLabel}
+            </Label>
             <Input
               id="invoices-filter-to"
               type="date"
@@ -670,12 +745,12 @@ export function InvoicesPage({ canWrite, locale }: InvoicesPageProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Lease / Renter</TableHead>
-              <TableHead>Building</TableHead>
-              <TableHead>Due date</TableHead>
-              <TableHead>Total</TableHead>
-              <TableHead>Paid</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead>{t.list.table.leaseRenter}</TableHead>
+              <TableHead>{t.list.table.building}</TableHead>
+              <TableHead>{t.list.table.dueDate}</TableHead>
+              <TableHead>{t.list.table.total}</TableHead>
+              <TableHead>{t.list.table.paid}</TableHead>
+              <TableHead>{t.list.table.status}</TableHead>
               {canWrite && <TableHead className="w-10" />}
             </TableRow>
           </TableHeader>
@@ -712,7 +787,7 @@ export function InvoicesPage({ canWrite, locale }: InvoicesPageProps) {
                   colSpan={canWrite ? 7 : 6}
                   className="text-center py-10 text-muted-foreground"
                 >
-                  Failed to load invoices. Please try again.
+                  {t.list.loadError}
                 </TableCell>
               </TableRow>
             ) : !hasAnyInvoices ? (
@@ -722,9 +797,7 @@ export function InvoicesPage({ canWrite, locale }: InvoicesPageProps) {
                   className="text-center py-10 text-muted-foreground"
                 >
                   <FileTextIcon className="size-8 mx-auto mb-2 opacity-30" />
-                  {canWrite
-                    ? 'No invoices recorded yet. Create your first invoice.'
-                    : 'No invoices recorded yet.'}
+                  {canWrite ? t.list.emptyWrite : t.list.empty}
                 </TableCell>
               </TableRow>
             ) : filteredInvoices.length === 0 ? (
@@ -733,7 +806,7 @@ export function InvoicesPage({ canWrite, locale }: InvoicesPageProps) {
                   colSpan={canWrite ? 7 : 6}
                   className="text-center py-10 text-muted-foreground"
                 >
-                  No invoices match the selected filters.
+                  {t.list.noMatch}
                 </TableCell>
               </TableRow>
             ) : (
@@ -769,7 +842,7 @@ export function InvoicesPage({ canWrite, locale }: InvoicesPageProps) {
                     {invoice.paidAmount}
                   </TableCell>
                   <TableCell>
-                    <StatusBadge status={invoice.status} />
+                    <StatusBadge status={invoice.status} labels={t.status} />
                   </TableCell>
                   {canWrite && (
                     <TableCell onClick={(e) => e.stopPropagation()}>
@@ -779,7 +852,7 @@ export function InvoicesPage({ canWrite, locale }: InvoicesPageProps) {
                             <Button
                               variant="ghost"
                               size="icon-sm"
-                              aria-label="Invoice actions"
+                              aria-label={t.list.actionsLabel}
                             />
                           }
                         >
@@ -790,11 +863,11 @@ export function InvoicesPage({ canWrite, locale }: InvoicesPageProps) {
                             onClick={() => goToInvoice(invoice.id)}
                           >
                             <EyeIcon className="size-3.5 mr-1.5" />
-                            View
+                            {t.list.view}
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => openEdit(invoice)}>
                             <PencilIcon className="size-3.5 mr-1.5" />
-                            Edit
+                            {dict.common.edit}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
@@ -802,7 +875,7 @@ export function InvoicesPage({ canWrite, locale }: InvoicesPageProps) {
                             onClick={() => setDeleteTarget(invoice)}
                           >
                             <TrashIcon className="size-3.5 mr-1.5" />
-                            Delete
+                            {dict.common.delete}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -819,7 +892,7 @@ export function InvoicesPage({ canWrite, locale }: InvoicesPageProps) {
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>New invoice</DialogTitle>
+            <DialogTitle>{t.list.dialog.create.title}</DialogTitle>
           </DialogHeader>
           <form
             onSubmit={handleCreate(onCreateSubmit)}
@@ -833,12 +906,14 @@ export function InvoicesPage({ canWrite, locale }: InvoicesPageProps) {
                   value={field.value}
                   onChange={field.onChange}
                   error={createErrors.leaseId?.message}
+                  t={t.list.form.leasePicker}
                 />
               )}
             />
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="ci-dueDate">
-                Due date <span className="text-destructive">*</span>
+                {t.list.form.dueDate}{' '}
+                <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="ci-dueDate"
@@ -857,17 +932,19 @@ export function InvoicesPage({ canWrite, locale }: InvoicesPageProps) {
               control={createControl}
               register={registerCreate}
               errors={createErrors}
+              categoryLabels={t.lineItemCategory}
+              t={t.list.form.lineItems}
             />
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="ci-notes">
-                Notes{' '}
+                {t.list.form.notes}{' '}
                 <span className="text-muted-foreground font-normal">
-                  (optional)
+                  {t.list.form.optional}
                 </span>
               </Label>
               <Textarea
                 id="ci-notes"
-                placeholder="Any notes…"
+                placeholder={t.list.form.notesPlaceholder}
                 rows={2}
                 {...registerCreate('notes')}
               />
@@ -880,10 +957,12 @@ export function InvoicesPage({ canWrite, locale }: InvoicesPageProps) {
                   resetCreate(EMPTY_VALUES);
                 }}
               >
-                Cancel
+                {dict.common.cancel}
               </DialogClose>
               <Button type="submit" disabled={creating}>
-                {creating ? 'Creating…' : 'Create'}
+                {creating
+                  ? t.list.dialog.create.submitting
+                  : t.list.dialog.create.submit}
               </Button>
             </DialogFooter>
           </form>
@@ -899,24 +978,27 @@ export function InvoicesPage({ canWrite, locale }: InvoicesPageProps) {
       >
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Edit invoice</DialogTitle>
+            <DialogTitle>{t.list.dialog.edit.title}</DialogTitle>
           </DialogHeader>
           <form
             onSubmit={handleEdit(onEditSubmit)}
             className="flex flex-col gap-4"
           >
             <div className="flex flex-col gap-1.5 rounded-lg border bg-muted/40 p-3">
-              <Label className="text-muted-foreground">Lease</Label>
+              <Label className="text-muted-foreground">
+                {t.list.dialog.edit.leaseLabel}
+              </Label>
               <p className="text-sm font-medium">
                 {editTarget?.renterName} · {editTarget?.apartmentUnitNumber}
               </p>
               <p className="text-xs text-muted-foreground">
-                The lease on an invoice can&apos;t be changed after creation.
+                {t.list.dialog.edit.leaseLockedNote}
               </p>
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="ei-dueDate">
-                Due date <span className="text-destructive">*</span>
+                {t.list.form.dueDate}{' '}
+                <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="ei-dueDate"
@@ -935,17 +1017,19 @@ export function InvoicesPage({ canWrite, locale }: InvoicesPageProps) {
               control={editControl}
               register={registerEdit}
               errors={editErrors}
+              categoryLabels={t.lineItemCategory}
+              t={t.list.form.lineItems}
             />
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="ei-notes">
-                Notes{' '}
+                {t.list.form.notes}{' '}
                 <span className="text-muted-foreground font-normal">
-                  (optional)
+                  {t.list.form.optional}
                 </span>
               </Label>
               <Textarea
                 id="ei-notes"
-                placeholder="Any notes…"
+                placeholder={t.list.form.notesPlaceholder}
                 rows={2}
                 {...registerEdit('notes')}
               />
@@ -955,10 +1039,10 @@ export function InvoicesPage({ canWrite, locale }: InvoicesPageProps) {
                 render={<Button variant="outline" type="button" />}
                 onClick={() => setEditTarget(null)}
               >
-                Cancel
+                {dict.common.cancel}
               </DialogClose>
               <Button type="submit" disabled={updating}>
-                {updating ? 'Saving…' : 'Save'}
+                {updating ? t.list.dialog.edit.submitting : dict.common.save}
               </Button>
             </DialogFooter>
           </form>
@@ -974,15 +1058,15 @@ export function InvoicesPage({ canWrite, locale }: InvoicesPageProps) {
       >
         <DialogContent className="sm:max-w-xs">
           <DialogHeader>
-            <DialogTitle>Delete invoice</DialogTitle>
+            <DialogTitle>{t.list.dialog.delete.title}</DialogTitle>
           </DialogHeader>
           <div className="py-1">
             <p className="text-sm text-muted-foreground">
-              Are you sure you want to delete the invoice for{' '}
+              {t.list.dialog.delete.confirmPrefix}{' '}
               <span className="font-medium text-foreground">
                 {deleteTarget?.renterName}
               </span>
-              ? This action cannot be undone.
+              {t.list.dialog.delete.confirmSuffix}
             </p>
           </div>
           <DialogFooter>
@@ -990,14 +1074,14 @@ export function InvoicesPage({ canWrite, locale }: InvoicesPageProps) {
               render={<Button variant="outline" type="button" />}
               onClick={() => setDeleteTarget(null)}
             >
-              Cancel
+              {dict.common.cancel}
             </DialogClose>
             <Button
               variant="destructive"
               onClick={handleDelete}
               disabled={deleting}
             >
-              {deleting ? 'Deleting…' : 'Delete'}
+              {deleting ? t.list.dialog.delete.confirming : dict.common.delete}
             </Button>
           </DialogFooter>
         </DialogContent>

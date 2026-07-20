@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -67,6 +67,7 @@ import type {
   MaintenanceRequestResponse,
   MaintenanceRequestStatus,
 } from '@/types/api';
+import type { Dictionary } from '@/i18n/get-dictionary';
 
 // ── Status / priority badges ────────────────────────────────────────────────
 
@@ -77,13 +78,6 @@ const STATUSES: MaintenanceRequestStatus[] = [
   'closed',
 ];
 
-const STATUS_LABELS: Record<MaintenanceRequestStatus, string> = {
-  open: 'Open',
-  in_progress: 'In progress',
-  resolved: 'Resolved',
-  closed: 'Closed',
-};
-
 const STATUS_STYLES: Record<MaintenanceRequestStatus, string> = {
   open: 'bg-amber-50 text-amber-700 border-amber-200',
   in_progress: 'bg-blue-50 text-blue-700 border-blue-200',
@@ -93,12 +87,14 @@ const STATUS_STYLES: Record<MaintenanceRequestStatus, string> = {
 
 function MaintenanceStatusBadge({
   status,
+  labels,
 }: {
   status: MaintenanceRequestStatus;
+  labels: Dictionary['tasks']['status'];
 }) {
   return (
     <Badge variant="outline" className={STATUS_STYLES[status]}>
-      {STATUS_LABELS[status] ?? status}
+      {labels[status] ?? status}
     </Badge>
   );
 }
@@ -110,13 +106,6 @@ const PRIORITIES: MaintenanceRequestPriority[] = [
   'urgent',
 ];
 
-const PRIORITY_LABELS: Record<MaintenanceRequestPriority, string> = {
-  low: 'Low',
-  medium: 'Medium',
-  high: 'High',
-  urgent: 'Urgent',
-};
-
 const PRIORITY_STYLES: Record<MaintenanceRequestPriority, string> = {
   low: 'bg-muted text-muted-foreground border-transparent',
   medium: 'bg-blue-50 text-blue-700 border-blue-200',
@@ -126,30 +115,34 @@ const PRIORITY_STYLES: Record<MaintenanceRequestPriority, string> = {
 
 function MaintenancePriorityBadge({
   priority,
+  labels,
 }: {
   priority: MaintenanceRequestPriority;
+  labels: Dictionary['tasks']['priority'];
 }) {
   return (
     <Badge variant="outline" className={PRIORITY_STYLES[priority]}>
-      {PRIORITY_LABELS[priority] ?? priority}
+      {labels[priority] ?? priority}
     </Badge>
   );
 }
 
 // ── Create form ──────────────────────────────────────────────────────────────
 
-const createSchema = z.object({
-  buildingId: z.string().min(1, 'Building is required'),
-  floorId: z.string().min(1, 'Floor is required'),
-  apartmentId: z.string().min(1, 'Apartment is required'),
-  renterId: z.string().min(1, 'Renter is required'),
-  title: z.string().min(1, 'Title is required'),
-  description: z.string().optional(),
-  priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
-  notes: z.string().optional(),
-});
+function buildCreateSchema(t: Dictionary['tasks']['dialog']['create']) {
+  return z.object({
+    buildingId: z.string().min(1, t.errors.building),
+    floorId: z.string().min(1, t.errors.floor),
+    apartmentId: z.string().min(1, t.errors.apartment),
+    renterId: z.string().min(1, t.errors.renter),
+    title: z.string().min(1, t.errors.title),
+    description: z.string().optional(),
+    priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
+    notes: z.string().optional(),
+  });
+}
 
-type CreateFormValues = z.infer<typeof createSchema>;
+type CreateFormValues = z.infer<ReturnType<typeof buildCreateSchema>>;
 
 const CREATE_EMPTY_VALUES: CreateFormValues = {
   buildingId: '',
@@ -167,15 +160,17 @@ const CREATE_EMPTY_VALUES: CreateFormValues = {
 // re-pickable — same "implicit from the existing record" simplification
 // used by the Lease renewal dialog for renter/unit.
 
-const editSchema = z.object({
-  title: z.string().min(1, 'Title is required'),
-  description: z.string().optional(),
-  status: z.enum(['open', 'in_progress', 'resolved', 'closed']),
-  priority: z.enum(['low', 'medium', 'high', 'urgent']),
-  notes: z.string().optional(),
-});
+function buildEditSchema(t: Dictionary['tasks']['dialog']['edit']) {
+  return z.object({
+    title: z.string().min(1, t.errors.title),
+    description: z.string().optional(),
+    status: z.enum(['open', 'in_progress', 'resolved', 'closed']),
+    priority: z.enum(['low', 'medium', 'high', 'urgent']),
+    notes: z.string().optional(),
+  });
+}
 
-type EditFormValues = z.infer<typeof editSchema>;
+type EditFormValues = z.infer<ReturnType<typeof buildEditSchema>>;
 
 // ── Main component ────────────────────────────────────────────────────────────
 
@@ -183,9 +178,11 @@ interface TasksPageProps {
   /** When false (non-admin), hide all write actions. */
   canWrite: boolean;
   locale: string;
+  dict: Dictionary;
 }
 
-export function TasksPage({ canWrite, locale }: TasksPageProps) {
+export function TasksPage({ canWrite, locale, dict }: TasksPageProps) {
+  const t = dict.tasks;
   const router = useRouter();
   const {
     data: requests,
@@ -207,6 +204,11 @@ export function TasksPage({ canWrite, locale }: TasksPageProps) {
     useState<MaintenanceRequestResponse | null>(null);
   const [deleteTarget, setDeleteTarget] =
     useState<MaintenanceRequestResponse | null>(null);
+
+  const createSchema = useMemo(
+    () => buildCreateSchema(t.dialog.create),
+    [t.dialog.create],
+  );
 
   const {
     control: createControl,
@@ -232,6 +234,11 @@ export function TasksPage({ canWrite, locale }: TasksPageProps) {
     { skip: !createBuildingId || !createFloorId },
   );
 
+  const editSchema = useMemo(
+    () => buildEditSchema(t.dialog.edit),
+    [t.dialog.edit],
+  );
+
   const {
     register: regEdit,
     control: editControl,
@@ -253,11 +260,11 @@ export function TasksPage({ canWrite, locale }: TasksPageProps) {
         priority: values.priority,
         notes: values.notes || undefined,
       }).unwrap();
-      toast.success('Maintenance request created.');
+      toast.success(t.dialog.create.success);
       setCreateOpen(false);
       resetCreate(CREATE_EMPTY_VALUES);
     } catch {
-      toast.error('Failed to create maintenance request. Please try again.');
+      toast.error(t.dialog.create.genericError);
     }
   }
 
@@ -285,10 +292,10 @@ export function TasksPage({ canWrite, locale }: TasksPageProps) {
           notes: values.notes || undefined,
         },
       }).unwrap();
-      toast.success('Maintenance request updated.');
+      toast.success(t.dialog.edit.success);
       setEditTarget(null);
     } catch {
-      toast.error('Failed to update maintenance request.');
+      toast.error(t.dialog.edit.error);
     }
   }
 
@@ -296,10 +303,10 @@ export function TasksPage({ canWrite, locale }: TasksPageProps) {
     if (!deleteTarget) return;
     try {
       await deleteMaintenanceRequest(deleteTarget.id).unwrap();
-      toast.success('Maintenance request deleted.');
+      toast.success(t.dialog.delete.success);
       setDeleteTarget(null);
     } catch {
-      toast.error('Failed to delete maintenance request.');
+      toast.error(t.dialog.delete.error);
     }
   }
 
@@ -312,11 +319,11 @@ export function TasksPage({ canWrite, locale }: TasksPageProps) {
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Tasks</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {t.list.title}
+          </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {canWrite
-              ? 'Maintenance requests for your assigned buildings.'
-              : 'Maintenance requests for your assigned buildings, read-only.'}
+            {canWrite ? t.list.subtitle : t.list.subtitleReadonly}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -326,13 +333,13 @@ export function TasksPage({ canWrite, locale }: TasksPageProps) {
               className="gap-1.5 text-xs text-muted-foreground"
             >
               <EyeIcon className="size-3" />
-              Read-only
+              {t.list.readOnly}
             </Badge>
           )}
           {canWrite && (
             <Button onClick={() => setCreateOpen(true)}>
               <PlusIcon />
-              New request
+              {t.list.newRequest}
             </Button>
           )}
         </div>
@@ -343,11 +350,11 @@ export function TasksPage({ canWrite, locale }: TasksPageProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Title</TableHead>
-              <TableHead>Apartment</TableHead>
-              <TableHead>Renter</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Priority</TableHead>
+              <TableHead>{t.list.table.title}</TableHead>
+              <TableHead>{t.list.table.apartment}</TableHead>
+              <TableHead>{t.list.table.renter}</TableHead>
+              <TableHead>{t.list.table.status}</TableHead>
+              <TableHead>{t.list.table.priority}</TableHead>
               {canWrite && <TableHead className="w-10" />}
             </TableRow>
           </TableHeader>
@@ -381,7 +388,7 @@ export function TasksPage({ canWrite, locale }: TasksPageProps) {
                   colSpan={canWrite ? 6 : 5}
                   className="text-center py-10 text-muted-foreground"
                 >
-                  Failed to load maintenance requests. Please try again.
+                  {t.list.loadError}
                 </TableCell>
               </TableRow>
             ) : requests?.length === 0 ? (
@@ -391,9 +398,7 @@ export function TasksPage({ canWrite, locale }: TasksPageProps) {
                   className="text-center py-10 text-muted-foreground"
                 >
                   <WrenchIcon className="size-8 mx-auto mb-2 opacity-30" />
-                  {canWrite
-                    ? 'No maintenance requests yet. Log your first request.'
-                    : 'No maintenance requests yet.'}
+                  {canWrite ? t.empty.write : t.empty.default}
                 </TableCell>
               </TableRow>
             ) : (
@@ -421,10 +426,16 @@ export function TasksPage({ canWrite, locale }: TasksPageProps) {
                     {request.renterName}
                   </TableCell>
                   <TableCell>
-                    <MaintenanceStatusBadge status={request.status} />
+                    <MaintenanceStatusBadge
+                      status={request.status}
+                      labels={t.status}
+                    />
                   </TableCell>
                   <TableCell>
-                    <MaintenancePriorityBadge priority={request.priority} />
+                    <MaintenancePriorityBadge
+                      priority={request.priority}
+                      labels={t.priority}
+                    />
                   </TableCell>
                   {canWrite && (
                     <TableCell onClick={(e) => e.stopPropagation()}>
@@ -434,7 +445,7 @@ export function TasksPage({ canWrite, locale }: TasksPageProps) {
                             <Button
                               variant="ghost"
                               size="icon-sm"
-                              aria-label="Maintenance request actions"
+                              aria-label={t.list.actionsLabel}
                             >
                               <MoreHorizontalIcon />
                             </Button>
@@ -445,11 +456,11 @@ export function TasksPage({ canWrite, locale }: TasksPageProps) {
                             onClick={() => goToRequest(request.id)}
                           >
                             <EyeIcon className="size-3.5 mr-1.5" />
-                            View
+                            {t.list.actions.view}
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => openEdit(request)}>
                             <PencilIcon className="size-3.5 mr-1.5" />
-                            Edit
+                            {dict.common.edit}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
@@ -457,7 +468,7 @@ export function TasksPage({ canWrite, locale }: TasksPageProps) {
                             onClick={() => setDeleteTarget(request)}
                           >
                             <TrashIcon className="size-3.5 mr-1.5" />
-                            Delete
+                            {dict.common.delete}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -480,7 +491,7 @@ export function TasksPage({ canWrite, locale }: TasksPageProps) {
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>New maintenance request</DialogTitle>
+            <DialogTitle>{t.dialog.create.title}</DialogTitle>
           </DialogHeader>
           <form
             onSubmit={handleCreate(onCreateSubmit)}
@@ -488,7 +499,8 @@ export function TasksPage({ canWrite, locale }: TasksPageProps) {
           >
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="mr-building">
-                Building <span className="text-destructive">*</span>
+                {t.dialog.create.building}{' '}
+                <span className="text-destructive">*</span>
               </Label>
               <Controller
                 control={createControl}
@@ -503,7 +515,14 @@ export function TasksPage({ canWrite, locale }: TasksPageProps) {
                     }}
                   >
                     <SelectTrigger id="mr-building" className="w-full">
-                      <SelectValue placeholder="Select a building" />
+                      <SelectValue>
+                        {(value) =>
+                          !value
+                            ? t.dialog.create.selectBuilding
+                            : (buildings?.find((b) => b.id === value)?.name ??
+                              value)
+                        }
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {buildings?.map((building) => (
@@ -523,7 +542,8 @@ export function TasksPage({ canWrite, locale }: TasksPageProps) {
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="mr-floor">
-                Floor <span className="text-destructive">*</span>
+                {t.dialog.create.floor}{' '}
+                <span className="text-destructive">*</span>
               </Label>
               <Controller
                 control={createControl}
@@ -538,7 +558,14 @@ export function TasksPage({ canWrite, locale }: TasksPageProps) {
                     disabled={!createBuildingId}
                   >
                     <SelectTrigger id="mr-floor" className="w-full">
-                      <SelectValue placeholder="Select a floor" />
+                      <SelectValue>
+                        {(value) =>
+                          !value
+                            ? t.dialog.create.selectFloor
+                            : (createFloors?.find((f) => f.id === value)
+                                ?.name ?? value)
+                        }
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {createFloors?.map((floor) => (
@@ -558,7 +585,8 @@ export function TasksPage({ canWrite, locale }: TasksPageProps) {
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="mr-apartment">
-                Apartment <span className="text-destructive">*</span>
+                {t.dialog.create.apartment}{' '}
+                <span className="text-destructive">*</span>
               </Label>
               <Controller
                 control={createControl}
@@ -570,7 +598,14 @@ export function TasksPage({ canWrite, locale }: TasksPageProps) {
                     disabled={!createFloorId}
                   >
                     <SelectTrigger id="mr-apartment" className="w-full">
-                      <SelectValue placeholder="Select an apartment" />
+                      <SelectValue>
+                        {(value) =>
+                          !value
+                            ? t.dialog.create.selectApartment
+                            : (createApartments?.find((a) => a.id === value)
+                                ?.unitNumber ?? value)
+                        }
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {createApartments?.map((apartment) => (
@@ -590,7 +625,8 @@ export function TasksPage({ canWrite, locale }: TasksPageProps) {
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="mr-renter">
-                Renter <span className="text-destructive">*</span>
+                {t.dialog.create.renter}{' '}
+                <span className="text-destructive">*</span>
               </Label>
               <Controller
                 control={createControl}
@@ -598,7 +634,14 @@ export function TasksPage({ canWrite, locale }: TasksPageProps) {
                 render={({ field }) => (
                   <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger id="mr-renter" className="w-full">
-                      <SelectValue placeholder="Select a renter" />
+                      <SelectValue>
+                        {(value) =>
+                          !value
+                            ? t.dialog.create.selectRenter
+                            : (renters?.find((r) => r.id === value)?.fullName ??
+                              value)
+                        }
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {renters?.map((renter) => (
@@ -618,11 +661,12 @@ export function TasksPage({ canWrite, locale }: TasksPageProps) {
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="mr-title">
-                Title <span className="text-destructive">*</span>
+                {t.dialog.create.titleField}{' '}
+                <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="mr-title"
-                placeholder="Leaky faucet in kitchen"
+                placeholder={t.dialog.create.titlePlaceholder}
                 aria-invalid={!!createErrors.title}
                 {...regCreate('title')}
               />
@@ -634,32 +678,40 @@ export function TasksPage({ canWrite, locale }: TasksPageProps) {
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="mr-description">
-                Description{' '}
+                {t.dialog.create.description}{' '}
                 <span className="text-muted-foreground font-normal">
-                  (optional)
+                  {t.dialog.create.optional}
                 </span>
               </Label>
               <Textarea
                 id="mr-description"
-                placeholder="Describe the issue…"
+                placeholder={t.dialog.create.descriptionPlaceholder}
                 rows={2}
                 {...regCreate('description')}
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="mr-priority">Priority</Label>
+              <Label htmlFor="mr-priority">{t.dialog.create.priority}</Label>
               <Controller
                 control={createControl}
                 name="priority"
                 render={({ field }) => (
                   <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger id="mr-priority" className="w-full">
-                      <SelectValue placeholder="Select a priority" />
+                      <SelectValue>
+                        {(value) =>
+                          !value
+                            ? t.dialog.create.selectPriority
+                            : (t.priority[
+                                value as MaintenanceRequestPriority
+                              ] ?? value)
+                        }
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {PRIORITIES.map((priority) => (
                         <SelectItem key={priority} value={priority}>
-                          {PRIORITY_LABELS[priority]}
+                          {t.priority[priority]}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -669,14 +721,14 @@ export function TasksPage({ canWrite, locale }: TasksPageProps) {
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="mr-notes">
-                Notes{' '}
+                {t.dialog.create.notes}{' '}
                 <span className="text-muted-foreground font-normal">
-                  (optional)
+                  {t.dialog.create.optional}
                 </span>
               </Label>
               <Textarea
                 id="mr-notes"
-                placeholder="Any notes…"
+                placeholder={t.dialog.create.notesPlaceholder}
                 rows={2}
                 {...regCreate('notes')}
               />
@@ -689,10 +741,10 @@ export function TasksPage({ canWrite, locale }: TasksPageProps) {
                   resetCreate(CREATE_EMPTY_VALUES);
                 }}
               >
-                Cancel
+                {dict.common.cancel}
               </DialogClose>
               <Button type="submit" disabled={creating}>
-                {creating ? 'Creating…' : 'Create'}
+                {creating ? t.dialog.create.creating : t.dialog.create.create}
               </Button>
             </DialogFooter>
           </form>
@@ -708,12 +760,13 @@ export function TasksPage({ canWrite, locale }: TasksPageProps) {
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit maintenance request</DialogTitle>
+            <DialogTitle>{t.dialog.edit.title}</DialogTitle>
           </DialogHeader>
           {editTarget && (
             <div className="text-sm text-muted-foreground -mt-2">
-              Apartment {editTarget.apartmentUnitNumber} ·{' '}
-              {editTarget.renterName}
+              {t.dialog.edit.context
+                .replace('{apartment}', editTarget.apartmentUnitNumber)
+                .replace('{renter}', editTarget.renterName)}
             </div>
           )}
           <form
@@ -722,7 +775,8 @@ export function TasksPage({ canWrite, locale }: TasksPageProps) {
           >
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="mre-title">
-                Title <span className="text-destructive">*</span>
+                {t.dialog.edit.titleField}{' '}
+                <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="mre-title"
@@ -737,9 +791,9 @@ export function TasksPage({ canWrite, locale }: TasksPageProps) {
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="mre-description">
-                Description{' '}
+                {t.dialog.edit.description}{' '}
                 <span className="text-muted-foreground font-normal">
-                  (optional)
+                  {t.dialog.edit.optional}
                 </span>
               </Label>
               <Textarea
@@ -750,19 +804,26 @@ export function TasksPage({ canWrite, locale }: TasksPageProps) {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="mre-status">Status</Label>
+                <Label htmlFor="mre-status">{t.dialog.edit.status}</Label>
                 <Controller
                   control={editControl}
                   name="status"
                   render={({ field }) => (
                     <Select value={field.value} onValueChange={field.onChange}>
                       <SelectTrigger id="mre-status" className="w-full">
-                        <SelectValue placeholder="Select a status" />
+                        <SelectValue>
+                          {(value) =>
+                            !value
+                              ? t.dialog.edit.selectStatus
+                              : (t.status[value as MaintenanceRequestStatus] ??
+                                value)
+                          }
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {STATUSES.map((status) => (
                           <SelectItem key={status} value={status}>
-                            {STATUS_LABELS[status]}
+                            {t.status[status]}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -771,19 +832,27 @@ export function TasksPage({ canWrite, locale }: TasksPageProps) {
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="mre-priority">Priority</Label>
+                <Label htmlFor="mre-priority">{t.dialog.edit.priority}</Label>
                 <Controller
                   control={editControl}
                   name="priority"
                   render={({ field }) => (
                     <Select value={field.value} onValueChange={field.onChange}>
                       <SelectTrigger id="mre-priority" className="w-full">
-                        <SelectValue placeholder="Select a priority" />
+                        <SelectValue>
+                          {(value) =>
+                            !value
+                              ? t.dialog.edit.selectPriority
+                              : (t.priority[
+                                  value as MaintenanceRequestPriority
+                                ] ?? value)
+                          }
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {PRIORITIES.map((priority) => (
                           <SelectItem key={priority} value={priority}>
-                            {PRIORITY_LABELS[priority]}
+                            {t.priority[priority]}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -794,9 +863,9 @@ export function TasksPage({ canWrite, locale }: TasksPageProps) {
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="mre-notes">
-                Notes{' '}
+                {t.dialog.edit.notes}{' '}
                 <span className="text-muted-foreground font-normal">
-                  (optional)
+                  {t.dialog.edit.optional}
                 </span>
               </Label>
               <Textarea id="mre-notes" rows={2} {...regEdit('notes')} />
@@ -806,10 +875,10 @@ export function TasksPage({ canWrite, locale }: TasksPageProps) {
                 render={<Button variant="outline" type="button" />}
                 onClick={() => setEditTarget(null)}
               >
-                Cancel
+                {dict.common.cancel}
               </DialogClose>
               <Button type="submit" disabled={updating}>
-                {updating ? 'Saving…' : 'Save'}
+                {updating ? t.dialog.edit.saving : dict.common.save}
               </Button>
             </DialogFooter>
           </form>
@@ -825,15 +894,15 @@ export function TasksPage({ canWrite, locale }: TasksPageProps) {
       >
         <DialogContent className="sm:max-w-xs">
           <DialogHeader>
-            <DialogTitle>Delete maintenance request</DialogTitle>
+            <DialogTitle>{t.dialog.delete.title}</DialogTitle>
           </DialogHeader>
           <div className="py-1">
             <p className="text-sm text-muted-foreground">
-              Are you sure you want to delete{' '}
+              {t.dialog.delete.confirmBefore}{' '}
               <span className="font-medium text-foreground">
                 {deleteTarget?.title}
               </span>
-              ? This action cannot be undone.
+              {t.dialog.delete.confirmAfter}
             </p>
           </div>
           <DialogFooter>
@@ -841,14 +910,14 @@ export function TasksPage({ canWrite, locale }: TasksPageProps) {
               render={<Button variant="outline" type="button" />}
               onClick={() => setDeleteTarget(null)}
             >
-              Cancel
+              {dict.common.cancel}
             </DialogClose>
             <Button
               variant="destructive"
               onClick={handleDelete}
               disabled={deleting}
             >
-              {deleting ? 'Deleting…' : 'Delete'}
+              {deleting ? t.dialog.delete.deleting : dict.common.delete}
             </Button>
           </DialogFooter>
         </DialogContent>

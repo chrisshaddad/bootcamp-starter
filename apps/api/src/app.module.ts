@@ -1,12 +1,19 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
+import { BullModule } from '@nestjs/bullmq';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
 import { appConfig } from '@/config/app.config';
 import { databaseConfig } from '@/config/database.config';
 import { envValidationSchema } from '@/config/env.validation';
 import { keycloakConfig } from '@/config/keycloak.config';
+import { mailConfig } from '@/config/mail.config';
+import {
+  buildRedisConnection,
+  DEFAULT_REDIS_URL,
+  redisConfig,
+} from '@/config/redis.config';
 import { stripeConfig } from '@/config/stripe.config';
 import { JwtAuthGuard, RolesGuard } from '@/common/guards';
 import { KeycloakModule } from '@/infrastructure/keycloak/keycloak.module';
@@ -33,6 +40,10 @@ import { WorkOrdersModule } from '@/modules/work-orders/work-orders.module';
 import { ExpensesModule } from '@/modules/expenses/expenses.module';
 import { InvoicesModule } from '@/modules/invoices/invoices.module';
 import { InvoicePaymentsModule } from '@/modules/invoice-payments/invoice-payments.module';
+import { NotificationsModule } from '@/modules/notifications/notifications.module';
+import { SupportTicketsModule } from '@/modules/support-tickets/support-tickets.module';
+import { ReportsModule } from '@/modules/reports/reports.module';
+import { TenantModule } from '@/modules/tenant/tenant.module';
 
 @Module({
   imports: [
@@ -44,8 +55,23 @@ import { InvoicePaymentsModule } from '@/modules/invoice-payments/invoice-paymen
           : '.env.local',
         '.env',
       ],
-      load: [appConfig, databaseConfig, keycloakConfig, stripeConfig],
+      load: [
+        appConfig,
+        databaseConfig,
+        keycloakConfig,
+        mailConfig,
+        redisConfig,
+        stripeConfig,
+      ],
       validationSchema: envValidationSchema,
+    }),
+    BullModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        connection: buildRedisConnection(
+          config.get<string>('redis.url') ?? DEFAULT_REDIS_URL,
+        ),
+      }),
     }),
     LoggerModule.forRoot({
       pinoHttp: {
@@ -80,6 +106,10 @@ import { InvoicePaymentsModule } from '@/modules/invoice-payments/invoice-paymen
     ExpensesModule,
     InvoicesModule,
     InvoicePaymentsModule,
+    NotificationsModule,
+    SupportTicketsModule,
+    ReportsModule,
+    TenantModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

@@ -3,6 +3,7 @@ import { normalizeRole } from '@/auth/roles';
 import { canAccess } from '@/auth/permissions';
 import { redirect } from 'next/navigation';
 import { isLocale } from '@/i18n/config';
+import { getDictionary } from '@/i18n/get-dictionary';
 import { TasksPage } from '@/components/dashboard/tasks-page';
 
 export default async function TasksPageRoute({
@@ -19,8 +20,12 @@ export default async function TasksPageRoute({
     redirect(`/${locale}/dashboard`);
   }
 
+  const dict = await getDictionary(locale);
+
   // Maintenance Request writes are org_admin only — 'tasks' is 'full' for
   // maintenance at the page-permission level, but that access doesn't
   // extend to MR create/edit/delete (enforced in MaintenanceRequestsService).
-  return <TasksPage canWrite={role === 'org_admin'} locale={locale} />;
+  return (
+    <TasksPage canWrite={role === 'org_admin'} locale={locale} dict={dict} />
+  );
 }

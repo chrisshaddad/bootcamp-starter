@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -51,6 +51,7 @@ import {
   useDeleteVendorMutation,
 } from '@/store/api/endpoints/vendors.api';
 import type { VendorResponse, VendorServiceType } from '@/types/api';
+import type { Dictionary } from '@/i18n/get-dictionary';
 
 // ── Services-offered ─────────────────────────────────────────────────────────
 
@@ -64,20 +65,12 @@ const SERVICE_TYPES: VendorServiceType[] = [
   'other',
 ];
 
-const SERVICE_TYPE_LABELS: Record<VendorServiceType, string> = {
-  plumbing: 'Plumbing',
-  electrical: 'Electrical',
-  cleaning: 'Cleaning',
-  landscaping: 'Landscaping',
-  hvac: 'HVAC',
-  general_maintenance: 'General maintenance',
-  other: 'Other',
-};
-
 function ServicesOfferedBadges({
   services,
+  labels,
 }: {
   services: VendorServiceType[];
+  labels: Dictionary['vendors']['serviceType'];
 }) {
   if (services.length === 0) {
     return <span className="text-sm text-muted-foreground">—</span>;
@@ -86,7 +79,7 @@ function ServicesOfferedBadges({
     <div className="flex flex-wrap gap-1">
       {services.map((service) => (
         <Badge key={service} variant="secondary" className="text-xs">
-          {SERVICE_TYPE_LABELS[service] ?? service}
+          {labels[service] ?? service}
         </Badge>
       ))}
     </div>
@@ -96,9 +89,11 @@ function ServicesOfferedBadges({
 function ServicesOfferedPicker({
   selected,
   onToggle,
+  labels,
 }: {
   selected: VendorServiceType[];
   onToggle: (service: VendorServiceType) => void;
+  labels: Dictionary['vendors']['serviceType'];
 }) {
   return (
     <div className="flex flex-wrap gap-1.5">
@@ -117,7 +112,7 @@ function ServicesOfferedPicker({
                 : 'border-input bg-transparent text-muted-foreground hover:bg-accent',
             ].join(' ')}
           >
-            {SERVICE_TYPE_LABELS[service]}
+            {labels[service]}
           </button>
         );
       })}
@@ -127,16 +122,18 @@ function ServicesOfferedPicker({
 
 // ── Zod schema ────────────────────────────────────────────────────────────────
 
-const vendorSchema = z.object({
-  companyName: z.string().min(1, 'Company name is required'),
-  contactName: z.string().optional(),
-  email: z.string().email('Invalid email').optional().or(z.literal('')),
-  phone: z.string().optional(),
-  address: z.string().optional(),
-  notes: z.string().optional(),
-});
+function buildVendorSchema(t: Dictionary['vendors']['dialog']) {
+  return z.object({
+    companyName: z.string().min(1, t.companyNameRequired),
+    contactName: z.string().optional(),
+    email: z.string().email(t.invalidEmail).optional().or(z.literal('')),
+    phone: z.string().optional(),
+    address: z.string().optional(),
+    notes: z.string().optional(),
+  });
+}
 
-type VendorFormValues = z.infer<typeof vendorSchema>;
+type VendorFormValues = z.infer<ReturnType<typeof buildVendorSchema>>;
 
 const EMPTY_VALUES: VendorFormValues = {
   companyName: '',
@@ -152,9 +149,11 @@ const EMPTY_VALUES: VendorFormValues = {
 interface VendorsPageProps {
   /** When false (non-admin), hide all write actions. */
   canWrite: boolean;
+  dict: Dictionary;
 }
 
-export function VendorsPage({ canWrite }: VendorsPageProps) {
+export function VendorsPage({ canWrite, dict }: VendorsPageProps) {
+  const t = dict.vendors;
   const { data: vendors, isLoading, isError } = useListVendorsQuery();
   const [createVendor, { isLoading: creating }] = useCreateVendorMutation();
   const [updateVendor, { isLoading: updating }] = useUpdateVendorMutation();
@@ -165,6 +164,8 @@ export function VendorsPage({ canWrite }: VendorsPageProps) {
   const [editTarget, setEditTarget] = useState<VendorResponse | null>(null);
   const [editServices, setEditServices] = useState<VendorServiceType[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<VendorResponse | null>(null);
+
+  const vendorSchema = useMemo(() => buildVendorSchema(t.dialog), [t.dialog]);
 
   const {
     register: regCreate,
@@ -213,12 +214,12 @@ export function VendorsPage({ canWrite }: VendorsPageProps) {
         servicesOffered: createServices,
         notes: values.notes || undefined,
       }).unwrap();
-      toast.success('Vendor created.');
+      toast.success(t.dialog.createdToast);
       setCreateOpen(false);
       resetCreate(EMPTY_VALUES);
       setCreateServices([]);
     } catch {
-      toast.error('Failed to create vendor. Please try again.');
+      toast.error(t.dialog.createErrorToast);
     }
   }
 
@@ -250,10 +251,10 @@ export function VendorsPage({ canWrite }: VendorsPageProps) {
           notes: values.notes || undefined,
         },
       }).unwrap();
-      toast.success('Vendor updated.');
+      toast.success(t.dialog.updatedToast);
       setEditTarget(null);
     } catch {
-      toast.error('Failed to update vendor.');
+      toast.error(t.dialog.updateErrorToast);
     }
   }
 
@@ -261,10 +262,10 @@ export function VendorsPage({ canWrite }: VendorsPageProps) {
     if (!deleteTarget) return;
     try {
       await deleteVendor(deleteTarget.id).unwrap();
-      toast.success('Vendor deleted.');
+      toast.success(t.dialog.deletedToast);
       setDeleteTarget(null);
     } catch {
-      toast.error('Failed to delete vendor.');
+      toast.error(t.dialog.deleteErrorToast);
     }
   }
 
@@ -273,11 +274,9 @@ export function VendorsPage({ canWrite }: VendorsPageProps) {
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Vendors</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{t.title}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {canWrite
-              ? "Manage your organization's third-party service providers."
-              : 'Third-party service providers for your organization.'}
+            {canWrite ? t.subtitleWrite : t.subtitleReadOnly}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -287,13 +286,13 @@ export function VendorsPage({ canWrite }: VendorsPageProps) {
               className="gap-1.5 text-xs text-muted-foreground"
             >
               <EyeIcon className="size-3" />
-              Read-only
+              {t.readOnly}
             </Badge>
           )}
           {canWrite && (
             <Button onClick={() => setCreateOpen(true)}>
               <PlusIcon />
-              Add vendor
+              {t.addVendor}
             </Button>
           )}
         </div>
@@ -304,10 +303,10 @@ export function VendorsPage({ canWrite }: VendorsPageProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Company name</TableHead>
-              <TableHead>Contact name</TableHead>
-              <TableHead>Phone / Email</TableHead>
-              <TableHead>Services offered</TableHead>
+              <TableHead>{t.table.companyName}</TableHead>
+              <TableHead>{t.table.contactName}</TableHead>
+              <TableHead>{t.table.phoneEmail}</TableHead>
+              <TableHead>{t.table.servicesOffered}</TableHead>
               {canWrite && <TableHead className="w-10" />}
             </TableRow>
           </TableHeader>
@@ -338,7 +337,7 @@ export function VendorsPage({ canWrite }: VendorsPageProps) {
                   colSpan={canWrite ? 5 : 4}
                   className="text-center py-10 text-muted-foreground"
                 >
-                  Failed to load vendors. Please try again.
+                  {t.loadError}
                 </TableCell>
               </TableRow>
             ) : vendors?.length === 0 ? (
@@ -348,9 +347,7 @@ export function VendorsPage({ canWrite }: VendorsPageProps) {
                   className="text-center py-10 text-muted-foreground"
                 >
                   <WrenchIcon className="size-8 mx-auto mb-2 opacity-30" />
-                  {canWrite
-                    ? 'No vendors yet. Add your first vendor.'
-                    : 'No vendors yet.'}
+                  {canWrite ? t.emptyWrite : t.empty}
                 </TableCell>
               </TableRow>
             ) : (
@@ -373,7 +370,10 @@ export function VendorsPage({ canWrite }: VendorsPageProps) {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <ServicesOfferedBadges services={vendor.servicesOffered} />
+                    <ServicesOfferedBadges
+                      services={vendor.servicesOffered}
+                      labels={t.serviceType}
+                    />
                   </TableCell>
                   {canWrite && (
                     <TableCell>
@@ -383,7 +383,7 @@ export function VendorsPage({ canWrite }: VendorsPageProps) {
                             <Button
                               variant="ghost"
                               size="icon-sm"
-                              aria-label="Vendor actions"
+                              aria-label={t.actionsLabel}
                             >
                               <MoreHorizontalIcon />
                             </Button>
@@ -392,7 +392,7 @@ export function VendorsPage({ canWrite }: VendorsPageProps) {
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => openEdit(vendor)}>
                             <PencilIcon className="size-3.5 mr-1.5" />
-                            Edit
+                            {dict.common.edit}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
@@ -400,7 +400,7 @@ export function VendorsPage({ canWrite }: VendorsPageProps) {
                             onClick={() => setDeleteTarget(vendor)}
                           >
                             <TrashIcon className="size-3.5 mr-1.5" />
-                            Delete
+                            {dict.common.delete}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -417,7 +417,7 @@ export function VendorsPage({ canWrite }: VendorsPageProps) {
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Add vendor</DialogTitle>
+            <DialogTitle>{t.dialog.addTitle}</DialogTitle>
           </DialogHeader>
           <form
             onSubmit={handleCreate(onCreateSubmit)}
@@ -429,6 +429,8 @@ export function VendorsPage({ canWrite }: VendorsPageProps) {
               errors={createErrors}
               selectedServices={createServices}
               onToggleService={toggleCreateService}
+              t={t.dialog}
+              serviceTypeLabels={t.serviceType}
             />
             <DialogFooter>
               <DialogClose
@@ -439,10 +441,10 @@ export function VendorsPage({ canWrite }: VendorsPageProps) {
                   setCreateServices([]);
                 }}
               >
-                Cancel
+                {dict.common.cancel}
               </DialogClose>
               <Button type="submit" disabled={creating}>
-                {creating ? 'Creating…' : 'Create'}
+                {creating ? t.dialog.creating : t.dialog.create}
               </Button>
             </DialogFooter>
           </form>
@@ -458,7 +460,7 @@ export function VendorsPage({ canWrite }: VendorsPageProps) {
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit vendor</DialogTitle>
+            <DialogTitle>{t.dialog.editTitle}</DialogTitle>
           </DialogHeader>
           <form
             onSubmit={handleEdit(onEditSubmit)}
@@ -470,16 +472,18 @@ export function VendorsPage({ canWrite }: VendorsPageProps) {
               errors={editErrors}
               selectedServices={editServices}
               onToggleService={toggleEditService}
+              t={t.dialog}
+              serviceTypeLabels={t.serviceType}
             />
             <DialogFooter>
               <DialogClose
                 render={<Button variant="outline" type="button" />}
                 onClick={() => setEditTarget(null)}
               >
-                Cancel
+                {dict.common.cancel}
               </DialogClose>
               <Button type="submit" disabled={updating}>
-                {updating ? 'Saving…' : 'Save'}
+                {updating ? t.dialog.saving : dict.common.save}
               </Button>
             </DialogFooter>
           </form>
@@ -495,15 +499,22 @@ export function VendorsPage({ canWrite }: VendorsPageProps) {
       >
         <DialogContent className="sm:max-w-xs">
           <DialogHeader>
-            <DialogTitle>Delete vendor</DialogTitle>
+            <DialogTitle>{t.dialog.deleteTitle}</DialogTitle>
           </DialogHeader>
           <div className="py-1">
             <p className="text-sm text-muted-foreground">
-              Are you sure you want to delete{' '}
-              <span className="font-medium text-foreground">
-                {deleteTarget?.companyName}
-              </span>
-              ? This action cannot be undone.
+              {(() => {
+                const [before, after] = t.dialog.deleteConfirm.split('{name}');
+                return (
+                  <>
+                    {before}
+                    <span className="font-medium text-foreground">
+                      {deleteTarget?.companyName}
+                    </span>
+                    {after}
+                  </>
+                );
+              })()}
             </p>
           </div>
           <DialogFooter>
@@ -511,14 +522,14 @@ export function VendorsPage({ canWrite }: VendorsPageProps) {
               render={<Button variant="outline" type="button" />}
               onClick={() => setDeleteTarget(null)}
             >
-              Cancel
+              {dict.common.cancel}
             </DialogClose>
             <Button
               variant="destructive"
               onClick={handleDelete}
               disabled={deleting}
             >
-              {deleting ? 'Deleting…' : 'Delete'}
+              {deleting ? t.dialog.deleting : dict.common.delete}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -535,22 +546,26 @@ function VendorFormFields({
   errors,
   selectedServices,
   onToggleService,
+  t,
+  serviceTypeLabels,
 }: {
   idPrefix: string;
   register: ReturnType<typeof useForm<VendorFormValues>>['register'];
   errors: ReturnType<typeof useForm<VendorFormValues>>['formState']['errors'];
   selectedServices: VendorServiceType[];
   onToggleService: (service: VendorServiceType) => void;
+  t: Dictionary['vendors']['dialog'];
+  serviceTypeLabels: Dictionary['vendors']['serviceType'];
 }) {
   return (
     <>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={`${idPrefix}-companyName`}>
-          Company name <span className="text-destructive">*</span>
+          {t.companyName} <span className="text-destructive">*</span>
         </Label>
         <Input
           id={`${idPrefix}-companyName`}
-          placeholder="Acme Plumbing Co."
+          placeholder={t.placeholderCompanyName}
           aria-invalid={!!errors.companyName}
           {...register('companyName')}
         />
@@ -562,24 +577,28 @@ function VendorFormFields({
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={`${idPrefix}-contactName`}>
-          Contact name{' '}
-          <span className="text-muted-foreground font-normal">(optional)</span>
+          {t.contactName}{' '}
+          <span className="text-muted-foreground font-normal">
+            {t.optional}
+          </span>
         </Label>
         <Input
           id={`${idPrefix}-contactName`}
-          placeholder="Jane Doe"
+          placeholder={t.placeholderContactName}
           {...register('contactName')}
         />
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={`${idPrefix}-email`}>
-          Email{' '}
-          <span className="text-muted-foreground font-normal">(optional)</span>
+          {t.email}{' '}
+          <span className="text-muted-foreground font-normal">
+            {t.optional}
+          </span>
         </Label>
         <Input
           id={`${idPrefix}-email`}
           type="email"
-          placeholder="jane@acme.example"
+          placeholder={t.placeholderEmail}
           aria-invalid={!!errors.email}
           {...register('email')}
         />
@@ -589,44 +608,53 @@ function VendorFormFields({
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={`${idPrefix}-phone`}>
-          Phone{' '}
-          <span className="text-muted-foreground font-normal">(optional)</span>
+          {t.phone}{' '}
+          <span className="text-muted-foreground font-normal">
+            {t.optional}
+          </span>
         </Label>
         <Input
           id={`${idPrefix}-phone`}
-          placeholder="+971 50 123 4567"
+          placeholder={t.placeholderPhone}
           {...register('phone')}
         />
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={`${idPrefix}-address`}>
-          Address{' '}
-          <span className="text-muted-foreground font-normal">(optional)</span>
+          {t.address}{' '}
+          <span className="text-muted-foreground font-normal">
+            {t.optional}
+          </span>
         </Label>
         <Input
           id={`${idPrefix}-address`}
-          placeholder="123 Main St"
+          placeholder={t.placeholderAddress}
           {...register('address')}
         />
       </div>
       <div className="flex flex-col gap-1.5">
         <Label>
-          Services offered{' '}
-          <span className="text-muted-foreground font-normal">(optional)</span>
+          {t.servicesOffered}{' '}
+          <span className="text-muted-foreground font-normal">
+            {t.optional}
+          </span>
         </Label>
         <ServicesOfferedPicker
           selected={selectedServices}
           onToggle={onToggleService}
+          labels={serviceTypeLabels}
         />
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={`${idPrefix}-notes`}>
-          Notes{' '}
-          <span className="text-muted-foreground font-normal">(optional)</span>
+          {t.notes}{' '}
+          <span className="text-muted-foreground font-normal">
+            {t.optional}
+          </span>
         </Label>
         <Textarea
           id={`${idPrefix}-notes`}
-          placeholder="Any notes…"
+          placeholder={t.placeholderNotes}
           rows={2}
           {...register('notes')}
         />

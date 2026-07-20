@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { LocaleSwitcher } from '@/components/layout/locale-switcher';
 import { MobileSidebarTrigger } from '@/components/layout/dashboard-sidebar';
+import { NotificationsBell } from '@/components/layout/notifications-bell';
 import { useAppDispatch } from '@/store/hooks';
 import { setTheme as setReduxTheme } from '@/store/slices/ui-slice';
 import type { Role } from '@/auth/roles';
@@ -40,10 +41,20 @@ type Props = {
 
 const PAGE_TITLE_MAP: Record<string, string> = {
   dashboard: 'dashboard',
+  buildings: 'buildings',
+  leases: 'leases',
+  renters: 'renters',
+  vendors: 'vendors',
   users: 'users',
-  billing: 'billing',
   payments: 'payments',
+  reports: 'reports',
+  tasks: 'tasks',
+  expenses: 'expenses',
+  invoices: 'invoices',
+  billing: 'billing',
   timeline: 'timeline',
+  support: 'support',
+  notifications: 'notifications',
 };
 
 function usePageTitle(dict: Dictionary): string {
@@ -158,6 +169,8 @@ export function DashboardTopbar({ locale, userName, role, dict }: Props) {
 
       {/* Right actions */}
       <div className="flex items-center gap-1">
+        <NotificationsBell locale={locale} dict={dict} />
+        <Separator orientation="vertical" className="mx-1 h-4" />
         <LocaleSwitcher currentLocale={locale} variant="muted" />
         <Separator orientation="vertical" className="mx-1 h-4" />
         <ThemeToggle />

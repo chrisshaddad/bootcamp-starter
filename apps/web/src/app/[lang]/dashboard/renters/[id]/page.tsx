@@ -1,8 +1,9 @@
 import { requireSession } from '@/auth/guards';
 import { normalizeRole } from '@/auth/roles';
-import { canAccess } from '@/auth/permissions';
+import { canAccess, canWrite } from '@/auth/permissions';
 import { redirect } from 'next/navigation';
 import { isLocale } from '@/i18n/config';
+import { getDictionary } from '@/i18n/get-dictionary';
 import { RenterDetailPage } from '@/components/dashboard/renter-detail-page';
 
 export default async function RenterDetailPageRoute({
@@ -19,5 +20,14 @@ export default async function RenterDetailPageRoute({
     redirect(`/${locale}/dashboard`);
   }
 
-  return <RenterDetailPage renterId={id} locale={locale} />;
+  const dict = await getDictionary(locale);
+
+  return (
+    <RenterDetailPage
+      renterId={id}
+      locale={locale}
+      dict={dict}
+      canWrite={canWrite(role, 'leases')}
+    />
+  );
 }

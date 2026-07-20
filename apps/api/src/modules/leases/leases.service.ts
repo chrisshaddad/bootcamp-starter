@@ -8,7 +8,7 @@ import { TimelineService } from '@/modules/timeline/timeline.service';
 import { BuildingAccessService } from '@/common/building-access/building-access.service';
 import { LeaseStatusService } from '@/common/lease-status/lease-status.service';
 import { Role } from '@/common/enums';
-import { LeaseResponse } from '@repo/contracts';
+import { LeaseResponse, LeaseListRow } from '@repo/contracts';
 import { CreateLeaseDto } from './dto/create-lease.dto';
 import { UpdateLeaseDto } from './dto/update-lease.dto';
 import { RenewLeaseDto } from './dto/renew-lease.dto';
@@ -79,6 +79,77 @@ export class LeasesService {
     });
 
     return { data: leases.map((l) => this.formatLease(l)) };
+  }
+
+  /**
+   * Org-wide, flat leases list (Sprint U1) — used by the top-level
+   * /dashboard/leases page. Access is scoped the same way as the nested
+   * read path: org_admin/finance see all org leases, supervisor/maintenance
+   * are constrained to their assigned buildings. Each row is enriched with
+   * display names (building/floor/unit/renter); missing relations fall back
+   * to '' rather than throwing.
+   */
+  async findAllForOrg(
+    orgId: string,
+    callerId: string,
+    callerRole: Role,
+  ): Promise<{ data: LeaseListRow[] }> {
+    const allowedBuildingIds = await this.buildingAccess.getAllowedBuildingIds(
+      orgId,
+      callerId,
+      callerRole,
+    );
+
+    const leases = await this.prisma.lease.findMany({
+      where: {
+        orgId,
+        ...(allowedBuildingIds
+          ? { buildingId: { in: allowedBuildingIds } }
+          : {}),
+      },
+      orderBy: { startDate: 'desc' },
+    });
+
+    const buildingIds = [...new Set(leases.map((l) => l.buildingId))];
+    const floorIds = [...new Set(leases.map((l) => l.floorId))];
+    const apartmentIds = [...new Set(leases.map((l) => l.apartmentId))];
+    const renterIds = [...new Set(leases.map((l) => l.renterId))];
+
+    const [buildings, floors, apartments, renters] = await Promise.all([
+      this.prisma.building.findMany({
+        where: { id: { in: buildingIds }, orgId },
+        select: { id: true, name: true },
+      }),
+      this.prisma.floor.findMany({
+        where: { id: { in: floorIds }, orgId },
+        select: { id: true, name: true },
+      }),
+      this.prisma.apartment.findMany({
+        where: { id: { in: apartmentIds }, orgId },
+        select: { id: true, unitNumber: true },
+      }),
+      this.prisma.renter.findMany({
+        where: { id: { in: renterIds }, orgId },
+        select: { id: true, fullName: true },
+      }),
+    ]);
+
+    const buildingNameById = new Map(buildings.map((b) => [b.id, b.name]));
+    const floorNameById = new Map(floors.map((f) => [f.id, f.name]));
+    const unitNumberById = new Map(
+      apartments.map((a) => [a.id, a.unitNumber]),
+    );
+    const renterNameById = new Map(renters.map((r) => [r.id, r.fullName]));
+
+    return {
+      data: leases.map((lease) => ({
+        ...this.formatLease(lease),
+        buildingName: buildingNameById.get(lease.buildingId) ?? '',
+        floorName: floorNameById.get(lease.floorId) ?? '',
+        unitNumber: unitNumberById.get(lease.apartmentId) ?? '',
+        renterName: renterNameById.get(lease.renterId) ?? '',
+      })),
+    };
   }
 
   async findOne(

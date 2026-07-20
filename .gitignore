@@ -69,5 +69,11 @@ temporary.md
 # Local issue tracking
 issues/
 
+# Local PM2 process manager config (machine-specific: ssh alias, ports)
+ecosystem.config.js
+
 # TypeScript incremental build info
 *.tsbuildinfo
+
+# Playwright MCP local artifacts (screenshots, traces)
+.playwright-mcp/

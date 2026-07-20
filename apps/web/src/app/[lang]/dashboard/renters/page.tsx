@@ -3,6 +3,7 @@ import { normalizeRole } from '@/auth/roles';
 import { canAccess, canWrite } from '@/auth/permissions';
 import { redirect } from 'next/navigation';
 import { isLocale } from '@/i18n/config';
+import { getDictionary } from '@/i18n/get-dictionary';
 import { RentersPage } from '@/components/dashboard/renters-page';
 
 export default async function RentersPageRoute({
@@ -20,6 +21,7 @@ export default async function RentersPageRoute({
   }
 
   const writeAccess = canWrite(role, 'buildings');
+  const dict = await getDictionary(locale);
 
-  return <RentersPage canWrite={writeAccess} locale={locale} />;
+  return <RentersPage canWrite={writeAccess} locale={locale} dict={dict} />;
 }

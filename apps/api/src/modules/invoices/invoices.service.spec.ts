@@ -87,6 +87,7 @@ describe('InvoicesService', () => {
     ],
     payments: [],
     lease: {
+      renterId: 'renter-1',
       renter: { fullName: 'Jane Tenant' },
       apartment: { unitNumber: '101' },
     },
@@ -116,6 +117,7 @@ describe('InvoicesService', () => {
           totalAmount: '1000.00',
           paidAmount: '0.00',
           status: 'open',
+          renterId: 'renter-1',
           renterName: 'Jane Tenant',
           apartmentUnitNumber: '101',
         }),

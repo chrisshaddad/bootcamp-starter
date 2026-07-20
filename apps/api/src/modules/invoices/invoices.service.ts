@@ -35,6 +35,7 @@ type InvoiceRow = {
   }[];
   payments: { amount: Prisma.Decimal }[];
   lease: {
+    renterId: string;
     renter: { fullName: string };
     apartment: { unitNumber: string };
   };
@@ -94,6 +95,7 @@ export class InvoicesService {
       totalAmount: totalAmount.toFixed(2),
       paidAmount: paidAmount.toFixed(2),
       status,
+      renterId: invoice.lease.renterId,
       renterName: invoice.lease.renter.fullName,
       apartmentUnitNumber: invoice.lease.apartment.unitNumber,
       createdAt: invoice.createdAt.toISOString(),

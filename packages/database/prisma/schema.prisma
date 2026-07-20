@@ -91,6 +91,21 @@ enum InvoicePaymentMethod {
   other
 }
 
+enum SupportTicketCategory {
+  general
+  billing
+  maintenance
+  technical
+  other
+}
+
+enum SupportTicketStatus {
+  open
+  acknowledged
+  resolved
+  closed
+}
+
 model Organization {
   id               String        @id @default(cuid())
   name             String
@@ -224,12 +239,17 @@ model Renter {
   emergencyContactName  String?
   emergencyContactPhone String?
   notes                 String?
+  /// Keycloak `sub` of the tenant user linked to this renter, if any. This is
+  /// the seam that lets a logged-in tenant see their own lease/invoices/requests
+  /// (Sprint T1). Nullable: most renters are never given a portal login.
+  renterUserId          String?
   createdAt             DateTime             @default(now())
   updatedAt             DateTime             @updatedAt
   leases                Lease[]
   maintenanceRequests   MaintenanceRequest[]
 
   @@index([orgId])
+  @@index([renterUserId])
 }
 
 model Lease {
@@ -386,4 +406,46 @@ model InvoicePayment {
 
   @@index([orgId])
   @@index([invoiceId])
+}
+
+/// A support request opened by a user (typically a tenant) to the platform.
+/// There is no threaded chat: a ticket is opened, the platform acknowledges it,
+/// and the opener receives an acknowledgment notification. Staff can later move
+/// the ticket to resolved/closed.
+model SupportTicket {
+  id                   String                @id @default(cuid())
+  orgId                String
+  createdByUserId      String
+  subject              String
+  description          String
+  category             SupportTicketCategory @default(general)
+  status               SupportTicketStatus   @default(open)
+  acknowledgedAt       DateTime?
+  acknowledgedByUserId String?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+
+  @@index([orgId])
+  @@index([createdByUserId])
+  @@index([status])
+}
+
+/// An in-app notification for a single recipient (Keycloak `sub`). Notifications
+/// are produced asynchronously through the BullMQ `notifications` queue so that
+/// callers never block on delivery. `data` carries a small JSON payload for
+/// deep-linking (e.g. the related ticket id).
+model Notification {
+  id        String    @id @default(cuid())
+  orgId     String
+  userId    String
+  type      String
+  title     String
+  body      String?
+  data      Json      @default("{}")
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([orgId])
+  @@index([userId])
+  @@index([userId, readAt])
 }

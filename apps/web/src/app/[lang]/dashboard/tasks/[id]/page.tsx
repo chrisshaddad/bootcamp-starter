@@ -3,6 +3,7 @@ import { normalizeRole } from '@/auth/roles';
 import { canAccess } from '@/auth/permissions';
 import { redirect } from 'next/navigation';
 import { isLocale } from '@/i18n/config';
+import { getDictionary } from '@/i18n/get-dictionary';
 import { MaintenanceRequestDetailPage } from '@/components/dashboard/maintenance-request-detail-page';
 
 export default async function MaintenanceRequestDetailPageRoute({
@@ -19,6 +20,8 @@ export default async function MaintenanceRequestDetailPageRoute({
     redirect(`/${locale}/dashboard`);
   }
 
+  const dict = await getDictionary(locale);
+
   // Work Order create/reassign/delete is org_admin only; maintenance may
   // only update status/resolutionNotes on a Work Order assigned to them
   // (enforced in WorkOrdersService) — neither is the plain 'tasks'
@@ -29,6 +32,7 @@ export default async function MaintenanceRequestDetailPageRoute({
       locale={locale}
       canWrite={role === 'org_admin'}
       isMaintenanceCaller={role === 'maintenance'}
+      dict={dict}
     />
   );
 }

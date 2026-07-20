@@ -3,6 +3,7 @@ import { normalizeRole } from '@/auth/roles';
 import { canAccess, canWrite } from '@/auth/permissions';
 import { redirect } from 'next/navigation';
 import { isLocale } from '@/i18n/config';
+import { getDictionary } from '@/i18n/get-dictionary';
 import { InvoiceDetailPage } from '@/components/dashboard/invoice-detail-page';
 
 export default async function InvoiceDetailPageRoute({
@@ -19,11 +20,14 @@ export default async function InvoiceDetailPageRoute({
     redirect(`/${locale}/dashboard`);
   }
 
+  const dict = await getDictionary(locale);
+
   return (
     <InvoiceDetailPage
       invoiceId={id}
       locale={locale}
       canWrite={canWrite(role, 'invoices')}
+      dict={dict}
     />
   );
 }

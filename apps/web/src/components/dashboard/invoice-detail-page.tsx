@@ -57,15 +57,9 @@ import type {
   InvoicePaymentResponse,
   InvoiceStatus,
 } from '@/types/api';
+import type { Dictionary } from '@/i18n/get-dictionary';
 
 // ── Status badge (mirrors invoices-page.tsx) ──────────────────────────────────
-
-const STATUS_LABELS: Record<InvoiceStatus, string> = {
-  open: 'Open',
-  partially_paid: 'Partially paid',
-  paid: 'Paid',
-  overdue: 'Overdue',
-};
 
 const STATUS_STYLES: Record<InvoiceStatus, string> = {
   open: 'bg-blue-50 text-blue-700 border-blue-200',
@@ -74,22 +68,19 @@ const STATUS_STYLES: Record<InvoiceStatus, string> = {
   overdue: 'bg-red-50 text-red-700 border-red-200',
 };
 
-function StatusBadge({ status }: { status: InvoiceStatus }) {
+function StatusBadge({
+  status,
+  labels,
+}: {
+  status: InvoiceStatus;
+  labels: Dictionary['invoices']['status'];
+}) {
   return (
     <Badge variant="outline" className={STATUS_STYLES[status]}>
-      {STATUS_LABELS[status] ?? status}
+      {labels[status] ?? status}
     </Badge>
   );
 }
-
-const LINE_ITEM_CATEGORY_LABELS: Record<InvoiceLineItemCategory, string> = {
-  rent: 'Rent',
-  late_fee: 'Late fee',
-  utilities: 'Utilities',
-  damages: 'Damages',
-  deposit: 'Deposit',
-  other: 'Other',
-};
 
 // ── Payment method ───────────────────────────────────────────────────────────
 
@@ -101,30 +92,26 @@ const PAYMENT_METHODS: InvoicePaymentMethod[] = [
   'other',
 ];
 
-const PAYMENT_METHOD_LABELS: Record<InvoicePaymentMethod, string> = {
-  cash: 'Cash',
-  check: 'Check',
-  bank_transfer: 'Bank transfer',
-  card: 'Card',
-  other: 'Other',
-};
-
 // ── Record Payment form ───────────────────────────────────────────────────────
 
-const paymentSchema = z.object({
-  amount: z
-    .string()
-    .min(1, 'Amount is required')
-    .refine(
-      (v) => !Number.isNaN(Number(v)) && Number(v) > 0,
-      'Amount must be a positive number',
-    ),
-  method: z.enum(['cash', 'check', 'bank_transfer', 'card', 'other']),
-  paidAt: z.string().min(1, 'Payment date is required'),
-  notes: z.string().optional(),
-});
+function buildPaymentSchema(
+  errors: Dictionary['invoices']['detail']['form']['errors'],
+) {
+  return z.object({
+    amount: z
+      .string()
+      .min(1, errors.amountRequired)
+      .refine(
+        (v) => !Number.isNaN(Number(v)) && Number(v) > 0,
+        errors.amountPositive,
+      ),
+    method: z.enum(['cash', 'check', 'bank_transfer', 'card', 'other']),
+    paidAt: z.string().min(1, errors.paidAtRequired),
+    notes: z.string().optional(),
+  });
+}
 
-type PaymentFormValues = z.infer<typeof paymentSchema>;
+type PaymentFormValues = z.infer<ReturnType<typeof buildPaymentSchema>>;
 
 const EMPTY_PAYMENT: PaymentFormValues = {
   amount: '',
@@ -139,13 +126,16 @@ interface InvoiceDetailPageProps {
   invoiceId: string;
   locale: string;
   canWrite: boolean;
+  dict: Dictionary;
 }
 
 export function InvoiceDetailPage({
   invoiceId,
   locale,
   canWrite,
+  dict,
 }: InvoiceDetailPageProps) {
+  const t = dict.invoices;
   const {
     data: invoice,
     isLoading: invoiceLoading,
@@ -167,6 +157,11 @@ export function InvoiceDetailPage({
   const [deleteTarget, setDeleteTarget] =
     useState<InvoicePaymentResponse | null>(null);
 
+  const schema = useMemo(
+    () => buildPaymentSchema(t.detail.form.errors),
+    [t.detail.form.errors],
+  );
+
   const {
     control,
     register,
@@ -174,7 +169,7 @@ export function InvoiceDetailPage({
     reset,
     formState: { errors },
   } = useForm<PaymentFormValues>({
-    resolver: zodResolver(paymentSchema),
+    resolver: zodResolver(schema),
     defaultValues: EMPTY_PAYMENT,
   });
 
@@ -193,11 +188,11 @@ export function InvoiceDetailPage({
         paidAt: values.paidAt,
         notes: values.notes || undefined,
       }).unwrap();
-      toast.success('Payment recorded.');
+      toast.success(t.detail.dialog.record.success);
       setRecordOpen(false);
       reset(EMPTY_PAYMENT);
     } catch {
-      toast.error('Failed to record payment. Please try again.');
+      toast.error(t.detail.dialog.record.error);
     }
   }
 
@@ -205,10 +200,10 @@ export function InvoiceDetailPage({
     if (!deleteTarget) return;
     try {
       await deletePayment({ id: deleteTarget.id, invoiceId }).unwrap();
-      toast.success('Payment deleted.');
+      toast.success(t.detail.dialog.delete.success);
       setDeleteTarget(null);
     } catch {
-      toast.error('Failed to delete payment. Please try again.');
+      toast.error(t.detail.dialog.delete.error);
     }
   }
 
@@ -229,11 +224,9 @@ export function InvoiceDetailPage({
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground w-fit"
         >
           <ArrowLeftIcon className="size-3.5" />
-          Back to invoices
+          {t.detail.backLink}
         </Link>
-        <p className="text-sm text-muted-foreground">
-          Failed to load this invoice.
-        </p>
+        <p className="text-sm text-muted-foreground">{t.detail.loadError}</p>
       </div>
     );
   }
@@ -245,42 +238,59 @@ export function InvoiceDetailPage({
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground w-fit"
       >
         <ArrowLeftIcon className="size-3.5" />
-        Back to invoices
+        {t.detail.backLink}
       </Link>
 
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
           <FileTextIcon className="size-6 text-muted-foreground" />
-          {invoice.renterName} · {invoice.apartmentUnitNumber}
+          <Link
+            href={`/${locale}/dashboard/renters/${invoice.renterId}`}
+            className="hover:underline"
+          >
+            {invoice.renterName}
+          </Link>{' '}
+          · {invoice.apartmentUnitNumber}
         </h1>
-        <StatusBadge status={invoice.status} />
+        <StatusBadge status={invoice.status} labels={t.status} />
       </div>
 
       <div className="rounded-xl border bg-card p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="flex flex-col gap-1">
-          <p className="text-xs text-muted-foreground">Building</p>
+          <p className="text-xs text-muted-foreground">
+            {t.detail.info.building}
+          </p>
           <p className="text-sm">
-            {buildingNameById.get(invoice.buildingId) ?? invoice.buildingId}
+            <Link
+              href={`/${locale}/dashboard/buildings/${invoice.buildingId}`}
+              className="hover:underline"
+            >
+              {buildingNameById.get(invoice.buildingId) ?? invoice.buildingId}
+            </Link>
           </p>
         </div>
         <div className="flex flex-col gap-1">
-          <p className="text-xs text-muted-foreground">Due date</p>
+          <p className="text-xs text-muted-foreground">
+            {t.detail.info.dueDate}
+          </p>
           <p className="text-sm">
             {new Date(invoice.dueDate).toLocaleDateString()}
           </p>
         </div>
         <div className="flex flex-col gap-1">
-          <p className="text-xs text-muted-foreground">Total</p>
+          <p className="text-xs text-muted-foreground">{t.detail.info.total}</p>
           <p className="text-sm font-medium">{invoice.totalAmount}</p>
         </div>
         <div className="flex flex-col gap-1">
-          <p className="text-xs text-muted-foreground">Paid</p>
+          <p className="text-xs text-muted-foreground">{t.detail.info.paid}</p>
           <p className="text-sm font-medium">{invoice.paidAmount}</p>
         </div>
         {invoice.notes && (
           <div className="flex flex-col gap-1 sm:col-span-2 lg:col-span-4">
-            <p className="text-xs text-muted-foreground">Notes</p>
+            <p className="text-xs text-muted-foreground">
+              {t.detail.info.notes}
+            </p>
             <p className="text-sm whitespace-pre-wrap">{invoice.notes}</p>
           </div>
         )}
@@ -288,22 +298,25 @@ export function InvoiceDetailPage({
 
       {/* Line items */}
       <div>
-        <h2 className="text-lg font-semibold tracking-tight">Line items</h2>
+        <h2 className="text-lg font-semibold tracking-tight">
+          {t.detail.lineItems.title}
+        </h2>
       </div>
       <div className="rounded-xl border bg-card overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Category</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>Amount</TableHead>
+              <TableHead>{t.detail.lineItems.table.category}</TableHead>
+              <TableHead>{t.detail.lineItems.table.description}</TableHead>
+              <TableHead>{t.detail.lineItems.table.amount}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {invoice.lineItems.map((li) => (
               <TableRow key={li.id}>
                 <TableCell className="text-sm">
-                  {LINE_ITEM_CATEGORY_LABELS[li.category] ?? li.category}
+                  {t.lineItemCategory[li.category as InvoiceLineItemCategory] ??
+                    li.category}
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">
                   {li.description ?? '—'}
@@ -319,7 +332,9 @@ export function InvoiceDetailPage({
 
       {/* Payments */}
       <div className="flex items-center justify-between gap-4">
-        <h2 className="text-lg font-semibold tracking-tight">Payments</h2>
+        <h2 className="text-lg font-semibold tracking-tight">
+          {t.detail.payments.title}
+        </h2>
         {canWrite && (
           <Button
             onClick={() => {
@@ -328,7 +343,7 @@ export function InvoiceDetailPage({
             }}
           >
             <PlusIcon />
-            Record payment
+            {t.detail.payments.recordButton}
           </Button>
         )}
       </div>
@@ -336,10 +351,10 @@ export function InvoiceDetailPage({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Amount</TableHead>
-              <TableHead>Method</TableHead>
-              <TableHead>Paid at</TableHead>
-              <TableHead>Notes</TableHead>
+              <TableHead>{t.detail.payments.table.amount}</TableHead>
+              <TableHead>{t.detail.payments.table.method}</TableHead>
+              <TableHead>{t.detail.payments.table.paidAt}</TableHead>
+              <TableHead>{t.detail.payments.table.notes}</TableHead>
               {canWrite && <TableHead className="w-10" />}
             </TableRow>
           </TableHeader>
@@ -370,7 +385,7 @@ export function InvoiceDetailPage({
                   colSpan={canWrite ? 5 : 4}
                   className="text-center py-10 text-muted-foreground"
                 >
-                  Failed to load payments. Please try again.
+                  {t.detail.payments.loadError}
                 </TableCell>
               </TableRow>
             ) : !payments?.length ? (
@@ -381,8 +396,8 @@ export function InvoiceDetailPage({
                 >
                   <ReceiptIcon className="size-8 mx-auto mb-2 opacity-30" />
                   {canWrite
-                    ? 'No payments recorded yet. Record the first payment.'
-                    : 'No payments recorded yet.'}
+                    ? t.detail.payments.emptyWrite
+                    : t.detail.payments.empty}
                 </TableCell>
               </TableRow>
             ) : (
@@ -392,7 +407,8 @@ export function InvoiceDetailPage({
                     {payment.amount}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {PAYMENT_METHOD_LABELS[payment.method] ?? payment.method}
+                    {t.paymentMethod[payment.method as InvoicePaymentMethod] ??
+                      payment.method}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {new Date(payment.paidAt).toLocaleDateString()}
@@ -405,7 +421,7 @@ export function InvoiceDetailPage({
                       <Button
                         variant="ghost"
                         size="icon-sm"
-                        aria-label="Delete payment"
+                        aria-label={t.detail.payments.deleteAriaLabel}
                         onClick={() => setDeleteTarget(payment)}
                       >
                         <TrashIcon className="size-3.5" />
@@ -423,7 +439,7 @@ export function InvoiceDetailPage({
       <Dialog open={recordOpen} onOpenChange={setRecordOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Record payment</DialogTitle>
+            <DialogTitle>{t.detail.dialog.record.title}</DialogTitle>
           </DialogHeader>
           <form
             onSubmit={handleSubmit(onRecordSubmit)}
@@ -431,14 +447,15 @@ export function InvoiceDetailPage({
           >
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="rp-amount">
-                Amount <span className="text-destructive">*</span>
+                {t.detail.dialog.record.amountLabel}{' '}
+                <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="rp-amount"
                 type="number"
                 step="0.01"
                 min="0"
-                placeholder="0.00"
+                placeholder={t.detail.dialog.record.amountPlaceholder}
                 aria-invalid={!!errors.amount}
                 {...register('amount')}
               />
@@ -450,7 +467,8 @@ export function InvoiceDetailPage({
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="rp-method">
-                Method <span className="text-destructive">*</span>
+                {t.detail.dialog.record.methodLabel}{' '}
+                <span className="text-destructive">*</span>
               </Label>
               <Controller
                 control={control}
@@ -458,12 +476,19 @@ export function InvoiceDetailPage({
                 render={({ field }) => (
                   <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger id="rp-method" className="w-full">
-                      <SelectValue placeholder="Select a method" />
+                      <SelectValue>
+                        {(value: string | null) =>
+                          !value
+                            ? t.detail.dialog.record.selectMethod
+                            : (t.paymentMethod[value as InvoicePaymentMethod] ??
+                              value)
+                        }
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {PAYMENT_METHODS.map((m) => (
                         <SelectItem key={m} value={m}>
-                          {PAYMENT_METHOD_LABELS[m]}
+                          {t.paymentMethod[m]}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -473,7 +498,8 @@ export function InvoiceDetailPage({
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="rp-paidAt">
-                Paid at <span className="text-destructive">*</span>
+                {t.detail.dialog.record.paidAtLabel}{' '}
+                <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="rp-paidAt"
@@ -489,14 +515,14 @@ export function InvoiceDetailPage({
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="rp-notes">
-                Notes{' '}
+                {t.detail.dialog.record.notesLabel}{' '}
                 <span className="text-muted-foreground font-normal">
-                  (optional)
+                  {t.detail.dialog.record.optional}
                 </span>
               </Label>
               <Textarea
                 id="rp-notes"
-                placeholder="Any notes…"
+                placeholder={t.detail.dialog.record.notesPlaceholder}
                 rows={2}
                 {...register('notes')}
               />
@@ -509,10 +535,12 @@ export function InvoiceDetailPage({
                   reset(EMPTY_PAYMENT);
                 }}
               >
-                Cancel
+                {dict.common.cancel}
               </DialogClose>
               <Button type="submit" disabled={creating}>
-                {creating ? 'Recording…' : 'Record payment'}
+                {creating
+                  ? t.detail.dialog.record.submitting
+                  : t.detail.dialog.record.submit}
               </Button>
             </DialogFooter>
           </form>
@@ -528,15 +556,15 @@ export function InvoiceDetailPage({
       >
         <DialogContent className="sm:max-w-xs">
           <DialogHeader>
-            <DialogTitle>Delete payment</DialogTitle>
+            <DialogTitle>{t.detail.dialog.delete.title}</DialogTitle>
           </DialogHeader>
           <div className="py-1">
             <p className="text-sm text-muted-foreground">
-              Are you sure you want to delete this{' '}
+              {t.detail.dialog.delete.confirmPrefix}{' '}
               <span className="font-medium text-foreground">
                 {deleteTarget?.amount}
               </span>{' '}
-              payment? This action cannot be undone.
+              {t.detail.dialog.delete.confirmSuffix}
             </p>
           </div>
           <DialogFooter>
@@ -544,14 +572,16 @@ export function InvoiceDetailPage({
               render={<Button variant="outline" type="button" />}
               onClick={() => setDeleteTarget(null)}
             >
-              Cancel
+              {dict.common.cancel}
             </DialogClose>
             <Button
               variant="destructive"
               onClick={handleDelete}
               disabled={deleting}
             >
-              {deleting ? 'Deleting…' : 'Delete'}
+              {deleting
+                ? t.detail.dialog.delete.confirming
+                : dict.common.delete}
             </Button>
           </DialogFooter>
         </DialogContent>

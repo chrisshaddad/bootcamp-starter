@@ -54,6 +54,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 import { useGetMaintenanceRequestQuery } from '@/store/api/endpoints/maintenance-requests.api';
+import { useListBuildingsQuery } from '@/store/api/endpoints/buildings.api';
 import { useListVendorsQuery } from '@/store/api/endpoints/vendors.api';
 import { useListUsersQuery } from '@/store/api/endpoints/users.api';
 import {
@@ -67,15 +68,9 @@ import type {
   WorkOrderResponse,
   WorkOrderStatus,
 } from '@/types/api';
+import type { Dictionary } from '@/i18n/get-dictionary';
 
-// ── Maintenance request status / priority badges ────────────────────────────
-
-const STATUS_LABELS: Record<MaintenanceRequestStatus, string> = {
-  open: 'Open',
-  in_progress: 'In progress',
-  resolved: 'Resolved',
-  closed: 'Closed',
-};
+// ── Maintenance request status / priority badges (shared with tasks-page) ──
 
 const STATUS_STYLES: Record<MaintenanceRequestStatus, string> = {
   open: 'bg-amber-50 text-amber-700 border-amber-200',
@@ -86,22 +81,17 @@ const STATUS_STYLES: Record<MaintenanceRequestStatus, string> = {
 
 function MaintenanceStatusBadge({
   status,
+  labels,
 }: {
   status: MaintenanceRequestStatus;
+  labels: Dictionary['tasks']['status'];
 }) {
   return (
     <Badge variant="outline" className={STATUS_STYLES[status]}>
-      {STATUS_LABELS[status] ?? status}
+      {labels[status] ?? status}
     </Badge>
   );
 }
-
-const PRIORITY_LABELS: Record<MaintenanceRequestPriority, string> = {
-  low: 'Low',
-  medium: 'Medium',
-  high: 'High',
-  urgent: 'Urgent',
-};
 
 const PRIORITY_STYLES: Record<MaintenanceRequestPriority, string> = {
   low: 'bg-muted text-muted-foreground border-transparent',
@@ -112,12 +102,14 @@ const PRIORITY_STYLES: Record<MaintenanceRequestPriority, string> = {
 
 function MaintenancePriorityBadge({
   priority,
+  labels,
 }: {
   priority: MaintenanceRequestPriority;
+  labels: Dictionary['tasks']['priority'];
 }) {
   return (
     <Badge variant="outline" className={PRIORITY_STYLES[priority]}>
-      {PRIORITY_LABELS[priority] ?? priority}
+      {labels[priority] ?? priority}
     </Badge>
   );
 }
@@ -131,13 +123,6 @@ const WORK_ORDER_STATUSES: WorkOrderStatus[] = [
   'canceled',
 ];
 
-const WORK_ORDER_STATUS_LABELS: Record<WorkOrderStatus, string> = {
-  scheduled: 'Scheduled',
-  in_progress: 'In progress',
-  completed: 'Completed',
-  canceled: 'Canceled',
-};
-
 const WORK_ORDER_STATUS_STYLES: Record<WorkOrderStatus, string> = {
   scheduled: 'bg-amber-50 text-amber-700 border-amber-200',
   in_progress: 'bg-blue-50 text-blue-700 border-blue-200',
@@ -145,15 +130,24 @@ const WORK_ORDER_STATUS_STYLES: Record<WorkOrderStatus, string> = {
   canceled: 'bg-muted text-muted-foreground border-transparent',
 };
 
-function WorkOrderStatusBadge({ status }: { status: WorkOrderStatus }) {
+function WorkOrderStatusBadge({
+  status,
+  labels,
+}: {
+  status: WorkOrderStatus;
+  labels: Dictionary['maintenance']['workOrderStatus'];
+}) {
   return (
     <Badge variant="outline" className={WORK_ORDER_STATUS_STYLES[status]}>
-      {WORK_ORDER_STATUS_LABELS[status] ?? status}
+      {labels[status] ?? status}
     </Badge>
   );
 }
 
 // ── New Work Order form (org_admin only) ────────────────────────────────────
+// No zod .min() messages here (all fields optional/enum) — nothing to
+// dictionary-drive in the schema itself; validation strings live in the
+// manual vendor/staff checks in onCreateSubmit below.
 
 const createWorkOrderSchema = z.object({
   assignmentMode: z.enum(['vendor', 'staff']),
@@ -212,6 +206,7 @@ interface MaintenanceRequestDetailPageProps {
    * backend's per-row 403 + toast is the real enforcement.
    */
   isMaintenanceCaller: boolean;
+  dict: Dictionary;
 }
 
 export function MaintenanceRequestDetailPage({
@@ -219,12 +214,16 @@ export function MaintenanceRequestDetailPage({
   locale,
   canWrite,
   isMaintenanceCaller,
+  dict,
 }: MaintenanceRequestDetailPageProps) {
+  const t = dict.maintenance;
+  const tt = dict.tasks;
   const {
     data: request,
     isLoading,
     isError,
   } = useGetMaintenanceRequestQuery(id);
+  const { data: buildings } = useListBuildingsQuery();
   const { data: vendors } = useListVendorsQuery();
   const { data: users } = useListUsersQuery();
 
@@ -297,11 +296,9 @@ export function MaintenanceRequestDetailPage({
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground w-fit"
         >
           <ArrowLeftIcon className="size-3.5" />
-          Back to tasks
+          {t.detail.backToTasks}
         </Link>
-        <p className="text-sm text-muted-foreground">
-          Failed to load this maintenance request.
-        </p>
+        <p className="text-sm text-muted-foreground">{t.detail.loadError}</p>
       </div>
     );
   }
@@ -330,11 +327,11 @@ export function MaintenanceRequestDetailPage({
 
   async function onCreateSubmit(values: CreateWorkOrderFormValues) {
     if (values.assignmentMode === 'vendor' && !values.vendorId) {
-      toast.error('Select a vendor.');
+      toast.error(t.workOrder.create.vendorRequired);
       return;
     }
     if (values.assignmentMode === 'staff' && !values.assignedUserId) {
-      toast.error('Select a staff member.');
+      toast.error(t.workOrder.create.staffRequired);
       return;
     }
     try {
@@ -352,11 +349,11 @@ export function MaintenanceRequestDetailPage({
           resolutionNotes: values.resolutionNotes || undefined,
         },
       }).unwrap();
-      toast.success('Work order created.');
+      toast.success(t.workOrder.create.success);
       setCreateOpen(false);
       resetCreate(CREATE_WORK_ORDER_EMPTY);
     } catch {
-      toast.error('Failed to create work order. Please try again.');
+      toast.error(t.workOrder.create.genericError);
     }
   }
 
@@ -392,10 +389,10 @@ export function MaintenanceRequestDetailPage({
           resolutionNotes: values.resolutionNotes || null,
         },
       }).unwrap();
-      toast.success('Work order updated.');
+      toast.success(t.workOrder.edit.success);
       setEditTarget(null);
     } catch {
-      toast.error('Failed to update work order.');
+      toast.error(t.workOrder.edit.error);
     }
   }
 
@@ -418,12 +415,10 @@ export function MaintenanceRequestDetailPage({
           resolutionNotes: values.resolutionNotes || null,
         },
       }).unwrap();
-      toast.success('Work order updated.');
+      toast.success(t.workOrder.updateStatus.success);
       setStatusTarget(null);
     } catch {
-      toast.error(
-        'Failed to update work order. You can only update a work order assigned to you.',
-      );
+      toast.error(t.workOrder.updateStatus.error);
     }
   }
 
@@ -434,10 +429,10 @@ export function MaintenanceRequestDetailPage({
         maintenanceRequestId: id,
         workOrderId: deleteTarget.id,
       }).unwrap();
-      toast.success('Work order deleted.');
+      toast.success(t.workOrder.delete.success);
       setDeleteTarget(null);
     } catch {
-      toast.error('Failed to delete work order.');
+      toast.error(t.workOrder.delete.error);
     }
   }
 
@@ -448,7 +443,7 @@ export function MaintenanceRequestDetailPage({
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground w-fit"
       >
         <ArrowLeftIcon className="size-3.5" />
-        Back to tasks
+        {t.detail.backToTasks}
       </Link>
 
       <div className="flex items-center justify-between gap-4">
@@ -459,28 +454,60 @@ export function MaintenanceRequestDetailPage({
           </h1>
         </div>
         <div className="flex items-center gap-2">
-          <MaintenanceStatusBadge status={request.status} />
-          <MaintenancePriorityBadge priority={request.priority} />
+          <MaintenanceStatusBadge status={request.status} labels={tt.status} />
+          <MaintenancePriorityBadge
+            priority={request.priority}
+            labels={tt.priority}
+          />
         </div>
       </div>
 
       {/* Info card */}
       <div className="rounded-xl border bg-card p-6 grid grid-cols-1 sm:grid-cols-3 gap-6">
         <div>
-          <p className="text-xs text-muted-foreground">Apartment</p>
+          <p className="text-xs text-muted-foreground">
+            {t.detail.info.building}
+          </p>
+          <p className="text-sm font-medium">
+            <Link
+              href={`/${locale}/dashboard/buildings/${request.buildingId}`}
+              className="hover:underline"
+            >
+              {buildings?.find((b) => b.id === request.buildingId)?.name ??
+                request.buildingId}
+            </Link>
+          </p>
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground">
+            {t.detail.info.apartment}
+          </p>
           <p className="text-sm font-medium">{request.apartmentUnitNumber}</p>
         </div>
         <div>
-          <p className="text-xs text-muted-foreground">Renter</p>
-          <p className="text-sm font-medium">{request.renterName}</p>
+          <p className="text-xs text-muted-foreground">
+            {t.detail.info.renter}
+          </p>
+          <p className="text-sm font-medium">
+            <Link
+              href={`/${locale}/dashboard/renters/${request.renterId}`}
+              className="hover:underline"
+            >
+              {request.renterName}
+            </Link>
+          </p>
         </div>
         <div>
-          <p className="text-xs text-muted-foreground">Description</p>
+          <p className="text-xs text-muted-foreground">
+            {t.detail.info.description}
+          </p>
           <p className="text-sm font-medium">{request.description || '—'}</p>
         </div>
         {request.notes && (
           <div className="sm:col-span-3">
-            <p className="text-xs text-muted-foreground">Notes</p>
+            <p className="text-xs text-muted-foreground">
+              {t.detail.info.notes}
+            </p>
             <p className="text-sm font-medium">{request.notes}</p>
           </div>
         )}
@@ -489,15 +516,17 @@ export function MaintenanceRequestDetailPage({
       {/* Work order history */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold tracking-tight">Work orders</h2>
+          <h2 className="text-lg font-semibold tracking-tight">
+            {t.detail.workOrdersTitle}
+          </h2>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Job history for this maintenance request.
+            {t.detail.workOrdersSubtitle}
           </p>
         </div>
         {canWrite && (
           <Button onClick={() => setCreateOpen(true)}>
             <PlusIcon />
-            New work order
+            {t.detail.newWorkOrder}
           </Button>
         )}
       </div>
@@ -506,11 +535,11 @@ export function MaintenanceRequestDetailPage({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Status</TableHead>
-              <TableHead>Vendor / Assignee</TableHead>
-              <TableHead>Cost</TableHead>
-              <TableHead>Resolution notes</TableHead>
-              <TableHead>Completed</TableHead>
+              <TableHead>{t.detail.table.status}</TableHead>
+              <TableHead>{t.detail.table.assignee}</TableHead>
+              <TableHead>{t.detail.table.cost}</TableHead>
+              <TableHead>{t.detail.table.resolutionNotes}</TableHead>
+              <TableHead>{t.detail.table.completed}</TableHead>
               {(canWrite || isMaintenanceCaller) && (
                 <TableHead className="w-10" />
               )}
@@ -524,14 +553,17 @@ export function MaintenanceRequestDetailPage({
                   className="text-center py-10 text-muted-foreground"
                 >
                   <WrenchIcon className="size-8 mx-auto mb-2 opacity-30" />
-                  No work orders yet.
+                  {t.detail.empty}
                 </TableCell>
               </TableRow>
             ) : (
               request.workOrders.map((workOrder) => (
                 <TableRow key={workOrder.id}>
                   <TableCell>
-                    <WorkOrderStatusBadge status={workOrder.status} />
+                    <WorkOrderStatusBadge
+                      status={workOrder.status}
+                      labels={t.workOrderStatus}
+                    />
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {assigneeLabel(workOrder)}
@@ -555,7 +587,7 @@ export function MaintenanceRequestDetailPage({
                             <Button
                               variant="ghost"
                               size="icon-sm"
-                              aria-label="Work order actions"
+                              aria-label={t.detail.actionsLabel}
                             >
                               <MoreHorizontalIcon />
                             </Button>
@@ -567,7 +599,7 @@ export function MaintenanceRequestDetailPage({
                               onClick={() => openEdit(workOrder)}
                             >
                               <PencilIcon className="size-3.5 mr-1.5" />
-                              Edit
+                              {dict.common.edit}
                             </DropdownMenuItem>
                           )}
                           {isMaintenanceCaller && !canWrite && (
@@ -575,7 +607,7 @@ export function MaintenanceRequestDetailPage({
                               onClick={() => openStatusUpdate(workOrder)}
                             >
                               <PencilIcon className="size-3.5 mr-1.5" />
-                              Update status
+                              {t.detail.updateStatusAction}
                             </DropdownMenuItem>
                           )}
                           {canWrite && (
@@ -586,7 +618,7 @@ export function MaintenanceRequestDetailPage({
                                 onClick={() => setDeleteTarget(workOrder)}
                               >
                                 <TrashIcon className="size-3.5 mr-1.5" />
-                                Delete
+                                {dict.common.delete}
                               </DropdownMenuItem>
                             </>
                           )}
@@ -611,25 +643,33 @@ export function MaintenanceRequestDetailPage({
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>New work order</DialogTitle>
+            <DialogTitle>{t.workOrder.create.title}</DialogTitle>
           </DialogHeader>
           <form
             onSubmit={handleCreate(onCreateSubmit)}
             className="flex flex-col gap-4"
           >
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="wo-mode">Assign to</Label>
+              <Label htmlFor="wo-mode">{t.workOrder.fields.assignTo}</Label>
               <Controller
                 control={createControl}
                 name="assignmentMode"
                 render={({ field }) => (
                   <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger id="wo-mode" className="w-full">
-                      <SelectValue />
+                      <SelectValue>
+                        {(value) =>
+                          t.assignmentMode[value as 'vendor' | 'staff'] ?? value
+                        }
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="vendor">Vendor</SelectItem>
-                      <SelectItem value="staff">Staff member</SelectItem>
+                      <SelectItem value="vendor">
+                        {t.assignmentMode.vendor}
+                      </SelectItem>
+                      <SelectItem value="staff">
+                        {t.assignmentMode.staff}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 )}
@@ -638,7 +678,8 @@ export function MaintenanceRequestDetailPage({
             {createMode === 'vendor' ? (
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="wo-vendor">
-                  Vendor <span className="text-destructive">*</span>
+                  {t.assignmentMode.vendor}{' '}
+                  <span className="text-destructive">*</span>
                 </Label>
                 <Controller
                   control={createControl}
@@ -646,7 +687,14 @@ export function MaintenanceRequestDetailPage({
                   render={({ field }) => (
                     <Select value={field.value} onValueChange={field.onChange}>
                       <SelectTrigger id="wo-vendor" className="w-full">
-                        <SelectValue placeholder="Select a vendor" />
+                        <SelectValue>
+                          {(value) =>
+                            !value
+                              ? t.workOrder.fields.selectVendor
+                              : (vendors?.find((v) => v.id === value)
+                                  ?.companyName ?? value)
+                          }
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {vendors?.map((vendor) => (
@@ -662,7 +710,8 @@ export function MaintenanceRequestDetailPage({
             ) : (
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="wo-assignee">
-                  Staff member <span className="text-destructive">*</span>
+                  {t.assignmentMode.staff}{' '}
+                  <span className="text-destructive">*</span>
                 </Label>
                 <Controller
                   control={createControl}
@@ -670,7 +719,21 @@ export function MaintenanceRequestDetailPage({
                   render={({ field }) => (
                     <Select value={field.value} onValueChange={field.onChange}>
                       <SelectTrigger id="wo-assignee" className="w-full">
-                        <SelectValue placeholder="Select a staff member" />
+                        <SelectValue>
+                          {(value) => {
+                            if (!value) {
+                              return t.workOrder.fields.selectStaffMember;
+                            }
+                            const member = maintenanceStaff.find(
+                              (m) => m.userId === value,
+                            );
+                            return (
+                              member?.user?.fullName ??
+                              member?.username ??
+                              value
+                            );
+                          }}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {maintenanceStaff.map((member) => (
@@ -687,19 +750,23 @@ export function MaintenanceRequestDetailPage({
               </div>
             )}
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="wo-status">Status</Label>
+              <Label htmlFor="wo-status">{t.workOrder.fields.status}</Label>
               <Controller
                 control={createControl}
                 name="status"
                 render={({ field }) => (
                   <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger id="wo-status" className="w-full">
-                      <SelectValue />
+                      <SelectValue>
+                        {(value) =>
+                          t.workOrderStatus[value as WorkOrderStatus] ?? value
+                        }
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {WORK_ORDER_STATUSES.map((status) => (
                         <SelectItem key={status} value={status}>
-                          {WORK_ORDER_STATUS_LABELS[status]}
+                          {t.workOrderStatus[status]}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -709,9 +776,9 @@ export function MaintenanceRequestDetailPage({
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="wo-cost">
-                Cost{' '}
+                {t.workOrder.fields.cost}{' '}
                 <span className="text-muted-foreground font-normal">
-                  (optional)
+                  {t.workOrder.fields.optional}
                 </span>
               </Label>
               <Input
@@ -725,9 +792,9 @@ export function MaintenanceRequestDetailPage({
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="wo-notes">
-                Resolution notes{' '}
+                {t.workOrder.fields.resolutionNotes}{' '}
                 <span className="text-muted-foreground font-normal">
-                  (optional)
+                  {t.workOrder.fields.optional}
                 </span>
               </Label>
               <Textarea
@@ -744,10 +811,12 @@ export function MaintenanceRequestDetailPage({
                   resetCreate(CREATE_WORK_ORDER_EMPTY);
                 }}
               >
-                Cancel
+                {dict.common.cancel}
               </DialogClose>
               <Button type="submit" disabled={creating}>
-                {creating ? 'Creating…' : 'Create'}
+                {creating
+                  ? t.workOrder.create.creating
+                  : t.workOrder.create.create}
               </Button>
             </DialogFooter>
           </form>
@@ -763,25 +832,33 @@ export function MaintenanceRequestDetailPage({
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit work order</DialogTitle>
+            <DialogTitle>{t.workOrder.edit.title}</DialogTitle>
           </DialogHeader>
           <form
             onSubmit={handleEdit(onEditSubmit)}
             className="flex flex-col gap-4"
           >
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="woe-mode">Assign to</Label>
+              <Label htmlFor="woe-mode">{t.workOrder.fields.assignTo}</Label>
               <Controller
                 control={editControl}
                 name="assignmentMode"
                 render={({ field }) => (
                   <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger id="woe-mode" className="w-full">
-                      <SelectValue />
+                      <SelectValue>
+                        {(value) =>
+                          t.assignmentMode[value as 'vendor' | 'staff'] ?? value
+                        }
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="vendor">Vendor</SelectItem>
-                      <SelectItem value="staff">Staff member</SelectItem>
+                      <SelectItem value="vendor">
+                        {t.assignmentMode.vendor}
+                      </SelectItem>
+                      <SelectItem value="staff">
+                        {t.assignmentMode.staff}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 )}
@@ -789,14 +866,21 @@ export function MaintenanceRequestDetailPage({
             </div>
             {editMode === 'vendor' ? (
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="woe-vendor">Vendor</Label>
+                <Label htmlFor="woe-vendor">{t.assignmentMode.vendor}</Label>
                 <Controller
                   control={editControl}
                   name="vendorId"
                   render={({ field }) => (
                     <Select value={field.value} onValueChange={field.onChange}>
                       <SelectTrigger id="woe-vendor" className="w-full">
-                        <SelectValue placeholder="Select a vendor" />
+                        <SelectValue>
+                          {(value) =>
+                            !value
+                              ? t.workOrder.fields.selectVendor
+                              : (vendors?.find((v) => v.id === value)
+                                  ?.companyName ?? value)
+                          }
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {vendors?.map((vendor) => (
@@ -811,14 +895,28 @@ export function MaintenanceRequestDetailPage({
               </div>
             ) : (
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="woe-assignee">Staff member</Label>
+                <Label htmlFor="woe-assignee">{t.assignmentMode.staff}</Label>
                 <Controller
                   control={editControl}
                   name="assignedUserId"
                   render={({ field }) => (
                     <Select value={field.value} onValueChange={field.onChange}>
                       <SelectTrigger id="woe-assignee" className="w-full">
-                        <SelectValue placeholder="Select a staff member" />
+                        <SelectValue>
+                          {(value) => {
+                            if (!value) {
+                              return t.workOrder.fields.selectStaffMember;
+                            }
+                            const member = maintenanceStaff.find(
+                              (m) => m.userId === value,
+                            );
+                            return (
+                              member?.user?.fullName ??
+                              member?.username ??
+                              value
+                            );
+                          }}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {maintenanceStaff.map((member) => (
@@ -835,19 +933,23 @@ export function MaintenanceRequestDetailPage({
               </div>
             )}
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="woe-status">Status</Label>
+              <Label htmlFor="woe-status">{t.workOrder.fields.status}</Label>
               <Controller
                 control={editControl}
                 name="status"
                 render={({ field }) => (
                   <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger id="woe-status" className="w-full">
-                      <SelectValue />
+                      <SelectValue>
+                        {(value) =>
+                          t.workOrderStatus[value as WorkOrderStatus] ?? value
+                        }
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {WORK_ORDER_STATUSES.map((status) => (
                         <SelectItem key={status} value={status}>
-                          {WORK_ORDER_STATUS_LABELS[status]}
+                          {t.workOrderStatus[status]}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -857,9 +959,9 @@ export function MaintenanceRequestDetailPage({
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="woe-cost">
-                Cost{' '}
+                {t.workOrder.fields.cost}{' '}
                 <span className="text-muted-foreground font-normal">
-                  (optional)
+                  {t.workOrder.fields.optional}
                 </span>
               </Label>
               <Input
@@ -873,9 +975,9 @@ export function MaintenanceRequestDetailPage({
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="woe-notes">
-                Resolution notes{' '}
+                {t.workOrder.fields.resolutionNotes}{' '}
                 <span className="text-muted-foreground font-normal">
-                  (optional)
+                  {t.workOrder.fields.optional}
                 </span>
               </Label>
               <Textarea
@@ -889,10 +991,10 @@ export function MaintenanceRequestDetailPage({
                 render={<Button variant="outline" type="button" />}
                 onClick={() => setEditTarget(null)}
               >
-                Cancel
+                {dict.common.cancel}
               </DialogClose>
               <Button type="submit" disabled={updating}>
-                {updating ? 'Saving…' : 'Save'}
+                {updating ? t.workOrder.edit.saving : dict.common.save}
               </Button>
             </DialogFooter>
           </form>
@@ -908,26 +1010,30 @@ export function MaintenanceRequestDetailPage({
       >
         <DialogContent className="sm:max-w-xs">
           <DialogHeader>
-            <DialogTitle>Update work order</DialogTitle>
+            <DialogTitle>{t.workOrder.updateStatus.title}</DialogTitle>
           </DialogHeader>
           <form
             onSubmit={handleStatus(onStatusSubmit)}
             className="flex flex-col gap-4"
           >
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="wos-status">Status</Label>
+              <Label htmlFor="wos-status">{t.workOrder.fields.status}</Label>
               <Controller
                 control={statusControl}
                 name="status"
                 render={({ field }) => (
                   <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger id="wos-status" className="w-full">
-                      <SelectValue />
+                      <SelectValue>
+                        {(value) =>
+                          t.workOrderStatus[value as WorkOrderStatus] ?? value
+                        }
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {WORK_ORDER_STATUSES.map((status) => (
                         <SelectItem key={status} value={status}>
-                          {WORK_ORDER_STATUS_LABELS[status]}
+                          {t.workOrderStatus[status]}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -937,9 +1043,9 @@ export function MaintenanceRequestDetailPage({
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="wos-notes">
-                Resolution notes{' '}
+                {t.workOrder.fields.resolutionNotes}{' '}
                 <span className="text-muted-foreground font-normal">
-                  (optional)
+                  {t.workOrder.fields.optional}
                 </span>
               </Label>
               <Textarea
@@ -953,10 +1059,10 @@ export function MaintenanceRequestDetailPage({
                 render={<Button variant="outline" type="button" />}
                 onClick={() => setStatusTarget(null)}
               >
-                Cancel
+                {dict.common.cancel}
               </DialogClose>
               <Button type="submit" disabled={updating}>
-                {updating ? 'Saving…' : 'Save'}
+                {updating ? t.workOrder.updateStatus.saving : dict.common.save}
               </Button>
             </DialogFooter>
           </form>
@@ -972,12 +1078,11 @@ export function MaintenanceRequestDetailPage({
       >
         <DialogContent className="sm:max-w-xs">
           <DialogHeader>
-            <DialogTitle>Delete work order</DialogTitle>
+            <DialogTitle>{t.workOrder.delete.title}</DialogTitle>
           </DialogHeader>
           <div className="py-1">
             <p className="text-sm text-muted-foreground">
-              Are you sure you want to delete this work order? This action
-              cannot be undone.
+              {t.workOrder.delete.confirm}
             </p>
           </div>
           <DialogFooter>
@@ -985,14 +1090,14 @@ export function MaintenanceRequestDetailPage({
               render={<Button variant="outline" type="button" />}
               onClick={() => setDeleteTarget(null)}
             >
-              Cancel
+              {dict.common.cancel}
             </DialogClose>
             <Button
               variant="destructive"
               onClick={handleDelete}
               disabled={deleting}
             >
-              {deleting ? 'Deleting…' : 'Delete'}
+              {deleting ? t.workOrder.delete.deleting : dict.common.delete}
             </Button>
           </DialogFooter>
         </DialogContent>

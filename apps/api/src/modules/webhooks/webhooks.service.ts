@@ -106,32 +106,37 @@ export class WebhooksService {
       typeof session.subscription === 'string' ? session.subscription : null;
     const planKey = session.metadata?.planKey ?? null;
 
-    // Persist customerId on org and activate
-    if (customerId) {
-      await this.prisma.organization.update({
-        where: { id: orgId },
-        data: { stripeCustomerId: customerId, status: 'ACTIVE' },
-      });
-    }
+    // Persist the subscription and activate the org atomically. Ordered
+    // subscription-first so that if any write fails the whole thing rolls back
+    // — a partial failure can never leave an org ACTIVE with no subscription
+    // row (i.e. a half-activated org that Stripe believes is paying).
+    await this.prisma.$transaction(async (tx) => {
+      if (subscriptionId) {
+        await tx.subscription.upsert({
+          where: { orgId },
+          create: {
+            orgId,
+            stripeSubscriptionId: subscriptionId,
+            stripeCustomerId: customerId ?? undefined,
+            status: 'ACTIVE',
+            ...(planKey ? { planKey } : {}),
+          },
+          update: {
+            stripeSubscriptionId: subscriptionId,
+            stripeCustomerId: customerId ?? undefined,
+            status: 'ACTIVE',
+            ...(planKey ? { planKey } : {}),
+          },
+        });
+      }
 
-    if (subscriptionId) {
-      await this.prisma.subscription.upsert({
-        where: { orgId },
-        create: {
-          orgId,
-          stripeSubscriptionId: subscriptionId,
-          stripeCustomerId: customerId ?? undefined,
-          status: 'ACTIVE',
-          ...(planKey ? { planKey } : {}),
-        },
-        update: {
-          stripeSubscriptionId: subscriptionId,
-          stripeCustomerId: customerId ?? undefined,
-          status: 'ACTIVE',
-          ...(planKey ? { planKey } : {}),
-        },
-      });
-    }
+      if (customerId) {
+        await tx.organization.update({
+          where: { id: orgId },
+          data: { stripeCustomerId: customerId, status: 'ACTIVE' },
+        });
+      }
+    });
 
     // Idempotent backstop: ensure the org has an org_admin (provisioning already
     // assigns it). If the sole org member somehow lacks the role, promote them.

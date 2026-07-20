@@ -26,11 +26,5 @@ export default async function UsersPageRoute({
   // supervisor gets read-only view; org_admin gets full CRUD
   const readonly = role !== 'org_admin';
 
-  return (
-    <UsersPage
-      locale={locale}
-      dict={dict as Record<string, unknown>}
-      readonly={readonly}
-    />
-  );
+  return <UsersPage locale={locale} dict={dict} readonly={readonly} />;
 }
