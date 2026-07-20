@@ -364,6 +364,7 @@ model Assignment {
   submissions   Submission[]
   quizAttempts  QuizAttempt[]
 
+  @@index([createdById])
   @@index([courseId, status])
   @@index([dueAt])
   @@schema("public")
@@ -470,6 +471,7 @@ model Meeting {
   host         User                 @relation("MeetingHost", fields: [hostId], references: [id])
   participants MeetingParticipant[]
 
+  @@index([hostId])
   @@index([courseId, scheduledAt])
   @@schema("public")
 }

@@ -184,11 +184,15 @@ export default function CreateCoursePage() {
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="course-organization"
+                className="mb-2 block text-sm font-medium text-gray-700"
+              >
                 Organization
               </label>
 
               <select
+                id="course-organization"
                 {...register('organizationId')}
                 disabled={isLoadingOrganizations}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-200 disabled:cursor-not-allowed disabled:opacity-60"
@@ -214,11 +218,15 @@ export default function CreateCoursePage() {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="course-teacher"
+                className="mb-2 block text-sm font-medium text-gray-700"
+              >
                 Teacher
               </label>
 
               <select
+                id="course-teacher"
                 {...register('teacherId')}
                 disabled={!organizationId || isLoadingDetails}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-200 disabled:cursor-not-allowed disabled:opacity-60"
@@ -242,11 +250,15 @@ export default function CreateCoursePage() {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="course-grade"
+                className="mb-2 block text-sm font-medium text-gray-700"
+              >
                 Grade
               </label>
 
               <select
+                id="course-grade"
                 {...register('gradeId')}
                 disabled={!organizationId || isLoadingDetails}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-200 disabled:cursor-not-allowed disabled:opacity-60"
@@ -270,11 +282,15 @@ export default function CreateCoursePage() {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="course-title"
+                className="mb-2 block text-sm font-medium text-gray-700"
+              >
                 Course Title
               </label>
 
               <input
+                id="course-title"
                 {...register('title')}
                 placeholder="Example: Math"
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-200"
@@ -288,11 +304,15 @@ export default function CreateCoursePage() {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="course-description"
+                className="mb-2 block text-sm font-medium text-gray-700"
+              >
                 Description
               </label>
 
               <textarea
+                id="course-description"
                 {...register('description')}
                 placeholder="Optional course description"
                 rows={4}
@@ -307,11 +327,15 @@ export default function CreateCoursePage() {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="course-status"
+                className="mb-2 block text-sm font-medium text-gray-700"
+              >
                 Status
               </label>
 
               <select
+                id="course-status"
                 {...register('status')}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-200"
               >

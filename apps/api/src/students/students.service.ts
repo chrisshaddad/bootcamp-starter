@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import type {
   StudentActionResponse,
   StudentOrganizationGradesResponse,
@@ -7,8 +12,17 @@ import type {
   UpdateStudentRequest,
   UpdateStudentResponse,
 } from '@repo/contracts';
+
 import { PrismaService } from '../database/prisma.service';
-import { Prisma } from '@repo/db';
+
+function isUniqueConstraintError(error: unknown): error is { code: 'P2002' } {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    error.code === 'P2002'
+  );
+}
 
 @Injectable()
 export class StudentsService {
@@ -48,6 +62,8 @@ export class StudentsService {
     const studentCountByOrganizationId = new Map(
       studentCounts.map((count) => [count.organizationId, count._count._all]),
     );
+
+    this.logger.log('Fetched student organization dashboard cards.');
 
     return {
       organizations: organizations.map((organization) => ({
@@ -133,6 +149,10 @@ export class StudentsService {
       }
     }
 
+    this.logger.log(
+      `Fetched student grades for organization ${organizationId}.`,
+    );
+
     return {
       organizationId,
       grades: Array.from(gradeMap.values()).map((grade) => ({
@@ -208,6 +228,10 @@ export class StudentsService {
       },
     });
 
+    this.logger.log(
+      `Fetched ${studentProfiles.length} students for organization ${organizationId} and grade ${gradeId}.`,
+    );
+
     return {
       organizationId,
       gradeId,
@@ -242,13 +266,17 @@ export class StudentsService {
         userId: true,
       },
     });
+
     if (!studentProfile) {
       throw new NotFoundException('Student not found');
     }
 
     try {
       await this.prisma.$transaction(async (tx) => {
-        const userData: { name?: string; email?: string } = {};
+        const userData: {
+          name?: string;
+          email?: string;
+        } = {};
 
         if (payload.name !== undefined) {
           userData.name = payload.name;
@@ -292,10 +320,7 @@ export class StudentsService {
         }
       });
     } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
+      if (isUniqueConstraintError(error)) {
         this.logger.warn(
           `Unique-field conflict while updating student ${studentProfileId}.`,
         );

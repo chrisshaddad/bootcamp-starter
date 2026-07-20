@@ -35,6 +35,8 @@ export default function StudentsOrganizationPage({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let isCancelled = false;
+
     async function loadGrades() {
       setIsLoading(true);
       setError(null);
@@ -44,23 +46,32 @@ export default function StudentsOrganizationPage({
           `/students/organizations/${organizationId}/grades`,
         );
 
-        setGrades(data.grades);
+        if (!isCancelled) {
+          setGrades(data.grades);
+        }
       } catch (error) {
-        console.error('Failed to load student grades:', error);
+        if (!isCancelled) {
+          console.error('Failed to load student grades:', error);
 
-        setError(
-          error instanceof Error
-            ? error.message
-            : 'Failed to load student grades.',
-        );
+          setError(
+            error instanceof Error
+              ? error.message
+              : 'Failed to load student grades.',
+          );
+        }
       } finally {
-        setIsLoading(false);
+        if (!isCancelled) {
+          setIsLoading(false);
+        }
       }
     }
 
     void loadGrades();
-  }, [organizationId]);
 
+    return () => {
+      isCancelled = true;
+    };
+  }, [organizationId]);
   return (
     <div className="space-y-5">
       <header>

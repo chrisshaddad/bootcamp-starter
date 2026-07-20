@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   Logger,
   NotFoundException,
@@ -13,8 +14,18 @@ import type {
   UpdateTeacherRequest,
   UpdateTeacherResponse,
 } from '@repo/contracts';
+
 import { PrismaService } from '../database/prisma.service';
-import { Prisma } from '@repo/db';
+
+function isUniqueConstraintError(error: unknown): error is { code: 'P2002' } {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    error.code === 'P2002'
+  );
+}
+
 @Injectable()
 export class TeachersService {
   private readonly logger = new Logger(TeachersService.name);
@@ -137,38 +148,45 @@ export class TeachersService {
       throw new NotFoundException('Teacher not found');
     }
 
-    let updatedTeacher;
+    const updatedTeacher = await (async () => {
+      try {
+        return await this.prisma.user.update({
+          where: {
+            id: teacherId,
+          },
+          data: {
+            ...(payload.name !== undefined
+              ? {
+                  name: payload.name,
+                }
+              : {}),
+            ...(payload.email !== undefined
+              ? {
+                  email: payload.email,
+                }
+              : {}),
+          },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            isConfirmed: true,
+            createdAt: true,
+          },
+        });
+      } catch (error) {
+        if (isUniqueConstraintError(error)) {
+          this.logger.warn(
+            `Email conflict while updating teacher ${teacherId}.`,
+          );
 
-    try {
-      updatedTeacher = await this.prisma.user.update({
-        where: {
-          id: teacherId,
-        },
-        data: {
-          ...(payload.name !== undefined ? { name: payload.name } : {}),
-          ...(payload.email !== undefined ? { email: payload.email } : {}),
-        },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          role: true,
-          isConfirmed: true,
-          createdAt: true,
-        },
-      });
-    } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
-        this.logger.warn(`Email conflict while updating teacher ${teacherId}.`);
+          throw new ConflictException('A user with this email already exists.');
+        }
 
-        throw new ConflictException('A user with this email already exists.');
+        throw error;
       }
-
-      throw error;
-    }
+    })();
 
     this.logger.log(`Updated teacher ${teacherId}.`);
 
@@ -294,7 +312,7 @@ export class TeachersService {
         (section) => !existingSectionIds.has(section.id),
       );
 
-      const createdCourses = await Promise.all(
+      return Promise.all(
         sectionsToCreate.map((section) =>
           tx.course.create({
             data: {
@@ -312,8 +330,6 @@ export class TeachersService {
           }),
         ),
       );
-
-      return createdCourses;
     });
 
     this.logger.log(
