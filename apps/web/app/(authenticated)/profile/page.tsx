@@ -1,7 +1,16 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Pencil, Plus, Target, Layers, X } from 'lucide-react';
+import {
+  FileText,
+  MapPin,
+  Pencil,
+  Phone,
+  Plus,
+  Target,
+  Layers,
+  X,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { useUser } from '@/hooks/use-auth';
 import { useEmployee } from '@/hooks/use-employee';
@@ -14,6 +23,19 @@ import { SkillRating } from '@/components/skill-rating';
 import { SkillPickerDialog } from '@/components/skill-picker-dialog';
 import { EditProfileDialog } from '@/components/edit-profile-dialog';
 
+const EMPLOYMENT_TYPE_LABELS = {
+  FULL_TIME: 'Full-time',
+  PART_TIME: 'Part-time',
+  CONTRACT: 'Contract',
+  INTERN: 'Intern',
+} as const;
+
+const WORK_ARRANGEMENT_LABELS = {
+  REMOTE: 'Remote',
+  HYBRID: 'Hybrid',
+  ONSITE: 'On-site',
+} as const;
+
 function formatTenure(createdAt: string | Date): string {
   const start = new Date(createdAt);
   const months = (Date.now() - start.getTime()) / (1000 * 60 * 60 * 24 * 30.44);
@@ -23,12 +45,26 @@ function formatTenure(createdAt: string | Date): string {
   return `${Math.floor(months / 12)}y tenure`;
 }
 
+function formatAddress(profile: {
+  street1: string | null;
+  street2: string | null;
+  city: string | null;
+  state: string | null;
+  postalCode: string | null;
+  country: string | null;
+}): string | null {
+  const line1 = [profile.street1, profile.street2].filter(Boolean).join(', ');
+  const line2 = [profile.city, profile.state].filter(Boolean).join(', ');
+  const line3 = [line2, profile.postalCode].filter(Boolean).join(' ');
+  const parts = [line1, line3, profile.country].filter(Boolean);
+  return parts.length ? parts.join(' · ') : null;
+}
+
 function LoadingSkeleton() {
   return (
     <div className="space-y-6">
-      <Skeleton className="h-32 w-full rounded-xl" />
-      <Skeleton className="h-24 w-full rounded-xl" />
-      <Skeleton className="h-24 w-full rounded-xl" />
+      <Skeleton className="h-28 w-full rounded-xl" />
+      <Skeleton className="h-28 w-full rounded-xl" />
       <Skeleton className="h-40 w-full rounded-xl" />
     </div>
   );
@@ -112,9 +148,9 @@ export default function ProfilePage() {
         </Button>
       </div>
 
-      <Card className="gap-3 border-gray-200 p-5 shadow-sm">
+      <Card className="gap-4 border-gray-200 p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-4">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary-100 text-lg font-semibold text-primary-base">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary-100 text-lg font-semibold text-primary-base">
             {employee.name
               .split(' ')
               .map((part) => part[0])
@@ -145,26 +181,57 @@ export default function ProfilePage() {
               <span className="text-gray-500">
                 {formatTenure(employee.createdAt)}
               </span>
+              {employee.profile?.employmentType && (
+                <span className="rounded-full bg-primary-100 px-2.5 py-0.5 text-primary-base">
+                  {EMPLOYMENT_TYPE_LABELS[employee.profile.employmentType]}
+                </span>
+              )}
+              {employee.profile?.workArrangement && (
+                <span className="rounded-full bg-success/15 px-2.5 py-0.5 text-success">
+                  {WORK_ARRANGEMENT_LABELS[employee.profile.workArrangement]}
+                </span>
+              )}
             </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2 border-t border-gray-100 pt-4 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-6">
+          <div className="flex items-center gap-2 text-sm text-gray-700">
+            <Phone className="h-4 w-4 shrink-0 text-gray-400" />
+            {employee.profile?.phoneNumber || (
+              <span className="text-gray-400">No phone added</span>
+            )}
+          </div>
+          <div className="flex items-center gap-2 text-sm text-gray-700">
+            <MapPin className="h-4 w-4 shrink-0 text-gray-400" />
+            {(employee.profile && formatAddress(employee.profile)) || (
+              <span className="text-gray-400">No location added</span>
+            )}
           </div>
         </div>
       </Card>
 
-      <Card className="gap-2 border-gray-200 p-5 shadow-sm">
-        <h3 className="text-sm font-semibold text-gray-900">Bio</h3>
-        <p className="text-sm text-gray-600">
-          {employee.profile?.bio || 'No bio added yet.'}
-        </p>
-      </Card>
-
-      <Card className="gap-2 border-gray-200 p-5 shadow-sm">
-        <div className="flex items-center gap-2">
-          <Target className="h-4 w-4 text-gray-500" />
-          <h3 className="text-sm font-semibold text-gray-900">Career Goals</h3>
+      <Card className="grid grid-cols-1 gap-6 border-gray-200 p-5 shadow-sm sm:grid-cols-2 sm:divide-x sm:divide-gray-100">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <FileText className="h-4 w-4 text-gray-500" />
+            <h3 className="text-sm font-semibold text-gray-900">Bio</h3>
+          </div>
+          <p className="text-sm text-gray-600">
+            {employee.profile?.bio || 'No bio added yet.'}
+          </p>
         </div>
-        <p className="text-sm text-gray-600">
-          {employee.profile?.careerGoal || 'No career goals added yet.'}
-        </p>
+        <div className="space-y-2 sm:pl-6">
+          <div className="flex items-center gap-2">
+            <Target className="h-4 w-4 text-gray-500" />
+            <h3 className="text-sm font-semibold text-gray-900">
+              Career Goals
+            </h3>
+          </div>
+          <p className="text-sm text-gray-600">
+            {employee.profile?.careerGoal || 'No career goals added yet.'}
+          </p>
+        </div>
       </Card>
 
       <Card className="gap-3 border-gray-200 p-5 shadow-sm">
@@ -220,8 +287,7 @@ export default function ProfilePage() {
       <EditProfileDialog
         open={editOpen}
         onOpenChange={setEditOpen}
-        bio={employee.profile?.bio ?? null}
-        careerGoal={employee.profile?.careerGoal ?? null}
+        profile={employee.profile}
         onSave={updateProfile}
       />
 

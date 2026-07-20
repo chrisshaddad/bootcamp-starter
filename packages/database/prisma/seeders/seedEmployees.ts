@@ -1,4 +1,8 @@
-import { PrismaClient } from '../../src/generated/prisma/client';
+import {
+  PrismaClient,
+  EmploymentType,
+  WorkArrangement,
+} from '../../src/generated/prisma/client';
 
 const TECHCORP_ORG_NAME = 'TechCorp Solutions';
 
@@ -36,6 +40,17 @@ const DEPARTMENTS: DepartmentSeed[] = [
   },
 ];
 
+interface EmployeeProfileSeed {
+  phoneNumber: string;
+  street1: string;
+  city: string;
+  state?: string;
+  postalCode: string;
+  country: string;
+  employmentType: EmploymentType;
+  workArrangement: WorkArrangement;
+}
+
 interface EmployeeSeed {
   email: string;
   name: string;
@@ -44,6 +59,7 @@ interface EmployeeSeed {
   department: string;
   managerEmail?: string; // reports to (undefined = department head)
   skills: { name: string; proficiencyLevel: number }[];
+  profile: EmployeeProfileSeed;
 }
 
 // Employees are seeded in order; managers must appear before their reports.
@@ -60,6 +76,16 @@ const EMPLOYEES: EmployeeSeed[] = [
       { name: 'JavaScript', proficiencyLevel: 3 },
       { name: 'Stakeholder Communication', proficiencyLevel: 4 },
     ],
+    profile: {
+      phoneNumber: '+1 415 555 0132',
+      street1: '450 Folsom Street',
+      city: 'San Francisco',
+      state: 'CA',
+      postalCode: '94105',
+      country: 'United States',
+      employmentType: 'FULL_TIME',
+      workArrangement: 'HYBRID',
+    },
   },
   {
     email: 'dana.osei@techcorp.example.com',
@@ -73,6 +99,15 @@ const EMPLOYEES: EmployeeSeed[] = [
       { name: 'Python', proficiencyLevel: 4 },
       { name: 'Data Modeling', proficiencyLevel: 4 },
     ],
+    profile: {
+      phoneNumber: '+961 1 555 234',
+      street1: '12 Hamra Street',
+      city: 'Beirut',
+      postalCode: '1103',
+      country: 'Lebanon',
+      employmentType: 'FULL_TIME',
+      workArrangement: 'REMOTE',
+    },
   },
   {
     email: 'morgan.diaz@techcorp.example.com',
@@ -86,6 +121,16 @@ const EMPLOYEES: EmployeeSeed[] = [
       { name: 'User Research', proficiencyLevel: 3 },
       { name: 'Stakeholder Communication', proficiencyLevel: 4 },
     ],
+    profile: {
+      phoneNumber: '+1 212 555 0199',
+      street1: '88 Broadway',
+      city: 'New York',
+      state: 'NY',
+      postalCode: '10004',
+      country: 'United States',
+      employmentType: 'FULL_TIME',
+      workArrangement: 'HYBRID',
+    },
   },
   {
     email: 'taylor.brooks@techcorp.example.com',
@@ -99,6 +144,16 @@ const EMPLOYEES: EmployeeSeed[] = [
       { name: 'CI/CD', proficiencyLevel: 4 },
       { name: 'System Design', proficiencyLevel: 3 },
     ],
+    profile: {
+      phoneNumber: '+1 512 555 0143',
+      street1: '600 Congress Avenue',
+      city: 'Austin',
+      state: 'TX',
+      postalCode: '78701',
+      country: 'United States',
+      employmentType: 'FULL_TIME',
+      workArrangement: 'REMOTE',
+    },
   },
   {
     email: 'sam.patel@techcorp.example.com',
@@ -111,6 +166,15 @@ const EMPLOYEES: EmployeeSeed[] = [
       { name: 'Design Systems', proficiencyLevel: 4 },
       { name: 'User Research', proficiencyLevel: 3 },
     ],
+    profile: {
+      phoneNumber: '+961 3 555 876',
+      street1: '45 Bliss Street',
+      city: 'Beirut',
+      postalCode: '1107',
+      country: 'Lebanon',
+      employmentType: 'FULL_TIME',
+      workArrangement: 'HYBRID',
+    },
   },
   {
     email: 'alex.rivera@techcorp.example.com',
@@ -126,6 +190,16 @@ const EMPLOYEES: EmployeeSeed[] = [
       { name: 'System Design', proficiencyLevel: 3 },
       { name: 'AWS', proficiencyLevel: 3 },
     ],
+    profile: {
+      phoneNumber: '+1 415 555 0177',
+      street1: '201 Mission Street',
+      city: 'San Francisco',
+      state: 'CA',
+      postalCode: '94105',
+      country: 'United States',
+      employmentType: 'FULL_TIME',
+      workArrangement: 'ONSITE',
+    },
   },
   {
     email: 'riley.chen@techcorp.example.com',
@@ -140,6 +214,15 @@ const EMPLOYEES: EmployeeSeed[] = [
       { name: 'JavaScript', proficiencyLevel: 4 },
       { name: 'UI Design', proficiencyLevel: 2 },
     ],
+    profile: {
+      phoneNumber: '+961 76 555 321',
+      street1: '9 Gouraud Street',
+      city: 'Beirut',
+      postalCode: '2020',
+      country: 'Lebanon',
+      employmentType: 'PART_TIME',
+      workArrangement: 'REMOTE',
+    },
   },
   {
     email: 'jordan.lee@techcorp.example.com',
@@ -153,6 +236,16 @@ const EMPLOYEES: EmployeeSeed[] = [
       { name: 'Node.js', proficiencyLevel: 2 },
       { name: 'SQL', proficiencyLevel: 2 },
     ],
+    profile: {
+      phoneNumber: '+1 415 555 0120',
+      street1: '201 Mission Street',
+      city: 'San Francisco',
+      state: 'CA',
+      postalCode: '94105',
+      country: 'United States',
+      employmentType: 'FULL_TIME',
+      workArrangement: 'HYBRID',
+    },
   },
   {
     email: 'jamie.torres@techcorp.example.com',
@@ -165,6 +258,16 @@ const EMPLOYEES: EmployeeSeed[] = [
       { name: 'JavaScript', proficiencyLevel: 2 },
       { name: 'React', proficiencyLevel: 1 },
     ],
+    profile: {
+      phoneNumber: '+1 312 555 0110',
+      street1: '150 N Michigan Avenue',
+      city: 'Chicago',
+      state: 'IL',
+      postalCode: '60601',
+      country: 'United States',
+      employmentType: 'INTERN',
+      workArrangement: 'ONSITE',
+    },
   },
   {
     email: 'casey.kim@techcorp.example.com',
@@ -179,6 +282,15 @@ const EMPLOYEES: EmployeeSeed[] = [
       { name: 'SQL', proficiencyLevel: 3 },
       { name: 'Data Modeling', proficiencyLevel: 3 },
     ],
+    profile: {
+      phoneNumber: '+961 70 555 654',
+      street1: '22 Sassine Square',
+      city: 'Beirut',
+      postalCode: '1200',
+      country: 'Lebanon',
+      employmentType: 'CONTRACT',
+      workArrangement: 'REMOTE',
+    },
   },
 ];
 
@@ -228,6 +340,13 @@ export async function seedEmployees(prisma: PrismaClient) {
       },
     });
     userIdByEmail.set(employee.email, created.id);
+
+    await prisma.userProfile.create({
+      data: {
+        userId: created.id,
+        ...employee.profile,
+      },
+    });
 
     await prisma.userSkill.createMany({
       data: await Promise.all(
