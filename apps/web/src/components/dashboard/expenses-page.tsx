@@ -168,8 +168,7 @@ function ExpenseFormFields({
   maintenanceRequestId: string;
   onMaintenanceRequestChange: (id: string) => void;
   workOrders:
-    | { id: string; vendorId?: string | null; numberLabel: string }[]
-    | undefined;
+    { id: string; vendorId?: string | null; numberLabel: string }[] | undefined;
   setValue: ReturnType<typeof useForm<ExpenseFormValues>>['setValue'];
   getValues: ReturnType<typeof useForm<ExpenseFormValues>>['getValues'];
   dict: Dictionary;
@@ -598,6 +597,9 @@ export function ExpensesPage({
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{t.title}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">{t.subtitle}</p>
+          <p className="text-xs text-muted-foreground mt-1 max-w-2xl">
+            {t.notBilledToTenantsNote}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           {!canWrite && (

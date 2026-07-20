@@ -333,6 +333,13 @@ model WorkOrder {
   cost                 Decimal?           @db.Decimal(12, 2)
   resolutionNotes      String?
   completedAt          DateTime?
+  /// Opt-in tenant charge (Sprint F2.2/F3.2, decision D2 — default OFF). When
+  /// chargeToTenant is set with a tenantChargeAmount, completing the work order
+  /// adds one line item to a new invoice on the apartment's active lease.
+  /// tenantChargedAt stamps when that happened so re-completion can't double-bill.
+  chargeToTenant       Boolean            @default(false)
+  tenantChargeAmount   Decimal?           @db.Decimal(12, 2)
+  tenantChargedAt      DateTime?
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
   maintenanceRequest   MaintenanceRequest @relation(fields: [maintenanceRequestId], references: [id], onDelete: Cascade)
@@ -372,6 +379,11 @@ model Invoice {
   buildingId String
   leaseId    String
   dueDate    DateTime
+  /// Billing period key (`YYYY-MM`) for auto-generated recurring rent invoices.
+  /// NULL for manually-created invoices. The @@unique([leaseId, billingPeriod])
+  /// makes recurring generation idempotent per (lease, month) — NULLs are
+  /// distinct in Postgres, so manual invoices never collide.
+  billingPeriod String?
   notes      String?
   createdAt  DateTime          @default(now())
   updatedAt  DateTime          @updatedAt
@@ -379,6 +391,7 @@ model Invoice {
   lineItems  InvoiceLineItem[]
   payments   InvoicePayment[]
 
+  @@unique([leaseId, billingPeriod])
   @@index([orgId])
   @@index([buildingId])
   @@index([leaseId])

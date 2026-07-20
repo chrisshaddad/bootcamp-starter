@@ -14,6 +14,7 @@ import {
   PencilIcon,
   TrashIcon,
   XIcon,
+  RefreshCwIcon,
 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
@@ -56,6 +57,7 @@ import {
 import {
   useListInvoicesQuery,
   useCreateInvoiceMutation,
+  useRunRecurringInvoicesMutation,
   useUpdateInvoiceMutation,
   useDeleteInvoiceMutation,
 } from '@/store/api/endpoints/invoices.api';
@@ -481,6 +483,21 @@ export function InvoicesPage({ canWrite, locale, dict }: InvoicesPageProps) {
   const { data: buildings } = useListBuildingsQuery();
 
   const [createInvoice, { isLoading: creating }] = useCreateInvoiceMutation();
+  const [runRecurring, { isLoading: generating }] =
+    useRunRecurringInvoicesMutation();
+
+  async function handleGenerateRecurring() {
+    try {
+      const res = await runRecurring().unwrap();
+      toast.success(
+        t.list.generateRecurring.result
+          .replace('{generated}', String(res.generated))
+          .replace('{skipped}', String(res.skippedExisting)),
+      );
+    } catch {
+      toast.error(t.list.generateRecurring.error);
+    }
+  }
   const [updateInvoice, { isLoading: updating }] = useUpdateInvoiceMutation();
   const [deleteInvoice, { isLoading: deleting }] = useDeleteInvoiceMutation();
 
@@ -637,6 +654,17 @@ export function InvoicesPage({ canWrite, locale, dict }: InvoicesPageProps) {
               <EyeIcon className="size-3" />
               {t.list.readOnly}
             </Badge>
+          )}
+          {canWrite && (
+            <Button
+              variant="outline"
+              onClick={handleGenerateRecurring}
+              disabled={generating}
+              title={t.list.generateRecurring.hint}
+            >
+              <RefreshCwIcon />
+              {t.list.generateRecurring.button}
+            </Button>
           )}
           {canWrite && (
             <Button

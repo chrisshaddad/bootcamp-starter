@@ -21,6 +21,7 @@ import { formatWorkOrderNumber } from '@repo/contracts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
@@ -158,6 +159,11 @@ const createWorkOrderSchema = z.object({
   status: z.enum(['scheduled', 'in_progress', 'completed', 'canceled']),
   cost: z.string().optional(),
   resolutionNotes: z.string().optional(),
+  // F3.2: opt-in tenant billing. Default false; amount required in
+  // onCreateSubmit below (mirrors the vendor/staff manual checks) rather
+  // than a zod .refine, since this schema has no dictionary-driven messages.
+  chargeToTenant: z.boolean(),
+  tenantChargeAmount: z.string().optional(),
 });
 
 type CreateWorkOrderFormValues = z.infer<typeof createWorkOrderSchema>;
@@ -169,6 +175,8 @@ const CREATE_WORK_ORDER_EMPTY: CreateWorkOrderFormValues = {
   status: 'scheduled',
   cost: '',
   resolutionNotes: '',
+  chargeToTenant: false,
+  tenantChargeAmount: '',
 };
 
 // ── Edit Work Order form (org_admin only, full) ─────────────────────────────
@@ -180,6 +188,8 @@ const editWorkOrderSchema = z.object({
   status: z.enum(['scheduled', 'in_progress', 'completed', 'canceled']),
   cost: z.string().optional(),
   resolutionNotes: z.string().optional(),
+  chargeToTenant: z.boolean(),
+  tenantChargeAmount: z.string().optional(),
 });
 
 type EditWorkOrderFormValues = z.infer<typeof editWorkOrderSchema>;
@@ -268,6 +278,7 @@ export function MaintenanceRequestDetailPage({
     defaultValues: CREATE_WORK_ORDER_EMPTY,
   });
   const createMode = watchCreate('assignmentMode');
+  const createChargeToTenant = watchCreate('chargeToTenant');
 
   const {
     control: editControl,
@@ -279,6 +290,7 @@ export function MaintenanceRequestDetailPage({
     resolver: zodResolver(editWorkOrderSchema),
   });
   const editMode = watchEdit('assignmentMode');
+  const editChargeToTenant = watchEdit('chargeToTenant');
 
   const {
     control: statusControl,
@@ -344,6 +356,10 @@ export function MaintenanceRequestDetailPage({
       toast.error(t.workOrder.create.staffRequired);
       return;
     }
+    if (values.chargeToTenant && !values.tenantChargeAmount) {
+      toast.error(t.workOrder.fields.tenantChargeAmountRequired);
+      return;
+    }
     try {
       await createWorkOrder({
         maintenanceRequestId: id,
@@ -357,6 +373,11 @@ export function MaintenanceRequestDetailPage({
           status: values.status,
           cost: values.cost ? Number(values.cost) : undefined,
           resolutionNotes: values.resolutionNotes || undefined,
+          chargeToTenant: values.chargeToTenant,
+          tenantChargeAmount:
+            values.chargeToTenant && values.tenantChargeAmount
+              ? Number(values.tenantChargeAmount)
+              : undefined,
         },
       }).unwrap();
       toast.success(t.workOrder.create.success);
@@ -376,11 +397,17 @@ export function MaintenanceRequestDetailPage({
       status: workOrder.status,
       cost: workOrder.cost ?? '',
       resolutionNotes: workOrder.resolutionNotes ?? '',
+      chargeToTenant: workOrder.chargeToTenant,
+      tenantChargeAmount: workOrder.tenantChargeAmount ?? '',
     });
   }
 
   async function onEditSubmit(values: EditWorkOrderFormValues) {
     if (!editTarget) return;
+    if (values.chargeToTenant && !values.tenantChargeAmount) {
+      toast.error(t.workOrder.fields.tenantChargeAmountRequired);
+      return;
+    }
     try {
       await updateWorkOrder({
         maintenanceRequestId: id,
@@ -397,6 +424,11 @@ export function MaintenanceRequestDetailPage({
           status: values.status,
           cost: values.cost ? Number(values.cost) : null,
           resolutionNotes: values.resolutionNotes || null,
+          chargeToTenant: values.chargeToTenant,
+          tenantChargeAmount:
+            values.chargeToTenant && values.tenantChargeAmount
+              ? Number(values.tenantChargeAmount)
+              : null,
         },
       }).unwrap();
       toast.success(t.workOrder.edit.success);
@@ -602,7 +634,23 @@ export function MaintenanceRequestDetailPage({
                       </span>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {workOrder.cost ?? '—'}
+                      <span className="inline-flex items-center gap-1.5">
+                        {workOrder.cost ?? '—'}
+                        {workOrder.chargeToTenant && (
+                          <Badge
+                            variant="outline"
+                            className={
+                              workOrder.tenantChargedAt
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : 'bg-amber-50 text-amber-700 border-amber-200'
+                            }
+                          >
+                            {workOrder.tenantChargedAt
+                              ? t.detail.tenantChargeBilled
+                              : t.detail.tenantChargePending}
+                          </Badge>
+                        )}
+                      </span>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {workOrder.resolutionNotes ?? '—'}
@@ -824,6 +872,41 @@ export function MaintenanceRequestDetailPage({
                 {...regCreate('cost')}
               />
             </div>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <Controller
+                  control={createControl}
+                  name="chargeToTenant"
+                  render={({ field }) => (
+                    <Checkbox
+                      id="wo-charge-to-tenant"
+                      checked={field.value}
+                      onCheckedChange={(checked) =>
+                        field.onChange(checked === true)
+                      }
+                    />
+                  )}
+                />
+                <Label htmlFor="wo-charge-to-tenant" className="font-normal">
+                  {t.workOrder.fields.chargeToTenant}
+                </Label>
+              </div>
+              {createChargeToTenant && (
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="wo-tenant-charge-amount">
+                    {t.workOrder.fields.tenantChargeAmount}
+                  </Label>
+                  <Input
+                    id="wo-tenant-charge-amount"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    {...regCreate('tenantChargeAmount')}
+                  />
+                </div>
+              )}
+            </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="wo-notes">
                 {t.workOrder.fields.resolutionNotes}{' '}
@@ -1006,6 +1089,41 @@ export function MaintenanceRequestDetailPage({
                 placeholder="0.00"
                 {...regEdit('cost')}
               />
+            </div>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <Controller
+                  control={editControl}
+                  name="chargeToTenant"
+                  render={({ field }) => (
+                    <Checkbox
+                      id="woe-charge-to-tenant"
+                      checked={field.value}
+                      onCheckedChange={(checked) =>
+                        field.onChange(checked === true)
+                      }
+                    />
+                  )}
+                />
+                <Label htmlFor="woe-charge-to-tenant" className="font-normal">
+                  {t.workOrder.fields.chargeToTenant}
+                </Label>
+              </div>
+              {editChargeToTenant && (
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="woe-tenant-charge-amount">
+                    {t.workOrder.fields.tenantChargeAmount}
+                  </Label>
+                  <Input
+                    id="woe-tenant-charge-amount"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    {...regEdit('tenantChargeAmount')}
+                  />
+                </div>
+              )}
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="woe-notes">

@@ -4,6 +4,7 @@ import type {
   CreateInvoiceBody,
   InvoiceResponse,
   PatchInvoiceBody,
+  RecurringInvoiceRunResponse,
 } from '@/types/api';
 
 function unwrap<TData>(response: TData | ApiEnvelope<TData>): TData {
@@ -80,6 +81,18 @@ export const invoicesApi = baseApi.injectEndpoints({
         'Timeline',
       ],
     }),
+
+    // F3.1 — org_admin on-demand "generate rent invoices now". The same
+    // generation also runs daily via the backend scheduler.
+    runRecurringInvoices: build.mutation<RecurringInvoiceRunResponse, void>({
+      query: () => ({ url: '/recurring-invoices/run', method: 'POST' }),
+      transformResponse: (
+        response:
+          | RecurringInvoiceRunResponse
+          | ApiEnvelope<RecurringInvoiceRunResponse>,
+      ) => unwrap(response),
+      invalidatesTags: [{ type: 'Invoice', id: 'LIST' }, 'Timeline'],
+    }),
   }),
 });
 
@@ -89,4 +102,5 @@ export const {
   useCreateInvoiceMutation,
   useUpdateInvoiceMutation,
   useDeleteInvoiceMutation,
+  useRunRecurringInvoicesMutation,
 } = invoicesApi;

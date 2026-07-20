@@ -21,7 +21,10 @@ describe('WorkOrdersService', () => {
       maintenanceRequest?: Partial<Record<string, jest.Mock>>;
       workOrder?: Partial<Record<string, jest.Mock>>;
       expense?: Partial<Record<string, jest.Mock>>;
+      lease?: Partial<Record<string, jest.Mock>>;
+      invoice?: Partial<Record<string, jest.Mock>>;
       buildingAccess?: Partial<Record<string, jest.Mock>>;
+      leaseStatus?: Partial<Record<string, jest.Mock>>;
       workOrderApartmentStatus?: Partial<Record<string, jest.Mock>>;
     } = {},
   ) {
@@ -32,6 +35,7 @@ describe('WorkOrdersService', () => {
           orgId,
           buildingId,
           apartmentId,
+          title: 'Leaking faucet',
         }),
         ...overrides.maintenanceRequest,
       },
@@ -48,8 +52,19 @@ describe('WorkOrdersService', () => {
         count: jest.fn().mockResolvedValue(0),
         ...overrides.expense,
       },
+      // F3.2 tenant-charge path: find the apartment's active lease and create
+      // a new invoice on it.
+      lease: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        ...overrides.lease,
+      },
+      invoice: {
+        create: jest.fn().mockResolvedValue({ id: 'invoice-1' }),
+        ...overrides.invoice,
+      },
       // create() assigns the org-scoped number inside a transaction + advisory
-      // lock. Run the callback against the same mock and stub the raw lock.
+      // lock; the tenant-charge path also runs inside a $transaction. Run the
+      // callback against the same mock and stub the raw lock.
       $executeRaw: jest.fn().mockResolvedValue(1),
       $transaction: jest.fn(),
     };
@@ -59,6 +74,10 @@ describe('WorkOrdersService', () => {
       ...overrides.buildingAccess,
     };
     const timeline = { emit: jest.fn().mockResolvedValue(undefined) };
+    const leaseStatus = {
+      isEffectivelyActive: jest.fn().mockReturnValue(true),
+      ...overrides.leaseStatus,
+    };
     const workOrderApartmentStatus = {
       onWorkOrderOpened: jest.fn().mockResolvedValue(undefined),
       onWorkOrderClosed: jest.fn().mockResolvedValue(undefined),
@@ -68,6 +87,7 @@ describe('WorkOrdersService', () => {
       prisma,
       buildingAccess as any,
       timeline as any,
+      leaseStatus as any,
       workOrderApartmentStatus as any,
     );
     return {
@@ -75,6 +95,7 @@ describe('WorkOrdersService', () => {
       prisma,
       buildingAccess,
       timeline,
+      leaseStatus,
       workOrderApartmentStatus,
     };
   }
@@ -90,6 +111,9 @@ describe('WorkOrdersService', () => {
     cost: new Prisma.Decimal('150.00'),
     resolutionNotes: null,
     completedAt: null,
+    chargeToTenant: false,
+    tenantChargeAmount: null,
+    tenantChargedAt: null,
     createdAt: new Date('2026-01-01T00:00:00.000Z'),
     updatedAt: new Date('2026-01-01T00:00:00.000Z'),
     ...overrides,
@@ -264,7 +288,7 @@ describe('WorkOrdersService', () => {
       ...overrides,
     });
 
-    it("queries only work orders assigned to the caller, ordered by createdAt desc", async () => {
+    it('queries only work orders assigned to the caller, ordered by createdAt desc', async () => {
       const { service, prisma } = makeService({
         workOrder: { findMany: jest.fn().mockResolvedValue([assignedRow()]) },
       });
@@ -296,9 +320,7 @@ describe('WorkOrdersService', () => {
     it('enriches each row with request/apartment/building context and the numberLabel', async () => {
       const { service } = makeService({
         workOrder: {
-          findMany: jest
-            .fn()
-            .mockResolvedValue([assignedRow({ number: 123 })]),
+          findMany: jest.fn().mockResolvedValue([assignedRow({ number: 123 })]),
         },
       });
 
@@ -319,7 +341,7 @@ describe('WorkOrdersService', () => {
       ]);
     });
 
-    it("returns an empty list when the caller has no assigned work orders", async () => {
+    it('returns an empty list when the caller has no assigned work orders', async () => {
       const { service, prisma } = makeService({
         workOrder: { findMany: jest.fn().mockResolvedValue([]) },
       });
@@ -433,9 +455,11 @@ describe('WorkOrdersService', () => {
       const { service, prisma } = makeService({
         workOrder: {
           aggregate: jest.fn().mockResolvedValue({ _max: { number: 41 } }),
-          create: jest.fn().mockResolvedValue(
-            workOrderRow({ number: 42, vendorId: 'vendor-1' }),
-          ),
+          create: jest
+            .fn()
+            .mockResolvedValue(
+              workOrderRow({ number: 42, vendorId: 'vendor-1' }),
+            ),
         },
       });
 
@@ -449,7 +473,9 @@ describe('WorkOrdersService', () => {
 
       expect(prisma.$executeRaw).toHaveBeenCalled(); // advisory lock taken
       expect(prisma.workOrder.create).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ number: 42 }) }),
+        expect.objectContaining({
+          data: expect.objectContaining({ number: 42 }),
+        }),
       );
       expect(result.data.number).toBe(42);
       expect(result.data.numberLabel).toBe('WO-000042');
@@ -500,6 +526,121 @@ describe('WorkOrdersService', () => {
           vendorId: 'vendor-1',
         }),
       ).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe('create — tenant charge on completion (F3.2)', () => {
+    const activeLeaseRow = {
+      id: 'lease-1',
+      buildingId,
+      status: 'active',
+      endDate: new Date('2030-01-01T00:00:00.000Z'),
+    };
+
+    it("charges the apartment's active lease when created directly as completed with chargeToTenant", async () => {
+      const { service, prisma, timeline } = makeService({
+        lease: { findFirst: jest.fn().mockResolvedValue(activeLeaseRow) },
+      });
+      prisma.workOrder.create.mockResolvedValue(
+        workOrderRow({
+          status: 'completed',
+          chargeToTenant: true,
+          tenantChargeAmount: new Prisma.Decimal('75.00'),
+        }),
+      );
+
+      await service.create(
+        orgId,
+        actorId,
+        Role.ORG_ADMIN,
+        maintenanceRequestId,
+        {
+          vendorId: 'vendor-1',
+          status: 'completed',
+          chargeToTenant: true,
+          tenantChargeAmount: 75,
+        },
+      );
+
+      expect(prisma.lease.findFirst).toHaveBeenCalledWith({
+        where: { orgId, apartmentId, status: 'active' },
+        orderBy: { startDate: 'desc' },
+      });
+      expect(prisma.invoice.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          orgId,
+          buildingId,
+          leaseId: 'lease-1',
+          lineItems: {
+            create: [
+              expect.objectContaining({
+                category: 'other',
+                description: 'Work order WO-000001: Leaking faucet',
+              }),
+            ],
+          },
+        }),
+      });
+      expect(prisma.workOrder.update).toHaveBeenCalledWith({
+        where: { id: 'wo-1' },
+        data: { tenantChargedAt: expect.any(Date) },
+      });
+      expect(timeline.emit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'work_order.tenant_charged',
+          targetId: 'wo-1',
+        }),
+      );
+    });
+
+    it('does not charge and does not throw when the apartment has no active lease', async () => {
+      const { service, prisma } = makeService({
+        lease: { findFirst: jest.fn().mockResolvedValue(null) },
+      });
+      prisma.workOrder.create.mockResolvedValue(
+        workOrderRow({
+          status: 'completed',
+          chargeToTenant: true,
+          tenantChargeAmount: new Prisma.Decimal('75.00'),
+        }),
+      );
+
+      await expect(
+        service.create(orgId, actorId, Role.ORG_ADMIN, maintenanceRequestId, {
+          vendorId: 'vendor-1',
+          status: 'completed',
+          chargeToTenant: true,
+          tenantChargeAmount: 75,
+        }),
+      ).resolves.toBeDefined();
+
+      expect(prisma.invoice.create).not.toHaveBeenCalled();
+      expect(prisma.workOrder.update).not.toHaveBeenCalled();
+    });
+
+    it('does not charge when chargeToTenant is false even though tenantChargeAmount is set', async () => {
+      const { service, prisma } = makeService();
+      prisma.workOrder.create.mockResolvedValue(
+        workOrderRow({
+          status: 'completed',
+          chargeToTenant: false,
+          tenantChargeAmount: new Prisma.Decimal('75.00'),
+        }),
+      );
+
+      await service.create(
+        orgId,
+        actorId,
+        Role.ORG_ADMIN,
+        maintenanceRequestId,
+        {
+          vendorId: 'vendor-1',
+          status: 'completed',
+        },
+      );
+
+      expect(prisma.lease.findFirst).not.toHaveBeenCalled();
+      expect(prisma.invoice.create).not.toHaveBeenCalled();
     });
   });
 
@@ -700,6 +841,115 @@ describe('WorkOrdersService', () => {
           { status: 'in_progress' },
         ),
       ).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe('update — tenant charge transition (F3.2)', () => {
+    const existingInProgressWithCharge = () => ({
+      ...workOrderRow({
+        status: 'in_progress',
+        chargeToTenant: true,
+        tenantChargeAmount: new Prisma.Decimal('120.00'),
+      }),
+      maintenanceRequest: { apartmentId, title: 'Leaking faucet' },
+    });
+
+    const activeLeaseRow = {
+      id: 'lease-1',
+      buildingId,
+      status: 'active',
+      endDate: new Date('2030-01-01T00:00:00.000Z'),
+    };
+
+    it('charges the active lease when a chargeToTenant work order transitions to completed', async () => {
+      const { service, prisma, timeline } = makeService({
+        workOrder: {
+          findFirst: jest
+            .fn()
+            .mockResolvedValue(existingInProgressWithCharge()),
+          update: jest.fn().mockResolvedValue(
+            workOrderRow({
+              status: 'completed',
+              chargeToTenant: true,
+              tenantChargeAmount: new Prisma.Decimal('120.00'),
+            }),
+          ),
+        },
+        lease: { findFirst: jest.fn().mockResolvedValue(activeLeaseRow) },
+      });
+
+      await service.update(
+        orgId,
+        actorId,
+        callerId,
+        Role.ORG_ADMIN,
+        maintenanceRequestId,
+        'wo-1',
+        { status: 'completed' },
+      );
+
+      expect(prisma.lease.findFirst).toHaveBeenCalledWith({
+        where: { orgId, apartmentId, status: 'active' },
+        orderBy: { startDate: 'desc' },
+      });
+      expect(prisma.invoice.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            leaseId: 'lease-1',
+            buildingId,
+            lineItems: {
+              create: [
+                expect.objectContaining({
+                  category: 'other',
+                  description: 'Work order WO-000001: Leaking faucet',
+                }),
+              ],
+            },
+          }),
+        }),
+      );
+      // First call is the main status update; the second is the tenantChargedAt
+      // stamp inside chargeTenantIfDue's transaction.
+      expect(prisma.workOrder.update).toHaveBeenNthCalledWith(2, {
+        where: { id: 'wo-1' },
+        data: { tenantChargedAt: expect.any(Date) },
+      });
+      expect(timeline.emit).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'work_order.tenant_charged' }),
+      );
+    });
+
+    it('does not double-charge when re-completing an already-charged work order', async () => {
+      const { service, prisma } = makeService({
+        workOrder: {
+          findFirst: jest
+            .fn()
+            .mockResolvedValue(existingInProgressWithCharge()),
+          update: jest.fn().mockResolvedValue(
+            workOrderRow({
+              status: 'completed',
+              chargeToTenant: true,
+              tenantChargeAmount: new Prisma.Decimal('120.00'),
+              tenantChargedAt: new Date('2026-01-05T00:00:00.000Z'),
+            }),
+          ),
+        },
+      });
+
+      await service.update(
+        orgId,
+        actorId,
+        callerId,
+        Role.ORG_ADMIN,
+        maintenanceRequestId,
+        'wo-1',
+        { status: 'completed' },
+      );
+
+      expect(prisma.lease.findFirst).not.toHaveBeenCalled();
+      expect(prisma.invoice.create).not.toHaveBeenCalled();
+      // Only the main status update — no second (tenantChargedAt-stamp) call.
+      expect(prisma.workOrder.update).toHaveBeenCalledTimes(1);
     });
   });
 

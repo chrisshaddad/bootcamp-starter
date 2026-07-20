@@ -12,6 +12,9 @@ export type WorkOrderRow = {
   cost: Prisma.Decimal | null;
   resolutionNotes: string | null;
   completedAt: Date | null;
+  chargeToTenant: boolean;
+  tenantChargeAmount: Prisma.Decimal | null;
+  tenantChargedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -30,6 +33,9 @@ export function formatWorkOrder(workOrder: WorkOrderRow): WorkOrderResponse {
     cost: workOrder.cost?.toString() ?? null,
     resolutionNotes: workOrder.resolutionNotes,
     completedAt: workOrder.completedAt?.toISOString() ?? null,
+    chargeToTenant: workOrder.chargeToTenant,
+    tenantChargeAmount: workOrder.tenantChargeAmount?.toString() ?? null,
+    tenantChargedAt: workOrder.tenantChargedAt?.toISOString() ?? null,
     createdAt: workOrder.createdAt.toISOString(),
     updatedAt: workOrder.updatedAt.toISOString(),
   };

@@ -44,6 +44,7 @@ import { NotificationsModule } from '@/modules/notifications/notifications.modul
 import { SupportTicketsModule } from '@/modules/support-tickets/support-tickets.module';
 import { ReportsModule } from '@/modules/reports/reports.module';
 import { TenantModule } from '@/modules/tenant/tenant.module';
+import { RecurringInvoicesModule } from '@/modules/recurring-invoices/recurring-invoices.module';
 
 @Module({
   imports: [
@@ -110,6 +111,7 @@ import { TenantModule } from '@/modules/tenant/tenant.module';
     SupportTicketsModule,
     ReportsModule,
     TenantModule,
+    RecurringInvoicesModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

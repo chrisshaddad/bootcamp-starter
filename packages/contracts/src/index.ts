@@ -594,6 +594,12 @@ export type WorkOrderResponse = {
   cost?: string | null; // Decimal(12,2) serialized as string
   resolutionNotes?: string | null;
   completedAt?: string | null;
+  /** Opt-in: bill this work order to the tenant on completion (F3.2, default false). */
+  chargeToTenant: boolean;
+  /** Amount to charge the tenant (Decimal(12,2) as string), when chargeToTenant. */
+  tenantChargeAmount?: string | null;
+  /** When the tenant charge was applied to an invoice (idempotency guard); null = not yet. */
+  tenantChargedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -641,6 +647,8 @@ export type CreateWorkOrderBody = {
   status?: WorkOrderStatus;
   cost?: number;
   resolutionNotes?: string;
+  chargeToTenant?: boolean;
+  tenantChargeAmount?: number | null;
 };
 
 export type PatchWorkOrderBody = {
@@ -650,6 +658,18 @@ export type PatchWorkOrderBody = {
   cost?: number | null;
   resolutionNotes?: string | null;
   completedAt?: string | null;
+  chargeToTenant?: boolean;
+  tenantChargeAmount?: number | null;
+};
+
+/**
+ * Result of a recurring-invoice generation run (F3.1). The scheduled daily job
+ * and the manual "generate now" trigger both return this shape.
+ */
+export type RecurringInvoiceRunResponse = {
+  generated: number; // invoices created this run
+  leasesConsidered: number; // active leases inspected
+  skippedExisting: number; // periods that already had an invoice (idempotent no-op)
 };
 
 // ── Expenses ─────────────────────────────────────────────────────────────────

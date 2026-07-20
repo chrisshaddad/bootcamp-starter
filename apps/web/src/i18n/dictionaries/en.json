@@ -287,7 +287,9 @@
       "ytdNet": "Net (YTD)",
       "rangeIncome": "Income (range)",
       "rangeExpenses": "Expenses (range)",
-      "rangeNet": "Net (range)"
+      "rangeNet": "Net (range)",
+      "incomeHint": "Rent collected, not invoiced",
+      "netHint": "Income minus expenses"
     },
     "chart": {
       "title": "Income vs expenses",
@@ -319,7 +321,8 @@
       "balance": "Balance",
       "daysOverdue": "Days overdue",
       "empty": "No overdue invoices — everyone's paid up."
-    }
+    },
+    "methodologyNote": "Income reflects rent payments actually recorded (cash basis), not invoiced amounts — a gap between invoiced and collected is expected while invoices remain unpaid."
   },
   "leases": {
     "title": "Leases",
@@ -1045,6 +1048,12 @@
           "success": "Invoice deleted.",
           "error": "Failed to delete invoice. Please try again."
         }
+      },
+      "generateRecurring": {
+        "button": "Generate rent invoices",
+        "hint": "Create this month's rent invoices for active leases (also runs automatically each day).",
+        "result": "Generated {generated} rent invoice(s); {skipped} already existed.",
+        "error": "Couldn't generate rent invoices."
       }
     },
     "detail": {
@@ -1148,7 +1157,9 @@
       },
       "empty": "No work orders yet.",
       "updateStatusAction": "Update status",
-      "assignedToYou": "Assigned to you"
+      "assignedToYou": "Assigned to you",
+      "tenantChargeBilled": "Billed to tenant",
+      "tenantChargePending": "Will bill tenant"
     },
     "workOrder": {
       "fields": {
@@ -1158,7 +1169,10 @@
         "status": "Status",
         "cost": "Cost",
         "optional": "(optional)",
-        "resolutionNotes": "Resolution notes"
+        "resolutionNotes": "Resolution notes",
+        "chargeToTenant": "Charge to tenant",
+        "tenantChargeAmount": "Amount to charge",
+        "tenantChargeAmountRequired": "Enter an amount to charge the tenant."
       },
       "create": {
         "title": "New work order",
@@ -1368,6 +1382,7 @@
       "deleting": "Deleting…",
       "success": "Expense deleted.",
       "error": "Failed to delete expense. It may be referenced elsewhere."
-    }
+    },
+    "notBilledToTenantsNote": "Expenses are your organization's own costs (repairs, vendor payments, utilities) — they are not bills sent to tenants. Tenant charges are billed through invoices."
   }
 }
