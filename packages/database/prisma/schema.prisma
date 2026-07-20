@@ -381,6 +381,8 @@ model QuizQuestion {
   position      Int          @default(0)
 
   assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
 
   @@index([assignmentId])
   @@schema("public")
@@ -406,6 +408,7 @@ model Submission {
   assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
   student    User       @relation("StudentSubmissions", fields: [studentId], references: [id], onDelete: Cascade)
   grade      Grade?
+  updatedAt  DateTime   @updatedAt
 
   @@unique([assignmentId, studentId])
   @@index([assignmentId])
@@ -429,6 +432,7 @@ model QuizAttempt {
   assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
   student    User       @relation("StudentQuizAttempts", fields: [studentId], references: [id], onDelete: Cascade)
   grade      Grade?
+  updatedAt  DateTime   @updatedAt
 
   @@unique([assignmentId, studentId])
   @@index([assignmentId])
@@ -450,6 +454,8 @@ model Grade {
   quizAttempt QuizAttempt? @relation(fields: [quizAttemptId], references: [id], onDelete: Cascade)
   gradedBy    User?        @relation("GraderGrades", fields: [gradedById], references: [id], onDelete: SetNull)
 
+  updatedAt DateTime @updatedAt
+
   @@index([submissionId])
   @@index([quizAttemptId])
   @@index([gradedById])
@@ -470,6 +476,7 @@ model Meeting {
   course       Course               @relation(fields: [courseId], references: [id], onDelete: Cascade)
   host         User                 @relation("MeetingHost", fields: [hostId], references: [id])
   participants MeetingParticipant[]
+  updatedAt    DateTime             @updatedAt
 
   @@index([hostId])
   @@index([courseId, scheduledAt])
