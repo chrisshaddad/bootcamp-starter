@@ -1,23 +1,27 @@
 {
   "app": {
-    "name": "Forward Mena",
+    "name": "Property Manager",
     "tagline": "Property management for modern landlords"
   },
   "nav": {
     "login": "Sign in",
     "logout": "Sign out",
     "dashboard": "Dashboard",
-    "billing": "Billing",
+    "billing": "Subscription",
     "users": "Team",
     "timeline": "Activity",
     "payments": "Payments",
     "buildings": "Buildings",
     "myBuildings": "My Buildings",
     "renters": "Renters",
+    "leases": "Leases",
     "vendors": "Vendors",
     "reports": "Reports",
     "tasks": "Tasks",
     "expenses": "Expenses",
+    "invoices": "Invoices",
+    "support": "Support",
+    "notifications": "Notifications",
     "language": "Language",
     "role": "Role",
     "menu": "Open menu",
@@ -140,6 +144,1216 @@
     "inactiveSub": "Your subscription is not active. Activate to access all features.",
     "subscribeNow": "Subscribe now",
     "noCommitment": "No long-term commitment. Cancel anytime.",
-    "securedByStripe": "Payments secured by Stripe"
+    "securedByStripe": "Payments secured by Stripe",
+    "kpi": {
+      "orgOverview": "Here's a live overview of your workspace.",
+      "financeOverview": "Rent, income and expenses at a glance.",
+      "staffOverview": "Your maintenance workload at a glance.",
+      "activeLeases": "Active leases",
+      "occupancy": "Occupancy",
+      "unitsOccupied": "units occupied",
+      "incomeMtd": "Income (MTD)",
+      "expensesMtd": "Expenses (MTD)",
+      "netMtd": "Net (MTD)",
+      "overdue": "Overdue",
+      "invoicesPastDue": "invoices past due",
+      "teamMembers": "Team members",
+      "openMaintenance": "Open maintenance",
+      "openRequests": "Open requests",
+      "inProgress": "In progress",
+      "urgent": "Urgent",
+      "resolved": "Resolved",
+      "needsAttention": "Needs attention",
+      "allCaughtUp": "All caught up — no open requests.",
+      "viewAll": "View all",
+      "unit": "Unit",
+      "noData": "—",
+      "priority": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High",
+        "urgent": "Urgent"
+      }
+    },
+    "tenant": {
+      "welcome": "Welcome home",
+      "subtitle": "Your lease, balance and requests in one place",
+      "loadError": "We couldn't load your information. Please try again.",
+      "notLinkedTitle": "Your tenant account isn't linked yet",
+      "notLinkedDesc": "Once your property manager links your account to your lease, your lease details, balance, and maintenance requests will appear here.",
+      "yourActivity": "Your activity",
+      "lease": {
+        "title": "My lease",
+        "unit": "Unit",
+        "status": "Status",
+        "term": "Term",
+        "to": "to",
+        "rent": "Monthly rent",
+        "deposit": "Deposit",
+        "none": "You don't have an active lease right now."
+      },
+      "leaseStatus": {
+        "draft": "Draft",
+        "active": "Active",
+        "expired": "Expired",
+        "terminated": "Terminated"
+      },
+      "balance": {
+        "outstanding": "Outstanding balance",
+        "paid": "Total paid",
+        "due": "You have an outstanding balance.",
+        "settled": "You're all paid up."
+      },
+      "invoices": {
+        "title": "My invoices",
+        "dueDate": "Due date",
+        "invoiced": "Invoiced",
+        "paid": "Paid",
+        "balance": "Balance",
+        "status": "Status",
+        "empty": "No invoices yet."
+      },
+      "invoiceStatus": {
+        "open": "Open",
+        "partially_paid": "Partially paid",
+        "paid": "Paid",
+        "overdue": "Overdue"
+      },
+      "requests": {
+        "title": "My maintenance requests",
+        "openTitle": "Open requests",
+        "ofTotal": "of {count} total",
+        "new": "New request",
+        "unit": "Unit",
+        "empty": "No maintenance requests yet.",
+        "emptyActive": "Need something fixed? Open a request and your property team will take a look.",
+        "noLease": "You need an active lease before you can open a maintenance request.",
+        "created": "Request submitted.",
+        "createError": "Couldn't submit your request. Please try again."
+      },
+      "requestStatus": {
+        "open": "Open",
+        "in_progress": "In progress",
+        "resolved": "Resolved",
+        "closed": "Closed"
+      },
+      "priority": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High",
+        "urgent": "Urgent"
+      },
+      "form": {
+        "title": "Open a maintenance request",
+        "titleLabel": "Title",
+        "titlePlaceholder": "e.g. Kitchen sink is leaking",
+        "priorityLabel": "Priority",
+        "descriptionLabel": "Description",
+        "descriptionPlaceholder": "Describe the issue in a little more detail…",
+        "cancel": "Cancel",
+        "submit": "Submit request",
+        "submitting": "Submitting…",
+        "titleRequired": "Please enter a short title."
+      }
+    }
+  },
+  "reports": {
+    "title": "Reports",
+    "subtitle": "Financial and operational reports for your organization.",
+    "readOnly": "Read-only",
+    "loadError": "Failed to load reports. Please try again.",
+    "filters": {
+      "title": "Date range",
+      "hint": "Filters income & expenses below.",
+      "from": "From",
+      "to": "To",
+      "apply": "Apply",
+      "clear": "Clear"
+    },
+    "kpis": {
+      "activeLeases": "Active leases",
+      "occupancy": "Occupancy",
+      "unitsOccupied": "units occupied",
+      "mtdIncome": "Income (MTD)",
+      "ytdIncome": "Income (YTD)",
+      "mtdExpenses": "Expenses (MTD)",
+      "ytdExpenses": "Expenses (YTD)",
+      "mtdNet": "Net (MTD)",
+      "ytdNet": "Net (YTD)",
+      "rangeIncome": "Income (range)",
+      "rangeExpenses": "Expenses (range)",
+      "rangeNet": "Net (range)"
+    },
+    "chart": {
+      "title": "Income vs expenses",
+      "income": "Income",
+      "expenses": "Expenses",
+      "mtd": "This month",
+      "ytd": "This year",
+      "range": "Selected range"
+    },
+    "rentRoll": {
+      "title": "Rent roll",
+      "subtitle": "One row per active lease — invoiced, paid, and outstanding balance.",
+      "unit": "Unit",
+      "renter": "Renter",
+      "rent": "Rent",
+      "invoiced": "Invoiced",
+      "paid": "Paid",
+      "balance": "Balance",
+      "empty": "No active leases."
+    },
+    "overdue": {
+      "title": "Overdue invoices",
+      "subtitle": "Invoices past their due date with an outstanding balance.",
+      "unit": "Unit",
+      "renter": "Renter",
+      "dueDate": "Due date",
+      "invoiced": "Invoiced",
+      "paid": "Paid",
+      "balance": "Balance",
+      "daysOverdue": "Days overdue",
+      "empty": "No overdue invoices — everyone's paid up."
+    }
+  },
+  "leases": {
+    "title": "Leases",
+    "subtitle": "All leases across your organization — search, filter, and jump straight into any unit's lease record.",
+    "readOnly": "Read-only",
+    "newLease": "New lease",
+    "loadError": "Failed to load leases. Please try again.",
+    "empty": "No leases yet.",
+    "emptyWrite": "No leases yet. Create your first lease.",
+    "noMatch": "No leases match the selected filters.",
+    "filters": {
+      "searchLabel": "Search",
+      "searchPlaceholder": "Search by renter, unit, or building…",
+      "statusLabel": "Status",
+      "allStatuses": "All statuses",
+      "buildingLabel": "Building",
+      "allBuildings": "All buildings"
+    },
+    "status": {
+      "draft": "Draft",
+      "active": "Active",
+      "expired": "Expired",
+      "terminated": "Terminated"
+    },
+    "table": {
+      "unit": "Unit",
+      "renter": "Renter",
+      "dates": "Dates",
+      "rent": "Rent",
+      "status": "Status"
+    },
+    "dialog": {
+      "title": "New lease",
+      "building": "Building",
+      "floor": "Floor",
+      "apartment": "Apartment",
+      "selectBuilding": "Select a building",
+      "selectFloor": "Select a floor",
+      "selectApartment": "Select an apartment",
+      "renter": "Renter",
+      "selectRenter": "Select a renter",
+      "startDate": "Start date",
+      "endDate": "End date",
+      "rentAmount": "Rent amount",
+      "depositAmount": "Deposit amount",
+      "renewalTerms": "Renewal terms",
+      "notes": "Notes",
+      "optional": "(optional)",
+      "cancel": "Cancel",
+      "create": "Create",
+      "creating": "Creating…",
+      "success": "Lease created.",
+      "genericError": "Failed to create lease.",
+      "errors": {
+        "building": "Building is required",
+        "floor": "Floor is required",
+        "apartment": "Apartment is required",
+        "renter": "Renter is required",
+        "startDate": "Start date is required",
+        "endDate": "End date is required",
+        "endAfterStart": "End date must be on or after the start date",
+        "invalidAmount": "Enter a valid, non-negative amount"
+      }
+    }
+  },
+  "support": {
+    "title": "Support",
+    "subtitle": "Open a ticket and our team will help you out.",
+    "newTicket": "New ticket",
+    "subject": "Subject",
+    "subjectPlaceholder": "Brief summary of your issue",
+    "description": "Description",
+    "descriptionPlaceholder": "Tell us what's going on…",
+    "category": "Category",
+    "categories": {
+      "general": "General",
+      "billing": "Billing",
+      "maintenance": "Maintenance",
+      "technical": "Technical",
+      "other": "Other"
+    },
+    "status": {
+      "open": "Open",
+      "acknowledged": "Acknowledged",
+      "resolved": "Resolved",
+      "closed": "Closed"
+    },
+    "actions": {
+      "acknowledge": "Acknowledge",
+      "resolve": "Resolve",
+      "close": "Close"
+    },
+    "openedOn": "Opened",
+    "empty": "No tickets yet. Open your first ticket and we'll take it from there.",
+    "loadError": "Failed to load tickets. Please try again.",
+    "createdToast": "Ticket received — we've acknowledged it.",
+    "createError": "Couldn't submit your ticket. Please try again.",
+    "updatedToast": "Ticket updated.",
+    "updateError": "Couldn't update the ticket. Please try again.",
+    "cancel": "Cancel",
+    "submit": "Submit ticket",
+    "submitting": "Submitting…",
+    "validation": {
+      "subject": "Subject is required.",
+      "description": "Please add a description."
+    }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "a11yOpen": "Open notifications",
+    "markAllRead": "Mark all read",
+    "empty": "You're all caught up.",
+    "unread": "unread",
+    "loadError": "Couldn't load notifications.",
+    "pageSubtitle": "Everything you've been notified about.",
+    "viewAll": "View all notifications"
+  },
+  "buildings": {
+    "shared": {
+      "readOnly": "Read-only",
+      "optional": "(optional)",
+      "view": "View"
+    },
+    "list": {
+      "title": "Buildings",
+      "subtitleWrite": "Create and manage your organization's buildings.",
+      "subtitleReadOnly": "Buildings in your organization.",
+      "addBuilding": "Add building",
+      "table": {
+        "building": "Building",
+        "code": "Code",
+        "address": "Address",
+        "assignedStaff": "Assigned staff"
+      },
+      "emptyWrite": "No buildings yet. Create your first building.",
+      "empty": "No buildings are assigned to you yet.",
+      "actions": {
+        "ariaLabel": "Building actions",
+        "assignStaff": "Assign staff"
+      },
+      "toasts": {
+        "created": "Building created.",
+        "createLimitReached": "Building limit reached for your plan. Upgrade to add more.",
+        "createError": "Failed to create building. Please try again.",
+        "updated": "Building updated.",
+        "updateError": "Failed to update building.",
+        "deleted": "Building deleted.",
+        "deleteError": "Failed to delete building.",
+        "assignmentsUpdated": "Staff assignments updated.",
+        "assignmentsError": "Failed to update assignments."
+      },
+      "errors": {
+        "name": "Name is required"
+      },
+      "createDialog": {
+        "title": "Add building",
+        "name": "Name",
+        "namePlaceholder": "Main Tower",
+        "code": "Code",
+        "codePlaceholder": "BLD-01",
+        "address": "Address",
+        "addressPlaceholder": "123 Main St, Dubai",
+        "notes": "Notes",
+        "notesPlaceholder": "Any notes…",
+        "create": "Create",
+        "creating": "Creating…"
+      },
+      "editDialog": {
+        "title": "Edit building",
+        "name": "Name",
+        "code": "Code",
+        "address": "Address",
+        "notes": "Notes",
+        "saving": "Saving…"
+      },
+      "deleteDialog": {
+        "title": "Delete building",
+        "confirmPrefix": "Are you sure you want to delete",
+        "confirmSuffix": "? This action cannot be undone.",
+        "deleting": "Deleting…"
+      },
+      "assignDialog": {
+        "title": "Assign staff to {name}",
+        "description": "Select supervisors and maintenance staff to assign to this building.",
+        "noStaff": "No supervisor or maintenance staff found. Create staff members first.",
+        "saving": "Saving…"
+      }
+    },
+    "detail": {
+      "fallbackTitle": "Building",
+      "info": {
+        "codeLabel": "Code",
+        "addressLabel": "Address",
+        "notesLabel": "Notes"
+      },
+      "floorsSection": {
+        "title": "Floors",
+        "subtitleWrite": "Manage this building's floors.",
+        "subtitleReadOnly": "Floors in this building."
+      },
+      "addFloor": "Add floor",
+      "table": {
+        "name": "Name",
+        "order": "Order",
+        "notes": "Notes",
+        "apartmentCount": "Apartment count"
+      },
+      "emptyWrite": "No floors yet. Add your first floor.",
+      "empty": "No floors in this building yet.",
+      "actions": {
+        "ariaLabel": "Floor actions"
+      },
+      "toasts": {
+        "created": "Floor created.",
+        "createError": "Failed to create floor.",
+        "updated": "Floor updated.",
+        "updateError": "Failed to update floor.",
+        "deleted": "Floor deleted.",
+        "deleteError": "Failed to delete floor."
+      },
+      "errors": {
+        "name": "Name is required",
+        "orderRequired": "Order must be a number",
+        "orderInteger": "Order must be a whole number",
+        "orderNegative": "Order cannot be negative"
+      },
+      "createDialog": {
+        "title": "Add floor",
+        "name": "Name",
+        "namePlaceholder": "2nd Floor",
+        "notes": "Notes",
+        "notesPlaceholder": "Any notes…",
+        "create": "Create",
+        "creating": "Creating…"
+      },
+      "editDialog": {
+        "title": "Edit floor",
+        "name": "Name",
+        "order": "Order",
+        "notes": "Notes",
+        "saving": "Saving…"
+      },
+      "deleteDialog": {
+        "title": "Delete floor",
+        "confirmPrefix": "Are you sure you want to delete",
+        "confirmSuffix": "? This action cannot be undone.",
+        "deleting": "Deleting…"
+      }
+    },
+    "floor": {
+      "backToBuilding": "Back to building",
+      "titleFallback": "Floor",
+      "apartmentsSection": {
+        "title": "Apartments",
+        "subtitleWrite": "Manage the apartments on this floor.",
+        "subtitleReadOnly": "Apartments on this floor."
+      },
+      "addApartment": "Add apartment",
+      "table": {
+        "unitNumber": "Unit Number",
+        "bedBath": "Bed/Bath",
+        "sqft": "Sqft",
+        "status": "Status"
+      },
+      "emptyWrite": "No apartments yet. Add your first apartment.",
+      "empty": "No apartments on this floor yet.",
+      "bedBathValue": "{bedrooms} bd / {bathrooms} ba",
+      "actions": {
+        "ariaLabel": "Apartment actions"
+      },
+      "toasts": {
+        "created": "Apartment created.",
+        "createError": "Failed to create apartment.",
+        "updated": "Apartment updated.",
+        "updateError": "Failed to update apartment.",
+        "deleted": "Apartment deleted.",
+        "deleteError": "Failed to delete apartment."
+      },
+      "errors": {
+        "unitNumber": "Unit number is required",
+        "bedroomsRequired": "Bedrooms must be a number",
+        "bedroomsInteger": "Bedrooms must be a whole number",
+        "bedroomsNegative": "Bedrooms cannot be negative",
+        "bathroomsRequired": "Bathrooms must be a number",
+        "bathroomsNegative": "Bathrooms cannot be negative"
+      },
+      "createDialog": {
+        "title": "Add apartment",
+        "create": "Create",
+        "creating": "Creating…"
+      },
+      "editDialog": {
+        "title": "Edit apartment",
+        "saving": "Saving…"
+      },
+      "deleteDialog": {
+        "title": "Delete apartment",
+        "confirmPrefix": "Are you sure you want to delete unit",
+        "confirmSuffix": "? This action cannot be undone.",
+        "deleting": "Deleting…"
+      },
+      "form": {
+        "unitNumber": "Unit number",
+        "unitNumberPlaceholder": "101",
+        "bedrooms": "Bedrooms",
+        "bathrooms": "Bathrooms",
+        "sqft": "Sqft",
+        "status": "Status",
+        "selectStatus": "Select status",
+        "notes": "Notes"
+      }
+    },
+    "apartmentStatus": {
+      "vacant": "Vacant",
+      "occupied": "Occupied",
+      "maintenance": "Maintenance",
+      "unavailable": "Unavailable"
+    }
+  },
+  "apartments": {
+    "header": {
+      "backToFloor": "Back to floor",
+      "unit": "Unit"
+    },
+    "status": {
+      "occupied": "Occupied",
+      "maintenance": "Maintenance",
+      "unavailable": "Unavailable",
+      "vacant": "Vacant"
+    },
+    "info": {
+      "building": "Building",
+      "bedBath": "Bed / Bath",
+      "bd": "bd",
+      "ba": "ba",
+      "sqft": "Sqft",
+      "notes": "Notes"
+    },
+    "lease": {
+      "title": "Leases",
+      "subtitle": "Manage leases for this apartment.",
+      "subtitleReadOnly": "Lease history for this apartment.",
+      "newLease": "New lease",
+      "table": {
+        "renter": "Renter",
+        "dates": "Dates",
+        "rent": "Rent",
+        "status": "Status"
+      },
+      "emptyWrite": "No leases yet. Create the first lease.",
+      "empty": "No lease history for this apartment yet.",
+      "actionsLabel": "Lease actions",
+      "renewAction": "Renew",
+      "terminateAction": "Terminate"
+    },
+    "dialog": {
+      "fields": {
+        "renter": "Renter",
+        "selectRenter": "Select a renter",
+        "startDate": "Start date",
+        "endDate": "End date",
+        "rentAmount": "Rent amount",
+        "depositAmount": "Deposit amount",
+        "renewalTerms": "Renewal terms",
+        "notes": "Notes",
+        "optional": "(optional)"
+      },
+      "errors": {
+        "renter": "Renter is required",
+        "startDate": "Start date is required",
+        "endDate": "End date is required",
+        "endAfterStart": "End date must be on or after the start date",
+        "mustBeNumber": "{label} must be a number",
+        "cannotBeNegative": "{label} cannot be negative"
+      },
+      "create": {
+        "title": "New lease",
+        "success": "Lease created.",
+        "genericError": "Failed to create lease.",
+        "submitting": "Creating…",
+        "submit": "Create"
+      },
+      "terminate": {
+        "title": "Terminate lease",
+        "body": "Are you sure you want to terminate this lease? The apartment will be marked vacant. This action cannot be undone.",
+        "success": "Lease terminated.",
+        "genericError": "Failed to terminate lease.",
+        "submitting": "Terminating…",
+        "submit": "Terminate"
+      },
+      "renew": {
+        "title": "Renew lease",
+        "renewingFor": "Renewing for",
+        "success": "Lease renewed.",
+        "genericError": "Failed to renew lease.",
+        "submitting": "Renewing…",
+        "submit": "Renew"
+      }
+    }
+  },
+  "renters": {
+    "list": {
+      "title": "Renters",
+      "subtitleWrite": "Manage your organization's renters.",
+      "subtitleReadOnly": "Renters in your organization.",
+      "readOnly": "Read-only",
+      "addRenter": "Add renter",
+      "table": {
+        "fullName": "Full name",
+        "email": "Email",
+        "phone": "Phone",
+        "status": "Status"
+      },
+      "loadError": "Failed to load renters. Please try again.",
+      "empty": "No renters yet.",
+      "emptyWrite": "No renters yet. Add your first renter.",
+      "actionsLabel": "Renter actions",
+      "view": "View"
+    },
+    "status": {
+      "current": "Current",
+      "former": "Former",
+      "none": "No lease yet"
+    },
+    "dialog": {
+      "addTitle": "Add renter",
+      "editTitle": "Edit renter",
+      "deleteTitle": "Delete renter",
+      "deleteConfirm": "Are you sure you want to delete {name}? This action cannot be undone.",
+      "fullName": "Full name",
+      "email": "Email",
+      "phone": "Phone",
+      "emergencyContactName": "Emergency contact name",
+      "emergencyContactPhone": "Emergency contact phone",
+      "notes": "Notes",
+      "optional": "(optional)",
+      "placeholderFullName": "Jane Doe",
+      "placeholderEmail": "jane@example.com",
+      "placeholderPhone": "+971 50 123 4567",
+      "placeholderEmergencyContactName": "John Doe",
+      "placeholderEmergencyContactPhone": "+971 50 987 6543",
+      "placeholderNotes": "Any notes…",
+      "fullNameRequired": "Full name is required",
+      "invalidEmail": "Invalid email",
+      "create": "Create",
+      "creating": "Creating…",
+      "saving": "Saving…",
+      "deleting": "Deleting…",
+      "createdToast": "Renter created.",
+      "createErrorToast": "Failed to create renter. Please try again.",
+      "updatedToast": "Renter updated.",
+      "updateErrorToast": "Failed to update renter.",
+      "deletedToast": "Renter deleted.",
+      "deleteErrorToast": "Failed to delete renter."
+    },
+    "detail": {
+      "notFound": "Renter not found.",
+      "newLease": "New lease",
+      "email": "Email",
+      "phone": "Phone",
+      "emergencyContactName": "Emergency contact name",
+      "emergencyContactPhone": "Emergency contact phone",
+      "notes": "Notes",
+      "leasesTitle": "Leases",
+      "leasesSubtitle": "This renter's lease history, most recent first.",
+      "noLeases": "No leases yet.",
+      "table": {
+        "apartment": "Apartment",
+        "dates": "Dates",
+        "rent": "Rent",
+        "status": "Status"
+      },
+      "viewApartment": "View apartment"
+    }
+  },
+  "vendors": {
+    "title": "Vendors",
+    "subtitleWrite": "Manage your organization's third-party service providers.",
+    "subtitleReadOnly": "Third-party service providers for your organization.",
+    "readOnly": "Read-only",
+    "addVendor": "Add vendor",
+    "table": {
+      "companyName": "Company name",
+      "contactName": "Contact name",
+      "phoneEmail": "Phone / Email",
+      "servicesOffered": "Services offered"
+    },
+    "loadError": "Failed to load vendors. Please try again.",
+    "empty": "No vendors yet.",
+    "emptyWrite": "No vendors yet. Add your first vendor.",
+    "actionsLabel": "Vendor actions",
+    "serviceType": {
+      "plumbing": "Plumbing",
+      "electrical": "Electrical",
+      "cleaning": "Cleaning",
+      "landscaping": "Landscaping",
+      "hvac": "HVAC",
+      "general_maintenance": "General maintenance",
+      "other": "Other"
+    },
+    "dialog": {
+      "addTitle": "Add vendor",
+      "editTitle": "Edit vendor",
+      "deleteTitle": "Delete vendor",
+      "deleteConfirm": "Are you sure you want to delete {name}? This action cannot be undone.",
+      "companyName": "Company name",
+      "contactName": "Contact name",
+      "email": "Email",
+      "phone": "Phone",
+      "address": "Address",
+      "servicesOffered": "Services offered",
+      "notes": "Notes",
+      "optional": "(optional)",
+      "placeholderCompanyName": "Acme Plumbing Co.",
+      "placeholderContactName": "Jane Doe",
+      "placeholderEmail": "jane@acme.example",
+      "placeholderPhone": "+971 50 123 4567",
+      "placeholderAddress": "123 Main St",
+      "placeholderNotes": "Any notes…",
+      "companyNameRequired": "Company name is required",
+      "invalidEmail": "Invalid email",
+      "create": "Create",
+      "creating": "Creating…",
+      "saving": "Saving…",
+      "deleting": "Deleting…",
+      "createdToast": "Vendor created.",
+      "createErrorToast": "Failed to create vendor. Please try again.",
+      "updatedToast": "Vendor updated.",
+      "updateErrorToast": "Failed to update vendor.",
+      "deletedToast": "Vendor deleted.",
+      "deleteErrorToast": "Failed to delete vendor."
+    }
+  },
+  "users": {
+    "title": "Team",
+    "subtitle": "Manage your organization members and their roles.",
+    "subtitleReadonly": "Staff members in your assigned buildings.",
+    "addMember": "Add member",
+    "readOnly": "Read-only",
+    "disabled": "Disabled",
+    "empty": "No members yet.",
+    "emptyWrite": "No members yet. Add your first team member.",
+    "table": {
+      "member": "Member",
+      "role": "Role",
+      "buildings": "Buildings",
+      "joined": "Joined"
+    },
+    "roles": {
+      "org_admin": "Admin",
+      "supervisor": "Supervisor",
+      "finance": "Finance",
+      "maintenance": "Maintenance",
+      "tenant": "Tenant"
+    },
+    "actions": {
+      "ariaLabel": "Member actions",
+      "editAssignments": "Edit assignments",
+      "changeRole": "Change role",
+      "enableLogin": "Enable login",
+      "disableLogin": "Disable login",
+      "removeMember": "Remove member"
+    },
+    "dialog": {
+      "selectRole": "Select a role",
+      "optional": "(optional)",
+      "roleLabel": "Role",
+      "fallbackMember": "this member",
+      "saving": "Saving…",
+      "create": {
+        "title": "Add member",
+        "username": "Username",
+        "usernamePlaceholder": "jane.smith",
+        "password": "Password",
+        "passwordPlaceholder": "Min. 8 characters",
+        "fullName": "Full name",
+        "fullNamePlaceholder": "Jane Smith",
+        "email": "Email",
+        "emailPlaceholder": "jane@example.com",
+        "assignBuildings": "Assign buildings",
+        "submit": "Create member",
+        "submitting": "Creating…",
+        "errors": {
+          "username": "Username must be at least 3 characters",
+          "password": "Password must be at least 8 characters",
+          "email": "Invalid email address"
+        }
+      },
+      "editAssignments": {
+        "title": "Edit building assignments",
+        "description": "Assign buildings to {name}.",
+        "noBuildings": "No buildings found. Create buildings first."
+      },
+      "changeRole": {
+        "title": "Change role",
+        "description": "Set the role for {name}."
+      },
+      "remove": {
+        "title": "Remove member",
+        "description": "Are you sure you want to remove {name} from the organization? This action cannot be undone.",
+        "submit": "Remove",
+        "submitting": "Removing…"
+      }
+    },
+    "toast": {
+      "created": "Member created. Share the username and password with them directly.",
+      "createError": "Failed to create member. Please try again.",
+      "roleUpdated": "Member role updated.",
+      "roleError": "Failed to update role. Please try again.",
+      "assignmentsUpdated": "Building assignments updated.",
+      "assignmentsError": "Failed to update assignments.",
+      "removed": "Member removed from the organization.",
+      "removeError": "Failed to remove member. Please try again.",
+      "enabled": "Member enabled.",
+      "disabled": "Member disabled.",
+      "toggleError": "Failed to update member. Please try again."
+    }
+  },
+  "invoices": {
+    "status": {
+      "open": "Open",
+      "partially_paid": "Partially paid",
+      "paid": "Paid",
+      "overdue": "Overdue"
+    },
+    "lineItemCategory": {
+      "rent": "Rent",
+      "late_fee": "Late fee",
+      "utilities": "Utilities",
+      "damages": "Damages",
+      "deposit": "Deposit",
+      "other": "Other"
+    },
+    "paymentMethod": {
+      "cash": "Cash",
+      "check": "Check",
+      "bank_transfer": "Bank transfer",
+      "card": "Card",
+      "other": "Other"
+    },
+    "list": {
+      "title": "Invoices",
+      "subtitle": "Bills issued to renters — rent, late fees, utilities, and more.",
+      "readOnly": "Read-only",
+      "newInvoice": "New invoice",
+      "view": "View",
+      "actionsLabel": "Invoice actions",
+      "loadError": "Failed to load invoices. Please try again.",
+      "empty": "No invoices recorded yet.",
+      "emptyWrite": "No invoices recorded yet. Create your first invoice.",
+      "noMatch": "No invoices match the selected filters.",
+      "filters": {
+        "buildingLabel": "Building",
+        "allBuildings": "All buildings",
+        "statusLabel": "Status",
+        "allStatuses": "All statuses",
+        "dueFromLabel": "Due from",
+        "dueToLabel": "Due to"
+      },
+      "table": {
+        "leaseRenter": "Lease / Renter",
+        "building": "Building",
+        "dueDate": "Due date",
+        "total": "Total",
+        "paid": "Paid",
+        "status": "Status"
+      },
+      "form": {
+        "dueDate": "Due date",
+        "notes": "Notes",
+        "notesPlaceholder": "Any notes…",
+        "optional": "(optional)",
+        "lineItems": {
+          "label": "Line items",
+          "addRow": "Add row",
+          "categoryPlaceholder": "Category",
+          "categoryAriaLabel": "Line item {n} category",
+          "descriptionPlaceholder": "Description (optional)",
+          "descriptionAriaLabel": "Line item {n} description",
+          "amountPlaceholder": "0.00",
+          "amountAriaLabel": "Line item {n} amount",
+          "removeAriaLabel": "Remove line item"
+        },
+        "leasePicker": {
+          "building": "Building",
+          "selectBuilding": "Select a building",
+          "floor": "Floor",
+          "selectFloor": "Select a floor",
+          "apartment": "Apartment",
+          "selectApartment": "Select an apartment",
+          "lease": "Lease",
+          "selectLease": "Select a lease"
+        },
+        "errors": {
+          "leaseRequired": "Lease is required",
+          "dueDateRequired": "Due date is required",
+          "lineItemsRequired": "At least one line item is required",
+          "amountRequired": "Amount is required",
+          "amountPositive": "Amount must be a positive number"
+        }
+      },
+      "dialog": {
+        "create": {
+          "title": "New invoice",
+          "submit": "Create",
+          "submitting": "Creating…",
+          "success": "Invoice created.",
+          "error": "Failed to create invoice. Please try again."
+        },
+        "edit": {
+          "title": "Edit invoice",
+          "leaseLabel": "Lease",
+          "leaseLockedNote": "The lease on an invoice can't be changed after creation.",
+          "submitting": "Saving…",
+          "success": "Invoice updated.",
+          "error": "Failed to update invoice."
+        },
+        "delete": {
+          "title": "Delete invoice",
+          "confirmPrefix": "Are you sure you want to delete the invoice for",
+          "confirmSuffix": "? This action cannot be undone.",
+          "confirming": "Deleting…",
+          "success": "Invoice deleted.",
+          "error": "Failed to delete invoice. Please try again."
+        }
+      }
+    },
+    "detail": {
+      "backLink": "Back to invoices",
+      "loadError": "Failed to load this invoice.",
+      "info": {
+        "building": "Building",
+        "dueDate": "Due date",
+        "total": "Total",
+        "paid": "Paid",
+        "notes": "Notes"
+      },
+      "lineItems": {
+        "title": "Line items",
+        "table": {
+          "category": "Category",
+          "description": "Description",
+          "amount": "Amount"
+        }
+      },
+      "payments": {
+        "title": "Payments",
+        "recordButton": "Record payment",
+        "loadError": "Failed to load payments. Please try again.",
+        "empty": "No payments recorded yet.",
+        "emptyWrite": "No payments recorded yet. Record the first payment.",
+        "deleteAriaLabel": "Delete payment",
+        "table": {
+          "amount": "Amount",
+          "method": "Method",
+          "paidAt": "Paid at",
+          "notes": "Notes"
+        }
+      },
+      "form": {
+        "errors": {
+          "amountRequired": "Amount is required",
+          "amountPositive": "Amount must be a positive number",
+          "paidAtRequired": "Payment date is required"
+        }
+      },
+      "dialog": {
+        "record": {
+          "title": "Record payment",
+          "amountLabel": "Amount",
+          "amountPlaceholder": "0.00",
+          "methodLabel": "Method",
+          "selectMethod": "Select a method",
+          "paidAtLabel": "Paid at",
+          "notesLabel": "Notes",
+          "notesPlaceholder": "Any notes…",
+          "optional": "(optional)",
+          "submit": "Record payment",
+          "submitting": "Recording…",
+          "success": "Payment recorded.",
+          "error": "Failed to record payment. Please try again."
+        },
+        "delete": {
+          "title": "Delete payment",
+          "confirmPrefix": "Are you sure you want to delete this",
+          "confirmSuffix": "payment? This action cannot be undone.",
+          "confirming": "Deleting…",
+          "success": "Payment deleted.",
+          "error": "Failed to delete payment. Please try again."
+        }
+      }
+    }
+  },
+  "maintenance": {
+    "workOrderStatus": {
+      "scheduled": "Scheduled",
+      "in_progress": "In progress",
+      "completed": "Completed",
+      "canceled": "Canceled"
+    },
+    "assignmentMode": {
+      "vendor": "Vendor",
+      "staff": "Staff member"
+    },
+    "detail": {
+      "backToTasks": "Back to tasks",
+      "loadError": "Failed to load this maintenance request.",
+      "info": {
+        "building": "Building",
+        "apartment": "Apartment",
+        "renter": "Renter",
+        "description": "Description",
+        "notes": "Notes"
+      },
+      "workOrdersTitle": "Work orders",
+      "workOrdersSubtitle": "Job history for this maintenance request.",
+      "newWorkOrder": "New work order",
+      "actionsLabel": "Work order actions",
+      "table": {
+        "status": "Status",
+        "assignee": "Vendor / Assignee",
+        "cost": "Cost",
+        "resolutionNotes": "Resolution notes",
+        "completed": "Completed"
+      },
+      "empty": "No work orders yet.",
+      "updateStatusAction": "Update status"
+    },
+    "workOrder": {
+      "fields": {
+        "assignTo": "Assign to",
+        "selectVendor": "Select a vendor",
+        "selectStaffMember": "Select a staff member",
+        "status": "Status",
+        "cost": "Cost",
+        "optional": "(optional)",
+        "resolutionNotes": "Resolution notes"
+      },
+      "create": {
+        "title": "New work order",
+        "create": "Create",
+        "creating": "Creating…",
+        "success": "Work order created.",
+        "genericError": "Failed to create work order. Please try again.",
+        "vendorRequired": "Select a vendor.",
+        "staffRequired": "Select a staff member."
+      },
+      "edit": {
+        "title": "Edit work order",
+        "saving": "Saving…",
+        "success": "Work order updated.",
+        "error": "Failed to update work order."
+      },
+      "updateStatus": {
+        "title": "Update work order",
+        "saving": "Saving…",
+        "success": "Work order updated.",
+        "error": "Failed to update work order. You can only update a work order assigned to you."
+      },
+      "delete": {
+        "title": "Delete work order",
+        "confirm": "Are you sure you want to delete this work order? This action cannot be undone.",
+        "deleting": "Deleting…",
+        "success": "Work order deleted.",
+        "error": "Failed to delete work order."
+      }
+    }
+  },
+  "tasks": {
+    "status": {
+      "open": "Open",
+      "in_progress": "In progress",
+      "resolved": "Resolved",
+      "closed": "Closed"
+    },
+    "priority": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "urgent": "Urgent"
+    },
+    "list": {
+      "title": "Tasks",
+      "subtitle": "Maintenance requests for your assigned buildings.",
+      "subtitleReadonly": "Maintenance requests for your assigned buildings, read-only.",
+      "readOnly": "Read-only",
+      "newRequest": "New request",
+      "actionsLabel": "Maintenance request actions",
+      "table": {
+        "title": "Title",
+        "apartment": "Apartment",
+        "renter": "Renter",
+        "status": "Status",
+        "priority": "Priority"
+      },
+      "actions": {
+        "view": "View"
+      },
+      "loadError": "Failed to load maintenance requests. Please try again."
+    },
+    "empty": {
+      "default": "No maintenance requests yet.",
+      "write": "No maintenance requests yet. Log your first request."
+    },
+    "dialog": {
+      "create": {
+        "title": "New maintenance request",
+        "building": "Building",
+        "selectBuilding": "Select a building",
+        "floor": "Floor",
+        "selectFloor": "Select a floor",
+        "apartment": "Apartment",
+        "selectApartment": "Select an apartment",
+        "renter": "Renter",
+        "selectRenter": "Select a renter",
+        "titleField": "Title",
+        "titlePlaceholder": "Leaky faucet in kitchen",
+        "description": "Description",
+        "descriptionPlaceholder": "Describe the issue…",
+        "optional": "(optional)",
+        "priority": "Priority",
+        "selectPriority": "Select a priority",
+        "notes": "Notes",
+        "notesPlaceholder": "Any notes…",
+        "create": "Create",
+        "creating": "Creating…",
+        "success": "Maintenance request created.",
+        "genericError": "Failed to create maintenance request. Please try again.",
+        "errors": {
+          "building": "Building is required",
+          "floor": "Floor is required",
+          "apartment": "Apartment is required",
+          "renter": "Renter is required",
+          "title": "Title is required"
+        }
+      },
+      "edit": {
+        "title": "Edit maintenance request",
+        "context": "Apartment {apartment} · {renter}",
+        "titleField": "Title",
+        "description": "Description",
+        "optional": "(optional)",
+        "status": "Status",
+        "selectStatus": "Select a status",
+        "priority": "Priority",
+        "selectPriority": "Select a priority",
+        "notes": "Notes",
+        "saving": "Saving…",
+        "success": "Maintenance request updated.",
+        "error": "Failed to update maintenance request.",
+        "errors": {
+          "title": "Title is required"
+        }
+      },
+      "delete": {
+        "title": "Delete maintenance request",
+        "confirmBefore": "Are you sure you want to delete",
+        "confirmAfter": "? This action cannot be undone.",
+        "deleting": "Deleting…",
+        "success": "Maintenance request deleted.",
+        "error": "Failed to delete maintenance request."
+      }
+    }
+  },
+  "expenses": {
+    "title": "Expenses",
+    "subtitle": "Money spent running your organization's properties.",
+    "readOnly": "Read-only",
+    "newExpense": "New expense",
+    "loadError": "Failed to load expenses. Please try again.",
+    "empty": "No expenses recorded yet.",
+    "emptyWrite": "No expenses recorded yet. Record your first expense.",
+    "noMatch": "No expenses match the selected filters.",
+    "orgWide": "Org-wide",
+    "category": {
+      "repairs": "Repairs",
+      "vendor_payment": "Vendor payment",
+      "utilities": "Utilities",
+      "taxes": "Taxes",
+      "insurance": "Insurance",
+      "other": "Other"
+    },
+    "filters": {
+      "building": "Building",
+      "allBuildings": "All buildings",
+      "category": "Category",
+      "allCategories": "All categories",
+      "from": "From",
+      "to": "To"
+    },
+    "table": {
+      "category": "Category",
+      "amount": "Amount",
+      "incurredDate": "Incurred date",
+      "building": "Building",
+      "vendor": "Vendor",
+      "workOrder": "Work order",
+      "actionsLabel": "Expense actions"
+    },
+    "dialog": {
+      "newTitle": "New expense",
+      "editTitle": "Edit expense",
+      "category": "Category",
+      "selectCategory": "Select a category",
+      "amount": "Amount",
+      "amountPlaceholder": "0.00",
+      "incurredDate": "Incurred date",
+      "building": "Building",
+      "optional": "(optional)",
+      "orgWideNoBuilding": "Org-wide (no building)",
+      "vendor": "Vendor",
+      "noVendor": "No vendor",
+      "workOrderSection": {
+        "label": "Link to work order",
+        "hint": "Pick the maintenance request, then the work order. Leaving vendor blank above will auto-fill it from the work order.",
+        "maintenanceRequestNone": "None",
+        "workOrderNone": "No work order"
+      },
+      "notes": "Notes",
+      "notesPlaceholder": "Any notes…",
+      "create": "Create",
+      "creating": "Creating…",
+      "saving": "Saving…",
+      "createSuccess": "Expense created.",
+      "createError": "Failed to create expense. Please try again.",
+      "updateSuccess": "Expense updated.",
+      "updateError": "Failed to update expense.",
+      "errors": {
+        "amountRequired": "Amount is required",
+        "amountInvalid": "Amount must be a positive number",
+        "incurredDateRequired": "Incurred date is required"
+      }
+    },
+    "deleteDialog": {
+      "title": "Delete expense",
+      "confirm": "Are you sure you want to delete this {category} expense? This action cannot be undone.",
+      "deleting": "Deleting…",
+      "success": "Expense deleted.",
+      "error": "Failed to delete expense. It may be referenced elsewhere."
+    }
   }
 }

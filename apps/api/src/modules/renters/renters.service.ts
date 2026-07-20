@@ -27,6 +27,7 @@ type RenterRow = {
   emergencyContactName: string | null;
   emergencyContactPhone: string | null;
   notes: string | null;
+  renterUserId: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -56,6 +57,7 @@ export class RentersService {
       emergencyContactName: renter.emergencyContactName,
       emergencyContactPhone: renter.emergencyContactPhone,
       notes: renter.notes,
+      renterUserId: renter.renterUserId,
       effectiveStatus: !mostRecentLease
         ? 'none'
         : this.leaseStatus.isEffectivelyActive(
@@ -155,6 +157,7 @@ export class RentersService {
         emergencyContactName: dto.emergencyContactName,
         emergencyContactPhone: dto.emergencyContactPhone,
         notes: dto.notes,
+        renterUserId: dto.renterUserId,
       },
     });
 
@@ -194,6 +197,9 @@ export class RentersService {
           emergencyContactPhone: dto.emergencyContactPhone,
         }),
         ...(dto.notes !== undefined && { notes: dto.notes }),
+        ...(dto.renterUserId !== undefined && {
+          renterUserId: dto.renterUserId,
+        }),
       },
     });
 

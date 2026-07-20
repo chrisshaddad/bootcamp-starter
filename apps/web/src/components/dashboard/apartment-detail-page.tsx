@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -63,10 +63,17 @@ import {
   useRenewLeaseMutation,
 } from '@/store/api/endpoints/leases.api';
 import type { ApartmentStatus, LeaseResponse, LeaseStatus } from '@/types/api';
+import type { Dictionary } from '@/i18n/get-dictionary';
 
 // ── Apartment status badge ──────────────────────────────────────────────────
 
-function ApartmentStatusBadge({ status }: { status: ApartmentStatus }) {
+function ApartmentStatusBadge({
+  status,
+  labels,
+}: {
+  status: ApartmentStatus;
+  labels: Dictionary['apartments']['status'];
+}) {
   switch (status) {
     case 'occupied':
       return (
@@ -74,7 +81,7 @@ function ApartmentStatusBadge({ status }: { status: ApartmentStatus }) {
           variant="default"
           className="bg-green-100 text-green-800 border-green-200"
         >
-          Occupied
+          {labels.occupied}
         </Badge>
       );
     case 'maintenance':
@@ -83,20 +90,26 @@ function ApartmentStatusBadge({ status }: { status: ApartmentStatus }) {
           variant="outline"
           className="bg-amber-50 text-amber-800 border-amber-200"
         >
-          Maintenance
+          {labels.maintenance}
         </Badge>
       );
     case 'unavailable':
-      return <Badge variant="destructive">Unavailable</Badge>;
+      return <Badge variant="destructive">{labels.unavailable}</Badge>;
     case 'vacant':
     default:
-      return <Badge variant="secondary">Vacant</Badge>;
+      return <Badge variant="secondary">{labels.vacant}</Badge>;
   }
 }
 
-// ── Lease effective-status badge ────────────────────────────────────────────
+// ── Lease effective-status badge (reuses dict.leases.status) ───────────────
 
-function LeaseStatusBadge({ status }: { status: LeaseStatus }) {
+function LeaseStatusBadge({
+  status,
+  labels,
+}: {
+  status: LeaseStatus;
+  labels: Dictionary['leases']['status'];
+}) {
   switch (status) {
     case 'active':
       return (
@@ -104,7 +117,7 @@ function LeaseStatusBadge({ status }: { status: LeaseStatus }) {
           variant="default"
           className="bg-green-100 text-green-800 border-green-200"
         >
-          Active
+          {labels.active}
         </Badge>
       );
     case 'expired':
@@ -113,42 +126,48 @@ function LeaseStatusBadge({ status }: { status: LeaseStatus }) {
           variant="outline"
           className="bg-amber-50 text-amber-800 border-amber-200"
         >
-          Expired
+          {labels.expired}
         </Badge>
       );
     case 'terminated':
-      return <Badge variant="destructive">Terminated</Badge>;
+      return <Badge variant="destructive">{labels.terminated}</Badge>;
     case 'draft':
     default:
-      return <Badge variant="secondary">Draft</Badge>;
+      return <Badge variant="secondary">{labels.draft}</Badge>;
   }
 }
 
-// ── Zod schema ───────────────────────────────────────────────────────────────
+// ── Zod schemas (built from dict so error messages are localized) ──────────
 
-const numericField = (label: string) =>
-  z
-    .string()
-    .refine((v) => v.trim() !== '' && !Number.isNaN(Number(v)), {
-      message: `${label} must be a number`,
+type DialogDict = Dictionary['apartments']['dialog'];
+
+function buildLeaseSchema(t: DialogDict) {
+  const numericField = (label: string) =>
+    z
+      .string()
+      .refine((v) => v.trim() !== '' && !Number.isNaN(Number(v)), {
+        message: t.errors.mustBeNumber.replace('{label}', label),
+      })
+      .refine((v) => Number(v) >= 0, {
+        message: t.errors.cannotBeNegative.replace('{label}', label),
+      });
+
+  return z
+    .object({
+      renterId: z.string().min(1, t.errors.renter),
+      startDate: z.string().min(1, t.errors.startDate),
+      endDate: z.string().min(1, t.errors.endDate),
+      rentAmount: numericField(t.fields.rentAmount),
+      depositAmount: numericField(t.fields.depositAmount),
+      renewalTerms: z.string().optional(),
+      notes: z.string().optional(),
     })
-    .refine((v) => Number(v) >= 0, { message: `${label} cannot be negative` });
-
-const leaseSchema = z
-  .object({
-    renterId: z.string().min(1, 'Renter is required'),
-    startDate: z.string().min(1, 'Start date is required'),
-    endDate: z.string().min(1, 'End date is required'),
-    rentAmount: numericField('Rent amount'),
-    depositAmount: numericField('Deposit amount'),
-    renewalTerms: z.string().optional(),
-    notes: z.string().optional(),
-  })
-  .refine((v) => v.endDate >= v.startDate, {
-    message: 'End date must be on or after the start date',
-    path: ['endDate'],
-  });
-type LeaseFormValues = z.infer<typeof leaseSchema>;
+    .refine((v) => v.endDate >= v.startDate, {
+      message: t.errors.endAfterStart,
+      path: ['endDate'],
+    });
+}
+type LeaseFormValues = z.infer<ReturnType<typeof buildLeaseSchema>>;
 
 const DEFAULT_VALUES: LeaseFormValues = {
   renterId: '',
@@ -160,20 +179,32 @@ const DEFAULT_VALUES: LeaseFormValues = {
   notes: '',
 };
 
-const renewSchema = z
-  .object({
-    startDate: z.string().min(1, 'Start date is required'),
-    endDate: z.string().min(1, 'End date is required'),
-    rentAmount: numericField('Rent amount'),
-    depositAmount: numericField('Deposit amount'),
-    renewalTerms: z.string().optional(),
-    notes: z.string().optional(),
-  })
-  .refine((v) => v.endDate >= v.startDate, {
-    message: 'End date must be on or after the start date',
-    path: ['endDate'],
-  });
-type RenewFormValues = z.infer<typeof renewSchema>;
+function buildRenewSchema(t: DialogDict) {
+  const numericField = (label: string) =>
+    z
+      .string()
+      .refine((v) => v.trim() !== '' && !Number.isNaN(Number(v)), {
+        message: t.errors.mustBeNumber.replace('{label}', label),
+      })
+      .refine((v) => Number(v) >= 0, {
+        message: t.errors.cannotBeNegative.replace('{label}', label),
+      });
+
+  return z
+    .object({
+      startDate: z.string().min(1, t.errors.startDate),
+      endDate: z.string().min(1, t.errors.endDate),
+      rentAmount: numericField(t.fields.rentAmount),
+      depositAmount: numericField(t.fields.depositAmount),
+      renewalTerms: z.string().optional(),
+      notes: z.string().optional(),
+    })
+    .refine((v) => v.endDate >= v.startDate, {
+      message: t.errors.endAfterStart,
+      path: ['endDate'],
+    });
+}
+type RenewFormValues = z.infer<ReturnType<typeof buildRenewSchema>>;
 
 // ── Main component ────────────────────────────────────────────────────────────
 
@@ -183,6 +214,7 @@ interface ApartmentDetailPageProps {
   apartmentId: string;
   canWrite: boolean;
   locale: string;
+  dict: Dictionary;
 }
 
 export function ApartmentDetailPage({
@@ -191,7 +223,9 @@ export function ApartmentDetailPage({
   apartmentId,
   canWrite,
   locale,
+  dict,
 }: ApartmentDetailPageProps) {
+  const t = dict.apartments;
   const { data: building } = useGetBuildingQuery(buildingId);
   const { data: floor } = useGetFloorQuery({ buildingId, floorId });
   const { data: apartment, isLoading: apartmentLoading } = useGetApartmentQuery(
@@ -212,6 +246,9 @@ export function ApartmentDetailPage({
     null,
   );
   const [renewTarget, setRenewTarget] = useState<LeaseResponse | null>(null);
+
+  const leaseSchema = useMemo(() => buildLeaseSchema(t.dialog), [t.dialog]);
+  const renewSchema = useMemo(() => buildRenewSchema(t.dialog), [t.dialog]);
 
   const {
     register,
@@ -249,12 +286,12 @@ export function ApartmentDetailPage({
           notes: values.notes || undefined,
         },
       }).unwrap();
-      toast.success('Lease created.');
+      toast.success(t.dialog.create.success);
       setCreateOpen(false);
       reset(DEFAULT_VALUES);
     } catch (err: unknown) {
       const apiErr = err as { data?: { message?: string } };
-      toast.error(apiErr?.data?.message ?? 'Failed to create lease.');
+      toast.error(apiErr?.data?.message ?? t.dialog.create.genericError);
     }
   }
 
@@ -268,11 +305,11 @@ export function ApartmentDetailPage({
         leaseId: terminateTarget.id,
         body: { status: 'terminated' },
       }).unwrap();
-      toast.success('Lease terminated.');
+      toast.success(t.dialog.terminate.success);
       setTerminateTarget(null);
     } catch (err: unknown) {
       const apiErr = err as { data?: { message?: string } };
-      toast.error(apiErr?.data?.message ?? 'Failed to terminate lease.');
+      toast.error(apiErr?.data?.message ?? t.dialog.terminate.genericError);
     }
   }
 
@@ -305,11 +342,11 @@ export function ApartmentDetailPage({
           notes: values.notes || undefined,
         },
       }).unwrap();
-      toast.success('Lease renewed.');
+      toast.success(t.dialog.renew.success);
       setRenewTarget(null);
     } catch (err: unknown) {
       const apiErr = err as { data?: { message?: string } };
-      toast.error(apiErr?.data?.message ?? 'Failed to renew lease.');
+      toast.error(apiErr?.data?.message ?? t.dialog.renew.genericError);
     }
   }
 
@@ -330,34 +367,37 @@ export function ApartmentDetailPage({
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground w-fit"
       >
         <ArrowLeftIcon className="size-3.5" />
-        {floor?.name ?? 'Back to floor'}
+        {floor?.name ?? t.header.backToFloor}
       </Link>
 
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
           <DoorOpenIcon className="size-6 text-muted-foreground" />
-          Unit {apartment?.unitNumber ?? ''}
+          {t.header.unit} {apartment?.unitNumber ?? ''}
         </h1>
-        {apartment && <ApartmentStatusBadge status={apartment.status} />}
+        {apartment && (
+          <ApartmentStatusBadge status={apartment.status} labels={t.status} />
+        )}
       </div>
 
       <div className="rounded-xl border bg-card p-6 grid grid-cols-1 sm:grid-cols-3 gap-6">
         <div className="flex flex-col gap-1">
-          <p className="text-xs text-muted-foreground">Building</p>
+          <p className="text-xs text-muted-foreground">{t.info.building}</p>
           <p className="text-sm">{building?.name ?? '—'}</p>
         </div>
         <div className="flex flex-col gap-1">
-          <p className="text-xs text-muted-foreground">Bed / Bath</p>
+          <p className="text-xs text-muted-foreground">{t.info.bedBath}</p>
           <p className="text-sm">
-            {apartment?.bedrooms} bd / {Number(apartment?.bathrooms)} ba
+            {apartment?.bedrooms} {t.info.bd} / {Number(apartment?.bathrooms)}{' '}
+            {t.info.ba}
           </p>
         </div>
         <div className="flex flex-col gap-1">
-          <p className="text-xs text-muted-foreground">Sqft</p>
+          <p className="text-xs text-muted-foreground">{t.info.sqft}</p>
           <p className="text-sm">{apartment?.sqft ?? '—'}</p>
         </div>
         <div className="flex flex-col gap-1 sm:col-span-3">
-          <p className="text-xs text-muted-foreground">Notes</p>
+          <p className="text-xs text-muted-foreground">{t.info.notes}</p>
           <p className="text-sm whitespace-pre-wrap">
             {apartment?.notes ?? '—'}
           </p>
@@ -367,11 +407,11 @@ export function ApartmentDetailPage({
       {/* Leases section */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold tracking-tight">Leases</h2>
+          <h2 className="text-lg font-semibold tracking-tight">
+            {t.lease.title}
+          </h2>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {canWrite
-              ? 'Manage leases for this apartment.'
-              : 'Lease history for this apartment.'}
+            {canWrite ? t.lease.subtitle : t.lease.subtitleReadOnly}
           </p>
         </div>
         {canWrite && (
@@ -382,7 +422,7 @@ export function ApartmentDetailPage({
             }}
           >
             <PlusIcon />
-            New lease
+            {t.lease.newLease}
           </Button>
         )}
       </div>
@@ -391,10 +431,10 @@ export function ApartmentDetailPage({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Renter</TableHead>
-              <TableHead>Dates</TableHead>
-              <TableHead>Rent</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead>{t.lease.table.renter}</TableHead>
+              <TableHead>{t.lease.table.dates}</TableHead>
+              <TableHead>{t.lease.table.rent}</TableHead>
+              <TableHead>{t.lease.table.status}</TableHead>
               {canWrite && <TableHead className="w-10" />}
             </TableRow>
           </TableHeader>
@@ -426,7 +466,7 @@ export function ApartmentDetailPage({
                   className="text-center py-10 text-muted-foreground"
                 >
                   <FileTextIcon className="size-8 mx-auto mb-2 opacity-30" />
-                  No leases yet.
+                  {canWrite ? t.lease.emptyWrite : t.lease.empty}
                 </TableCell>
               </TableRow>
             ) : (
@@ -435,9 +475,12 @@ export function ApartmentDetailPage({
                 return (
                   <TableRow key={lease.id}>
                     <TableCell>
-                      <span className="font-medium text-sm">
+                      <Link
+                        href={`/${locale}/dashboard/renters/${lease.renterId}`}
+                        className="font-medium text-sm hover:underline"
+                      >
                         {renter?.fullName ?? lease.renterId}
-                      </span>
+                      </Link>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {new Date(lease.startDate).toLocaleDateString()} –{' '}
@@ -447,7 +490,10 @@ export function ApartmentDetailPage({
                       {lease.rentAmount}
                     </TableCell>
                     <TableCell>
-                      <LeaseStatusBadge status={lease.effectiveStatus} />
+                      <LeaseStatusBadge
+                        status={lease.effectiveStatus}
+                        labels={dict.leases.status}
+                      />
                     </TableCell>
                     {canWrite && (
                       <TableCell>
@@ -458,7 +504,7 @@ export function ApartmentDetailPage({
                                 <Button
                                   variant="ghost"
                                   size="icon-sm"
-                                  aria-label="Lease actions"
+                                  aria-label={t.lease.actionsLabel}
                                 >
                                   <MoreHorizontalIcon />
                                 </Button>
@@ -469,14 +515,14 @@ export function ApartmentDetailPage({
                                 onClick={() => openRenew(lease)}
                               >
                                 <RefreshCwIcon className="size-3.5 mr-1.5" />
-                                Renew
+                                {t.lease.renewAction}
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 variant="destructive"
                                 onClick={() => setTerminateTarget(lease)}
                               >
                                 <XCircleIcon className="size-3.5 mr-1.5" />
-                                Terminate
+                                {t.lease.terminateAction}
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -495,7 +541,7 @@ export function ApartmentDetailPage({
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>New lease</DialogTitle>
+            <DialogTitle>{t.dialog.create.title}</DialogTitle>
           </DialogHeader>
           <form
             onSubmit={handleSubmit(onCreateSubmit)}
@@ -503,7 +549,8 @@ export function ApartmentDetailPage({
           >
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="l-renter">
-                Renter <span className="text-destructive">*</span>
+                {t.dialog.fields.renter}{' '}
+                <span className="text-destructive">*</span>
               </Label>
               <Controller
                 control={control}
@@ -511,7 +558,14 @@ export function ApartmentDetailPage({
                 render={({ field }) => (
                   <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger id="l-renter" className="w-full">
-                      <SelectValue placeholder="Select a renter" />
+                      <SelectValue>
+                        {(value: string | null) =>
+                          !value
+                            ? t.dialog.fields.selectRenter
+                            : (renters?.find((r) => r.id === value)?.fullName ??
+                              value)
+                        }
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {renters?.map((renter) => (
@@ -532,7 +586,8 @@ export function ApartmentDetailPage({
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="l-start">
-                  Start date <span className="text-destructive">*</span>
+                  {t.dialog.fields.startDate}{' '}
+                  <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="l-start"
@@ -548,7 +603,8 @@ export function ApartmentDetailPage({
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="l-end">
-                  End date <span className="text-destructive">*</span>
+                  {t.dialog.fields.endDate}{' '}
+                  <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="l-end"
@@ -566,7 +622,8 @@ export function ApartmentDetailPage({
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="l-rent">
-                  Rent amount <span className="text-destructive">*</span>
+                  {t.dialog.fields.rentAmount}{' '}
+                  <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="l-rent"
@@ -584,7 +641,8 @@ export function ApartmentDetailPage({
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="l-deposit">
-                  Deposit amount <span className="text-destructive">*</span>
+                  {t.dialog.fields.depositAmount}{' '}
+                  <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="l-deposit"
@@ -603,18 +661,18 @@ export function ApartmentDetailPage({
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="l-renewal">
-                Renewal terms{' '}
+                {t.dialog.fields.renewalTerms}{' '}
                 <span className="text-muted-foreground font-normal">
-                  (optional)
+                  {t.dialog.fields.optional}
                 </span>
               </Label>
               <Textarea id="l-renewal" rows={2} {...register('renewalTerms')} />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="l-notes">
-                Notes{' '}
+                {t.dialog.fields.notes}{' '}
                 <span className="text-muted-foreground font-normal">
-                  (optional)
+                  {t.dialog.fields.optional}
                 </span>
               </Label>
               <Textarea id="l-notes" rows={2} {...register('notes')} />
@@ -627,10 +685,10 @@ export function ApartmentDetailPage({
                   reset(DEFAULT_VALUES);
                 }}
               >
-                Cancel
+                {dict.common.cancel}
               </DialogClose>
               <Button type="submit" disabled={creating}>
-                {creating ? 'Creating…' : 'Create'}
+                {creating ? t.dialog.create.submitting : t.dialog.create.submit}
               </Button>
             </DialogFooter>
           </form>
@@ -646,12 +704,11 @@ export function ApartmentDetailPage({
       >
         <DialogContent className="sm:max-w-xs">
           <DialogHeader>
-            <DialogTitle>Terminate lease</DialogTitle>
+            <DialogTitle>{t.dialog.terminate.title}</DialogTitle>
           </DialogHeader>
           <div className="py-1">
             <p className="text-sm text-muted-foreground">
-              Are you sure you want to terminate this lease? The apartment will
-              be marked vacant. This action cannot be undone.
+              {t.dialog.terminate.body}
             </p>
           </div>
           <DialogFooter>
@@ -659,14 +716,16 @@ export function ApartmentDetailPage({
               render={<Button variant="outline" type="button" />}
               onClick={() => setTerminateTarget(null)}
             >
-              Cancel
+              {dict.common.cancel}
             </DialogClose>
             <Button
               variant="destructive"
               onClick={handleTerminate}
               disabled={terminating}
             >
-              {terminating ? 'Terminating…' : 'Terminate'}
+              {terminating
+                ? t.dialog.terminate.submitting
+                : t.dialog.terminate.submit}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -681,24 +740,25 @@ export function ApartmentDetailPage({
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Renew lease</DialogTitle>
+            <DialogTitle>{t.dialog.renew.title}</DialogTitle>
           </DialogHeader>
           <form
             onSubmit={handleRenewSubmit(onRenewSubmit)}
             className="flex flex-col gap-4"
           >
             <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
-              Renewing for{' '}
+              {t.dialog.renew.renewingFor}{' '}
               <span className="font-medium text-foreground">
                 {renters?.find((r) => r.id === renewTarget?.renterId)
                   ?.fullName ?? renewTarget?.renterId}
               </span>{' '}
-              — Unit {apartment?.unitNumber}
+              — {t.header.unit} {apartment?.unitNumber}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="rn-start">
-                  Start date <span className="text-destructive">*</span>
+                  {t.dialog.fields.startDate}{' '}
+                  <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="rn-start"
@@ -714,7 +774,8 @@ export function ApartmentDetailPage({
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="rn-end">
-                  End date <span className="text-destructive">*</span>
+                  {t.dialog.fields.endDate}{' '}
+                  <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="rn-end"
@@ -732,7 +793,8 @@ export function ApartmentDetailPage({
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="rn-rent">
-                  Rent amount <span className="text-destructive">*</span>
+                  {t.dialog.fields.rentAmount}{' '}
+                  <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="rn-rent"
@@ -750,7 +812,8 @@ export function ApartmentDetailPage({
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="rn-deposit">
-                  Deposit amount <span className="text-destructive">*</span>
+                  {t.dialog.fields.depositAmount}{' '}
+                  <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="rn-deposit"
@@ -769,9 +832,9 @@ export function ApartmentDetailPage({
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="rn-renewal">
-                Renewal terms{' '}
+                {t.dialog.fields.renewalTerms}{' '}
                 <span className="text-muted-foreground font-normal">
-                  (optional)
+                  {t.dialog.fields.optional}
                 </span>
               </Label>
               <Textarea
@@ -782,9 +845,9 @@ export function ApartmentDetailPage({
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="rn-notes">
-                Notes{' '}
+                {t.dialog.fields.notes}{' '}
                 <span className="text-muted-foreground font-normal">
-                  (optional)
+                  {t.dialog.fields.optional}
                 </span>
               </Label>
               <Textarea id="rn-notes" rows={2} {...regRenew('notes')} />
@@ -794,10 +857,10 @@ export function ApartmentDetailPage({
                 render={<Button variant="outline" type="button" />}
                 onClick={() => setRenewTarget(null)}
               >
-                Cancel
+                {dict.common.cancel}
               </DialogClose>
               <Button type="submit" disabled={renewing}>
-                {renewing ? 'Renewing…' : 'Renew'}
+                {renewing ? t.dialog.renew.submitting : t.dialog.renew.submit}
               </Button>
             </DialogFooter>
           </form>

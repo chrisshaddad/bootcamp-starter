@@ -45,7 +45,7 @@ async function bootstrap() {
 
   // Swagger at /docs with Bearer auth
   const swaggerConfig = new DocumentBuilder()
-    .setTitle('Forward-Mena API')
+    .setTitle('Property Manager API')
     .setDescription('Multi-org rentals SaaS backend — v1 foundation')
     .setVersion('1.0')
     .addBearerAuth()

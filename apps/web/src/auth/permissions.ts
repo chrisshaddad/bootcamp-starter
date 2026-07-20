@@ -19,6 +19,16 @@
  *   "expenses"    → /dashboard/expenses (not building-scoped at the area
  *                   level either — a supervisor's building-scoping for
  *                   Expense is enforced server-side, not via this matrix)
+ *   "invoices"    → /dashboard/invoices (covers both Invoices and Invoice
+ *                   Payments together, same as "tasks" covering Maintenance
+ *                   Requests + Work Orders; distinct from "payments"/"billing",
+ *                   which are the platform's own Stripe subscription billing)
+ *   "leases"      → /dashboard/leases (org-wide, top-level lease list; mirrors
+ *                   "buildings" for access — full lease CRUD still lives under
+ *                   /dashboard/buildings/:id/floors/:id/apartments/:id)
+ *   "notifications" → /dashboard/notifications (a personal inbox, like the
+ *                   header bell — every role gets 'full', there is no
+ *                   restricted view of someone else's notifications)
  */
 
 import type { Role } from '@/auth/roles';
@@ -33,7 +43,11 @@ export type DashboardArea =
   | 'timeline'
   | 'tasks'
   | 'vendors'
-  | 'expenses';
+  | 'expenses'
+  | 'invoices'
+  | 'support'
+  | 'leases'
+  | 'notifications';
 
 /**
  * Per-role access level for an area.
@@ -57,6 +71,10 @@ export const PERMISSION_MATRIX: PermissionMatrix = {
     tasks: 'full',
     vendors: 'full',
     expenses: 'full',
+    invoices: 'full',
+    support: 'full',
+    leases: 'full',
+    notifications: 'full',
   },
   supervisor: {
     dashboard: 'readonly',
@@ -69,6 +87,10 @@ export const PERMISSION_MATRIX: PermissionMatrix = {
     tasks: 'readonly',
     vendors: 'readonly',
     expenses: 'readonly',
+    invoices: 'readonly',
+    support: 'full',
+    leases: 'readonly',
+    notifications: 'full',
   },
   finance: {
     dashboard: 'readonly',
@@ -81,6 +103,10 @@ export const PERMISSION_MATRIX: PermissionMatrix = {
     tasks: 'none',
     vendors: 'readonly',
     expenses: 'full',
+    invoices: 'full',
+    support: 'readonly',
+    leases: 'readonly',
+    notifications: 'full',
   },
   maintenance: {
     dashboard: 'readonly',
@@ -93,6 +119,10 @@ export const PERMISSION_MATRIX: PermissionMatrix = {
     tasks: 'full',
     vendors: 'readonly',
     expenses: 'none',
+    invoices: 'none',
+    support: 'readonly',
+    leases: 'readonly',
+    notifications: 'full',
   },
   tenant: {
     dashboard: 'readonly',
@@ -105,6 +135,13 @@ export const PERMISSION_MATRIX: PermissionMatrix = {
     tasks: 'none',
     vendors: 'none',
     expenses: 'none',
+    invoices: 'none',
+    // readonly = the tenant sees the Support area and can open tickets (the
+    // "New ticket" button is unconditional), but NOT the staff-only status
+    // transition actions (acknowledge/resolve/close), which the API 403s anyway.
+    support: 'readonly',
+    leases: 'none',
+    notifications: 'full',
   },
 };
 

@@ -1,23 +1,27 @@
 {
   "app": {
-    "name": "فوروارد مينا",
+    "name": "إدارة العقارات",
     "tagline": "إدارة العقارات للملاك العصريين"
   },
   "nav": {
     "login": "تسجيل الدخول",
     "logout": "تسجيل الخروج",
     "dashboard": "لوحة التحكم",
-    "billing": "الفواتير",
+    "billing": "الاشتراك",
     "users": "الفريق",
     "timeline": "النشاط",
     "payments": "المدفوعات",
     "buildings": "المباني",
     "myBuildings": "مبانيّ",
     "renters": "المستأجرون",
+    "leases": "العقود",
     "vendors": "الموردون",
     "reports": "التقارير",
     "tasks": "المهام",
     "expenses": "المصاريف",
+    "invoices": "الفواتير",
+    "support": "الدعم",
+    "notifications": "الإشعارات",
     "language": "اللغة",
     "role": "الدور",
     "menu": "فتح القائمة",
@@ -140,6 +144,1216 @@
     "inactiveSub": "اشتراكك غير نشط. فعّله للوصول إلى جميع الميزات.",
     "subscribeNow": "اشترك الآن",
     "noCommitment": "بلا التزام طويل الأمد. إلغاء في أي وقت.",
-    "securedByStripe": "المدفوعات مؤمّنة بواسطة Stripe"
+    "securedByStripe": "المدفوعات مؤمّنة بواسطة Stripe",
+    "kpi": {
+      "orgOverview": "نظرة حيّة عامة على مساحة عملك.",
+      "financeOverview": "الإيجارات والدخل والمصروفات في لمحة.",
+      "staffOverview": "عبء عمل الصيانة لديك في لمحة.",
+      "activeLeases": "العقود النشطة",
+      "occupancy": "نسبة الإشغال",
+      "unitsOccupied": "وحدة مشغولة",
+      "incomeMtd": "الدخل (هذا الشهر)",
+      "expensesMtd": "المصروفات (هذا الشهر)",
+      "netMtd": "الصافي (هذا الشهر)",
+      "overdue": "متأخرة",
+      "invoicesPastDue": "فاتورة متأخرة",
+      "teamMembers": "أعضاء الفريق",
+      "openMaintenance": "صيانة مفتوحة",
+      "openRequests": "طلبات مفتوحة",
+      "inProgress": "قيد التنفيذ",
+      "urgent": "عاجلة",
+      "resolved": "تم الحل",
+      "needsAttention": "بحاجة إلى اهتمام",
+      "allCaughtUp": "كل شيء منجز — لا توجد طلبات مفتوحة.",
+      "viewAll": "عرض الكل",
+      "unit": "الوحدة",
+      "noData": "—",
+      "priority": {
+        "low": "منخفضة",
+        "medium": "متوسطة",
+        "high": "عالية",
+        "urgent": "عاجلة"
+      }
+    },
+    "tenant": {
+      "welcome": "مرحباً بك في منزلك",
+      "subtitle": "عقد إيجارك ورصيدك وطلباتك في مكان واحد",
+      "loadError": "تعذّر تحميل معلوماتك. يرجى المحاولة مرة أخرى.",
+      "notLinkedTitle": "لم يتم ربط حساب المستأجر الخاص بك بعد",
+      "notLinkedDesc": "بمجرد أن يربط مدير العقار حسابك بعقد إيجارك، ستظهر هنا تفاصيل عقدك ورصيدك وطلبات الصيانة.",
+      "yourActivity": "نشاطك",
+      "lease": {
+        "title": "عقد إيجاري",
+        "unit": "الوحدة",
+        "status": "الحالة",
+        "term": "المدة",
+        "to": "إلى",
+        "rent": "الإيجار الشهري",
+        "deposit": "التأمين",
+        "none": "ليس لديك عقد إيجار نشط حالياً."
+      },
+      "leaseStatus": {
+        "draft": "مسودة",
+        "active": "نشط",
+        "expired": "منتهٍ",
+        "terminated": "مُنهى"
+      },
+      "balance": {
+        "outstanding": "الرصيد المستحق",
+        "paid": "إجمالي المدفوع",
+        "due": "لديك رصيد مستحق.",
+        "settled": "سددت كل المستحقات."
+      },
+      "invoices": {
+        "title": "فواتيري",
+        "dueDate": "تاريخ الاستحقاق",
+        "invoiced": "المفوتر",
+        "paid": "المدفوع",
+        "balance": "الرصيد",
+        "status": "الحالة",
+        "empty": "لا توجد فواتير بعد."
+      },
+      "invoiceStatus": {
+        "open": "مفتوحة",
+        "partially_paid": "مدفوعة جزئياً",
+        "paid": "مدفوعة",
+        "overdue": "متأخرة"
+      },
+      "requests": {
+        "title": "طلبات الصيانة الخاصة بي",
+        "openTitle": "طلبات مفتوحة",
+        "ofTotal": "من إجمالي {count}",
+        "new": "طلب جديد",
+        "unit": "الوحدة",
+        "empty": "لا توجد طلبات صيانة بعد.",
+        "emptyActive": "بحاجة إلى إصلاح شيء ما؟ افتح طلباً وسيقوم فريق العقار بمراجعته.",
+        "noLease": "تحتاج إلى عقد إيجار نشط قبل أن تتمكن من فتح طلب صيانة.",
+        "created": "تم إرسال الطلب.",
+        "createError": "تعذّر إرسال طلبك. يرجى المحاولة مرة أخرى."
+      },
+      "requestStatus": {
+        "open": "مفتوح",
+        "in_progress": "قيد التنفيذ",
+        "resolved": "تم الحل",
+        "closed": "مغلق"
+      },
+      "priority": {
+        "low": "منخفضة",
+        "medium": "متوسطة",
+        "high": "عالية",
+        "urgent": "عاجلة"
+      },
+      "form": {
+        "title": "فتح طلب صيانة",
+        "titleLabel": "العنوان",
+        "titlePlaceholder": "مثال: تسريب في حوض المطبخ",
+        "priorityLabel": "الأولوية",
+        "descriptionLabel": "الوصف",
+        "descriptionPlaceholder": "صف المشكلة بمزيد من التفصيل…",
+        "cancel": "إلغاء",
+        "submit": "إرسال الطلب",
+        "submitting": "جارٍ الإرسال…",
+        "titleRequired": "يرجى إدخال عنوان مختصر."
+      }
+    }
+  },
+  "reports": {
+    "title": "التقارير",
+    "subtitle": "تقارير مالية وتشغيلية لمنظمتك.",
+    "readOnly": "للقراءة فقط",
+    "loadError": "تعذّر تحميل التقارير. يرجى المحاولة مجدداً.",
+    "filters": {
+      "title": "النطاق الزمني",
+      "hint": "يُرشّح الدخل والمصاريف أدناه.",
+      "from": "من",
+      "to": "إلى",
+      "apply": "تطبيق",
+      "clear": "مسح"
+    },
+    "kpis": {
+      "activeLeases": "العقود النشطة",
+      "occupancy": "الإشغال",
+      "unitsOccupied": "وحدة مشغولة",
+      "mtdIncome": "الدخل (هذا الشهر)",
+      "ytdIncome": "الدخل (هذا العام)",
+      "mtdExpenses": "المصاريف (هذا الشهر)",
+      "ytdExpenses": "المصاريف (هذا العام)",
+      "mtdNet": "الصافي (هذا الشهر)",
+      "ytdNet": "الصافي (هذا العام)",
+      "rangeIncome": "الدخل (النطاق)",
+      "rangeExpenses": "المصاريف (النطاق)",
+      "rangeNet": "الصافي (النطاق)"
+    },
+    "chart": {
+      "title": "الدخل مقابل المصاريف",
+      "income": "الدخل",
+      "expenses": "المصاريف",
+      "mtd": "هذا الشهر",
+      "ytd": "هذا العام",
+      "range": "النطاق المحدد"
+    },
+    "rentRoll": {
+      "title": "سجل الإيجارات",
+      "subtitle": "صف واحد لكل عقد نشط — المفوتر والمدفوع والرصيد المستحق.",
+      "unit": "الوحدة",
+      "renter": "المستأجر",
+      "rent": "الإيجار",
+      "invoiced": "المفوتر",
+      "paid": "المدفوع",
+      "balance": "الرصيد",
+      "empty": "لا توجد عقود نشطة."
+    },
+    "overdue": {
+      "title": "الفواتير المتأخرة",
+      "subtitle": "فواتير تجاوزت تاريخ الاستحقاق مع رصيد مستحق.",
+      "unit": "الوحدة",
+      "renter": "المستأجر",
+      "dueDate": "تاريخ الاستحقاق",
+      "invoiced": "المفوتر",
+      "paid": "المدفوع",
+      "balance": "الرصيد",
+      "daysOverdue": "أيام التأخير",
+      "empty": "لا توجد فواتير متأخرة — الجميع مسدِّد."
+    }
+  },
+  "leases": {
+    "title": "العقود",
+    "subtitle": "جميع عقود الإيجار في منظمتك — ابحث وصفِّ وانتقل مباشرةً إلى سجل عقد أي وحدة.",
+    "readOnly": "للقراءة فقط",
+    "newLease": "عقد جديد",
+    "loadError": "تعذّر تحميل العقود. يرجى المحاولة مجدداً.",
+    "empty": "لا توجد عقود بعد.",
+    "emptyWrite": "لا توجد عقود بعد. أنشئ عقدك الأول.",
+    "noMatch": "لا توجد عقود مطابقة للمرشحات المحددة.",
+    "filters": {
+      "searchLabel": "بحث",
+      "searchPlaceholder": "ابحث بالمستأجر أو الوحدة أو المبنى…",
+      "statusLabel": "الحالة",
+      "allStatuses": "كل الحالات",
+      "buildingLabel": "المبنى",
+      "allBuildings": "كل المباني"
+    },
+    "status": {
+      "draft": "مسودة",
+      "active": "نشط",
+      "expired": "منتهٍ",
+      "terminated": "مُنهى"
+    },
+    "table": {
+      "unit": "الوحدة",
+      "renter": "المستأجر",
+      "dates": "التواريخ",
+      "rent": "الإيجار",
+      "status": "الحالة"
+    },
+    "dialog": {
+      "title": "عقد جديد",
+      "building": "المبنى",
+      "floor": "الطابق",
+      "apartment": "الشقة",
+      "selectBuilding": "اختر مبنى",
+      "selectFloor": "اختر طابقاً",
+      "selectApartment": "اختر شقة",
+      "renter": "المستأجر",
+      "selectRenter": "اختر مستأجراً",
+      "startDate": "تاريخ البدء",
+      "endDate": "تاريخ الانتهاء",
+      "rentAmount": "قيمة الإيجار",
+      "depositAmount": "قيمة التأمين",
+      "renewalTerms": "شروط التجديد",
+      "notes": "ملاحظات",
+      "optional": "(اختياري)",
+      "cancel": "إلغاء",
+      "create": "إنشاء",
+      "creating": "جارٍ الإنشاء…",
+      "success": "تم إنشاء العقد.",
+      "genericError": "تعذّر إنشاء العقد.",
+      "errors": {
+        "building": "المبنى مطلوب",
+        "floor": "الطابق مطلوب",
+        "apartment": "الشقة مطلوبة",
+        "renter": "المستأجر مطلوب",
+        "startDate": "تاريخ البدء مطلوب",
+        "endDate": "تاريخ الانتهاء مطلوب",
+        "endAfterStart": "يجب أن يكون تاريخ الانتهاء في أو بعد تاريخ البدء",
+        "invalidAmount": "أدخل قيمة صالحة غير سالبة"
+      }
+    }
+  },
+  "support": {
+    "title": "الدعم",
+    "subtitle": "افتح تذكرة وسيتولّى فريقنا مساعدتك.",
+    "newTicket": "تذكرة جديدة",
+    "subject": "الموضوع",
+    "subjectPlaceholder": "ملخّص موجز لمشكلتك",
+    "description": "الوصف",
+    "descriptionPlaceholder": "أخبرنا بما يحدث…",
+    "category": "الفئة",
+    "categories": {
+      "general": "عام",
+      "billing": "الفوترة",
+      "maintenance": "الصيانة",
+      "technical": "تقني",
+      "other": "أخرى"
+    },
+    "status": {
+      "open": "مفتوحة",
+      "acknowledged": "تم الاستلام",
+      "resolved": "تم الحل",
+      "closed": "مغلقة"
+    },
+    "actions": {
+      "acknowledge": "تأكيد الاستلام",
+      "resolve": "حلّ",
+      "close": "إغلاق"
+    },
+    "openedOn": "فُتحت",
+    "empty": "لا توجد تذاكر بعد. افتح أول تذكرة وسنتولّى الباقي.",
+    "loadError": "تعذّر تحميل التذاكر. يرجى المحاولة مجدداً.",
+    "createdToast": "تم استلام التذكرة — قمنا بتأكيد استلامها.",
+    "createError": "تعذّر إرسال تذكرتك. يرجى المحاولة مجدداً.",
+    "updatedToast": "تم تحديث التذكرة.",
+    "updateError": "تعذّر تحديث التذكرة. يرجى المحاولة مجدداً.",
+    "cancel": "إلغاء",
+    "submit": "إرسال التذكرة",
+    "submitting": "جارٍ الإرسال…",
+    "validation": {
+      "subject": "الموضوع مطلوب.",
+      "description": "يرجى إضافة وصف."
+    }
+  },
+  "notifications": {
+    "title": "الإشعارات",
+    "a11yOpen": "فتح الإشعارات",
+    "markAllRead": "تعليم الكل كمقروء",
+    "empty": "لا جديد لديك.",
+    "unread": "غير مقروء",
+    "loadError": "تعذّر تحميل الإشعارات.",
+    "pageSubtitle": "كل ما تم إشعارك به.",
+    "viewAll": "عرض كل الإشعارات"
+  },
+  "buildings": {
+    "shared": {
+      "readOnly": "للقراءة فقط",
+      "optional": "(اختياري)",
+      "view": "عرض"
+    },
+    "list": {
+      "title": "المباني",
+      "subtitleWrite": "أنشئ مباني منظمتك وأدرها.",
+      "subtitleReadOnly": "المباني في منظمتك.",
+      "addBuilding": "إضافة مبنى",
+      "table": {
+        "building": "المبنى",
+        "code": "الرمز",
+        "address": "العنوان",
+        "assignedStaff": "الموظفون المعيّنون"
+      },
+      "emptyWrite": "لا توجد مبانٍ بعد. أنشئ مبناك الأول.",
+      "empty": "لا توجد مبانٍ معيّنة لك بعد.",
+      "actions": {
+        "ariaLabel": "إجراءات المبنى",
+        "assignStaff": "تعيين موظفين"
+      },
+      "toasts": {
+        "created": "تم إنشاء المبنى.",
+        "createLimitReached": "تم بلوغ الحد الأقصى للمباني في خطتك. قم بالترقية لإضافة المزيد.",
+        "createError": "تعذّر إنشاء المبنى. يرجى المحاولة مجدداً.",
+        "updated": "تم تحديث المبنى.",
+        "updateError": "تعذّر تحديث المبنى.",
+        "deleted": "تم حذف المبنى.",
+        "deleteError": "تعذّر حذف المبنى.",
+        "assignmentsUpdated": "تم تحديث تعيينات الموظفين.",
+        "assignmentsError": "تعذّر تحديث التعيينات."
+      },
+      "errors": {
+        "name": "الاسم مطلوب"
+      },
+      "createDialog": {
+        "title": "إضافة مبنى",
+        "name": "الاسم",
+        "namePlaceholder": "البرج الرئيسي",
+        "code": "الرمز",
+        "codePlaceholder": "BLD-01",
+        "address": "العنوان",
+        "addressPlaceholder": "١٢٣ شارع الرئيسي، دبي",
+        "notes": "ملاحظات",
+        "notesPlaceholder": "أي ملاحظات…",
+        "create": "إنشاء",
+        "creating": "جارٍ الإنشاء…"
+      },
+      "editDialog": {
+        "title": "تعديل المبنى",
+        "name": "الاسم",
+        "code": "الرمز",
+        "address": "العنوان",
+        "notes": "ملاحظات",
+        "saving": "جارٍ الحفظ…"
+      },
+      "deleteDialog": {
+        "title": "حذف المبنى",
+        "confirmPrefix": "هل أنت متأكد من رغبتك في حذف",
+        "confirmSuffix": "؟ لا يمكن التراجع عن هذا الإجراء.",
+        "deleting": "جارٍ الحذف…"
+      },
+      "assignDialog": {
+        "title": "تعيين موظفين إلى {name}",
+        "description": "اختر المشرفين وموظفي الصيانة لتعيينهم لهذا المبنى.",
+        "noStaff": "لم يُعثر على مشرفين أو موظفي صيانة. أنشئ أعضاء طاقم العمل أولاً.",
+        "saving": "جارٍ الحفظ…"
+      }
+    },
+    "detail": {
+      "fallbackTitle": "مبنى",
+      "info": {
+        "codeLabel": "الرمز",
+        "addressLabel": "العنوان",
+        "notesLabel": "ملاحظات"
+      },
+      "floorsSection": {
+        "title": "الطوابق",
+        "subtitleWrite": "أدر طوابق هذا المبنى.",
+        "subtitleReadOnly": "الطوابق في هذا المبنى."
+      },
+      "addFloor": "إضافة طابق",
+      "table": {
+        "name": "الاسم",
+        "order": "الترتيب",
+        "notes": "ملاحظات",
+        "apartmentCount": "عدد الشقق"
+      },
+      "emptyWrite": "لا توجد طوابق بعد. أضف طابقك الأول.",
+      "empty": "لا توجد طوابق في هذا المبنى بعد.",
+      "actions": {
+        "ariaLabel": "إجراءات الطابق"
+      },
+      "toasts": {
+        "created": "تم إنشاء الطابق.",
+        "createError": "تعذّر إنشاء الطابق.",
+        "updated": "تم تحديث الطابق.",
+        "updateError": "تعذّر تحديث الطابق.",
+        "deleted": "تم حذف الطابق.",
+        "deleteError": "تعذّر حذف الطابق."
+      },
+      "errors": {
+        "name": "الاسم مطلوب",
+        "orderRequired": "يجب أن يكون الترتيب رقماً",
+        "orderInteger": "يجب أن يكون الترتيب رقماً صحيحاً",
+        "orderNegative": "لا يمكن أن يكون الترتيب سالباً"
+      },
+      "createDialog": {
+        "title": "إضافة طابق",
+        "name": "الاسم",
+        "namePlaceholder": "الطابق الثاني",
+        "notes": "ملاحظات",
+        "notesPlaceholder": "أي ملاحظات…",
+        "create": "إنشاء",
+        "creating": "جارٍ الإنشاء…"
+      },
+      "editDialog": {
+        "title": "تعديل الطابق",
+        "name": "الاسم",
+        "order": "الترتيب",
+        "notes": "ملاحظات",
+        "saving": "جارٍ الحفظ…"
+      },
+      "deleteDialog": {
+        "title": "حذف الطابق",
+        "confirmPrefix": "هل أنت متأكد من رغبتك في حذف",
+        "confirmSuffix": "؟ لا يمكن التراجع عن هذا الإجراء.",
+        "deleting": "جارٍ الحذف…"
+      }
+    },
+    "floor": {
+      "backToBuilding": "العودة إلى المبنى",
+      "titleFallback": "طابق",
+      "apartmentsSection": {
+        "title": "الشقق",
+        "subtitleWrite": "أدر الشقق في هذا الطابق.",
+        "subtitleReadOnly": "الشقق في هذا الطابق."
+      },
+      "addApartment": "إضافة شقة",
+      "table": {
+        "unitNumber": "رقم الوحدة",
+        "bedBath": "غرف/حمامات",
+        "sqft": "المساحة (قدم مربع)",
+        "status": "الحالة"
+      },
+      "emptyWrite": "لا توجد شقق بعد. أضف شقتك الأولى.",
+      "empty": "لا توجد شقق في هذا الطابق بعد.",
+      "bedBathValue": "{bedrooms} غرفة / {bathrooms} حمام",
+      "actions": {
+        "ariaLabel": "إجراءات الشقة"
+      },
+      "toasts": {
+        "created": "تم إنشاء الشقة.",
+        "createError": "تعذّر إنشاء الشقة.",
+        "updated": "تم تحديث الشقة.",
+        "updateError": "تعذّر تحديث الشقة.",
+        "deleted": "تم حذف الشقة.",
+        "deleteError": "تعذّر حذف الشقة."
+      },
+      "errors": {
+        "unitNumber": "رقم الوحدة مطلوب",
+        "bedroomsRequired": "يجب أن يكون عدد الغرف رقماً",
+        "bedroomsInteger": "يجب أن يكون عدد الغرف رقماً صحيحاً",
+        "bedroomsNegative": "لا يمكن أن يكون عدد الغرف سالباً",
+        "bathroomsRequired": "يجب أن يكون عدد الحمامات رقماً",
+        "bathroomsNegative": "لا يمكن أن يكون عدد الحمامات سالباً"
+      },
+      "createDialog": {
+        "title": "إضافة شقة",
+        "create": "إنشاء",
+        "creating": "جارٍ الإنشاء…"
+      },
+      "editDialog": {
+        "title": "تعديل الشقة",
+        "saving": "جارٍ الحفظ…"
+      },
+      "deleteDialog": {
+        "title": "حذف الشقة",
+        "confirmPrefix": "هل أنت متأكد من رغبتك في حذف الوحدة",
+        "confirmSuffix": "؟ لا يمكن التراجع عن هذا الإجراء.",
+        "deleting": "جارٍ الحذف…"
+      },
+      "form": {
+        "unitNumber": "رقم الوحدة",
+        "unitNumberPlaceholder": "101",
+        "bedrooms": "غرف النوم",
+        "bathrooms": "الحمامات",
+        "sqft": "المساحة (قدم مربع)",
+        "status": "الحالة",
+        "selectStatus": "اختر الحالة",
+        "notes": "ملاحظات"
+      }
+    },
+    "apartmentStatus": {
+      "vacant": "شاغرة",
+      "occupied": "مشغولة",
+      "maintenance": "قيد الصيانة",
+      "unavailable": "غير متاحة"
+    }
+  },
+  "apartments": {
+    "header": {
+      "backToFloor": "العودة إلى الطابق",
+      "unit": "الوحدة"
+    },
+    "status": {
+      "occupied": "مشغولة",
+      "maintenance": "قيد الصيانة",
+      "unavailable": "غير متاحة",
+      "vacant": "شاغرة"
+    },
+    "info": {
+      "building": "المبنى",
+      "bedBath": "غرف النوم / الحمامات",
+      "bd": "غرفة نوم",
+      "ba": "حمام",
+      "sqft": "المساحة (قدم مربع)",
+      "notes": "ملاحظات"
+    },
+    "lease": {
+      "title": "العقود",
+      "subtitle": "إدارة عقود هذه الشقة.",
+      "subtitleReadOnly": "سجل عقود هذه الشقة.",
+      "newLease": "عقد جديد",
+      "table": {
+        "renter": "المستأجر",
+        "dates": "التواريخ",
+        "rent": "الإيجار",
+        "status": "الحالة"
+      },
+      "emptyWrite": "لا توجد عقود بعد. أنشئ العقد الأول.",
+      "empty": "لا يوجد سجل عقود لهذه الشقة بعد.",
+      "actionsLabel": "إجراءات العقد",
+      "renewAction": "تجديد",
+      "terminateAction": "إنهاء"
+    },
+    "dialog": {
+      "fields": {
+        "renter": "المستأجر",
+        "selectRenter": "اختر مستأجراً",
+        "startDate": "تاريخ البدء",
+        "endDate": "تاريخ الانتهاء",
+        "rentAmount": "قيمة الإيجار",
+        "depositAmount": "قيمة التأمين",
+        "renewalTerms": "شروط التجديد",
+        "notes": "ملاحظات",
+        "optional": "(اختياري)"
+      },
+      "errors": {
+        "renter": "المستأجر مطلوب",
+        "startDate": "تاريخ البدء مطلوب",
+        "endDate": "تاريخ الانتهاء مطلوب",
+        "endAfterStart": "يجب أن يكون تاريخ الانتهاء في أو بعد تاريخ البدء",
+        "mustBeNumber": "{label} يجب أن يكون رقماً",
+        "cannotBeNegative": "{label} لا يمكن أن يكون سالباً"
+      },
+      "create": {
+        "title": "عقد جديد",
+        "success": "تم إنشاء العقد.",
+        "genericError": "تعذّر إنشاء العقد.",
+        "submitting": "جارٍ الإنشاء…",
+        "submit": "إنشاء"
+      },
+      "terminate": {
+        "title": "إنهاء العقد",
+        "body": "هل أنت متأكد من رغبتك في إنهاء هذا العقد؟ سيتم تصنيف الشقة كشاغرة. لا يمكن التراجع عن هذا الإجراء.",
+        "success": "تم إنهاء العقد.",
+        "genericError": "تعذّر إنهاء العقد.",
+        "submitting": "جارٍ الإنهاء…",
+        "submit": "إنهاء"
+      },
+      "renew": {
+        "title": "تجديد العقد",
+        "renewingFor": "التجديد لـ",
+        "success": "تم تجديد العقد.",
+        "genericError": "تعذّر تجديد العقد.",
+        "submitting": "جارٍ التجديد…",
+        "submit": "تجديد"
+      }
+    }
+  },
+  "renters": {
+    "list": {
+      "title": "المستأجرون",
+      "subtitleWrite": "إدارة مستأجري مؤسستك.",
+      "subtitleReadOnly": "مستأجرو مؤسستك.",
+      "readOnly": "للقراءة فقط",
+      "addRenter": "إضافة مستأجر",
+      "table": {
+        "fullName": "الاسم الكامل",
+        "email": "البريد الإلكتروني",
+        "phone": "الهاتف",
+        "status": "الحالة"
+      },
+      "loadError": "تعذّر تحميل المستأجرين. يرجى المحاولة مجدداً.",
+      "empty": "لا يوجد مستأجرون بعد.",
+      "emptyWrite": "لا يوجد مستأجرون بعد. أضف أول مستأجر.",
+      "actionsLabel": "إجراءات المستأجر",
+      "view": "عرض"
+    },
+    "status": {
+      "current": "حالي",
+      "former": "سابق",
+      "none": "لا يوجد عقد بعد"
+    },
+    "dialog": {
+      "addTitle": "إضافة مستأجر",
+      "editTitle": "تعديل المستأجر",
+      "deleteTitle": "حذف المستأجر",
+      "deleteConfirm": "هل أنت متأكد من حذف {name}؟ لا يمكن التراجع عن هذا الإجراء.",
+      "fullName": "الاسم الكامل",
+      "email": "البريد الإلكتروني",
+      "phone": "الهاتف",
+      "emergencyContactName": "اسم جهة اتصال الطوارئ",
+      "emergencyContactPhone": "هاتف جهة اتصال الطوارئ",
+      "notes": "ملاحظات",
+      "optional": "(اختياري)",
+      "placeholderFullName": "جين دو",
+      "placeholderEmail": "jane@example.com",
+      "placeholderPhone": "+971 50 123 4567",
+      "placeholderEmergencyContactName": "جون دو",
+      "placeholderEmergencyContactPhone": "+971 50 987 6543",
+      "placeholderNotes": "أي ملاحظات…",
+      "fullNameRequired": "الاسم الكامل مطلوب",
+      "invalidEmail": "بريد إلكتروني غير صالح",
+      "create": "إنشاء",
+      "creating": "جارٍ الإنشاء…",
+      "saving": "جارٍ الحفظ…",
+      "deleting": "جارٍ الحذف…",
+      "createdToast": "تم إنشاء المستأجر.",
+      "createErrorToast": "تعذّر إنشاء المستأجر. يرجى المحاولة مجدداً.",
+      "updatedToast": "تم تحديث المستأجر.",
+      "updateErrorToast": "تعذّر تحديث المستأجر.",
+      "deletedToast": "تم حذف المستأجر.",
+      "deleteErrorToast": "تعذّر حذف المستأجر."
+    },
+    "detail": {
+      "notFound": "المستأجر غير موجود.",
+      "newLease": "عقد جديد",
+      "email": "البريد الإلكتروني",
+      "phone": "الهاتف",
+      "emergencyContactName": "اسم جهة اتصال الطوارئ",
+      "emergencyContactPhone": "هاتف جهة اتصال الطوارئ",
+      "notes": "ملاحظات",
+      "leasesTitle": "العقود",
+      "leasesSubtitle": "سجل عقود هذا المستأجر، الأحدث أولاً.",
+      "noLeases": "لا توجد عقود بعد.",
+      "table": {
+        "apartment": "الشقة",
+        "dates": "التواريخ",
+        "rent": "الإيجار",
+        "status": "الحالة"
+      },
+      "viewApartment": "عرض الشقة"
+    }
+  },
+  "vendors": {
+    "title": "الموردون",
+    "subtitleWrite": "إدارة مزوّدي الخدمات الخارجيين لمؤسستك.",
+    "subtitleReadOnly": "مزوّدو الخدمات الخارجيون لمؤسستك.",
+    "readOnly": "للقراءة فقط",
+    "addVendor": "إضافة مورّد",
+    "table": {
+      "companyName": "اسم الشركة",
+      "contactName": "اسم جهة الاتصال",
+      "phoneEmail": "الهاتف / البريد الإلكتروني",
+      "servicesOffered": "الخدمات المقدَّمة"
+    },
+    "loadError": "تعذّر تحميل الموردين. يرجى المحاولة مجدداً.",
+    "empty": "لا يوجد موردون بعد.",
+    "emptyWrite": "لا يوجد موردون بعد. أضف أول مورّد.",
+    "actionsLabel": "إجراءات المورّد",
+    "serviceType": {
+      "plumbing": "السباكة",
+      "electrical": "الكهرباء",
+      "cleaning": "التنظيف",
+      "landscaping": "تنسيق الحدائق",
+      "hvac": "التكييف والتهوية",
+      "general_maintenance": "صيانة عامة",
+      "other": "أخرى"
+    },
+    "dialog": {
+      "addTitle": "إضافة مورّد",
+      "editTitle": "تعديل المورّد",
+      "deleteTitle": "حذف المورّد",
+      "deleteConfirm": "هل أنت متأكد من حذف {name}؟ لا يمكن التراجع عن هذا الإجراء.",
+      "companyName": "اسم الشركة",
+      "contactName": "اسم جهة الاتصال",
+      "email": "البريد الإلكتروني",
+      "phone": "الهاتف",
+      "address": "العنوان",
+      "servicesOffered": "الخدمات المقدَّمة",
+      "notes": "ملاحظات",
+      "optional": "(اختياري)",
+      "placeholderCompanyName": "شركة أكمي للسباكة",
+      "placeholderContactName": "جين دو",
+      "placeholderEmail": "jane@acme.example",
+      "placeholderPhone": "+971 50 123 4567",
+      "placeholderAddress": "شارع الرئيسي 123",
+      "placeholderNotes": "أي ملاحظات…",
+      "companyNameRequired": "اسم الشركة مطلوب",
+      "invalidEmail": "بريد إلكتروني غير صالح",
+      "create": "إنشاء",
+      "creating": "جارٍ الإنشاء…",
+      "saving": "جارٍ الحفظ…",
+      "deleting": "جارٍ الحذف…",
+      "createdToast": "تم إنشاء المورّد.",
+      "createErrorToast": "تعذّر إنشاء المورّد. يرجى المحاولة مجدداً.",
+      "updatedToast": "تم تحديث المورّد.",
+      "updateErrorToast": "تعذّر تحديث المورّد.",
+      "deletedToast": "تم حذف المورّد.",
+      "deleteErrorToast": "تعذّر حذف المورّد."
+    }
+  },
+  "users": {
+    "title": "الفريق",
+    "subtitle": "أدر أعضاء منظمتك وأدوارهم.",
+    "subtitleReadonly": "أعضاء الطاقم في المباني المسندة إليك.",
+    "addMember": "إضافة عضو",
+    "readOnly": "للقراءة فقط",
+    "disabled": "معطّل",
+    "empty": "لا يوجد أعضاء بعد.",
+    "emptyWrite": "لا يوجد أعضاء بعد. أضف أول عضو في فريقك.",
+    "table": {
+      "member": "العضو",
+      "role": "الدور",
+      "buildings": "المباني",
+      "joined": "تاريخ الانضمام"
+    },
+    "roles": {
+      "org_admin": "مسؤول",
+      "supervisor": "مشرف",
+      "finance": "مالية",
+      "maintenance": "صيانة",
+      "tenant": "مستأجر"
+    },
+    "actions": {
+      "ariaLabel": "إجراءات العضو",
+      "editAssignments": "تعديل التعيينات",
+      "changeRole": "تغيير الدور",
+      "enableLogin": "تفعيل الدخول",
+      "disableLogin": "تعطيل الدخول",
+      "removeMember": "إزالة العضو"
+    },
+    "dialog": {
+      "selectRole": "اختر دوراً",
+      "optional": "(اختياري)",
+      "roleLabel": "الدور",
+      "fallbackMember": "هذا العضو",
+      "saving": "جارٍ الحفظ…",
+      "create": {
+        "title": "إضافة عضو",
+        "username": "اسم المستخدم",
+        "usernamePlaceholder": "jane.smith",
+        "password": "كلمة المرور",
+        "passwordPlaceholder": "8 أحرف على الأقل",
+        "fullName": "الاسم الكامل",
+        "fullNamePlaceholder": "Jane Smith",
+        "email": "البريد الإلكتروني",
+        "emailPlaceholder": "jane@example.com",
+        "assignBuildings": "تعيين المباني",
+        "submit": "إنشاء العضو",
+        "submitting": "جارٍ الإنشاء…",
+        "errors": {
+          "username": "يجب أن يتكون اسم المستخدم من 3 أحرف على الأقل",
+          "password": "يجب أن تتكون كلمة المرور من 8 أحرف على الأقل",
+          "email": "بريد إلكتروني غير صالح"
+        }
+      },
+      "editAssignments": {
+        "title": "تعديل تعيينات المباني",
+        "description": "عيّن المباني إلى {name}.",
+        "noBuildings": "لا توجد مباني. أنشئ المباني أولاً."
+      },
+      "changeRole": {
+        "title": "تغيير الدور",
+        "description": "حدّد الدور لـ {name}."
+      },
+      "remove": {
+        "title": "إزالة العضو",
+        "description": "هل أنت متأكد من رغبتك في إزالة {name} من المنظمة؟ لا يمكن التراجع عن هذا الإجراء.",
+        "submit": "إزالة",
+        "submitting": "جارٍ الإزالة…"
+      }
+    },
+    "toast": {
+      "created": "تم إنشاء العضو. شارك اسم المستخدم وكلمة المرور معه مباشرةً.",
+      "createError": "تعذّر إنشاء العضو. يرجى المحاولة مجدداً.",
+      "roleUpdated": "تم تحديث دور العضو.",
+      "roleError": "تعذّر تحديث الدور. يرجى المحاولة مجدداً.",
+      "assignmentsUpdated": "تم تحديث تعيينات المباني.",
+      "assignmentsError": "تعذّر تحديث التعيينات.",
+      "removed": "تمت إزالة العضو من المنظمة.",
+      "removeError": "تعذّر إزالة العضو. يرجى المحاولة مجدداً.",
+      "enabled": "تم تفعيل العضو.",
+      "disabled": "تم تعطيل العضو.",
+      "toggleError": "تعذّر تحديث العضو. يرجى المحاولة مجدداً."
+    }
+  },
+  "invoices": {
+    "status": {
+      "open": "مفتوحة",
+      "partially_paid": "مدفوعة جزئياً",
+      "paid": "مدفوعة",
+      "overdue": "متأخرة"
+    },
+    "lineItemCategory": {
+      "rent": "إيجار",
+      "late_fee": "رسوم تأخير",
+      "utilities": "خدمات",
+      "damages": "أضرار",
+      "deposit": "تأمين",
+      "other": "أخرى"
+    },
+    "paymentMethod": {
+      "cash": "نقداً",
+      "check": "شيك",
+      "bank_transfer": "تحويل بنكي",
+      "card": "بطاقة",
+      "other": "أخرى"
+    },
+    "list": {
+      "title": "الفواتير",
+      "subtitle": "الفواتير الصادرة للمستأجرين — الإيجار ورسوم التأخير والخدمات وغيرها.",
+      "readOnly": "للقراءة فقط",
+      "newInvoice": "فاتورة جديدة",
+      "view": "عرض",
+      "actionsLabel": "إجراءات الفاتورة",
+      "loadError": "تعذّر تحميل الفواتير. يرجى المحاولة مجدداً.",
+      "empty": "لا توجد فواتير مسجّلة بعد.",
+      "emptyWrite": "لا توجد فواتير مسجّلة بعد. أنشئ فاتورتك الأولى.",
+      "noMatch": "لا توجد فواتير مطابقة للمرشحات المحددة.",
+      "filters": {
+        "buildingLabel": "المبنى",
+        "allBuildings": "كل المباني",
+        "statusLabel": "الحالة",
+        "allStatuses": "كل الحالات",
+        "dueFromLabel": "الاستحقاق من",
+        "dueToLabel": "الاستحقاق إلى"
+      },
+      "table": {
+        "leaseRenter": "العقد / المستأجر",
+        "building": "المبنى",
+        "dueDate": "تاريخ الاستحقاق",
+        "total": "الإجمالي",
+        "paid": "المدفوع",
+        "status": "الحالة"
+      },
+      "form": {
+        "dueDate": "تاريخ الاستحقاق",
+        "notes": "ملاحظات",
+        "notesPlaceholder": "أي ملاحظات…",
+        "optional": "(اختياري)",
+        "lineItems": {
+          "label": "بنود الفاتورة",
+          "addRow": "إضافة صف",
+          "categoryPlaceholder": "الفئة",
+          "categoryAriaLabel": "فئة البند {n}",
+          "descriptionPlaceholder": "الوصف (اختياري)",
+          "descriptionAriaLabel": "وصف البند {n}",
+          "amountPlaceholder": "0.00",
+          "amountAriaLabel": "مبلغ البند {n}",
+          "removeAriaLabel": "إزالة البند"
+        },
+        "leasePicker": {
+          "building": "المبنى",
+          "selectBuilding": "اختر مبنى",
+          "floor": "الطابق",
+          "selectFloor": "اختر طابقاً",
+          "apartment": "الشقة",
+          "selectApartment": "اختر شقة",
+          "lease": "العقد",
+          "selectLease": "اختر عقداً"
+        },
+        "errors": {
+          "leaseRequired": "العقد مطلوب",
+          "dueDateRequired": "تاريخ الاستحقاق مطلوب",
+          "lineItemsRequired": "مطلوب بند واحد على الأقل",
+          "amountRequired": "المبلغ مطلوب",
+          "amountPositive": "يجب أن يكون المبلغ رقماً موجباً"
+        }
+      },
+      "dialog": {
+        "create": {
+          "title": "فاتورة جديدة",
+          "submit": "إنشاء",
+          "submitting": "جارٍ الإنشاء…",
+          "success": "تم إنشاء الفاتورة.",
+          "error": "تعذّر إنشاء الفاتورة. يرجى المحاولة مجدداً."
+        },
+        "edit": {
+          "title": "تعديل الفاتورة",
+          "leaseLabel": "العقد",
+          "leaseLockedNote": "لا يمكن تغيير عقد الفاتورة بعد إنشائها.",
+          "submitting": "جارٍ الحفظ…",
+          "success": "تم تحديث الفاتورة.",
+          "error": "تعذّر تحديث الفاتورة."
+        },
+        "delete": {
+          "title": "حذف الفاتورة",
+          "confirmPrefix": "هل أنت متأكد من رغبتك في حذف الفاتورة الخاصة بـ",
+          "confirmSuffix": "؟ لا يمكن التراجع عن هذا الإجراء.",
+          "confirming": "جارٍ الحذف…",
+          "success": "تم حذف الفاتورة.",
+          "error": "تعذّر حذف الفاتورة. يرجى المحاولة مجدداً."
+        }
+      }
+    },
+    "detail": {
+      "backLink": "العودة إلى الفواتير",
+      "loadError": "تعذّر تحميل هذه الفاتورة.",
+      "info": {
+        "building": "المبنى",
+        "dueDate": "تاريخ الاستحقاق",
+        "total": "الإجمالي",
+        "paid": "المدفوع",
+        "notes": "ملاحظات"
+      },
+      "lineItems": {
+        "title": "بنود الفاتورة",
+        "table": {
+          "category": "الفئة",
+          "description": "الوصف",
+          "amount": "المبلغ"
+        }
+      },
+      "payments": {
+        "title": "الدفعات",
+        "recordButton": "تسجيل دفعة",
+        "loadError": "تعذّر تحميل الدفعات. يرجى المحاولة مجدداً.",
+        "empty": "لا توجد دفعات مسجّلة بعد.",
+        "emptyWrite": "لا توجد دفعات مسجّلة بعد. سجّل الدفعة الأولى.",
+        "deleteAriaLabel": "حذف الدفعة",
+        "table": {
+          "amount": "المبلغ",
+          "method": "طريقة الدفع",
+          "paidAt": "تاريخ الدفع",
+          "notes": "ملاحظات"
+        }
+      },
+      "form": {
+        "errors": {
+          "amountRequired": "المبلغ مطلوب",
+          "amountPositive": "يجب أن يكون المبلغ رقماً موجباً",
+          "paidAtRequired": "تاريخ الدفعة مطلوب"
+        }
+      },
+      "dialog": {
+        "record": {
+          "title": "تسجيل دفعة",
+          "amountLabel": "المبلغ",
+          "amountPlaceholder": "0.00",
+          "methodLabel": "طريقة الدفع",
+          "selectMethod": "اختر طريقة الدفع",
+          "paidAtLabel": "تاريخ الدفع",
+          "notesLabel": "ملاحظات",
+          "notesPlaceholder": "أي ملاحظات…",
+          "optional": "(اختياري)",
+          "submit": "تسجيل الدفعة",
+          "submitting": "جارٍ التسجيل…",
+          "success": "تم تسجيل الدفعة.",
+          "error": "تعذّر تسجيل الدفعة. يرجى المحاولة مجدداً."
+        },
+        "delete": {
+          "title": "حذف الدفعة",
+          "confirmPrefix": "هل أنت متأكد من رغبتك في حذف دفعة بقيمة",
+          "confirmSuffix": "؟ لا يمكن التراجع عن هذا الإجراء.",
+          "confirming": "جارٍ الحذف…",
+          "success": "تم حذف الدفعة.",
+          "error": "تعذّر حذف الدفعة. يرجى المحاولة مجدداً."
+        }
+      }
+    }
+  },
+  "maintenance": {
+    "workOrderStatus": {
+      "scheduled": "مجدول",
+      "in_progress": "قيد التنفيذ",
+      "completed": "مكتمل",
+      "canceled": "ملغى"
+    },
+    "assignmentMode": {
+      "vendor": "مورّد",
+      "staff": "موظف"
+    },
+    "detail": {
+      "backToTasks": "العودة إلى المهام",
+      "loadError": "تعذّر تحميل طلب الصيانة هذا.",
+      "info": {
+        "building": "المبنى",
+        "apartment": "الشقة",
+        "renter": "المستأجر",
+        "description": "الوصف",
+        "notes": "ملاحظات"
+      },
+      "workOrdersTitle": "أوامر العمل",
+      "workOrdersSubtitle": "سجل الأعمال الخاص بطلب الصيانة هذا.",
+      "newWorkOrder": "أمر عمل جديد",
+      "actionsLabel": "إجراءات أمر العمل",
+      "table": {
+        "status": "الحالة",
+        "assignee": "المورّد / المكلَّف",
+        "cost": "التكلفة",
+        "resolutionNotes": "ملاحظات الحل",
+        "completed": "تاريخ الإنجاز"
+      },
+      "empty": "لا توجد أوامر عمل بعد.",
+      "updateStatusAction": "تحديث الحالة"
+    },
+    "workOrder": {
+      "fields": {
+        "assignTo": "الإسناد إلى",
+        "selectVendor": "اختر مورّداً",
+        "selectStaffMember": "اختر موظفاً",
+        "status": "الحالة",
+        "cost": "التكلفة",
+        "optional": "(اختياري)",
+        "resolutionNotes": "ملاحظات الحل"
+      },
+      "create": {
+        "title": "أمر عمل جديد",
+        "create": "إنشاء",
+        "creating": "جارٍ الإنشاء…",
+        "success": "تم إنشاء أمر العمل.",
+        "genericError": "تعذّر إنشاء أمر العمل. يرجى المحاولة مجدداً.",
+        "vendorRequired": "اختر مورّداً.",
+        "staffRequired": "اختر موظفاً."
+      },
+      "edit": {
+        "title": "تعديل أمر العمل",
+        "saving": "جارٍ الحفظ…",
+        "success": "تم تحديث أمر العمل.",
+        "error": "تعذّر تحديث أمر العمل."
+      },
+      "updateStatus": {
+        "title": "تحديث أمر العمل",
+        "saving": "جارٍ الحفظ…",
+        "success": "تم تحديث أمر العمل.",
+        "error": "تعذّر تحديث أمر العمل. يمكنك تحديث أمر عمل مسند إليك فقط."
+      },
+      "delete": {
+        "title": "حذف أمر العمل",
+        "confirm": "هل أنت متأكد من رغبتك في حذف أمر العمل هذا؟ لا يمكن التراجع عن هذا الإجراء.",
+        "deleting": "جارٍ الحذف…",
+        "success": "تم حذف أمر العمل.",
+        "error": "تعذّر حذف أمر العمل."
+      }
+    }
+  },
+  "tasks": {
+    "status": {
+      "open": "مفتوح",
+      "in_progress": "قيد التنفيذ",
+      "resolved": "تم الحل",
+      "closed": "مغلق"
+    },
+    "priority": {
+      "low": "منخفضة",
+      "medium": "متوسطة",
+      "high": "عالية",
+      "urgent": "عاجلة"
+    },
+    "list": {
+      "title": "المهام",
+      "subtitle": "طلبات الصيانة لمبانيك المخصصة.",
+      "subtitleReadonly": "طلبات الصيانة لمبانيك المخصصة، للقراءة فقط.",
+      "readOnly": "للقراءة فقط",
+      "newRequest": "طلب جديد",
+      "actionsLabel": "إجراءات طلب الصيانة",
+      "table": {
+        "title": "العنوان",
+        "apartment": "الشقة",
+        "renter": "المستأجر",
+        "status": "الحالة",
+        "priority": "الأولوية"
+      },
+      "actions": {
+        "view": "عرض"
+      },
+      "loadError": "تعذّر تحميل طلبات الصيانة. يرجى المحاولة مجدداً."
+    },
+    "empty": {
+      "default": "لا توجد طلبات صيانة بعد.",
+      "write": "لا توجد طلبات صيانة بعد. سجّل طلبك الأول."
+    },
+    "dialog": {
+      "create": {
+        "title": "طلب صيانة جديد",
+        "building": "المبنى",
+        "selectBuilding": "اختر مبنى",
+        "floor": "الطابق",
+        "selectFloor": "اختر طابقاً",
+        "apartment": "الشقة",
+        "selectApartment": "اختر شقة",
+        "renter": "المستأجر",
+        "selectRenter": "اختر مستأجراً",
+        "titleField": "العنوان",
+        "titlePlaceholder": "تسريب في صنبور المطبخ",
+        "description": "الوصف",
+        "descriptionPlaceholder": "صف المشكلة…",
+        "optional": "(اختياري)",
+        "priority": "الأولوية",
+        "selectPriority": "اختر أولوية",
+        "notes": "ملاحظات",
+        "notesPlaceholder": "أي ملاحظات…",
+        "create": "إنشاء",
+        "creating": "جارٍ الإنشاء…",
+        "success": "تم إنشاء طلب الصيانة.",
+        "genericError": "تعذّر إنشاء طلب الصيانة. يرجى المحاولة مجدداً.",
+        "errors": {
+          "building": "المبنى مطلوب",
+          "floor": "الطابق مطلوب",
+          "apartment": "الشقة مطلوبة",
+          "renter": "المستأجر مطلوب",
+          "title": "العنوان مطلوب"
+        }
+      },
+      "edit": {
+        "title": "تعديل طلب الصيانة",
+        "context": "الشقة {apartment} · {renter}",
+        "titleField": "العنوان",
+        "description": "الوصف",
+        "optional": "(اختياري)",
+        "status": "الحالة",
+        "selectStatus": "اختر حالة",
+        "priority": "الأولوية",
+        "selectPriority": "اختر أولوية",
+        "notes": "ملاحظات",
+        "saving": "جارٍ الحفظ…",
+        "success": "تم تحديث طلب الصيانة.",
+        "error": "تعذّر تحديث طلب الصيانة.",
+        "errors": {
+          "title": "العنوان مطلوب"
+        }
+      },
+      "delete": {
+        "title": "حذف طلب الصيانة",
+        "confirmBefore": "هل أنت متأكد من رغبتك في حذف",
+        "confirmAfter": "؟ لا يمكن التراجع عن هذا الإجراء.",
+        "deleting": "جارٍ الحذف…",
+        "success": "تم حذف طلب الصيانة.",
+        "error": "تعذّر حذف طلب الصيانة."
+      }
+    }
+  },
+  "expenses": {
+    "title": "المصاريف",
+    "subtitle": "الأموال المُنفقة على تشغيل عقارات منظمتك.",
+    "readOnly": "للقراءة فقط",
+    "newExpense": "مصروف جديد",
+    "loadError": "تعذّر تحميل المصاريف. يرجى المحاولة مجدداً.",
+    "empty": "لا توجد مصاريف مسجّلة بعد.",
+    "emptyWrite": "لا توجد مصاريف مسجّلة بعد. سجّل أول مصروف لك.",
+    "noMatch": "لا توجد مصاريف مطابقة للمرشحات المحددة.",
+    "orgWide": "على مستوى المنظمة",
+    "category": {
+      "repairs": "إصلاحات",
+      "vendor_payment": "دفعة لمورّد",
+      "utilities": "المرافق",
+      "taxes": "الضرائب",
+      "insurance": "التأمين",
+      "other": "أخرى"
+    },
+    "filters": {
+      "building": "المبنى",
+      "allBuildings": "كل المباني",
+      "category": "الفئة",
+      "allCategories": "كل الفئات",
+      "from": "من",
+      "to": "إلى"
+    },
+    "table": {
+      "category": "الفئة",
+      "amount": "المبلغ",
+      "incurredDate": "تاريخ الصرف",
+      "building": "المبنى",
+      "vendor": "المورّد",
+      "workOrder": "أمر العمل",
+      "actionsLabel": "إجراءات المصروف"
+    },
+    "dialog": {
+      "newTitle": "مصروف جديد",
+      "editTitle": "تعديل المصروف",
+      "category": "الفئة",
+      "selectCategory": "اختر فئة",
+      "amount": "المبلغ",
+      "amountPlaceholder": "0.00",
+      "incurredDate": "تاريخ الصرف",
+      "building": "المبنى",
+      "optional": "(اختياري)",
+      "orgWideNoBuilding": "على مستوى المنظمة (بدون مبنى)",
+      "vendor": "المورّد",
+      "noVendor": "بدون مورّد",
+      "workOrderSection": {
+        "label": "ربط بأمر عمل",
+        "hint": "اختر طلب الصيانة أولاً، ثم أمر العمل. إذا تُرك حقل المورّد أعلاه فارغاً، سيُملأ تلقائياً من أمر العمل.",
+        "maintenanceRequestNone": "بلا",
+        "workOrderNone": "بدون أمر عمل"
+      },
+      "notes": "ملاحظات",
+      "notesPlaceholder": "أي ملاحظات…",
+      "create": "إنشاء",
+      "creating": "جارٍ الإنشاء…",
+      "saving": "جارٍ الحفظ…",
+      "createSuccess": "تم إنشاء المصروف.",
+      "createError": "تعذّر إنشاء المصروف. يرجى المحاولة مجدداً.",
+      "updateSuccess": "تم تحديث المصروف.",
+      "updateError": "تعذّر تحديث المصروف.",
+      "errors": {
+        "amountRequired": "المبلغ مطلوب",
+        "amountInvalid": "يجب أن يكون المبلغ رقماً موجباً",
+        "incurredDateRequired": "تاريخ الصرف مطلوب"
+      }
+    },
+    "deleteDialog": {
+      "title": "حذف المصروف",
+      "confirm": "هل أنت متأكد من حذف مصروف {category} هذا؟ لا يمكن التراجع عن هذا الإجراء.",
+      "deleting": "جارٍ الحذف…",
+      "success": "تم حذف المصروف.",
+      "error": "تعذّر حذف المصروف. قد يكون مرتبطاً بعناصر أخرى."
+    }
   }
 }

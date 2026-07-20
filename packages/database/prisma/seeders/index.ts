@@ -1,6 +1,6 @@
 import { prisma } from '../../src/client';
 
-// No seeders yet for Forward-Mena. Add seed functions here and call them below.
+// No seeders yet for Property Manager. Add seed functions here and call them below.
 // Example:
 //   await seedOrganizations(prisma);
 async function main() {

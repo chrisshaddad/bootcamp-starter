@@ -19,6 +19,10 @@ import {
   Contact,
   HardHat,
   Receipt,
+  FileText,
+  LifeBuoy,
+  ScrollText,
+  Bell,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -83,6 +87,13 @@ function buildNavItems(
       areaKey: 'buildings',
     },
     {
+      key: 'leases',
+      label: dict.nav.leases,
+      icon: ScrollText,
+      href: `/${locale}/dashboard/leases`,
+      areaKey: 'leases',
+    },
+    {
       key: 'vendors',
       label: dict.nav.vendors,
       icon: HardHat,
@@ -125,6 +136,13 @@ function buildNavItems(
       areaKey: 'expenses',
     },
     {
+      key: 'invoices',
+      label: dict.nav.invoices,
+      icon: FileText,
+      href: `/${locale}/dashboard/invoices`,
+      areaKey: 'invoices',
+    },
+    {
       key: 'billing',
       label: dict.nav.billing,
       icon: CreditCard,
@@ -137,6 +155,20 @@ function buildNavItems(
       icon: Activity,
       href: `/${locale}/dashboard/timeline`,
       areaKey: 'timeline',
+    },
+    {
+      key: 'notifications',
+      label: dict.nav.notifications,
+      icon: Bell,
+      href: `/${locale}/dashboard/notifications`,
+      areaKey: 'notifications',
+    },
+    {
+      key: 'support',
+      label: dict.nav.support,
+      icon: LifeBuoy,
+      href: `/${locale}/dashboard/support`,
+      areaKey: 'support',
     },
   ];
 }

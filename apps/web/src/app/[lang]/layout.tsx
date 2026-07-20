@@ -26,7 +26,7 @@ const notoKufiArabic = Noto_Kufi_Arabic({
 });
 
 export const metadata: Metadata = {
-  title: 'Forward Mena — Property Management',
+  title: 'Property Manager — Rental Management',
   description: 'Multi-org property management SaaS for modern landlords',
 };
 

@@ -9,6 +9,9 @@ export const envValidationSchema = Joi.object({
   DATABASE_URL: Joi.string()
     .uri({ scheme: ['postgresql', 'postgres'] })
     .required(),
+  REDIS_URL: Joi.string()
+    .uri({ scheme: ['redis', 'rediss'] })
+    .default('redis://127.0.0.1:6380'),
   KEYCLOAK_BASE: Joi.string().uri().required(),
   KEYCLOAK_REALM: Joi.string().required(),
   KEYCLOAK_ISSUER: Joi.string().uri().required(),
@@ -18,5 +21,17 @@ export const envValidationSchema = Joi.object({
   KEYCLOAK_WEB_CLIENT_ID: Joi.string().required(),
   STRIPE_SECRET_KEY: Joi.string().required(),
   STRIPE_PRICE_ID: Joi.string().required(),
+  // Per-plan recurring price ids (optional; empty ⇒ fall back to STRIPE_PRICE_ID).
+  STRIPE_PRICE_STARTER: Joi.string().allow('').optional(),
+  STRIPE_PRICE_GROWTH: Joi.string().allow('').optional(),
+  STRIPE_PRICE_PRO: Joi.string().allow('').optional(),
   STRIPE_WEBHOOK_SECRET: Joi.string().allow('').optional(),
+  // Notification email delivery (mailpit locally). OFF by default so the app
+  // boots without an SMTP server; set to 'on' to deliver notification emails.
+  NOTIFICATIONS_EMAIL: Joi.string().valid('on', 'off').default('off'),
+  SMTP_HOST: Joi.string().hostname().default('127.0.0.1'),
+  SMTP_PORT: Joi.number().port().default(1025),
+  NOTIFICATIONS_EMAIL_FROM: Joi.string().default(
+    'Property Manager <notifications@prorentallb.cloud>',
+  ),
 });

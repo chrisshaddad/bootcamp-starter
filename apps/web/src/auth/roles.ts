@@ -1,4 +1,4 @@
-// Forward-Mena roles — matches Keycloak realm roles in prorentallb realm.
+// Property Manager roles — matches Keycloak realm roles in prorentallb realm.
 // org_admin is the highest; tenant is the most restricted (self-only).
 export const ROLES = [
   'org_admin',

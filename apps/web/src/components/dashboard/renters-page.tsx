@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -52,10 +52,17 @@ import {
   useDeleteRenterMutation,
 } from '@/store/api/endpoints/renters.api';
 import type { RenterEffectiveStatus, RenterResponse } from '@/types/api';
+import type { Dictionary } from '@/i18n/get-dictionary';
 
 // ── Status badge ─────────────────────────────────────────────────────────────
 
-function RenterStatusBadge({ status }: { status: RenterEffectiveStatus }) {
+function RenterStatusBadge({
+  status,
+  labels,
+}: {
+  status: RenterEffectiveStatus;
+  labels: Dictionary['renters']['status'];
+}) {
   switch (status) {
     case 'current':
       return (
@@ -63,16 +70,16 @@ function RenterStatusBadge({ status }: { status: RenterEffectiveStatus }) {
           variant="default"
           className="bg-green-100 text-green-800 border-green-200"
         >
-          Current
+          {labels.current}
         </Badge>
       );
     case 'former':
-      return <Badge variant="secondary">Former</Badge>;
+      return <Badge variant="secondary">{labels.former}</Badge>;
     case 'none':
     default:
       return (
         <Badge variant="outline" className="text-xs">
-          No lease yet
+          {labels.none}
         </Badge>
       );
   }
@@ -80,16 +87,18 @@ function RenterStatusBadge({ status }: { status: RenterEffectiveStatus }) {
 
 // ── Zod schema ────────────────────────────────────────────────────────────────
 
-const renterSchema = z.object({
-  fullName: z.string().min(1, 'Full name is required'),
-  email: z.string().email('Invalid email').optional().or(z.literal('')),
-  phone: z.string().optional(),
-  emergencyContactName: z.string().optional(),
-  emergencyContactPhone: z.string().optional(),
-  notes: z.string().optional(),
-});
+function buildRenterSchema(t: Dictionary['renters']['dialog']) {
+  return z.object({
+    fullName: z.string().min(1, t.fullNameRequired),
+    email: z.string().email(t.invalidEmail).optional().or(z.literal('')),
+    phone: z.string().optional(),
+    emergencyContactName: z.string().optional(),
+    emergencyContactPhone: z.string().optional(),
+    notes: z.string().optional(),
+  });
+}
 
-type RenterFormValues = z.infer<typeof renterSchema>;
+type RenterFormValues = z.infer<ReturnType<typeof buildRenterSchema>>;
 
 const EMPTY_VALUES: RenterFormValues = {
   fullName: '',
@@ -106,9 +115,11 @@ interface RentersPageProps {
   /** When false (non-admin), hide all write actions. */
   canWrite: boolean;
   locale: string;
+  dict: Dictionary;
 }
 
-export function RentersPage({ canWrite, locale }: RentersPageProps) {
+export function RentersPage({ canWrite, locale, dict }: RentersPageProps) {
+  const t = dict.renters;
   const router = useRouter();
   const { data: renters, isLoading, isError } = useListRentersQuery();
   const [createRenter, { isLoading: creating }] = useCreateRenterMutation();
@@ -118,6 +129,8 @@ export function RentersPage({ canWrite, locale }: RentersPageProps) {
   const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<RenterResponse | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<RenterResponse | null>(null);
+
+  const renterSchema = useMemo(() => buildRenterSchema(t.dialog), [t.dialog]);
 
   const {
     register: regCreate,
@@ -153,11 +166,11 @@ export function RentersPage({ canWrite, locale }: RentersPageProps) {
         emergencyContactPhone: values.emergencyContactPhone || undefined,
         notes: values.notes || undefined,
       }).unwrap();
-      toast.success('Renter created.');
+      toast.success(t.dialog.createdToast);
       setCreateOpen(false);
       resetCreate(EMPTY_VALUES);
     } catch {
-      toast.error('Failed to create renter. Please try again.');
+      toast.error(t.dialog.createErrorToast);
     }
   }
 
@@ -187,10 +200,10 @@ export function RentersPage({ canWrite, locale }: RentersPageProps) {
           notes: values.notes || undefined,
         },
       }).unwrap();
-      toast.success('Renter updated.');
+      toast.success(t.dialog.updatedToast);
       setEditTarget(null);
     } catch {
-      toast.error('Failed to update renter.');
+      toast.error(t.dialog.updateErrorToast);
     }
   }
 
@@ -198,10 +211,10 @@ export function RentersPage({ canWrite, locale }: RentersPageProps) {
     if (!deleteTarget) return;
     try {
       await deleteRenter(deleteTarget.id).unwrap();
-      toast.success('Renter deleted.');
+      toast.success(t.dialog.deletedToast);
       setDeleteTarget(null);
     } catch {
-      toast.error('Failed to delete renter.');
+      toast.error(t.dialog.deleteErrorToast);
     }
   }
 
@@ -210,11 +223,11 @@ export function RentersPage({ canWrite, locale }: RentersPageProps) {
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Renters</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {t.list.title}
+          </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {canWrite
-              ? "Manage your organization's renters."
-              : 'Renters in your organization.'}
+            {canWrite ? t.list.subtitleWrite : t.list.subtitleReadOnly}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -224,13 +237,13 @@ export function RentersPage({ canWrite, locale }: RentersPageProps) {
               className="gap-1.5 text-xs text-muted-foreground"
             >
               <EyeIcon className="size-3" />
-              Read-only
+              {t.list.readOnly}
             </Badge>
           )}
           {canWrite && (
             <Button onClick={() => setCreateOpen(true)}>
               <PlusIcon />
-              Add renter
+              {t.list.addRenter}
             </Button>
           )}
         </div>
@@ -241,10 +254,10 @@ export function RentersPage({ canWrite, locale }: RentersPageProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Full name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead>{t.list.table.fullName}</TableHead>
+              <TableHead>{t.list.table.email}</TableHead>
+              <TableHead>{t.list.table.phone}</TableHead>
+              <TableHead>{t.list.table.status}</TableHead>
               {canWrite && <TableHead className="w-10" />}
             </TableRow>
           </TableHeader>
@@ -275,7 +288,7 @@ export function RentersPage({ canWrite, locale }: RentersPageProps) {
                   colSpan={canWrite ? 5 : 4}
                   className="text-center py-10 text-muted-foreground"
                 >
-                  Failed to load renters. Please try again.
+                  {t.list.loadError}
                 </TableCell>
               </TableRow>
             ) : renters?.length === 0 ? (
@@ -285,9 +298,7 @@ export function RentersPage({ canWrite, locale }: RentersPageProps) {
                   className="text-center py-10 text-muted-foreground"
                 >
                   <ContactIcon className="size-8 mx-auto mb-2 opacity-30" />
-                  {canWrite
-                    ? 'No renters yet. Add your first renter.'
-                    : 'No renters yet.'}
+                  {canWrite ? t.list.emptyWrite : t.list.empty}
                 </TableCell>
               </TableRow>
             ) : (
@@ -317,7 +328,10 @@ export function RentersPage({ canWrite, locale }: RentersPageProps) {
                     {renter.phone ?? '—'}
                   </TableCell>
                   <TableCell>
-                    <RenterStatusBadge status={renter.effectiveStatus} />
+                    <RenterStatusBadge
+                      status={renter.effectiveStatus}
+                      labels={t.status}
+                    />
                   </TableCell>
                   {canWrite && (
                     <TableCell onClick={(e) => e.stopPropagation()}>
@@ -327,7 +341,7 @@ export function RentersPage({ canWrite, locale }: RentersPageProps) {
                             <Button
                               variant="ghost"
                               size="icon-sm"
-                              aria-label="Renter actions"
+                              aria-label={t.list.actionsLabel}
                             >
                               <MoreHorizontalIcon />
                             </Button>
@@ -338,11 +352,11 @@ export function RentersPage({ canWrite, locale }: RentersPageProps) {
                             onClick={() => goToRenter(renter.id)}
                           >
                             <EyeIcon className="size-3.5 mr-1.5" />
-                            View
+                            {t.list.view}
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => openEdit(renter)}>
                             <PencilIcon className="size-3.5 mr-1.5" />
-                            Edit
+                            {dict.common.edit}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
@@ -350,7 +364,7 @@ export function RentersPage({ canWrite, locale }: RentersPageProps) {
                             onClick={() => setDeleteTarget(renter)}
                           >
                             <TrashIcon className="size-3.5 mr-1.5" />
-                            Delete
+                            {dict.common.delete}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -367,7 +381,7 @@ export function RentersPage({ canWrite, locale }: RentersPageProps) {
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Add renter</DialogTitle>
+            <DialogTitle>{t.dialog.addTitle}</DialogTitle>
           </DialogHeader>
           <form
             onSubmit={handleCreate(onCreateSubmit)}
@@ -377,6 +391,7 @@ export function RentersPage({ canWrite, locale }: RentersPageProps) {
               idPrefix="r"
               register={regCreate}
               errors={createErrors}
+              t={t.dialog}
             />
             <DialogFooter>
               <DialogClose
@@ -386,10 +401,10 @@ export function RentersPage({ canWrite, locale }: RentersPageProps) {
                   resetCreate(EMPTY_VALUES);
                 }}
               >
-                Cancel
+                {dict.common.cancel}
               </DialogClose>
               <Button type="submit" disabled={creating}>
-                {creating ? 'Creating…' : 'Create'}
+                {creating ? t.dialog.creating : t.dialog.create}
               </Button>
             </DialogFooter>
           </form>
@@ -405,7 +420,7 @@ export function RentersPage({ canWrite, locale }: RentersPageProps) {
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit renter</DialogTitle>
+            <DialogTitle>{t.dialog.editTitle}</DialogTitle>
           </DialogHeader>
           <form
             onSubmit={handleEdit(onEditSubmit)}
@@ -415,16 +430,17 @@ export function RentersPage({ canWrite, locale }: RentersPageProps) {
               idPrefix="re"
               register={regEdit}
               errors={editErrors}
+              t={t.dialog}
             />
             <DialogFooter>
               <DialogClose
                 render={<Button variant="outline" type="button" />}
                 onClick={() => setEditTarget(null)}
               >
-                Cancel
+                {dict.common.cancel}
               </DialogClose>
               <Button type="submit" disabled={updating}>
-                {updating ? 'Saving…' : 'Save'}
+                {updating ? t.dialog.saving : dict.common.save}
               </Button>
             </DialogFooter>
           </form>
@@ -440,15 +456,22 @@ export function RentersPage({ canWrite, locale }: RentersPageProps) {
       >
         <DialogContent className="sm:max-w-xs">
           <DialogHeader>
-            <DialogTitle>Delete renter</DialogTitle>
+            <DialogTitle>{t.dialog.deleteTitle}</DialogTitle>
           </DialogHeader>
           <div className="py-1">
             <p className="text-sm text-muted-foreground">
-              Are you sure you want to delete{' '}
-              <span className="font-medium text-foreground">
-                {deleteTarget?.fullName}
-              </span>
-              ? This action cannot be undone.
+              {(() => {
+                const [before, after] = t.dialog.deleteConfirm.split('{name}');
+                return (
+                  <>
+                    {before}
+                    <span className="font-medium text-foreground">
+                      {deleteTarget?.fullName}
+                    </span>
+                    {after}
+                  </>
+                );
+              })()}
             </p>
           </div>
           <DialogFooter>
@@ -456,14 +479,14 @@ export function RentersPage({ canWrite, locale }: RentersPageProps) {
               render={<Button variant="outline" type="button" />}
               onClick={() => setDeleteTarget(null)}
             >
-              Cancel
+              {dict.common.cancel}
             </DialogClose>
             <Button
               variant="destructive"
               onClick={handleDelete}
               disabled={deleting}
             >
-              {deleting ? 'Deleting…' : 'Delete'}
+              {deleting ? t.dialog.deleting : dict.common.delete}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -478,20 +501,22 @@ function RenterFormFields({
   idPrefix,
   register,
   errors,
+  t,
 }: {
   idPrefix: string;
   register: ReturnType<typeof useForm<RenterFormValues>>['register'];
   errors: ReturnType<typeof useForm<RenterFormValues>>['formState']['errors'];
+  t: Dictionary['renters']['dialog'];
 }) {
   return (
     <>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={`${idPrefix}-fullName`}>
-          Full name <span className="text-destructive">*</span>
+          {t.fullName} <span className="text-destructive">*</span>
         </Label>
         <Input
           id={`${idPrefix}-fullName`}
-          placeholder="Jane Doe"
+          placeholder={t.placeholderFullName}
           aria-invalid={!!errors.fullName}
           {...register('fullName')}
         />
@@ -501,13 +526,15 @@ function RenterFormFields({
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={`${idPrefix}-email`}>
-          Email{' '}
-          <span className="text-muted-foreground font-normal">(optional)</span>
+          {t.email}{' '}
+          <span className="text-muted-foreground font-normal">
+            {t.optional}
+          </span>
         </Label>
         <Input
           id={`${idPrefix}-email`}
           type="email"
-          placeholder="jane@example.com"
+          placeholder={t.placeholderEmail}
           aria-invalid={!!errors.email}
           {...register('email')}
         />
@@ -517,45 +544,53 @@ function RenterFormFields({
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={`${idPrefix}-phone`}>
-          Phone{' '}
-          <span className="text-muted-foreground font-normal">(optional)</span>
+          {t.phone}{' '}
+          <span className="text-muted-foreground font-normal">
+            {t.optional}
+          </span>
         </Label>
         <Input
           id={`${idPrefix}-phone`}
-          placeholder="+971 50 123 4567"
+          placeholder={t.placeholderPhone}
           {...register('phone')}
         />
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={`${idPrefix}-emergencyContactName`}>
-          Emergency contact name{' '}
-          <span className="text-muted-foreground font-normal">(optional)</span>
+          {t.emergencyContactName}{' '}
+          <span className="text-muted-foreground font-normal">
+            {t.optional}
+          </span>
         </Label>
         <Input
           id={`${idPrefix}-emergencyContactName`}
-          placeholder="John Doe"
+          placeholder={t.placeholderEmergencyContactName}
           {...register('emergencyContactName')}
         />
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={`${idPrefix}-emergencyContactPhone`}>
-          Emergency contact phone{' '}
-          <span className="text-muted-foreground font-normal">(optional)</span>
+          {t.emergencyContactPhone}{' '}
+          <span className="text-muted-foreground font-normal">
+            {t.optional}
+          </span>
         </Label>
         <Input
           id={`${idPrefix}-emergencyContactPhone`}
-          placeholder="+971 50 987 6543"
+          placeholder={t.placeholderEmergencyContactPhone}
           {...register('emergencyContactPhone')}
         />
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={`${idPrefix}-notes`}>
-          Notes{' '}
-          <span className="text-muted-foreground font-normal">(optional)</span>
+          {t.notes}{' '}
+          <span className="text-muted-foreground font-normal">
+            {t.optional}
+          </span>
         </Label>
         <Textarea
           id={`${idPrefix}-notes`}
-          placeholder="Any notes…"
+          placeholder={t.placeholderNotes}
           rows={2}
           {...register('notes')}
         />

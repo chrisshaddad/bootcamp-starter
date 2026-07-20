@@ -37,7 +37,7 @@ export default async function LoginPage({
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 p-8">
       <div className="w-full max-w-sm flex flex-col gap-4">
         <h1 className="text-2xl font-bold text-center">
-          Sign in to Forward Mena
+          Sign in to Property Manager
         </h1>
         {error && (
           <p className="text-destructive text-sm text-center rounded border border-destructive/20 bg-destructive/5 p-3">

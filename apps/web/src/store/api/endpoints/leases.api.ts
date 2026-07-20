@@ -2,6 +2,7 @@ import { baseApi } from '@/store/api/base-api';
 import type {
   ApiEnvelope,
   LeaseResponse,
+  LeaseListRow,
   CreateLeaseBody,
   PatchLeaseBody,
   RenewLeaseBody,
@@ -21,6 +22,25 @@ type ApartmentScope = {
 
 export const leasesApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
+    /**
+     * Org-wide, flat lease list (Sprint U1) — feeds the top-level
+     * /dashboard/leases page. Complements (does not replace) `listLeases`,
+     * which stays scoped to a single apartment.
+     */
+    listAllLeases: build.query<LeaseListRow[], void>({
+      query: () => ({ url: '/leases', method: 'GET' }),
+      transformResponse: (
+        response: LeaseListRow[] | ApiEnvelope<LeaseListRow[]>,
+      ) => unwrap(response),
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.map(({ id }) => ({ type: 'Lease' as const, id })),
+              { type: 'Lease', id: 'LIST' },
+            ]
+          : [{ type: 'Lease', id: 'LIST' }],
+    }),
+
     listLeases: build.query<LeaseResponse[], ApartmentScope>({
       query: ({ buildingId, floorId, apartmentId }) => ({
         url: `/buildings/${encodeURIComponent(buildingId)}/floors/${encodeURIComponent(floorId)}/apartments/${encodeURIComponent(apartmentId)}/leases`,
@@ -137,6 +157,7 @@ export const leasesApi = baseApi.injectEndpoints({
 });
 
 export const {
+  useListAllLeasesQuery,
   useListLeasesQuery,
   useGetLeaseQuery,
   useCreateLeaseMutation,

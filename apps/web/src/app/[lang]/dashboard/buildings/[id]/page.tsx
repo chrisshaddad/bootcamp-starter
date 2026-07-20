@@ -3,6 +3,7 @@ import { normalizeRole } from '@/auth/roles';
 import { canAccess, canWrite } from '@/auth/permissions';
 import { redirect } from 'next/navigation';
 import { isLocale } from '@/i18n/config';
+import { getDictionary } from '@/i18n/get-dictionary';
 import { BuildingDetailPage } from '@/components/dashboard/building-detail-page';
 
 export default async function BuildingDetailPageRoute({
@@ -20,12 +21,14 @@ export default async function BuildingDetailPageRoute({
   }
 
   const writeAccess = canWrite(role, 'buildings');
+  const dict = await getDictionary(locale);
 
   return (
     <BuildingDetailPage
       buildingId={id}
       canWrite={writeAccess}
       locale={locale}
+      dict={dict}
     />
   );
 }

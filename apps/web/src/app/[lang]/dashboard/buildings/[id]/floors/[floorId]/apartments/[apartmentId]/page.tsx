@@ -3,6 +3,7 @@ import { normalizeRole } from '@/auth/roles';
 import { canAccess, canWrite } from '@/auth/permissions';
 import { redirect } from 'next/navigation';
 import { isLocale } from '@/i18n/config';
+import { getDictionary } from '@/i18n/get-dictionary';
 import { ApartmentDetailPage } from '@/components/dashboard/apartment-detail-page';
 
 export default async function ApartmentDetailPageRoute({
@@ -25,6 +26,7 @@ export default async function ApartmentDetailPageRoute({
   }
 
   const writeAccess = canWrite(role, 'buildings');
+  const dict = await getDictionary(locale);
 
   return (
     <ApartmentDetailPage
@@ -33,6 +35,7 @@ export default async function ApartmentDetailPageRoute({
       apartmentId={apartmentId}
       canWrite={writeAccess}
       locale={locale}
+      dict={dict}
     />
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -60,16 +60,9 @@ import {
 } from '@/store/api/endpoints/users.api';
 import { useListBuildingsQuery } from '@/store/api/endpoints/buildings.api';
 import type { MemberResponse, MemberRole, AssignableRole } from '@/types/api';
+import type { Dictionary } from '@/i18n/get-dictionary';
 
 // ── Role display helpers ─────────────────────────────────────────────────────
-
-const ROLE_LABELS: Record<MemberRole, string> = {
-  org_admin: 'Admin',
-  supervisor: 'Supervisor',
-  finance: 'Finance',
-  maintenance: 'Maintenance',
-  tenant: 'Tenant',
-};
 
 const ROLE_BADGE_CLASS: Record<MemberRole, string> = {
   org_admin: 'bg-teal-500/15 text-teal-600 border-teal-200',
@@ -80,10 +73,10 @@ const ROLE_BADGE_CLASS: Record<MemberRole, string> = {
 };
 
 /** Roles admin can create — not org_admin, not tenant. */
-const CREATE_ROLES: { value: AssignableRole; label: string }[] = [
-  { value: 'supervisor', label: 'Supervisor' },
-  { value: 'finance', label: 'Finance' },
-  { value: 'maintenance', label: 'Maintenance' },
+const CREATE_ROLE_VALUES: AssignableRole[] = [
+  'supervisor',
+  'finance',
+  'maintenance',
 ];
 
 /** Roles that need building assignment. */
@@ -91,18 +84,20 @@ const BUILDING_SCOPED_ROLES: AssignableRole[] = ['supervisor', 'maintenance'];
 
 // ── Zod schema ───────────────────────────────────────────────────────────────
 
-const createUserSchema = z.object({
-  username: z.string().min(3, 'Username must be at least 3 characters'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
-  fullName: z.string().optional(),
-  email: z.string().email('Invalid email address').optional().or(z.literal('')),
-  role: z.enum(['supervisor', 'finance', 'maintenance'] as const),
-  buildingIds: z.array(z.string()).optional(),
-});
+function buildCreateUserSchema(
+  errors: Dictionary['users']['dialog']['create']['errors'],
+) {
+  return z.object({
+    username: z.string().min(3, errors.username),
+    password: z.string().min(8, errors.password),
+    fullName: z.string().optional(),
+    email: z.string().email(errors.email).optional().or(z.literal('')),
+    role: z.enum(['supervisor', 'finance', 'maintenance'] as const),
+    buildingIds: z.array(z.string()).optional(),
+  });
+}
 
-type CreateUserFormValues = z.infer<typeof createUserSchema>;
-
-// ── Edit assignments schema ───────────────────────────────────────────────────
+type CreateUserFormValues = z.infer<ReturnType<typeof buildCreateUserSchema>>;
 
 // ── Avatar initials helper ────────────────────────────────────────────────────
 
@@ -137,21 +132,38 @@ function apiErrorMessage(err: unknown, fallback: string): string {
   return fallback;
 }
 
+/** Split a "…{name}…" dict string around the placeholder so the name can be
+ * rendered as its own (bold) element while preserving each locale's word order. */
+function splitAroundName(template: string): [string, string] {
+  const [before, after = ''] = template.split('{name}');
+  return [before, after];
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 interface UsersPageProps {
   locale: string;
-  dict: Record<string, unknown>;
+  dict: Dictionary;
   /** When true (supervisor viewer) → hide all create/edit/remove actions. */
   readonly?: boolean;
 }
 
-export function UsersPage({ locale, readonly = false }: UsersPageProps) {
+export function UsersPage({ locale, dict, readonly = false }: UsersPageProps) {
+  const t = dict.users;
   const { data: users, isLoading } = useListUsersQuery();
   const { data: buildings } = useListBuildingsQuery();
   const [createUser, { isLoading: creating }] = useCreateUserMutation();
   const [patchUser, { isLoading: patching }] = usePatchUserMutation();
   const [deleteUser, { isLoading: deleting }] = useDeleteUserMutation();
+
+  const createRoleOptions = useMemo(
+    () =>
+      CREATE_ROLE_VALUES.map((value) => ({
+        value,
+        label: t.roles[value],
+      })),
+    [t],
+  );
 
   // Dialog state
   const [createOpen, setCreateOpen] = useState(false);
@@ -169,6 +181,11 @@ export function UsersPage({ locale, readonly = false }: UsersPageProps) {
   }
 
   // ── Create form ────────────────────────────────────────────────────────────
+
+  const createUserSchema = useMemo(
+    () => buildCreateUserSchema(t.dialog.create.errors),
+    [t],
+  );
 
   const {
     register,
@@ -195,15 +212,11 @@ export function UsersPage({ locale, readonly = false }: UsersPageProps) {
         role: values.role,
         buildingIds: needsBuildings ? (values.buildingIds ?? []) : undefined,
       }).unwrap();
-      toast.success(
-        'Member created. Share the username and password with them directly.',
-      );
+      toast.success(t.toast.created);
       setCreateOpen(false);
       reset();
     } catch (err) {
-      toast.error(
-        apiErrorMessage(err, 'Failed to create member. Please try again.'),
-      );
+      toast.error(apiErrorMessage(err, t.toast.createError));
     }
   }
 
@@ -213,7 +226,7 @@ export function UsersPage({ locale, readonly = false }: UsersPageProps) {
     setRoleTarget(member);
     // Default the selector to the member's current role when it is assignable,
     // otherwise fall back to the first assignable role (e.g. demoting an admin).
-    const assignable = CREATE_ROLES.find((r) => r.value === member.role)?.value;
+    const assignable = CREATE_ROLE_VALUES.find((v) => v === member.role);
     setNewRole(assignable ?? 'supervisor');
   }
 
@@ -229,12 +242,10 @@ export function UsersPage({ locale, readonly = false }: UsersPageProps) {
         id: roleTarget.userId,
         body: { role: newRole },
       }).unwrap();
-      toast.success('Member role updated.');
+      toast.success(t.toast.roleUpdated);
       setRoleTarget(null);
     } catch (err) {
-      toast.error(
-        apiErrorMessage(err, 'Failed to update role. Please try again.'),
-      );
+      toast.error(apiErrorMessage(err, t.toast.roleError));
     }
   }
 
@@ -253,10 +264,10 @@ export function UsersPage({ locale, readonly = false }: UsersPageProps) {
         id: editTarget.userId,
         body: { buildingIds: editBuildingIds },
       }).unwrap();
-      toast.success('Building assignments updated.');
+      toast.success(t.toast.assignmentsUpdated);
       setEditTarget(null);
     } catch (err) {
-      toast.error(apiErrorMessage(err, 'Failed to update assignments.'));
+      toast.error(apiErrorMessage(err, t.toast.assignmentsError));
     }
   }
 
@@ -272,12 +283,10 @@ export function UsersPage({ locale, readonly = false }: UsersPageProps) {
     if (!removeTarget) return;
     try {
       await deleteUser(removeTarget.userId).unwrap();
-      toast.success('Member removed from the organization.');
+      toast.success(t.toast.removed);
       setRemoveTarget(null);
     } catch (err) {
-      toast.error(
-        apiErrorMessage(err, 'Failed to remove member. Please try again.'),
-      );
+      toast.error(apiErrorMessage(err, t.toast.removeError));
     }
   }
 
@@ -290,11 +299,9 @@ export function UsersPage({ locale, readonly = false }: UsersPageProps) {
         id: member.userId,
         body: { enabled: next },
       }).unwrap();
-      toast.success(next ? 'Member enabled.' : 'Member disabled.');
+      toast.success(next ? t.toast.enabled : t.toast.disabled);
     } catch (err) {
-      toast.error(
-        apiErrorMessage(err, 'Failed to update member. Please try again.'),
-      );
+      toast.error(apiErrorMessage(err, t.toast.toggleError));
     }
   }
 
@@ -310,6 +317,16 @@ export function UsersPage({ locale, readonly = false }: UsersPageProps) {
     return BUILDING_SCOPED_ROLES.includes(member.role as AssignableRole);
   }
 
+  const [editAssignBefore, editAssignAfter] = splitAroundName(
+    t.dialog.editAssignments.description,
+  );
+  const [changeRoleBefore, changeRoleAfter] = splitAroundName(
+    t.dialog.changeRole.description,
+  );
+  const [removeBefore, removeAfter] = splitAroundName(
+    t.dialog.remove.description,
+  );
+
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
@@ -317,17 +334,15 @@ export function UsersPage({ locale, readonly = false }: UsersPageProps) {
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Team</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{t.title}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {readonly
-              ? 'Staff members in your assigned buildings.'
-              : 'Manage your organization members and their roles.'}
+            {readonly ? t.subtitleReadonly : t.subtitle}
           </p>
         </div>
         {!readonly && (
           <Button onClick={() => setCreateOpen(true)}>
             <PlusIcon />
-            Add member
+            {t.addMember}
           </Button>
         )}
         {readonly && (
@@ -336,7 +351,7 @@ export function UsersPage({ locale, readonly = false }: UsersPageProps) {
             className="gap-1.5 text-xs text-muted-foreground"
           >
             <EyeIcon className="size-3" />
-            Read-only
+            {t.readOnly}
           </Badge>
         )}
       </div>
@@ -346,10 +361,10 @@ export function UsersPage({ locale, readonly = false }: UsersPageProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Member</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Buildings</TableHead>
-              <TableHead>Joined</TableHead>
+              <TableHead>{t.table.member}</TableHead>
+              <TableHead>{t.table.role}</TableHead>
+              <TableHead>{t.table.buildings}</TableHead>
+              <TableHead>{t.table.joined}</TableHead>
               {!readonly && <TableHead className="w-10" />}
             </TableRow>
           </TableHeader>
@@ -387,7 +402,7 @@ export function UsersPage({ locale, readonly = false }: UsersPageProps) {
                   className="text-center py-10 text-muted-foreground"
                 >
                   <UserIcon className="size-8 mx-auto mb-2 opacity-30" />
-                  No members yet.
+                  {readonly ? t.empty : t.emptyWrite}
                 </TableCell>
               </TableRow>
             ) : (
@@ -426,7 +441,7 @@ export function UsersPage({ locale, readonly = false }: UsersPageProps) {
                           variant="outline"
                           className={ROLE_BADGE_CLASS[member.role] ?? ''}
                         >
-                          {ROLE_LABELS[member.role] ?? member.role}
+                          {t.roles[member.role] ?? member.role}
                         </Badge>
                       ) : (
                         <span className="text-xs text-muted-foreground">—</span>
@@ -436,7 +451,7 @@ export function UsersPage({ locale, readonly = false }: UsersPageProps) {
                           variant="outline"
                           className="text-xs text-muted-foreground"
                         >
-                          Disabled
+                          {t.disabled}
                         </Badge>
                       )}
                     </div>
@@ -475,7 +490,7 @@ export function UsersPage({ locale, readonly = false }: UsersPageProps) {
                               <Button
                                 variant="ghost"
                                 size="icon-sm"
-                                aria-label="Member actions"
+                                aria-label={t.actions.ariaLabel}
                               >
                                 <MoreHorizontalIcon />
                               </Button>
@@ -486,14 +501,14 @@ export function UsersPage({ locale, readonly = false }: UsersPageProps) {
                               <DropdownMenuItem
                                 onClick={() => openEditAssignments(member)}
                               >
-                                Edit assignments
+                                {t.actions.editAssignments}
                               </DropdownMenuItem>
                             )}
                             {canManageMember(member) && (
                               <DropdownMenuItem
                                 onClick={() => openChangeRole(member)}
                               >
-                                Change role
+                                {t.actions.changeRole}
                               </DropdownMenuItem>
                             )}
                             {canManageMember(member) && (
@@ -501,8 +516,8 @@ export function UsersPage({ locale, readonly = false }: UsersPageProps) {
                                 onClick={() => handleToggleEnabled(member)}
                               >
                                 {member.enabled === false
-                                  ? 'Enable login'
-                                  : 'Disable login'}
+                                  ? t.actions.enableLogin
+                                  : t.actions.disableLogin}
                               </DropdownMenuItem>
                             )}
                             {canManageMember(member) && (
@@ -512,7 +527,7 @@ export function UsersPage({ locale, readonly = false }: UsersPageProps) {
                                   variant="destructive"
                                   onClick={() => setRemoveTarget(member)}
                                 >
-                                  Remove member
+                                  {t.actions.removeMember}
                                 </DropdownMenuItem>
                               </>
                             )}
@@ -532,7 +547,7 @@ export function UsersPage({ locale, readonly = false }: UsersPageProps) {
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Add member</DialogTitle>
+            <DialogTitle>{t.dialog.create.title}</DialogTitle>
           </DialogHeader>
 
           <form
@@ -542,11 +557,12 @@ export function UsersPage({ locale, readonly = false }: UsersPageProps) {
             {/* Username */}
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="create-username">
-                Username <span className="text-destructive">*</span>
+                {t.dialog.create.username}{' '}
+                <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="create-username"
-                placeholder="jane.smith"
+                placeholder={t.dialog.create.usernamePlaceholder}
                 autoComplete="off"
                 aria-invalid={!!errors.username}
                 {...register('username')}
@@ -561,12 +577,13 @@ export function UsersPage({ locale, readonly = false }: UsersPageProps) {
             {/* Password */}
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="create-password">
-                Password <span className="text-destructive">*</span>
+                {t.dialog.create.password}{' '}
+                <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="create-password"
                 type="password"
-                placeholder="Min. 8 characters"
+                placeholder={t.dialog.create.passwordPlaceholder}
                 autoComplete="new-password"
                 aria-invalid={!!errors.password}
                 {...register('password')}
@@ -581,14 +598,14 @@ export function UsersPage({ locale, readonly = false }: UsersPageProps) {
             {/* Full name (optional) */}
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="create-fullName">
-                Full name{' '}
+                {t.dialog.create.fullName}{' '}
                 <span className="text-muted-foreground font-normal">
-                  (optional)
+                  {t.dialog.optional}
                 </span>
               </Label>
               <Input
                 id="create-fullName"
-                placeholder="Jane Smith"
+                placeholder={t.dialog.create.fullNamePlaceholder}
                 {...register('fullName')}
               />
             </div>
@@ -596,15 +613,15 @@ export function UsersPage({ locale, readonly = false }: UsersPageProps) {
             {/* Email (optional) */}
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="create-email">
-                Email{' '}
+                {t.dialog.create.email}{' '}
                 <span className="text-muted-foreground font-normal">
-                  (optional)
+                  {t.dialog.optional}
                 </span>
               </Label>
               <Input
                 id="create-email"
                 type="email"
-                placeholder="jane@example.com"
+                placeholder={t.dialog.create.emailPlaceholder}
                 aria-invalid={!!errors.email}
                 {...register('email')}
               />
@@ -618,7 +635,7 @@ export function UsersPage({ locale, readonly = false }: UsersPageProps) {
             {/* Role */}
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="create-role">
-                Role <span className="text-destructive">*</span>
+                {t.dialog.roleLabel} <span className="text-destructive">*</span>
               </Label>
               <Controller
                 control={control}
@@ -634,10 +651,15 @@ export function UsersPage({ locale, readonly = false }: UsersPageProps) {
                       className="w-full"
                       aria-invalid={!!errors.role}
                     >
-                      <SelectValue placeholder="Select a role" />
+                      <SelectValue>
+                        {(value: string | null) =>
+                          createRoleOptions.find((r) => r.value === value)
+                            ?.label ?? t.dialog.selectRole
+                        }
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      {CREATE_ROLES.map((r) => (
+                      {createRoleOptions.map((r) => (
                         <SelectItem key={r.value} value={r.value}>
                           {r.label}
                         </SelectItem>
@@ -657,9 +679,9 @@ export function UsersPage({ locale, readonly = false }: UsersPageProps) {
             {needsBuildings && buildings && buildings.length > 0 && (
               <div className="flex flex-col gap-1.5">
                 <Label>
-                  Assign buildings{' '}
+                  {t.dialog.create.assignBuildings}{' '}
                   <span className="text-muted-foreground font-normal">
-                    (optional)
+                    {t.dialog.optional}
                   </span>
                 </Label>
                 <div className="rounded-md border bg-muted/30 divide-y max-h-36 overflow-y-auto">
@@ -702,10 +724,10 @@ export function UsersPage({ locale, readonly = false }: UsersPageProps) {
                   reset();
                 }}
               >
-                Cancel
+                {dict.common.cancel}
               </DialogClose>
               <Button type="submit" disabled={creating}>
-                {creating ? 'Creating…' : 'Create member'}
+                {creating ? t.dialog.create.submitting : t.dialog.create.submit}
               </Button>
             </DialogFooter>
           </form>
@@ -721,16 +743,16 @@ export function UsersPage({ locale, readonly = false }: UsersPageProps) {
       >
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Edit building assignments</DialogTitle>
+            <DialogTitle>{t.dialog.editAssignments.title}</DialogTitle>
           </DialogHeader>
 
           <div className="flex flex-col gap-3 py-1">
             <p className="text-sm text-muted-foreground">
-              Assign buildings to{' '}
+              {editAssignBefore}
               <span className="font-medium text-foreground">
-                {editTarget ? displayName(editTarget) : 'this member'}
+                {editTarget ? displayName(editTarget) : t.dialog.fallbackMember}
               </span>
-              .
+              {editAssignAfter}
             </p>
 
             {buildings && buildings.length > 0 ? (
@@ -754,7 +776,7 @@ export function UsersPage({ locale, readonly = false }: UsersPageProps) {
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">
-                No buildings found. Create buildings first.
+                {t.dialog.editAssignments.noBuildings}
               </p>
             )}
           </div>
@@ -764,10 +786,10 @@ export function UsersPage({ locale, readonly = false }: UsersPageProps) {
               render={<Button variant="outline" type="button" />}
               onClick={() => setEditTarget(null)}
             >
-              Cancel
+              {dict.common.cancel}
             </DialogClose>
             <Button onClick={handleSaveAssignments} disabled={patching}>
-              {patching ? 'Saving…' : 'Save'}
+              {patching ? t.dialog.saving : dict.common.save}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -782,29 +804,34 @@ export function UsersPage({ locale, readonly = false }: UsersPageProps) {
       >
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Change role</DialogTitle>
+            <DialogTitle>{t.dialog.changeRole.title}</DialogTitle>
           </DialogHeader>
 
           <div className="flex flex-col gap-3 py-1">
             <p className="text-sm text-muted-foreground">
-              Set the role for{' '}
+              {changeRoleBefore}
               <span className="font-medium text-foreground">
-                {roleTarget ? displayName(roleTarget) : 'this member'}
+                {roleTarget ? displayName(roleTarget) : t.dialog.fallbackMember}
               </span>
-              .
+              {changeRoleAfter}
             </p>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="change-role">Role</Label>
+              <Label htmlFor="change-role">{t.dialog.roleLabel}</Label>
               <Select
                 value={newRole}
                 onValueChange={(val) => setNewRole(val as AssignableRole)}
               >
                 <SelectTrigger id="change-role" className="w-full">
-                  <SelectValue placeholder="Select a role" />
+                  <SelectValue>
+                    {(value: string | null) =>
+                      createRoleOptions.find((r) => r.value === value)?.label ??
+                      t.dialog.selectRole
+                    }
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {CREATE_ROLES.map((r) => (
+                  {createRoleOptions.map((r) => (
                     <SelectItem key={r.value} value={r.value}>
                       {r.label}
                     </SelectItem>
@@ -819,10 +846,10 @@ export function UsersPage({ locale, readonly = false }: UsersPageProps) {
               render={<Button variant="outline" type="button" />}
               onClick={() => setRoleTarget(null)}
             >
-              Cancel
+              {dict.common.cancel}
             </DialogClose>
             <Button onClick={handleChangeRole} disabled={patching}>
-              {patching ? 'Saving…' : 'Save'}
+              {patching ? t.dialog.saving : dict.common.save}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -837,16 +864,18 @@ export function UsersPage({ locale, readonly = false }: UsersPageProps) {
       >
         <DialogContent className="sm:max-w-xs">
           <DialogHeader>
-            <DialogTitle>Remove member</DialogTitle>
+            <DialogTitle>{t.dialog.remove.title}</DialogTitle>
           </DialogHeader>
 
           <div className="py-1">
             <p className="text-sm text-muted-foreground">
-              Are you sure you want to remove{' '}
+              {removeBefore}
               <span className="font-medium text-foreground">
-                {removeTarget ? displayName(removeTarget) : 'this member'}
-              </span>{' '}
-              from the organization? This action cannot be undone.
+                {removeTarget
+                  ? displayName(removeTarget)
+                  : t.dialog.fallbackMember}
+              </span>
+              {removeAfter}
             </p>
           </div>
 
@@ -855,14 +884,14 @@ export function UsersPage({ locale, readonly = false }: UsersPageProps) {
               render={<Button variant="outline" type="button" />}
               onClick={() => setRemoveTarget(null)}
             >
-              Cancel
+              {dict.common.cancel}
             </DialogClose>
             <Button
               variant="destructive"
               onClick={handleRemove}
               disabled={deleting}
             >
-              {deleting ? 'Removing…' : 'Remove'}
+              {deleting ? t.dialog.remove.submitting : t.dialog.remove.submit}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -3,6 +3,7 @@ import { normalizeRole } from '@/auth/roles';
 import { canAccess, canWrite } from '@/auth/permissions';
 import { redirect } from 'next/navigation';
 import { isLocale } from '@/i18n/config';
+import { getDictionary } from '@/i18n/get-dictionary';
 import { ExpensesPage } from '@/components/dashboard/expenses-page';
 
 export default async function ExpensesPageRoute({
@@ -20,6 +21,7 @@ export default async function ExpensesPageRoute({
   }
 
   const writeAccess = canWrite(role, 'expenses');
+  const dict = await getDictionary(locale);
 
   // Only org_admin can read Maintenance Requests/Work Orders (GET excludes
   // finance), so the work-order picker in the expense dialog is org_admin-only.
@@ -27,6 +29,7 @@ export default async function ExpensesPageRoute({
     <ExpensesPage
       canWrite={writeAccess}
       canLinkWorkOrder={role === 'org_admin'}
+      dict={dict}
     />
   );
 }

@@ -1,9 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { ContactIcon, FileTextIcon } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ContactIcon, FileTextIcon, PlusIcon } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
@@ -16,10 +18,17 @@ import {
 
 import { useGetRenterQuery } from '@/store/api/endpoints/renters.api';
 import type { LeaseStatus, RenterEffectiveStatus } from '@/types/api';
+import type { Dictionary } from '@/i18n/get-dictionary';
 
 // ── Status badges ────────────────────────────────────────────────────────────
 
-function RenterStatusBadge({ status }: { status: RenterEffectiveStatus }) {
+function RenterStatusBadge({
+  status,
+  labels,
+}: {
+  status: RenterEffectiveStatus;
+  labels: Dictionary['renters']['status'];
+}) {
   switch (status) {
     case 'current':
       return (
@@ -27,22 +36,28 @@ function RenterStatusBadge({ status }: { status: RenterEffectiveStatus }) {
           variant="default"
           className="bg-green-100 text-green-800 border-green-200"
         >
-          Current
+          {labels.current}
         </Badge>
       );
     case 'former':
-      return <Badge variant="secondary">Former</Badge>;
+      return <Badge variant="secondary">{labels.former}</Badge>;
     case 'none':
     default:
       return (
         <Badge variant="outline" className="text-xs">
-          No lease yet
+          {labels.none}
         </Badge>
       );
   }
 }
 
-function LeaseStatusBadge({ status }: { status: LeaseStatus }) {
+function LeaseStatusBadge({
+  status,
+  labels,
+}: {
+  status: LeaseStatus;
+  labels: Dictionary['leases']['status'];
+}) {
   switch (status) {
     case 'active':
       return (
@@ -50,7 +65,7 @@ function LeaseStatusBadge({ status }: { status: LeaseStatus }) {
           variant="default"
           className="bg-green-100 text-green-800 border-green-200"
         >
-          Active
+          {labels.active}
         </Badge>
       );
     case 'expired':
@@ -59,14 +74,14 @@ function LeaseStatusBadge({ status }: { status: LeaseStatus }) {
           variant="outline"
           className="bg-amber-50 text-amber-800 border-amber-200"
         >
-          Expired
+          {labels.expired}
         </Badge>
       );
     case 'terminated':
-      return <Badge variant="destructive">Terminated</Badge>;
+      return <Badge variant="destructive">{labels.terminated}</Badge>;
     case 'draft':
     default:
-      return <Badge variant="secondary">Draft</Badge>;
+      return <Badge variant="secondary">{labels.draft}</Badge>;
   }
 }
 
@@ -75,10 +90,24 @@ function LeaseStatusBadge({ status }: { status: LeaseStatus }) {
 interface RenterDetailPageProps {
   renterId: string;
   locale: string;
+  dict: Dictionary;
+  /** When true (org_admin), show lease-creation entry points. */
+  canWrite?: boolean;
 }
 
-export function RenterDetailPage({ renterId, locale }: RenterDetailPageProps) {
+export function RenterDetailPage({
+  renterId,
+  locale,
+  dict,
+  canWrite = false,
+}: RenterDetailPageProps) {
+  const t = dict.renters.detail;
+  const router = useRouter();
   const { data: renter, isLoading, isError } = useGetRenterQuery(renterId);
+
+  function goToNewLease() {
+    router.push(`/${locale}/dashboard/leases?newLease=1&renterId=${renterId}`);
+  }
 
   if (isLoading) {
     return (
@@ -94,7 +123,7 @@ export function RenterDetailPage({ renterId, locale }: RenterDetailPageProps) {
   if (isError || !renter) {
     return (
       <div className="rounded-xl border bg-card p-6 text-center text-sm text-muted-foreground">
-        Renter not found.
+        {t.notFound}
       </div>
     );
   }
@@ -107,49 +136,68 @@ export function RenterDetailPage({ renterId, locale }: RenterDetailPageProps) {
           <ContactIcon className="size-6 text-muted-foreground" />
           {renter.fullName}
         </h1>
-        <RenterStatusBadge status={renter.effectiveStatus} />
+        <div className="flex items-center gap-3">
+          <RenterStatusBadge
+            status={renter.effectiveStatus}
+            labels={dict.renters.status}
+          />
+          {canWrite && (
+            <Button onClick={goToNewLease}>
+              <PlusIcon />
+              {t.newLease}
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="rounded-xl border bg-card p-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
         <div className="flex flex-col gap-1">
-          <p className="text-xs text-muted-foreground">Email</p>
+          <p className="text-xs text-muted-foreground">{t.email}</p>
           <p className="text-sm">{renter.email ?? '—'}</p>
         </div>
         <div className="flex flex-col gap-1">
-          <p className="text-xs text-muted-foreground">Phone</p>
+          <p className="text-xs text-muted-foreground">{t.phone}</p>
           <p className="text-sm">{renter.phone ?? '—'}</p>
         </div>
         <div className="flex flex-col gap-1">
           <p className="text-xs text-muted-foreground">
-            Emergency contact name
+            {t.emergencyContactName}
           </p>
           <p className="text-sm">{renter.emergencyContactName ?? '—'}</p>
         </div>
         <div className="flex flex-col gap-1">
           <p className="text-xs text-muted-foreground">
-            Emergency contact phone
+            {t.emergencyContactPhone}
           </p>
           <p className="text-sm">{renter.emergencyContactPhone ?? '—'}</p>
         </div>
         <div className="flex flex-col gap-1 sm:col-span-2">
-          <p className="text-xs text-muted-foreground">Notes</p>
+          <p className="text-xs text-muted-foreground">{t.notes}</p>
           <p className="text-sm whitespace-pre-wrap">{renter.notes ?? '—'}</p>
         </div>
       </div>
 
       {/* Leases section */}
       <div>
-        <h2 className="text-lg font-semibold tracking-tight">Leases</h2>
+        <h2 className="text-lg font-semibold tracking-tight">
+          {t.leasesTitle}
+        </h2>
         <p className="text-sm text-muted-foreground mt-0.5">
-          This renter&apos;s lease history, most recent first.
+          {t.leasesSubtitle}
         </p>
       </div>
 
       {!renter.leases.length ? (
         <div className="rounded-xl border bg-card overflow-hidden">
-          <div className="text-center py-10 text-muted-foreground">
-            <FileTextIcon className="size-8 mx-auto mb-2 opacity-30" />
-            No leases yet.
+          <div className="flex flex-col items-center gap-3 py-10 text-center text-muted-foreground">
+            <FileTextIcon className="size-8 opacity-30" />
+            <p>{t.noLeases}</p>
+            {canWrite && (
+              <Button size="sm" onClick={goToNewLease}>
+                <PlusIcon />
+                {t.newLease}
+              </Button>
+            )}
           </div>
         </div>
       ) : (
@@ -157,21 +205,40 @@ export function RenterDetailPage({ renterId, locale }: RenterDetailPageProps) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Apartment</TableHead>
-                <TableHead>Dates</TableHead>
-                <TableHead>Rent</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t.table.apartment}</TableHead>
+                <TableHead>{t.table.dates}</TableHead>
+                <TableHead>{t.table.rent}</TableHead>
+                <TableHead>{t.table.status}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {renter.leases.map((lease) => (
-                <TableRow key={lease.id}>
+                <TableRow
+                  key={lease.id}
+                  className="cursor-pointer hover:bg-muted/40"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() =>
+                    router.push(
+                      `/${locale}/dashboard/buildings/${lease.buildingId}/floors/${lease.floorId}/apartments/${lease.apartmentId}`,
+                    )
+                  }
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      router.push(
+                        `/${locale}/dashboard/buildings/${lease.buildingId}/floors/${lease.floorId}/apartments/${lease.apartmentId}`,
+                      );
+                    }
+                  }}
+                >
                   <TableCell>
                     <Link
                       href={`/${locale}/dashboard/buildings/${lease.buildingId}/floors/${lease.floorId}/apartments/${lease.apartmentId}`}
                       className="text-sm font-medium text-primary hover:underline"
+                      onClick={(e) => e.stopPropagation()}
                     >
-                      View apartment
+                      {t.viewApartment}
                     </Link>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
@@ -182,7 +249,10 @@ export function RenterDetailPage({ renterId, locale }: RenterDetailPageProps) {
                     {lease.rentAmount}
                   </TableCell>
                   <TableCell>
-                    <LeaseStatusBadge status={lease.effectiveStatus} />
+                    <LeaseStatusBadge
+                      status={lease.effectiveStatus}
+                      labels={dict.leases.status}
+                    />
                   </TableCell>
                 </TableRow>
               ))}

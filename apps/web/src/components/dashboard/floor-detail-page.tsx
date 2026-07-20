@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
@@ -64,17 +64,25 @@ import {
   useDeleteApartmentMutation,
 } from '@/store/api/endpoints/apartments.api';
 import type { ApartmentResponse, ApartmentStatus } from '@/types/api';
+import type { Dictionary } from '@/i18n/get-dictionary';
 
 // ── Status badge ───────────────────────────────────────────────────────────────
 
-const STATUS_LABELS: Record<ApartmentStatus, string> = {
-  vacant: 'Vacant',
-  occupied: 'Occupied',
-  maintenance: 'Maintenance',
-  unavailable: 'Unavailable',
-};
+/** Display order for the status select/badges (values are not user-facing). */
+const STATUS_VALUES: ApartmentStatus[] = [
+  'vacant',
+  'occupied',
+  'maintenance',
+  'unavailable',
+];
 
-function StatusBadge({ status }: { status: ApartmentStatus }) {
+function StatusBadge({
+  status,
+  labels,
+}: {
+  status: ApartmentStatus;
+  labels: Dictionary['buildings']['apartmentStatus'];
+}) {
   switch (status) {
     case 'occupied':
       return (
@@ -82,7 +90,7 @@ function StatusBadge({ status }: { status: ApartmentStatus }) {
           variant="default"
           className="bg-green-100 text-green-800 border-green-200"
         >
-          Occupied
+          {labels.occupied}
         </Badge>
       );
     case 'maintenance':
@@ -91,39 +99,45 @@ function StatusBadge({ status }: { status: ApartmentStatus }) {
           variant="outline"
           className="bg-amber-50 text-amber-800 border-amber-200"
         >
-          Maintenance
+          {labels.maintenance}
         </Badge>
       );
     case 'unavailable':
-      return <Badge variant="destructive">Unavailable</Badge>;
+      return <Badge variant="destructive">{labels.unavailable}</Badge>;
     case 'vacant':
     default:
-      return <Badge variant="secondary">Vacant</Badge>;
+      return <Badge variant="secondary">{labels.vacant}</Badge>;
   }
 }
 
 // ── Zod schema ───────────────────────────────────────────────────────────────
 
-const numericField = (label: string) =>
-  z
-    .string()
-    .refine((v) => v.trim() !== '' && !Number.isNaN(Number(v)), {
-      message: `${label} must be a number`,
-    })
-    .refine((v) => Number(v) >= 0, { message: `${label} cannot be negative` });
+function buildApartmentSchema(
+  errors: Dictionary['buildings']['floor']['errors'],
+) {
+  const numericField = (requiredMessage: string, negativeMessage: string) =>
+    z
+      .string()
+      .refine((v) => v.trim() !== '' && !Number.isNaN(Number(v)), {
+        message: requiredMessage,
+      })
+      .refine((v) => Number(v) >= 0, { message: negativeMessage });
 
-const apartmentSchema = z.object({
-  unitNumber: z.string().min(1, 'Unit number is required'),
-  bedrooms: numericField('Bedrooms').refine(
-    (v) => Number.isInteger(Number(v)),
-    { message: 'Bedrooms must be a whole number' },
-  ),
-  bathrooms: numericField('Bathrooms'),
-  sqft: z.string().optional(),
-  status: z.enum(['vacant', 'occupied', 'maintenance', 'unavailable']),
-  notes: z.string().optional(),
-});
-type ApartmentFormValues = z.infer<typeof apartmentSchema>;
+  return z.object({
+    unitNumber: z.string().min(1, errors.unitNumber),
+    bedrooms: numericField(
+      errors.bedroomsRequired,
+      errors.bedroomsNegative,
+    ).refine((v) => Number.isInteger(Number(v)), {
+      message: errors.bedroomsInteger,
+    }),
+    bathrooms: numericField(errors.bathroomsRequired, errors.bathroomsNegative),
+    sqft: z.string().optional(),
+    status: z.enum(['vacant', 'occupied', 'maintenance', 'unavailable']),
+    notes: z.string().optional(),
+  });
+}
+type ApartmentFormValues = z.infer<ReturnType<typeof buildApartmentSchema>>;
 
 const DEFAULT_VALUES: ApartmentFormValues = {
   unitNumber: '',
@@ -141,6 +155,7 @@ interface FloorDetailPageProps {
   floorId: string;
   canWrite: boolean;
   locale: string;
+  dict: Dictionary;
 }
 
 export function FloorDetailPage({
@@ -148,7 +163,11 @@ export function FloorDetailPage({
   floorId,
   canWrite,
   locale,
+  dict,
 }: FloorDetailPageProps) {
+  const t = dict.buildings.floor;
+  const shared = dict.buildings.shared;
+  const statusLabels = dict.buildings.apartmentStatus;
   const router = useRouter();
   const { data: building } = useGetBuildingQuery(buildingId);
   const { data: floor, isLoading: floorLoading } = useGetFloorQuery({
@@ -170,6 +189,8 @@ export function FloorDetailPage({
     null,
   );
 
+  const schema = useMemo(() => buildApartmentSchema(t.errors), [t.errors]);
+
   const {
     register: regCreate,
     handleSubmit: handleCreate,
@@ -177,7 +198,7 @@ export function FloorDetailPage({
     control: controlCreate,
     formState: { errors: createErrors },
   } = useForm<ApartmentFormValues>({
-    resolver: zodResolver(apartmentSchema),
+    resolver: zodResolver(schema),
     defaultValues: DEFAULT_VALUES,
   });
 
@@ -188,7 +209,7 @@ export function FloorDetailPage({
     control: controlEdit,
     formState: { errors: editErrors },
   } = useForm<ApartmentFormValues>({
-    resolver: zodResolver(apartmentSchema),
+    resolver: zodResolver(schema),
     defaultValues: DEFAULT_VALUES,
   });
 
@@ -210,12 +231,12 @@ export function FloorDetailPage({
         floorId,
         body: toBody(values),
       }).unwrap();
-      toast.success('Apartment created.');
+      toast.success(t.toasts.created);
       setCreateOpen(false);
       resetCreate(DEFAULT_VALUES);
     } catch (err: unknown) {
       const apiErr = err as { data?: { message?: string } };
-      toast.error(apiErr?.data?.message ?? 'Failed to create apartment.');
+      toast.error(apiErr?.data?.message ?? t.toasts.createError);
     }
   }
 
@@ -240,11 +261,11 @@ export function FloorDetailPage({
         apartmentId: editTarget.id,
         body: toBody(values),
       }).unwrap();
-      toast.success('Apartment updated.');
+      toast.success(t.toasts.updated);
       setEditTarget(null);
     } catch (err: unknown) {
       const apiErr = err as { data?: { message?: string } };
-      toast.error(apiErr?.data?.message ?? 'Failed to update apartment.');
+      toast.error(apiErr?.data?.message ?? t.toasts.updateError);
     }
   }
 
@@ -256,11 +277,11 @@ export function FloorDetailPage({
         floorId,
         apartmentId: deleteTarget.id,
       }).unwrap();
-      toast.success('Apartment deleted.');
+      toast.success(t.toasts.deleted);
       setDeleteTarget(null);
     } catch (err: unknown) {
       const apiErr = err as { data?: { message?: string } };
-      toast.error(apiErr?.data?.message ?? 'Failed to delete apartment.');
+      toast.error(apiErr?.data?.message ?? t.toasts.deleteError);
     }
   }
 
@@ -287,24 +308,26 @@ export function FloorDetailPage({
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground w-fit"
       >
         <ArrowLeftIcon className="size-3.5" />
-        {building?.name ?? 'Back to building'}
+        {building?.name ?? t.backToBuilding}
       </Link>
 
       <div>
         <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
           <Layers2Icon className="size-6 text-muted-foreground" />
-          {floor?.name ?? 'Floor'}
+          {floor?.name ?? t.titleFallback}
         </h1>
       </div>
 
       {/* Apartments section */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold tracking-tight">Apartments</h2>
+          <h2 className="text-lg font-semibold tracking-tight">
+            {t.apartmentsSection.title}
+          </h2>
           <p className="text-sm text-muted-foreground mt-0.5">
             {canWrite
-              ? 'Manage the apartments on this floor.'
-              : 'Apartments on this floor.'}
+              ? t.apartmentsSection.subtitleWrite
+              : t.apartmentsSection.subtitleReadOnly}
           </p>
         </div>
         {canWrite && (
@@ -315,7 +338,7 @@ export function FloorDetailPage({
             }}
           >
             <PlusIcon />
-            Add apartment
+            {t.addApartment}
           </Button>
         )}
       </div>
@@ -324,10 +347,10 @@ export function FloorDetailPage({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Unit Number</TableHead>
-              <TableHead>Bed/Bath</TableHead>
-              <TableHead>Sqft</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead>{t.table.unitNumber}</TableHead>
+              <TableHead>{t.table.bedBath}</TableHead>
+              <TableHead>{t.table.sqft}</TableHead>
+              <TableHead>{t.table.status}</TableHead>
               {canWrite && <TableHead className="w-10" />}
             </TableRow>
           </TableHeader>
@@ -359,7 +382,7 @@ export function FloorDetailPage({
                   className="text-center py-10 text-muted-foreground"
                 >
                   <DoorOpenIcon className="size-8 mx-auto mb-2 opacity-30" />
-                  No apartments yet.
+                  {canWrite ? t.emptyWrite : t.empty}
                 </TableCell>
               </TableRow>
             ) : (
@@ -383,13 +406,21 @@ export function FloorDetailPage({
                     </span>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {apartment.bedrooms} bd / {Number(apartment.bathrooms)} ba
+                    {t.bedBathValue
+                      .replace('{bedrooms}', String(apartment.bedrooms))
+                      .replace(
+                        '{bathrooms}',
+                        String(Number(apartment.bathrooms)),
+                      )}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {apartment.sqft ?? '—'}
                   </TableCell>
                   <TableCell>
-                    <StatusBadge status={apartment.status} />
+                    <StatusBadge
+                      status={apartment.status}
+                      labels={statusLabels}
+                    />
                   </TableCell>
                   {canWrite && (
                     <TableCell onClick={(e) => e.stopPropagation()}>
@@ -399,7 +430,7 @@ export function FloorDetailPage({
                             <Button
                               variant="ghost"
                               size="icon-sm"
-                              aria-label="Apartment actions"
+                              aria-label={t.actions.ariaLabel}
                             >
                               <MoreHorizontalIcon />
                             </Button>
@@ -410,11 +441,11 @@ export function FloorDetailPage({
                             onClick={() => goToApartment(apartment.id)}
                           >
                             <EyeIcon className="size-3.5 mr-1.5" />
-                            View
+                            {shared.view}
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => openEdit(apartment)}>
                             <PencilIcon className="size-3.5 mr-1.5" />
-                            Edit
+                            {dict.common.edit}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
@@ -422,7 +453,7 @@ export function FloorDetailPage({
                             onClick={() => setDeleteTarget(apartment)}
                           >
                             <TrashIcon className="size-3.5 mr-1.5" />
-                            Delete
+                            {dict.common.delete}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -439,7 +470,7 @@ export function FloorDetailPage({
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Add apartment</DialogTitle>
+            <DialogTitle>{t.createDialog.title}</DialogTitle>
           </DialogHeader>
           <form
             onSubmit={handleCreate(onCreateSubmit)}
@@ -450,6 +481,9 @@ export function FloorDetailPage({
               control={controlCreate}
               errors={createErrors}
               idPrefix="a"
+              t={t}
+              shared={shared}
+              statusLabels={statusLabels}
             />
             <DialogFooter>
               <DialogClose
@@ -459,10 +493,10 @@ export function FloorDetailPage({
                   resetCreate(DEFAULT_VALUES);
                 }}
               >
-                Cancel
+                {dict.common.cancel}
               </DialogClose>
               <Button type="submit" disabled={creating}>
-                {creating ? 'Creating…' : 'Create'}
+                {creating ? t.createDialog.creating : t.createDialog.create}
               </Button>
             </DialogFooter>
           </form>
@@ -478,7 +512,7 @@ export function FloorDetailPage({
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit apartment</DialogTitle>
+            <DialogTitle>{t.editDialog.title}</DialogTitle>
           </DialogHeader>
           <form
             onSubmit={handleEdit(onEditSubmit)}
@@ -489,16 +523,19 @@ export function FloorDetailPage({
               control={controlEdit}
               errors={editErrors}
               idPrefix="ae"
+              t={t}
+              shared={shared}
+              statusLabels={statusLabels}
             />
             <DialogFooter>
               <DialogClose
                 render={<Button variant="outline" type="button" />}
                 onClick={() => setEditTarget(null)}
               >
-                Cancel
+                {dict.common.cancel}
               </DialogClose>
               <Button type="submit" disabled={updating}>
-                {updating ? 'Saving…' : 'Save'}
+                {updating ? t.editDialog.saving : dict.common.save}
               </Button>
             </DialogFooter>
           </form>
@@ -514,15 +551,15 @@ export function FloorDetailPage({
       >
         <DialogContent className="sm:max-w-xs">
           <DialogHeader>
-            <DialogTitle>Delete apartment</DialogTitle>
+            <DialogTitle>{t.deleteDialog.title}</DialogTitle>
           </DialogHeader>
           <div className="py-1">
             <p className="text-sm text-muted-foreground">
-              Are you sure you want to delete unit{' '}
+              {t.deleteDialog.confirmPrefix}{' '}
               <span className="font-medium text-foreground">
                 {deleteTarget?.unitNumber}
               </span>
-              ? This action cannot be undone.
+              {t.deleteDialog.confirmSuffix}
             </p>
           </div>
           <DialogFooter>
@@ -530,14 +567,14 @@ export function FloorDetailPage({
               render={<Button variant="outline" type="button" />}
               onClick={() => setDeleteTarget(null)}
             >
-              Cancel
+              {dict.common.cancel}
             </DialogClose>
             <Button
               variant="destructive"
               onClick={handleDelete}
               disabled={deleting}
             >
-              {deleting ? 'Deleting…' : 'Delete'}
+              {deleting ? t.deleteDialog.deleting : dict.common.delete}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -553,6 +590,9 @@ function ApartmentFormFields({
   control,
   errors,
   idPrefix,
+  t,
+  shared,
+  statusLabels,
 }: {
   register: ReturnType<typeof useForm<ApartmentFormValues>>['register'];
   control: ReturnType<typeof useForm<ApartmentFormValues>>['control'];
@@ -560,16 +600,19 @@ function ApartmentFormFields({
     typeof useForm<ApartmentFormValues>
   >['formState']['errors'];
   idPrefix: string;
+  t: Dictionary['buildings']['floor'];
+  shared: Dictionary['buildings']['shared'];
+  statusLabels: Dictionary['buildings']['apartmentStatus'];
 }) {
   return (
     <>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={`${idPrefix}-unit`}>
-          Unit number <span className="text-destructive">*</span>
+          {t.form.unitNumber} <span className="text-destructive">*</span>
         </Label>
         <Input
           id={`${idPrefix}-unit`}
-          placeholder="101"
+          placeholder={t.form.unitNumberPlaceholder}
           aria-invalid={!!errors.unitNumber}
           {...register('unitNumber')}
         />
@@ -582,7 +625,7 @@ function ApartmentFormFields({
       <div className="grid grid-cols-2 gap-4">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor={`${idPrefix}-bedrooms`}>
-            Bedrooms <span className="text-destructive">*</span>
+            {t.form.bedrooms} <span className="text-destructive">*</span>
           </Label>
           <Input
             id={`${idPrefix}-bedrooms`}
@@ -599,7 +642,7 @@ function ApartmentFormFields({
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor={`${idPrefix}-bathrooms`}>
-            Bathrooms <span className="text-destructive">*</span>
+            {t.form.bathrooms} <span className="text-destructive">*</span>
           </Label>
           <Input
             id={`${idPrefix}-bathrooms`}
@@ -619,9 +662,9 @@ function ApartmentFormFields({
       <div className="grid grid-cols-2 gap-4">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor={`${idPrefix}-sqft`}>
-            Sqft{' '}
+            {t.form.sqft}{' '}
             <span className="text-muted-foreground font-normal">
-              (optional)
+              {shared.optional}
             </span>
           </Label>
           <Input
@@ -632,7 +675,7 @@ function ApartmentFormFields({
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor={`${idPrefix}-status`}>Status</Label>
+          <Label htmlFor={`${idPrefix}-status`}>{t.form.status}</Label>
           <Controller
             control={control}
             name="status"
@@ -642,16 +685,20 @@ function ApartmentFormFields({
                 onValueChange={(val) => field.onChange(val as ApartmentStatus)}
               >
                 <SelectTrigger id={`${idPrefix}-status`} className="w-full">
-                  <SelectValue placeholder="Select status" />
+                  <SelectValue>
+                    {(value: string | null) =>
+                      value
+                        ? (statusLabels[value as ApartmentStatus] ?? value)
+                        : t.form.selectStatus
+                    }
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {(Object.keys(STATUS_LABELS) as ApartmentStatus[]).map(
-                    (status) => (
-                      <SelectItem key={status} value={status}>
-                        {STATUS_LABELS[status]}
-                      </SelectItem>
-                    ),
-                  )}
+                  {STATUS_VALUES.map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {statusLabels[status]}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             )}
@@ -660,8 +707,10 @@ function ApartmentFormFields({
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={`${idPrefix}-notes`}>
-          Notes{' '}
-          <span className="text-muted-foreground font-normal">(optional)</span>
+          {t.form.notes}{' '}
+          <span className="text-muted-foreground font-normal">
+            {shared.optional}
+          </span>
         </Label>
         <Textarea id={`${idPrefix}-notes`} rows={2} {...register('notes')} />
       </div>

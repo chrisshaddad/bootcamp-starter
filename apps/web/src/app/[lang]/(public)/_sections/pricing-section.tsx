@@ -11,6 +11,7 @@ type Plan = {
   key: PlanKey;
   nameEn: string;
   nameAr: string;
+  price: number;
   buildings: number | null;
   users: number | null;
   highlighted?: boolean;
@@ -44,6 +45,7 @@ export function PricingSection({
     key: p.key,
     nameEn: p.displayName,
     nameAr: p.nameAr,
+    price: p.price,
     buildings: p.buildingsLimit,
     users: p.usersLimit,
     highlighted: p.highlighted,
@@ -210,7 +212,7 @@ export function PricingSection({
                         className="text-4xl font-extrabold tracking-tight"
                         style={{ color: '#F5F0E8' }}
                       >
-                        $20
+                        {`$${plan.price}`}
                       </span>
                       <span
                         className="mb-1.5 text-sm"

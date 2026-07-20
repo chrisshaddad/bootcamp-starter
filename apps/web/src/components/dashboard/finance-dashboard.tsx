@@ -1,20 +1,26 @@
 'use client';
 
-import { format, formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
 import { ar } from 'date-fns/locale';
-import { DollarSign } from 'lucide-react';
-import { useListPaymentsQuery } from '@/store/api/endpoints/payments.api';
-import { useListTimelineQuery } from '@/store/api/endpoints/timeline.api';
-import type { MeResponse } from '@/types/api';
-import { Badge } from '@/components/ui/badge';
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from '@/components/ui/card';
+  WalletIcon,
+  ReceiptTextIcon,
+  AlertTriangleIcon,
+  TrendingUpIcon,
+  TrendingDownIcon,
+} from 'lucide-react';
+import { useListTimelineQuery } from '@/store/api/endpoints/timeline.api';
+import {
+  useGetReportSummaryQuery,
+  useGetOverdueInvoicesQuery,
+} from '@/store/api/endpoints/reports.api';
+import { overdueOutstanding } from '@/lib/dashboard-kpis';
+import { KpiTile, useMoney } from '@/components/dashboard/kpi-tile';
+import type { MeResponse } from '@/types/api';
+import type { Dictionary } from '@/i18n/get-dictionary';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import Link from 'next/link';
 import {
   Table,
   TableBody,
@@ -27,6 +33,7 @@ import {
 interface FinanceDashboardProps {
   me: MeResponse | null;
   locale: string;
+  dict: Dictionary;
 }
 
 function humanizeAction(action: string): string {
@@ -34,192 +41,160 @@ function humanizeAction(action: string): string {
   return humanized.charAt(0).toUpperCase() + humanized.slice(1);
 }
 
-export function FinanceDashboard({ me, locale }: FinanceDashboardProps) {
+const OVERDUE_PREVIEW = 6;
+
+export function FinanceDashboard({ me, locale, dict }: FinanceDashboardProps) {
+  const t = dict.dashboard;
+  const k = t.kpi;
+  const r = dict.reports;
+  const money = useMoney(locale);
   const dateLocale = locale === 'ar' ? ar : undefined;
+  const base = `/${locale}/dashboard`;
 
-  const { data: paymentsData, isLoading: paymentsLoading } =
-    useListPaymentsQuery();
+  const { data: summary, isLoading: summaryLoading } = useGetReportSummaryQuery();
+  const { data: overdue, isLoading: overdueLoading } =
+    useGetOverdueInvoicesQuery();
   const { data: timelineData, isLoading: timelineLoading } =
-    useListTimelineQuery({ limit: 10 });
+    useListTimelineQuery({ limit: 5 });
 
-  const payments = paymentsData?.data ?? [];
   const timelineEvents = (timelineData?.data ?? []).slice(0, 5);
-
-  const now = new Date();
-  const currentMonth = now.getMonth();
-  const currentYear = now.getFullYear();
-
-  const paidThisMonth = payments.filter((row) => {
-    if (row.status !== 'PAID') return false;
-    const d = new Date(row.paidAt ?? row.createdAt);
-    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-  });
-
-  const totalPaidThisMonth = paidThisMonth.reduce(
-    (sum, row) => sum + parseFloat(row.amount),
-    0,
-  );
-
-  const firstPaidCurrency =
-    paidThisMonth[0]?.currency ?? payments[0]?.currency ?? 'USD';
-
-  const formattedTotalPaid = totalPaidThisMonth.toLocaleString(
-    locale === 'ar' ? 'ar-SA' : 'en-US',
-    { style: 'currency', currency: firstPaidCurrency.toUpperCase() },
-  );
-
-  function getStatusBadge(status: string) {
-    switch (status) {
-      case 'PAID':
-        return (
-          <Badge
-            variant="default"
-            className="bg-green-100 text-green-800 border-green-200"
-          >
-            Paid
-          </Badge>
-        );
-      case 'PENDING':
-        return (
-          <Badge
-            variant="outline"
-            className="bg-yellow-50 text-yellow-800 border-yellow-200"
-          >
-            Pending
-          </Badge>
-        );
-      case 'FAILED':
-        return <Badge variant="destructive">Failed</Badge>;
-      case 'REFUNDED':
-        return <Badge variant="secondary">Refunded</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
-  }
+  const overdueTotal = overdueOutstanding(overdue);
+  const overdueCount = overdue?.length ?? 0;
+  const netMtd = summary ? Number(summary.mtdNet) : 0;
+  const overduePreview = (overdue ?? []).slice(0, OVERDUE_PREVIEW);
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Payments & Finance</CardTitle>
-          <CardDescription>{me?.org?.name}</CardDescription>
-        </CardHeader>
-      </Card>
-
-      <div className="grid grid-cols-2 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">
-              Total Paid This Month
-            </p>
-            {paymentsLoading ? (
-              <Skeleton className="h-7 w-32 mt-1" />
-            ) : (
-              <p className="text-2xl font-semibold mt-1">
-                {formattedTotalPaid}
-              </p>
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Total Payments</p>
-            {paymentsLoading ? (
-              <Skeleton className="h-7 w-16 mt-1" />
-            ) : (
-              <p className="text-2xl font-semibold mt-1">
-                {paymentsData?.total ?? payments.length}
-              </p>
-            )}
-          </CardContent>
-        </Card>
+    <div className="flex flex-col gap-8">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">
+          {t.paymentsFinance}
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {me?.org?.name ? `${me.org.name} · ` : ''}
+          {k.financeOverview}
+        </p>
       </div>
 
-      <Card>
-        <CardContent className="pt-6">
-          {paymentsLoading ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Invoice</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {Array.from({ length: 4 }).map((_, i) => (
+      {/* KPI row — live from reports + overdue */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <KpiTile
+          label={k.incomeMtd}
+          value={summary ? money.format(Number(summary.mtdIncome)) : k.noData}
+          icon={<WalletIcon className="size-4" />}
+          href={`${base}/invoices`}
+          loading={summaryLoading}
+        />
+        <KpiTile
+          label={k.expensesMtd}
+          value={summary ? money.format(Number(summary.mtdExpenses)) : k.noData}
+          icon={<ReceiptTextIcon className="size-4" />}
+          href={`${base}/expenses`}
+          loading={summaryLoading}
+        />
+        <KpiTile
+          label={k.netMtd}
+          value={summary ? money.format(netMtd) : k.noData}
+          tone={netMtd >= 0 ? 'positive' : 'negative'}
+          icon={
+            netMtd >= 0 ? (
+              <TrendingUpIcon className="size-4" />
+            ) : (
+              <TrendingDownIcon className="size-4" />
+            )
+          }
+          href={`${base}/reports`}
+          loading={summaryLoading}
+        />
+        <KpiTile
+          label={k.overdue}
+          value={money.format(overdueTotal)}
+          tone={overdueTotal > 0 ? 'negative' : 'neutral'}
+          hint={`${overdueCount} ${k.invoicesPastDue}`}
+          icon={<AlertTriangleIcon className="size-4" />}
+          href={`${base}/invoices`}
+          loading={overdueLoading}
+        />
+      </div>
+
+      {/* Overdue invoices preview */}
+      <section className="flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <AlertTriangleIcon className="size-4 text-amber-600" />
+            <h2 className="text-lg font-semibold tracking-tight">
+              {r.overdue.title}
+            </h2>
+          </div>
+          <Button variant="outline" size="sm" render={<Link href={`${base}/reports`} />}>
+            {k.viewAll}
+          </Button>
+        </div>
+        <div className="overflow-hidden rounded-xl border bg-card">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{r.overdue.unit}</TableHead>
+                <TableHead>{r.overdue.renter}</TableHead>
+                <TableHead>{r.overdue.dueDate}</TableHead>
+                <TableHead className="text-end">{r.overdue.balance}</TableHead>
+                <TableHead className="text-end">
+                  {r.overdue.daysOverdue}
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {overdueLoading ? (
+                [...Array(3)].map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell>
-                      <Skeleton className="h-4 w-full" />
+                    {[...Array(5)].map((__, j) => (
+                      <TableCell key={j}>
+                        <Skeleton className="h-4 w-16" />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : overduePreview.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={5}
+                    className="py-10 text-center text-muted-foreground"
+                  >
+                    {r.overdue.empty}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                overduePreview.map((row) => (
+                  <TableRow key={row.invoiceId}>
+                    <TableCell className="font-medium">
+                      {row.unitNumber}
                     </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-full" />
+                    <TableCell className="text-muted-foreground">
+                      {row.renterName}
                     </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-full" />
+                    <TableCell className="text-muted-foreground">
+                      {new Date(row.dueDate).toLocaleDateString(
+                        locale === 'ar' ? 'ar' : 'en',
+                      )}
                     </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-full" />
+                    <TableCell className="text-end tabular-nums font-medium text-red-600">
+                      {money.format(Number(row.balance))}
+                    </TableCell>
+                    <TableCell className="text-end tabular-nums">
+                      {row.daysOverdue}
                     </TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : payments.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 gap-3">
-              <DollarSign className="h-10 w-10 text-muted-foreground/40" />
-              <p className="text-sm text-muted-foreground">
-                No payments recorded yet.
-              </p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Invoice</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {payments.map((row) => {
-                  const invoiceDisplay = row.stripeInvoiceId
-                    ? row.stripeInvoiceId.length > 12
-                      ? row.stripeInvoiceId.slice(0, 12) + '…'
-                      : row.stripeInvoiceId
-                    : '—';
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </section>
 
-                  const formattedAmount = parseFloat(row.amount).toLocaleString(
-                    locale === 'ar' ? 'ar-SA' : 'en-US',
-                    { style: 'currency', currency: row.currency.toUpperCase() },
-                  );
-
-                  return (
-                    <TableRow key={row.id}>
-                      <TableCell>
-                        {format(new Date(row.createdAt), 'MMM d, yyyy', {
-                          locale: dateLocale,
-                        })}
-                      </TableCell>
-                      <TableCell>{formattedAmount}</TableCell>
-                      <TableCell>{getStatusBadge(row.status)}</TableCell>
-                      <TableCell className="font-mono text-xs text-muted-foreground">
-                        {invoiceDisplay}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-
-      <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-          Recent Activity
+      {/* Recent activity */}
+      <div className="flex flex-col gap-3">
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          {t.recentActivity}
         </h3>
         {timelineLoading ? (
           <div className="space-y-2">
@@ -232,16 +207,16 @@ export function FinanceDashboard({ me, locale }: FinanceDashboardProps) {
             ))}
           </div>
         ) : timelineEvents.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No activity yet.</p>
+          <p className="text-sm text-muted-foreground">{t.noActivity}</p>
         ) : (
           <div className="space-y-2">
             {timelineEvents.map((event) => (
               <div
                 key={event.id}
-                className="flex items-start justify-between gap-4 py-2 border-b border-border/50 last:border-0"
+                className="flex items-start justify-between gap-4 border-b border-border/50 py-2 last:border-0"
               >
                 <p className="text-sm">{humanizeAction(event.action)}</p>
-                <p className="text-xs text-muted-foreground shrink-0">
+                <p className="shrink-0 text-xs text-muted-foreground">
                   {formatDistanceToNow(new Date(event.createdAt), {
                     addSuffix: true,
                     locale: dateLocale,

@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -55,17 +56,22 @@ import {
 } from '@/store/api/endpoints/buildings.api';
 import { useListUsersQuery } from '@/store/api/endpoints/users.api';
 import type { BuildingResponse, AssignableRole } from '@/types/api';
+import type { Dictionary } from '@/i18n/get-dictionary';
 
 // ── Zod schemas ───────────────────────────────────────────────────────────────
 
-const buildingSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  address: z.string().optional(),
-  code: z.string().optional(),
-  notes: z.string().optional(),
-});
+function buildBuildingSchema(
+  errors: Dictionary['buildings']['list']['errors'],
+) {
+  return z.object({
+    name: z.string().min(1, errors.name),
+    address: z.string().optional(),
+    code: z.string().optional(),
+    notes: z.string().optional(),
+  });
+}
 
-type BuildingFormValues = z.infer<typeof buildingSchema>;
+type BuildingFormValues = z.infer<ReturnType<typeof buildBuildingSchema>>;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -78,9 +84,13 @@ interface BuildingsPageProps {
   /** When false (non-admin), hide all write actions. */
   canWrite: boolean;
   locale: string;
+  dict: Dictionary;
 }
 
-export function BuildingsPage({ canWrite, locale }: BuildingsPageProps) {
+export function BuildingsPage({ canWrite, locale, dict }: BuildingsPageProps) {
+  const t = dict.buildings.list;
+  const shared = dict.buildings.shared;
+  const router = useRouter();
   const { data: buildings, isLoading } = useListBuildingsQuery();
   const { data: allUsers } = useListUsersQuery();
   const [createBuilding, { isLoading: creating }] = useCreateBuildingMutation();
@@ -100,6 +110,8 @@ export function BuildingsPage({ canWrite, locale }: BuildingsPageProps) {
   );
   const [assignedUserIds, setAssignedUserIds] = useState<string[]>([]);
 
+  const schema = useMemo(() => buildBuildingSchema(t.errors), [t.errors]);
+
   // ── Create form ────────────────────────────────────────────────────────────
 
   const {
@@ -108,7 +120,7 @@ export function BuildingsPage({ canWrite, locale }: BuildingsPageProps) {
     reset: resetCreate,
     formState: { errors: createErrors },
   } = useForm<BuildingFormValues>({
-    resolver: zodResolver(buildingSchema),
+    resolver: zodResolver(schema),
   });
 
   const {
@@ -117,7 +129,7 @@ export function BuildingsPage({ canWrite, locale }: BuildingsPageProps) {
     reset: resetEdit,
     formState: { errors: editErrors },
   } = useForm<BuildingFormValues>({
-    resolver: zodResolver(buildingSchema),
+    resolver: zodResolver(schema),
   });
 
   async function onCreateSubmit(values: BuildingFormValues) {
@@ -128,17 +140,15 @@ export function BuildingsPage({ canWrite, locale }: BuildingsPageProps) {
         code: values.code || undefined,
         notes: values.notes || undefined,
       }).unwrap();
-      toast.success('Building created.');
+      toast.success(t.toasts.created);
       setCreateOpen(false);
       resetCreate();
     } catch (err: unknown) {
       const apiErr = err as { data?: { code?: string } };
       if (apiErr?.data?.code === 'BUILDINGS_LIMIT_REACHED') {
-        toast.error(
-          'Building limit reached for your plan. Upgrade to add more.',
-        );
+        toast.error(t.toasts.createLimitReached);
       } else {
-        toast.error('Failed to create building. Please try again.');
+        toast.error(t.toasts.createError);
       }
     }
   }
@@ -165,10 +175,10 @@ export function BuildingsPage({ canWrite, locale }: BuildingsPageProps) {
           notes: values.notes || undefined,
         },
       }).unwrap();
-      toast.success('Building updated.');
+      toast.success(t.toasts.updated);
       setEditTarget(null);
     } catch {
-      toast.error('Failed to update building.');
+      toast.error(t.toasts.updateError);
     }
   }
 
@@ -176,10 +186,10 @@ export function BuildingsPage({ canWrite, locale }: BuildingsPageProps) {
     if (!deleteTarget) return;
     try {
       await deleteBuilding(deleteTarget.id).unwrap();
-      toast.success('Building deleted.');
+      toast.success(t.toasts.deleted);
       setDeleteTarget(null);
     } catch {
-      toast.error('Failed to delete building.');
+      toast.error(t.toasts.deleteError);
     }
   }
 
@@ -203,10 +213,10 @@ export function BuildingsPage({ canWrite, locale }: BuildingsPageProps) {
         id: assignTarget.id,
         body: { userIds: assignedUserIds },
       }).unwrap();
-      toast.success('Staff assignments updated.');
+      toast.success(t.toasts.assignmentsUpdated);
       setAssignTarget(null);
     } catch {
-      toast.error('Failed to update assignments.');
+      toast.error(t.toasts.assignmentsError);
     }
   }
 
@@ -215,6 +225,10 @@ export function BuildingsPage({ canWrite, locale }: BuildingsPageProps) {
     (ASSIGNABLE as string[]).includes(m.role),
   );
 
+  function goToBuilding(buildingId: string) {
+    router.push(`/${locale}/dashboard/buildings/${buildingId}`);
+  }
+
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
@@ -222,11 +236,9 @@ export function BuildingsPage({ canWrite, locale }: BuildingsPageProps) {
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Buildings</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{t.title}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {canWrite
-              ? "Create and manage your organization's buildings."
-              : 'Buildings in your organization.'}
+            {canWrite ? t.subtitleWrite : t.subtitleReadOnly}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -236,13 +248,13 @@ export function BuildingsPage({ canWrite, locale }: BuildingsPageProps) {
               className="gap-1.5 text-xs text-muted-foreground"
             >
               <EyeIcon className="size-3" />
-              Read-only
+              {shared.readOnly}
             </Badge>
           )}
           {canWrite && (
             <Button onClick={() => setCreateOpen(true)}>
               <PlusIcon />
-              Add building
+              {t.addBuilding}
             </Button>
           )}
         </div>
@@ -253,10 +265,10 @@ export function BuildingsPage({ canWrite, locale }: BuildingsPageProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Building</TableHead>
-              <TableHead>Code</TableHead>
-              <TableHead>Address</TableHead>
-              <TableHead>Assigned staff</TableHead>
+              <TableHead>{t.table.building}</TableHead>
+              <TableHead>{t.table.code}</TableHead>
+              <TableHead>{t.table.address}</TableHead>
+              <TableHead>{t.table.assignedStaff}</TableHead>
               {canWrite && <TableHead className="w-10" />}
             </TableRow>
           </TableHeader>
@@ -288,14 +300,24 @@ export function BuildingsPage({ canWrite, locale }: BuildingsPageProps) {
                   className="text-center py-10 text-muted-foreground"
                 >
                   <Building2Icon className="size-8 mx-auto mb-2 opacity-30" />
-                  {canWrite
-                    ? 'No buildings yet. Create your first building.'
-                    : 'No buildings are assigned to you yet.'}
+                  {canWrite ? t.emptyWrite : t.empty}
                 </TableCell>
               </TableRow>
             ) : (
               buildings?.map((building) => (
-                <TableRow key={building.id}>
+                <TableRow
+                  key={building.id}
+                  className="cursor-pointer hover:bg-muted/40"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => goToBuilding(building.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      goToBuilding(building.id);
+                    }
+                  }}
+                >
                   <TableCell>
                     <span className="font-medium text-sm">{building.name}</span>
                   </TableCell>
@@ -318,14 +340,14 @@ export function BuildingsPage({ canWrite, locale }: BuildingsPageProps) {
                     </span>
                   </TableCell>
                   {canWrite && (
-                    <TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger
                           render={
                             <Button
                               variant="ghost"
                               size="icon-sm"
-                              aria-label="Building actions"
+                              aria-label={t.actions.ariaLabel}
                             >
                               <MoreHorizontalIcon />
                             </Button>
@@ -340,17 +362,17 @@ export function BuildingsPage({ canWrite, locale }: BuildingsPageProps) {
                             }
                           >
                             <EyeIcon className="size-3.5 mr-1.5" />
-                            View
+                            {shared.view}
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => openEdit(building)}>
                             <PencilIcon className="size-3.5 mr-1.5" />
-                            Edit
+                            {dict.common.edit}
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => openAssign(building)}
                           >
                             <UsersIcon className="size-3.5 mr-1.5" />
-                            Assign staff
+                            {t.actions.assignStaff}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
@@ -358,7 +380,7 @@ export function BuildingsPage({ canWrite, locale }: BuildingsPageProps) {
                             onClick={() => setDeleteTarget(building)}
                           >
                             <TrashIcon className="size-3.5 mr-1.5" />
-                            Delete
+                            {dict.common.delete}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -375,7 +397,7 @@ export function BuildingsPage({ canWrite, locale }: BuildingsPageProps) {
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Add building</DialogTitle>
+            <DialogTitle>{t.createDialog.title}</DialogTitle>
           </DialogHeader>
           <form
             onSubmit={handleCreate(onCreateSubmit)}
@@ -383,11 +405,12 @@ export function BuildingsPage({ canWrite, locale }: BuildingsPageProps) {
           >
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="b-name">
-                Name <span className="text-destructive">*</span>
+                {t.createDialog.name}{' '}
+                <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="b-name"
-                placeholder="Main Tower"
+                placeholder={t.createDialog.namePlaceholder}
                 aria-invalid={!!createErrors.name}
                 {...regCreate('name')}
               />
@@ -399,36 +422,40 @@ export function BuildingsPage({ canWrite, locale }: BuildingsPageProps) {
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="b-code">
-                Code{' '}
+                {t.createDialog.code}{' '}
                 <span className="text-muted-foreground font-normal">
-                  (optional)
+                  {shared.optional}
                 </span>
               </Label>
-              <Input id="b-code" placeholder="BLD-01" {...regCreate('code')} />
+              <Input
+                id="b-code"
+                placeholder={t.createDialog.codePlaceholder}
+                {...regCreate('code')}
+              />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="b-address">
-                Address{' '}
+                {t.createDialog.address}{' '}
                 <span className="text-muted-foreground font-normal">
-                  (optional)
+                  {shared.optional}
                 </span>
               </Label>
               <Input
                 id="b-address"
-                placeholder="123 Main St, Dubai"
+                placeholder={t.createDialog.addressPlaceholder}
                 {...regCreate('address')}
               />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="b-notes">
-                Notes{' '}
+                {t.createDialog.notes}{' '}
                 <span className="text-muted-foreground font-normal">
-                  (optional)
+                  {shared.optional}
                 </span>
               </Label>
               <Textarea
                 id="b-notes"
-                placeholder="Any notes…"
+                placeholder={t.createDialog.notesPlaceholder}
                 rows={2}
                 {...regCreate('notes')}
               />
@@ -441,10 +468,10 @@ export function BuildingsPage({ canWrite, locale }: BuildingsPageProps) {
                   resetCreate();
                 }}
               >
-                Cancel
+                {dict.common.cancel}
               </DialogClose>
               <Button type="submit" disabled={creating}>
-                {creating ? 'Creating…' : 'Create'}
+                {creating ? t.createDialog.creating : t.createDialog.create}
               </Button>
             </DialogFooter>
           </form>
@@ -460,7 +487,7 @@ export function BuildingsPage({ canWrite, locale }: BuildingsPageProps) {
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit building</DialogTitle>
+            <DialogTitle>{t.editDialog.title}</DialogTitle>
           </DialogHeader>
           <form
             onSubmit={handleEdit(onEditSubmit)}
@@ -468,7 +495,7 @@ export function BuildingsPage({ canWrite, locale }: BuildingsPageProps) {
           >
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="be-name">
-                Name <span className="text-destructive">*</span>
+                {t.editDialog.name} <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="be-name"
@@ -482,15 +509,15 @@ export function BuildingsPage({ canWrite, locale }: BuildingsPageProps) {
               )}
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="be-code">Code</Label>
+              <Label htmlFor="be-code">{t.editDialog.code}</Label>
               <Input id="be-code" {...regEdit('code')} />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="be-address">Address</Label>
+              <Label htmlFor="be-address">{t.editDialog.address}</Label>
               <Input id="be-address" {...regEdit('address')} />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="be-notes">Notes</Label>
+              <Label htmlFor="be-notes">{t.editDialog.notes}</Label>
               <Textarea id="be-notes" rows={2} {...regEdit('notes')} />
             </div>
             <DialogFooter>
@@ -498,10 +525,10 @@ export function BuildingsPage({ canWrite, locale }: BuildingsPageProps) {
                 render={<Button variant="outline" type="button" />}
                 onClick={() => setEditTarget(null)}
               >
-                Cancel
+                {dict.common.cancel}
               </DialogClose>
               <Button type="submit" disabled={updating}>
-                {updating ? 'Saving…' : 'Save'}
+                {updating ? t.editDialog.saving : dict.common.save}
               </Button>
             </DialogFooter>
           </form>
@@ -517,15 +544,15 @@ export function BuildingsPage({ canWrite, locale }: BuildingsPageProps) {
       >
         <DialogContent className="sm:max-w-xs">
           <DialogHeader>
-            <DialogTitle>Delete building</DialogTitle>
+            <DialogTitle>{t.deleteDialog.title}</DialogTitle>
           </DialogHeader>
           <div className="py-1">
             <p className="text-sm text-muted-foreground">
-              Are you sure you want to delete{' '}
+              {t.deleteDialog.confirmPrefix}{' '}
               <span className="font-medium text-foreground">
                 {deleteTarget?.name}
               </span>
-              ? This action cannot be undone.
+              {t.deleteDialog.confirmSuffix}
             </p>
           </div>
           <DialogFooter>
@@ -533,14 +560,14 @@ export function BuildingsPage({ canWrite, locale }: BuildingsPageProps) {
               render={<Button variant="outline" type="button" />}
               onClick={() => setDeleteTarget(null)}
             >
-              Cancel
+              {dict.common.cancel}
             </DialogClose>
             <Button
               variant="destructive"
               onClick={handleDelete}
               disabled={deleting}
             >
-              {deleting ? 'Deleting…' : 'Delete'}
+              {deleting ? t.deleteDialog.deleting : dict.common.delete}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -555,17 +582,17 @@ export function BuildingsPage({ canWrite, locale }: BuildingsPageProps) {
       >
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Assign staff to {assignTarget?.name}</DialogTitle>
+            <DialogTitle>
+              {t.assignDialog.title.replace('{name}', assignTarget?.name ?? '')}
+            </DialogTitle>
           </DialogHeader>
           <div className="flex flex-col gap-3 py-1">
             <p className="text-sm text-muted-foreground">
-              Select supervisors and maintenance staff to assign to this
-              building.
+              {t.assignDialog.description}
             </p>
             {assignableUsers.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No supervisor or maintenance staff found. Create staff members
-                first.
+                {t.assignDialog.noStaff}
               </p>
             ) : (
               <div className="rounded-md border bg-muted/30 divide-y max-h-56 overflow-y-auto">
@@ -606,10 +633,10 @@ export function BuildingsPage({ canWrite, locale }: BuildingsPageProps) {
               render={<Button variant="outline" type="button" />}
               onClick={() => setAssignTarget(null)}
             >
-              Cancel
+              {dict.common.cancel}
             </DialogClose>
             <Button onClick={handleSaveAssignments} disabled={assigning}>
-              {assigning ? 'Saving…' : 'Save'}
+              {assigning ? t.assignDialog.saving : dict.common.save}
             </Button>
           </DialogFooter>
         </DialogContent>

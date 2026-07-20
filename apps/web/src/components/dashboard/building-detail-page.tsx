@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -54,29 +54,38 @@ import {
   useDeleteFloorMutation,
 } from '@/store/api/endpoints/floors.api';
 import type { FloorResponse } from '@/types/api';
+import type { Dictionary } from '@/i18n/get-dictionary';
 
 // ── Zod schemas ───────────────────────────────────────────────────────────────
 
-const createFloorSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  notes: z.string().optional(),
-});
-type CreateFloorFormValues = z.infer<typeof createFloorSchema>;
+function buildCreateFloorSchema(
+  errors: Dictionary['buildings']['detail']['errors'],
+) {
+  return z.object({
+    name: z.string().min(1, errors.name),
+    notes: z.string().optional(),
+  });
+}
+type CreateFloorFormValues = z.infer<ReturnType<typeof buildCreateFloorSchema>>;
 
-const editFloorSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  order: z
-    .string()
-    .refine((v) => v.trim() !== '' && !Number.isNaN(Number(v)), {
-      message: 'Order must be a number',
-    })
-    .refine((v) => Number.isInteger(Number(v)), {
-      message: 'Order must be a whole number',
-    })
-    .refine((v) => Number(v) >= 0, { message: 'Order cannot be negative' }),
-  notes: z.string().optional(),
-});
-type EditFloorFormValues = z.infer<typeof editFloorSchema>;
+function buildEditFloorSchema(
+  errors: Dictionary['buildings']['detail']['errors'],
+) {
+  return z.object({
+    name: z.string().min(1, errors.name),
+    order: z
+      .string()
+      .refine((v) => v.trim() !== '' && !Number.isNaN(Number(v)), {
+        message: errors.orderRequired,
+      })
+      .refine((v) => Number.isInteger(Number(v)), {
+        message: errors.orderInteger,
+      })
+      .refine((v) => Number(v) >= 0, { message: errors.orderNegative }),
+    notes: z.string().optional(),
+  });
+}
+type EditFloorFormValues = z.infer<ReturnType<typeof buildEditFloorSchema>>;
 
 // ── Main component ────────────────────────────────────────────────────────────
 
@@ -84,13 +93,17 @@ interface BuildingDetailPageProps {
   buildingId: string;
   canWrite: boolean;
   locale: string;
+  dict: Dictionary;
 }
 
 export function BuildingDetailPage({
   buildingId,
   canWrite,
   locale,
+  dict,
 }: BuildingDetailPageProps) {
+  const t = dict.buildings.detail;
+  const shared = dict.buildings.shared;
   const router = useRouter();
   const { data: building, isLoading: buildingLoading } =
     useGetBuildingQuery(buildingId);
@@ -104,13 +117,19 @@ export function BuildingDetailPage({
   const [editTarget, setEditTarget] = useState<FloorResponse | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<FloorResponse | null>(null);
 
+  const createSchema = useMemo(
+    () => buildCreateFloorSchema(t.errors),
+    [t.errors],
+  );
+  const editSchema = useMemo(() => buildEditFloorSchema(t.errors), [t.errors]);
+
   const {
     register: regCreate,
     handleSubmit: handleCreate,
     reset: resetCreate,
     formState: { errors: createErrors },
   } = useForm<CreateFloorFormValues>({
-    resolver: zodResolver(createFloorSchema),
+    resolver: zodResolver(createSchema),
   });
 
   const {
@@ -119,7 +138,7 @@ export function BuildingDetailPage({
     reset: resetEdit,
     formState: { errors: editErrors },
   } = useForm<EditFloorFormValues>({
-    resolver: zodResolver(editFloorSchema),
+    resolver: zodResolver(editSchema),
   });
 
   function goToFloor(floorId: string) {
@@ -134,12 +153,12 @@ export function BuildingDetailPage({
         buildingId,
         body: { name: values.name, notes: values.notes || undefined },
       }).unwrap();
-      toast.success('Floor created.');
+      toast.success(t.toasts.created);
       setCreateOpen(false);
       resetCreate();
     } catch (err: unknown) {
       const apiErr = err as { data?: { message?: string } };
-      toast.error(apiErr?.data?.message ?? 'Failed to create floor.');
+      toast.error(apiErr?.data?.message ?? t.toasts.createError);
     }
   }
 
@@ -164,11 +183,11 @@ export function BuildingDetailPage({
           notes: values.notes || undefined,
         },
       }).unwrap();
-      toast.success('Floor updated.');
+      toast.success(t.toasts.updated);
       setEditTarget(null);
     } catch (err: unknown) {
       const apiErr = err as { data?: { message?: string } };
-      toast.error(apiErr?.data?.message ?? 'Failed to update floor.');
+      toast.error(apiErr?.data?.message ?? t.toasts.updateError);
     }
   }
 
@@ -176,11 +195,11 @@ export function BuildingDetailPage({
     if (!deleteTarget) return;
     try {
       await deleteFloor({ buildingId, floorId: deleteTarget.id }).unwrap();
-      toast.success('Floor deleted.');
+      toast.success(t.toasts.deleted);
       setDeleteTarget(null);
     } catch (err: unknown) {
       const apiErr = err as { data?: { message?: string } };
-      toast.error(apiErr?.data?.message ?? 'Failed to delete floor.');
+      toast.error(apiErr?.data?.message ?? t.toasts.deleteError);
     }
   }
 
@@ -201,21 +220,21 @@ export function BuildingDetailPage({
       <div>
         <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
           <Building2Icon className="size-6 text-muted-foreground" />
-          {building?.name ?? 'Building'}
+          {building?.name ?? t.fallbackTitle}
         </h1>
       </div>
 
       <div className="rounded-xl border bg-card p-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
         <div className="flex flex-col gap-1">
-          <p className="text-xs text-muted-foreground">Code</p>
+          <p className="text-xs text-muted-foreground">{t.info.codeLabel}</p>
           <p className="text-sm font-mono">{building?.code ?? '—'}</p>
         </div>
         <div className="flex flex-col gap-1">
-          <p className="text-xs text-muted-foreground">Address</p>
+          <p className="text-xs text-muted-foreground">{t.info.addressLabel}</p>
           <p className="text-sm">{building?.address ?? '—'}</p>
         </div>
         <div className="flex flex-col gap-1 sm:col-span-2">
-          <p className="text-xs text-muted-foreground">Notes</p>
+          <p className="text-xs text-muted-foreground">{t.info.notesLabel}</p>
           <p className="text-sm whitespace-pre-wrap">
             {building?.notes ?? '—'}
           </p>
@@ -225,17 +244,19 @@ export function BuildingDetailPage({
       {/* Floors section */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold tracking-tight">Floors</h2>
+          <h2 className="text-lg font-semibold tracking-tight">
+            {t.floorsSection.title}
+          </h2>
           <p className="text-sm text-muted-foreground mt-0.5">
             {canWrite
-              ? 'Manage this building’s floors.'
-              : 'Floors in this building.'}
+              ? t.floorsSection.subtitleWrite
+              : t.floorsSection.subtitleReadOnly}
           </p>
         </div>
         {canWrite ? (
           <Button onClick={() => setCreateOpen(true)}>
             <PlusIcon />
-            Add floor
+            {t.addFloor}
           </Button>
         ) : (
           <Badge
@@ -243,7 +264,7 @@ export function BuildingDetailPage({
             className="gap-1.5 text-xs text-muted-foreground"
           >
             <EyeIcon className="size-3" />
-            Read-only
+            {shared.readOnly}
           </Badge>
         )}
       </div>
@@ -252,10 +273,10 @@ export function BuildingDetailPage({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Order</TableHead>
-              <TableHead>Notes</TableHead>
-              <TableHead>Apartment count</TableHead>
+              <TableHead>{t.table.name}</TableHead>
+              <TableHead>{t.table.order}</TableHead>
+              <TableHead>{t.table.notes}</TableHead>
+              <TableHead>{t.table.apartmentCount}</TableHead>
               {canWrite && <TableHead className="w-10" />}
             </TableRow>
           </TableHeader>
@@ -287,7 +308,7 @@ export function BuildingDetailPage({
                   className="text-center py-10 text-muted-foreground"
                 >
                   <Layers2Icon className="size-8 mx-auto mb-2 opacity-30" />
-                  No floors yet.
+                  {canWrite ? t.emptyWrite : t.empty}
                 </TableCell>
               </TableRow>
             ) : (
@@ -325,7 +346,7 @@ export function BuildingDetailPage({
                             <Button
                               variant="ghost"
                               size="icon-sm"
-                              aria-label="Floor actions"
+                              aria-label={t.actions.ariaLabel}
                             >
                               <MoreHorizontalIcon />
                             </Button>
@@ -334,11 +355,11 @@ export function BuildingDetailPage({
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => goToFloor(floor.id)}>
                             <EyeIcon className="size-3.5 mr-1.5" />
-                            View
+                            {shared.view}
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => openEdit(floor)}>
                             <PencilIcon className="size-3.5 mr-1.5" />
-                            Edit
+                            {dict.common.edit}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
@@ -346,7 +367,7 @@ export function BuildingDetailPage({
                             onClick={() => setDeleteTarget(floor)}
                           >
                             <TrashIcon className="size-3.5 mr-1.5" />
-                            Delete
+                            {dict.common.delete}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -363,7 +384,7 @@ export function BuildingDetailPage({
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Add floor</DialogTitle>
+            <DialogTitle>{t.createDialog.title}</DialogTitle>
           </DialogHeader>
           <form
             onSubmit={handleCreate(onCreateSubmit)}
@@ -371,11 +392,12 @@ export function BuildingDetailPage({
           >
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="f-name">
-                Name <span className="text-destructive">*</span>
+                {t.createDialog.name}{' '}
+                <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="f-name"
-                placeholder="2nd Floor"
+                placeholder={t.createDialog.namePlaceholder}
                 aria-invalid={!!createErrors.name}
                 {...regCreate('name')}
               />
@@ -387,14 +409,14 @@ export function BuildingDetailPage({
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="f-notes">
-                Notes{' '}
+                {t.createDialog.notes}{' '}
                 <span className="text-muted-foreground font-normal">
-                  (optional)
+                  {shared.optional}
                 </span>
               </Label>
               <Textarea
                 id="f-notes"
-                placeholder="Any notes…"
+                placeholder={t.createDialog.notesPlaceholder}
                 rows={2}
                 {...regCreate('notes')}
               />
@@ -407,10 +429,10 @@ export function BuildingDetailPage({
                   resetCreate();
                 }}
               >
-                Cancel
+                {dict.common.cancel}
               </DialogClose>
               <Button type="submit" disabled={creating}>
-                {creating ? 'Creating…' : 'Create'}
+                {creating ? t.createDialog.creating : t.createDialog.create}
               </Button>
             </DialogFooter>
           </form>
@@ -426,7 +448,7 @@ export function BuildingDetailPage({
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit floor</DialogTitle>
+            <DialogTitle>{t.editDialog.title}</DialogTitle>
           </DialogHeader>
           <form
             onSubmit={handleEdit(onEditSubmit)}
@@ -434,7 +456,7 @@ export function BuildingDetailPage({
           >
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="fe-name">
-                Name <span className="text-destructive">*</span>
+                {t.editDialog.name} <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="fe-name"
@@ -448,7 +470,7 @@ export function BuildingDetailPage({
               )}
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="fe-order">Order</Label>
+              <Label htmlFor="fe-order">{t.editDialog.order}</Label>
               <Input
                 id="fe-order"
                 type="number"
@@ -463,7 +485,7 @@ export function BuildingDetailPage({
               )}
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="fe-notes">Notes</Label>
+              <Label htmlFor="fe-notes">{t.editDialog.notes}</Label>
               <Textarea id="fe-notes" rows={2} {...regEdit('notes')} />
             </div>
             <DialogFooter>
@@ -471,10 +493,10 @@ export function BuildingDetailPage({
                 render={<Button variant="outline" type="button" />}
                 onClick={() => setEditTarget(null)}
               >
-                Cancel
+                {dict.common.cancel}
               </DialogClose>
               <Button type="submit" disabled={updating}>
-                {updating ? 'Saving…' : 'Save'}
+                {updating ? t.editDialog.saving : dict.common.save}
               </Button>
             </DialogFooter>
           </form>
@@ -490,15 +512,15 @@ export function BuildingDetailPage({
       >
         <DialogContent className="sm:max-w-xs">
           <DialogHeader>
-            <DialogTitle>Delete floor</DialogTitle>
+            <DialogTitle>{t.deleteDialog.title}</DialogTitle>
           </DialogHeader>
           <div className="py-1">
             <p className="text-sm text-muted-foreground">
-              Are you sure you want to delete{' '}
+              {t.deleteDialog.confirmPrefix}{' '}
               <span className="font-medium text-foreground">
                 {deleteTarget?.name}
               </span>
-              ? This action cannot be undone.
+              {t.deleteDialog.confirmSuffix}
             </p>
           </div>
           <DialogFooter>
@@ -506,14 +528,14 @@ export function BuildingDetailPage({
               render={<Button variant="outline" type="button" />}
               onClick={() => setDeleteTarget(null)}
             >
-              Cancel
+              {dict.common.cancel}
             </DialogClose>
             <Button
               variant="destructive"
               onClick={handleDelete}
               disabled={deleting}
             >
-              {deleting ? 'Deleting…' : 'Delete'}
+              {deleting ? t.deleteDialog.deleting : dict.common.delete}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -31,4 +31,13 @@ export class CreateRenterDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @ApiPropertyOptional({
+    description:
+      "Keycloak `sub` of the tenant user to link, enabling their self-service portal. Pass null to unlink.",
+    nullable: true,
+  })
+  @IsOptional()
+  @IsString()
+  renterUserId?: string | null;
 }

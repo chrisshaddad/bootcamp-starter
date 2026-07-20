@@ -24,6 +24,9 @@ describe('LeasesService', () => {
       lease?: Partial<Record<string, jest.Mock>>;
       apartment?: Partial<Record<string, jest.Mock>>;
       renter?: Partial<Record<string, jest.Mock>>;
+      invoice?: Partial<Record<string, jest.Mock>>;
+      building?: Partial<Record<string, jest.Mock>>;
+      floor?: Partial<Record<string, jest.Mock>>;
       buildingAccess?: Partial<Record<string, jest.Mock>>;
     } = {},
   ) {
@@ -44,12 +47,26 @@ describe('LeasesService', () => {
           floorId,
           status: 'vacant',
         }),
+        findMany: jest.fn().mockResolvedValue([]),
         update: jest.fn().mockResolvedValue({}),
         ...overrides.apartment,
       },
       renter: {
         findFirst: jest.fn().mockResolvedValue({ id: renterId, orgId }),
+        findMany: jest.fn().mockResolvedValue([]),
         ...overrides.renter,
+      },
+      invoice: {
+        count: jest.fn().mockResolvedValue(0),
+        ...overrides.invoice,
+      },
+      building: {
+        findMany: jest.fn().mockResolvedValue([]),
+        ...overrides.building,
+      },
+      floor: {
+        findMany: jest.fn().mockResolvedValue([]),
+        ...overrides.floor,
       },
     };
     prisma.$transaction = jest.fn(async (cb: (tx: unknown) => unknown) =>
@@ -320,6 +337,25 @@ describe('LeasesService', () => {
         expect.objectContaining({ action: 'lease.deleted' }),
       );
     });
+
+    it('rejects deletion when an Invoice references the lease', async () => {
+      const { service, prisma } = makeService({
+        lease: { findFirst: jest.fn().mockResolvedValue(leaseRow()) },
+        invoice: { count: jest.fn().mockResolvedValue(1) },
+      });
+
+      await expect(
+        service.remove(
+          orgId,
+          actorId,
+          buildingId,
+          floorId,
+          apartmentId,
+          'lease-1',
+        ),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(prisma.lease.delete).not.toHaveBeenCalled();
+    });
   });
 
   describe('findAll', () => {
@@ -531,6 +567,111 @@ describe('LeasesService', () => {
           renewDto,
         ),
       ).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe('findAllForOrg', () => {
+    it('returns all org leases enriched with display names for org_admin', async () => {
+      const { service, prisma, buildingAccess } = makeService({
+        lease: { findMany: jest.fn().mockResolvedValue([leaseRow()]) },
+        building: {
+          findMany: jest
+            .fn()
+            .mockResolvedValue([{ id: buildingId, name: 'Tower A' }]),
+        },
+        floor: {
+          findMany: jest
+            .fn()
+            .mockResolvedValue([{ id: floorId, name: 'Floor 1' }]),
+        },
+        apartment: {
+          findMany: jest
+            .fn()
+            .mockResolvedValue([{ id: apartmentId, unitNumber: '101' }]),
+        },
+        renter: {
+          findMany: jest
+            .fn()
+            .mockResolvedValue([{ id: renterId, fullName: 'Jane Doe' }]),
+        },
+        buildingAccess: {
+          getAllowedBuildingIds: jest.fn().mockResolvedValue(null),
+        },
+      });
+
+      const result = await service.findAllForOrg(
+        orgId,
+        'caller-1',
+        Role.ORG_ADMIN,
+      );
+
+      expect(buildingAccess.getAllowedBuildingIds).toHaveBeenCalledWith(
+        orgId,
+        'caller-1',
+        Role.ORG_ADMIN,
+      );
+      expect(prisma.lease.findMany).toHaveBeenCalledWith({
+        where: { orgId },
+        orderBy: { startDate: 'desc' },
+      });
+      expect(result.data).toEqual([
+        expect.objectContaining({
+          id: 'lease-1',
+          buildingName: 'Tower A',
+          floorName: 'Floor 1',
+          unitNumber: '101',
+          renterName: 'Jane Doe',
+        }),
+      ]);
+    });
+
+    it('constrains supervisor to their assigned buildings', async () => {
+      const { service, prisma, buildingAccess } = makeService({
+        lease: { findMany: jest.fn().mockResolvedValue([]) },
+        buildingAccess: {
+          getAllowedBuildingIds: jest.fn().mockResolvedValue(['building-2']),
+        },
+      });
+
+      await service.findAllForOrg(orgId, 'caller-1', Role.SUPERVISOR);
+
+      expect(buildingAccess.getAllowedBuildingIds).toHaveBeenCalledWith(
+        orgId,
+        'caller-1',
+        Role.SUPERVISOR,
+      );
+      expect(prisma.lease.findMany).toHaveBeenCalledWith({
+        where: { orgId, buildingId: { in: ['building-2'] } },
+        orderBy: { startDate: 'desc' },
+      });
+    });
+
+    it('falls back to empty strings when a related record is missing', async () => {
+      const { service } = makeService({
+        lease: { findMany: jest.fn().mockResolvedValue([leaseRow()]) },
+        building: { findMany: jest.fn().mockResolvedValue([]) },
+        floor: { findMany: jest.fn().mockResolvedValue([]) },
+        apartment: { findMany: jest.fn().mockResolvedValue([]) },
+        renter: { findMany: jest.fn().mockResolvedValue([]) },
+        buildingAccess: {
+          getAllowedBuildingIds: jest.fn().mockResolvedValue(null),
+        },
+      });
+
+      const result = await service.findAllForOrg(
+        orgId,
+        'caller-1',
+        Role.ORG_ADMIN,
+      );
+
+      expect(result.data).toEqual([
+        expect.objectContaining({
+          buildingName: '',
+          floorName: '',
+          unitNumber: '',
+          renterName: '',
+        }),
+      ]);
     });
   });
 });

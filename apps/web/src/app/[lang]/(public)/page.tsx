@@ -142,7 +142,7 @@ export default async function LandingPage({
             className="text-xs mt-1"
             style={{ color: 'rgba(245,240,232,0.2)' }}
           >
-            &copy; {new Date().getFullYear()} Forward Mena.{' '}
+            &copy; {new Date().getFullYear()} {dict.app.name}.{' '}
             {isAr ? 'جميع الحقوق محفوظة.' : 'All rights reserved.'}
           </span>
         </div>

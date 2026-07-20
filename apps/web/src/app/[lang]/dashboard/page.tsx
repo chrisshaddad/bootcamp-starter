@@ -1,6 +1,7 @@
 import { requireSession, requireActiveOrg } from '@/auth/guards';
 import { normalizeRole } from '@/auth/roles';
 import { isLocale } from '@/i18n/config';
+import { getDictionary } from '@/i18n/get-dictionary';
 import { serverEnv } from '@/lib/env';
 import { SessionRefresher } from '@/components/auth/session-refresher';
 import { OrgAdminDashboard } from '@/components/dashboard/org-admin-dashboard';
@@ -31,6 +32,7 @@ export default async function DashboardPage({
 }) {
   const { lang } = await params;
   const locale = isLocale(lang) ? lang : 'en';
+  const dict = await getDictionary(locale);
 
   const session = await requireSession({ locale });
   const token = session.accessToken;
@@ -65,16 +67,16 @@ export default async function DashboardPage({
 
   function renderDashboard() {
     if (role === 'org_admin') {
-      return <OrgAdminDashboard me={me} locale={locale} />;
+      return <OrgAdminDashboard me={me} locale={locale} dict={dict} />;
     }
     if (role === 'finance') {
-      return <FinanceDashboard me={me} locale={locale} />;
+      return <FinanceDashboard me={me} locale={locale} dict={dict} />;
     }
     if (role === 'supervisor' || role === 'maintenance') {
-      return <StaffDashboard me={me} locale={locale} role={role} />;
+      return <StaffDashboard me={me} locale={locale} role={role} dict={dict} />;
     }
     if (role === 'tenant') {
-      return <TenantDashboard me={me} locale={locale} />;
+      return <TenantDashboard me={me} locale={locale} dict={dict} />;
     }
     return (
       <DefaultDashboard me={me} locale={locale} role={role ?? 'unknown'} />
