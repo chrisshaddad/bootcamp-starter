@@ -36,17 +36,17 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  PENDING: 'bg-yellow-100 text-yellow-800',
-  ACTIVE: 'bg-green-100 text-green-800',
-  REJECTED: 'bg-red-100 text-red-800',
+  PENDING: 'bg-warning/15 text-warning-dark',
+  ACTIVE: 'bg-success/15 text-success',
+  REJECTED: 'bg-error/15 text-error',
   SUSPENDED: 'bg-orange/15 text-orange',
-  INACTIVE: 'bg-gray-100 text-gray-800',
+  INACTIVE: 'bg-muted text-muted-foreground',
 };
 
 function StatusBadge({ status }: { status: string }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[status] || 'bg-gray-100 text-gray-800'}`}
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[status] || 'bg-muted text-muted-foreground'}`}
     >
       {STATUS_LABELS[status] || status}
     </span>
@@ -56,9 +56,11 @@ function StatusBadge({ status }: { status: string }) {
 function ForbiddenPage() {
   return (
     <div className="flex flex-col items-center justify-center py-20">
-      <ShieldX className="h-16 w-16 text-red-400 mb-4" />
-      <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
-      <p className="text-gray-500 text-center max-w-md">
+      <ShieldX className="h-16 w-16 text-error mb-4" />
+      <h1 className="text-2xl font-bold text-foreground mb-2">
+        Access Denied
+      </h1>
+      <p className="text-muted-foreground text-center max-w-md">
         You don&apos;t have permission to access this page. Only Super Admins
         can manage gyms.
       </p>
@@ -112,8 +114,8 @@ export default function GymsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Gyms</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-foreground">Gyms</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Manage gym registrations and approvals
           </p>
         </div>
@@ -146,7 +148,7 @@ export default function GymsPage() {
             <Building2 className="h-5 w-5" />
             Gyms
             {total !== undefined && (
-              <span className="text-sm font-normal text-gray-500">
+              <span className="text-sm font-normal text-muted-foreground">
                 ({total} total)
               </span>
             )}
@@ -160,11 +162,13 @@ export default function GymsPage() {
               ))}
             </div>
           ) : error ? (
-            <div className="py-10 text-center text-red-500">
+            <div className="py-10 text-center text-error">
               Failed to load gyms
             </div>
           ) : !gyms?.length ? (
-            <div className="py-10 text-center text-gray-500">No gyms found</div>
+            <div className="py-10 text-center text-muted-foreground">
+              No gyms found
+            </div>
           ) : (
             <Table>
               <TableHeader>
@@ -185,11 +189,11 @@ export default function GymsPage() {
                   >
                     <TableCell>
                       <div>
-                        <div className="font-medium text-gray-900">
+                        <div className="font-medium text-foreground">
                           {gym.name}
                         </div>
                         {gym.website && (
-                          <div className="text-sm text-gray-500">
+                          <div className="text-sm text-muted-foreground">
                             {gym.website}
                           </div>
                         )}
@@ -200,18 +204,18 @@ export default function GymsPage() {
                     </TableCell>
                     <TableCell>
                       <div>
-                        <div className="text-sm text-gray-900">
+                        <div className="text-sm text-foreground">
                           {gym.createdBy.name}
                         </div>
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-muted-foreground">
                           {gym.createdBy.email}
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="text-gray-600">
+                    <TableCell className="text-muted-foreground">
                       {gym._count.users}
                     </TableCell>
-                    <TableCell className="text-gray-500 text-sm">
+                    <TableCell className="text-muted-foreground text-sm">
                       {new Date(gym.createdAt).toLocaleDateString()}
                     </TableCell>
                   </TableRow>
@@ -220,8 +224,8 @@ export default function GymsPage() {
             </Table>
           )}
           {!gymsLoading && !error && total !== undefined && totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-gray-100 pt-4 mt-2">
-              <p className="text-sm text-gray-500">
+            <div className="flex items-center justify-between border-t border-border pt-4 mt-2">
+              <p className="text-sm text-muted-foreground">
                 Showing {(page - 1) * 20 + 1}–{Math.min(page * 20, total)} of{' '}
                 {total}
               </p>
@@ -234,7 +238,7 @@ export default function GymsPage() {
                 >
                   Previous
                 </Button>
-                <span className="text-sm text-gray-600">
+                <span className="text-sm text-muted-foreground">
                   Page {page} of {totalPages}
                 </span>
                 <Button

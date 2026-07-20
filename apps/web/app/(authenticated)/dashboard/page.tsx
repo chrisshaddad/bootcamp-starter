@@ -79,7 +79,7 @@ function ListDialog({
         </DialogHeader>
         <div className="-mx-6 min-h-0 flex-1 overflow-y-auto overscroll-contain px-6">
           {itemCount === 0 ? (
-            <p className="py-6 text-center text-sm text-gray-400">
+            <p className="py-6 text-center text-sm text-muted-foreground">
               {emptyMessage}
             </p>
           ) : (
@@ -106,16 +106,16 @@ function StatCard({
   color?: string;
 }) {
   return (
-    <Card className="border-gray-200 bg-white shadow-sm">
+    <Card>
       <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-sm font-medium text-gray-500">
+        <CardTitle className="text-sm font-medium text-muted-foreground">
           {label}
         </CardTitle>
         <Icon className={`h-5 w-5 ${color}`} />
       </CardHeader>
       <CardContent>
-        <p className="text-3xl font-extrabold text-gray-900">{value}</p>
-        {sub && <p className="mt-1 text-xs text-gray-400">{sub}</p>}
+        <p className="text-3xl font-extrabold text-foreground">{value}</p>
+        {sub && <p className="mt-1 text-xs text-muted-foreground">{sub}</p>}
       </CardContent>
     </Card>
   );
@@ -129,16 +129,16 @@ function ActiveMembersCard({
   items: { memberId: string; memberName: string }[];
 }) {
   return (
-    <Card className="border-gray-200 bg-white shadow-sm">
+    <Card>
       <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-sm font-medium text-gray-500">
+        <CardTitle className="text-sm font-medium text-muted-foreground">
           Active Members
         </CardTitle>
-        <UserCheck className="h-5 w-5 text-green-600" />
+        <UserCheck className="h-5 w-5 text-success" />
       </CardHeader>
       <CardContent>
-        <p className="text-3xl font-extrabold text-gray-900">{count}</p>
-        <p className="mt-1 text-xs text-gray-400">
+        <p className="text-3xl font-extrabold text-foreground">{count}</p>
+        <p className="mt-1 text-xs text-muted-foreground">
           With an active subscription
         </p>
         {items.length > 0 && (
@@ -153,7 +153,7 @@ function ActiveMembersCard({
               {items.map((item) => (
                 <li
                   key={item.memberId}
-                  className="flex items-center rounded-md bg-green-50 px-2 py-1.5 text-xs font-medium wrap-break-word text-gray-800"
+                  className="flex items-center rounded-md bg-success/10 px-2 py-1.5 text-xs font-medium wrap-break-word text-foreground"
                 >
                   {item.memberName}
                 </li>
@@ -181,54 +181,56 @@ function CapacityCard({
   const isFull = pct !== null && pct >= 100;
 
   return (
-    <Card className="border-gray-200 bg-white shadow-sm">
+    <Card>
       <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-sm font-medium text-gray-500">
+        <CardTitle className="text-sm font-medium text-muted-foreground">
           Live Capacity
         </CardTitle>
         <Building2
-          className={`h-5 w-5 ${isFull ? 'text-red-500' : isNearFull ? 'text-amber-500' : 'text-primary-base'}`}
+          className={`h-5 w-5 ${isFull ? 'text-destructive' : isNearFull ? 'text-warning-dark' : 'text-primary-base'}`}
         />
       </CardHeader>
       <CardContent>
         <div className="flex items-baseline gap-1.5">
-          <span className="text-3xl font-extrabold text-gray-900">
+          <span className="text-3xl font-extrabold text-foreground">
             {current}
           </span>
           {max !== null && (
-            <span className="text-lg font-medium text-gray-400">/ {max}</span>
+            <span className="text-lg font-medium text-muted-foreground">
+              / {max}
+            </span>
           )}
         </div>
         {max !== null && pct !== null ? (
           <div className="mt-3">
-            <div className="h-2 w-full rounded-full bg-gray-100">
+            <div className="h-2 w-full rounded-full bg-muted">
               <div
                 className={`h-2 rounded-full transition-all ${
                   isFull
-                    ? 'bg-red-500'
+                    ? 'bg-destructive'
                     : isNearFull
-                      ? 'bg-amber-500'
+                      ? 'bg-warning-dark'
                       : 'bg-primary-base'
                 }`}
                 style={{ width: `${pct}%` }}
               />
             </div>
-            <p className="mt-1 text-xs text-gray-400">
+            <p className="mt-1 text-xs text-muted-foreground">
               {pct}% capacity used
               {isFull && (
-                <span className="ml-1 font-semibold text-red-600">
-                  — Gym is full!
+                <span className="ml-1 font-semibold text-destructive">
+                  . Gym is full!
                 </span>
               )}
               {isNearFull && !isFull && (
-                <span className="ml-1 font-semibold text-amber-600">
-                  — Near capacity
+                <span className="ml-1 font-semibold text-warning-dark">
+                  . Near capacity
                 </span>
               )}
             </p>
           </div>
         ) : (
-          <p className="mt-2 text-xs text-gray-400">
+          <p className="mt-2 text-xs text-muted-foreground">
             No capacity limit set.{' '}
             <button
               type="button"
@@ -258,18 +260,18 @@ function ExpiringSoonCard({
   }[];
 }) {
   return (
-    <Card className="border-gray-200 bg-white shadow-sm">
+    <Card>
       <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-sm font-medium text-gray-500">
+        <CardTitle className="text-sm font-medium text-muted-foreground">
           Expiring Soon
         </CardTitle>
         <AlertTriangle
-          className={`h-5 w-5 ${count > 0 ? 'text-amber-500' : 'text-gray-300'}`}
+          className={`h-5 w-5 ${count > 0 ? 'text-warning-dark' : 'text-muted-foreground/40'}`}
         />
       </CardHeader>
       <CardContent>
-        <p className="text-3xl font-extrabold text-gray-900">{count}</p>
-        <p className="mt-1 text-xs text-gray-400">
+        <p className="text-3xl font-extrabold text-foreground">{count}</p>
+        <p className="mt-1 text-xs text-muted-foreground">
           subscriptions expiring in 30 days
         </p>
         {items.length > 0 && (
@@ -289,17 +291,17 @@ function ExpiringSoonCard({
                 return (
                   <li
                     key={item.subscriptionId}
-                    className="flex items-center justify-between gap-2 rounded-md bg-amber-50 px-2 py-1.5 text-xs"
+                    className="flex items-center justify-between gap-2 rounded-md bg-warning/10 px-2 py-1.5 text-xs"
                   >
-                    <span className="min-w-0 wrap-break-word font-medium text-gray-800">
+                    <span className="min-w-0 wrap-break-word font-medium text-foreground">
                       {item.memberName}
                     </span>
                     <span
-                      className={`shrink-0 font-semibold ${daysLeft <= 7 ? 'text-red-600' : 'text-amber-700'}`}
+                      className={`shrink-0 font-semibold ${daysLeft <= 7 ? 'text-destructive' : 'text-warning-dark'}`}
                     >
                       {daysLeft <= 0
                         ? 'Expires today'
-                        : `${daysLeft}d left — ${format(new Date(item.endDate), 'MMM d')}`}
+                        : `${daysLeft}d left, ${format(new Date(item.endDate), 'MMM d')}`}
                     </span>
                   </li>
                 );
@@ -340,18 +342,18 @@ function SettingsPanel({
   };
 
   return (
-    <Card className="border-primary-base bg-primary-100/10 shadow-sm">
+    <Card className="border-primary-base bg-primary-100/10">
       <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2 text-sm font-semibold text-gray-800">
+        <CardTitle className="flex items-center gap-2 text-sm font-semibold text-foreground">
           <Settings className="h-4 w-4 text-primary-base" />
-          Gym Settings — Max Capacity
+          Gym Settings: Max Capacity
         </CardTitle>
       </CardHeader>
       <CardContent className="flex items-end gap-3">
         <div className="flex-1">
           <label
             htmlFor="maxCapacity"
-            className="mb-1 block text-xs font-medium text-gray-600"
+            className="mb-1 block text-xs font-medium text-muted-foreground"
           >
             Maximum building capacity (leave blank for no limit)
           </label>
@@ -367,7 +369,7 @@ function SettingsPanel({
               if (raw !== '' && parseInt(raw, 10) < 0) return;
               setValue(raw);
             }}
-            className="w-full border-gray-300"
+            className="w-full"
           />
         </div>
         <Button
@@ -413,7 +415,7 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-foreground">
             Welcome back,{' '}
             {user?.profile?.firstName ||
               user?.name ||
@@ -421,7 +423,7 @@ export default function DashboardPage() {
               'Manager'}
             !
           </h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-muted-foreground">
             Here&apos;s what&apos;s happening at your gym today.
           </p>
         </div>
@@ -429,7 +431,7 @@ export default function DashboardPage() {
           variant="outline"
           size="sm"
           onClick={() => setShowSettings((p) => !p)}
-          className="flex items-center gap-2 border-gray-200 text-gray-600 hover:border-primary-base hover:text-primary-base"
+          className="flex items-center gap-2 text-muted-foreground hover:text-primary"
         >
           <Settings className="h-4 w-4" />
           Manage Max Capacity

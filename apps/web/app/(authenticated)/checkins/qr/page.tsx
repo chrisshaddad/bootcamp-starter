@@ -71,25 +71,21 @@ export default function QrCheckInPage() {
     : 0;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-between p-6 md:p-12 relative overflow-hidden">
-      {/* Background ambient glows */}
-      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-violet-600/10 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-cyan-600/10 blur-[120px] pointer-events-none" />
-
+    <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-between p-6 md:p-12 relative overflow-hidden">
       {/* Header */}
       <div className="w-full max-w-5xl flex items-center justify-between z-10">
         <Link href="/checkins">
           <Button
             variant="ghost"
-            className="text-slate-400 hover:text-white hover:bg-slate-900 gap-2"
+            className="text-muted-foreground hover:text-foreground gap-2"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Check-ins
           </Button>
         </Link>
         <div className="flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+          <span className="h-2 w-2 rounded-full bg-success animate-pulse" />
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Kiosk Mode Active
           </span>
         </div>
@@ -98,40 +94,40 @@ export default function QrCheckInPage() {
       {/* Main Kiosk Area */}
       <div className="w-full max-w-md flex flex-col items-center gap-6 my-auto z-10">
         <div className="text-center space-y-2">
-          <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-violet-400 via-indigo-300 to-cyan-400 bg-clip-text text-transparent">
+          <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-foreground">
             Self Check-In
           </h1>
-          <p className="text-sm text-slate-400 max-w-sm">
+          <p className="text-sm text-muted-foreground max-w-sm">
             Scan the QR code below with your phone&apos;s camera to check into
             the gym.
           </p>
         </div>
 
         {/* QR Display Card */}
-        <div className="relative group w-full">
-          {/* Card Border glow */}
-          <div className="absolute -inset-0.5 bg-gradient-to-r from-violet-600 to-cyan-500 rounded-2xl blur opacity-30 group-hover:opacity-40 transition duration-1000" />
-
-          <Card className="relative bg-slate-900/90 border-slate-800 backdrop-blur-xl rounded-2xl overflow-hidden shadow-2xl">
+        <div className="relative w-full">
+          <Card className="relative bg-card border-border rounded-2xl overflow-hidden shadow-2xl">
             <CardContent className="flex flex-col items-center p-8 space-y-6">
-              {/* QR Image Container */}
-              <div className="relative p-4 bg-white rounded-xl shadow-inner border border-slate-700/50 flex items-center justify-center w-72 h-72">
+              {/* QR Image Container — deliberately fixed white, regardless of
+                  theme: it must match the white background baked into the
+                  generated QR PNG (see color.light below) for the code to
+                  stay scannable. */}
+              <div className="relative p-4 bg-white rounded-xl shadow-inner border border-border flex items-center justify-center w-72 h-72">
                 {!qrCodeDataUrl || (isLoading && !error) ? (
                   <div className="flex flex-col items-center justify-center space-y-3 text-slate-800">
-                    <RefreshCw className="h-8 w-8 animate-spin text-indigo-600" />
+                    <RefreshCw className="h-8 w-8 animate-spin text-primary-base" />
                     <span className="text-xs font-medium text-slate-500">
                       Generating Secure Key...
                     </span>
                   </div>
                 ) : error ? (
-                  <div className="text-center text-rose-500 p-4">
+                  <div className="text-center text-error p-4">
                     <span className="text-sm font-semibold">
                       Failed to fetch token
                     </span>
                     <Button
                       size="sm"
                       onClick={handleManualRefresh}
-                      className="mt-2 block mx-auto bg-slate-900 text-white"
+                      className="mt-2 block mx-auto bg-primary-base text-white hover:bg-primary-base/90"
                     >
                       Retry
                     </Button>
@@ -148,14 +144,14 @@ export default function QrCheckInPage() {
                 )}
 
                 {/* Overlaid Countdown */}
-                <div className="absolute bottom-2 right-2 bg-slate-950/90 border border-slate-800 text-white px-2 py-1 rounded-md text-[10px] font-mono tracking-wider flex items-center gap-1.5 shadow-md">
+                <div className="absolute bottom-2 right-2 bg-background/90 border border-border text-foreground px-2 py-1 rounded-md text-[10px] font-mono tracking-wider flex items-center gap-1.5 shadow-md">
                   <div className="relative w-2.5 h-2.5">
                     <svg className="w-full h-full transform -rotate-90">
                       <circle
                         cx="5"
                         cy="5"
                         r="4"
-                        stroke="#334155"
+                        stroke="var(--border)"
                         strokeWidth="1.5"
                         fill="transparent"
                       />
@@ -163,7 +159,7 @@ export default function QrCheckInPage() {
                         cx="5"
                         cy="5"
                         r="4"
-                        stroke="#8b5cf6"
+                        stroke="var(--primary)"
                         strokeWidth="1.5"
                         fill="transparent"
                         strokeDasharray={2 * Math.PI * 4}
@@ -176,15 +172,15 @@ export default function QrCheckInPage() {
               </div>
 
               {/* Secure Token Info */}
-              <div className="w-full flex items-center justify-between text-xs text-slate-400 border-t border-slate-800/80 pt-4">
+              <div className="w-full flex items-center justify-between text-xs text-muted-foreground border-t border-border pt-4">
                 <div className="flex items-center gap-1.5">
-                  <ShieldCheck className="h-4 w-4 text-emerald-400" />
+                  <ShieldCheck className="h-4 w-4 text-success" />
                   <span>Dynamic Security Key</span>
                 </div>
                 <button
                   onClick={handleManualRefresh}
                   disabled={isLoading}
-                  className="hover:text-white transition-colors flex items-center gap-1"
+                  className="hover:text-foreground transition-colors flex items-center gap-1"
                 >
                   <RefreshCw
                     className={`h-3 w-3 ${isLoading ? 'animate-spin' : ''}`}
@@ -198,23 +194,25 @@ export default function QrCheckInPage() {
 
         {/* Live occupancy status inside the kiosk */}
         {stats && (
-          <div className="w-full bg-slate-900/40 border border-slate-800/60 rounded-xl p-4 flex items-center justify-between text-sm">
+          <div className="w-full bg-muted/40 border border-border rounded-xl p-4 flex items-center justify-between text-sm">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-violet-500/10 rounded-lg text-violet-400">
+              <div className="p-2 bg-primary/10 rounded-lg text-primary-base">
                 <Users className="h-4 w-4" />
               </div>
               <div>
-                <p className="text-slate-400 text-xs">Current Occupancy</p>
-                <p className="font-bold text-white">
+                <p className="text-muted-foreground text-xs">
+                  Current Occupancy
+                </p>
+                <p className="font-bold text-foreground">
                   {stats.currentOccupancy} / {stats.maxCapacity || '∞'}
                 </p>
               </div>
             </div>
             {stats.maxCapacity && (
-              <div className="w-24 bg-slate-800 h-2 rounded-full overflow-hidden">
+              <div className="w-24 bg-muted h-2 rounded-full overflow-hidden">
                 <div
                   className={`h-full transition-all duration-500 ${
-                    occupancyPercent > 85 ? 'bg-rose-500' : 'bg-violet-500'
+                    occupancyPercent > 85 ? 'bg-error' : 'bg-primary-base'
                   }`}
                   style={{ width: `${occupancyPercent}%` }}
                 />
@@ -225,7 +223,7 @@ export default function QrCheckInPage() {
       </div>
 
       {/* Footer */}
-      <div className="w-full max-w-5xl text-center text-xs text-slate-500 z-10 mt-6 border-t border-slate-900 pt-6">
+      <div className="w-full max-w-5xl text-center text-xs text-muted-foreground z-10 mt-6 border-t border-border pt-6">
         <p className="flex items-center justify-center gap-1.5">
           <QrCode className="h-3 w-3" />
           <span>Codes auto-refresh every 15 seconds for your protection.</span>

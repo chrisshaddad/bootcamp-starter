@@ -150,54 +150,57 @@ a {
 }
 
 :root {
-  --radius: 0.625rem;
+  --radius: 0.5rem;
 
-  /* Light Theme - Updated with Humanline Design System */
-  --background: #ffffff;
-  --foreground: #111827;
+  /* Light Theme - Boutique-premium gym palette (garnet on warm neutral) */
+  --background: #faf9f7;
+  --foreground: #161514;
   --card: #ffffff;
-  --card-foreground: #111827;
+  --card-foreground: #161514;
   --popover: #ffffff;
-  --popover-foreground: #111827;
-  --primary: #27a376;
+  --popover-foreground: #161514;
+  --primary: #a9332d;
   --primary-foreground: #ffffff;
-  --secondary: #ffd023;
-  --secondary-foreground: #111827;
-  --muted: #f1f2f4;
-  --muted-foreground: #687588;
-  --accent: #e7f7ef;
-  --accent-foreground: #27a376;
-  --destructive: #e03137;
-  --border: #e9eaec;
-  --input: #e9eaec;
-  --ring: #27a376;
-  --chart-1: #27a376;
-  --chart-2: #ffd023;
-  --chart-3: #2f78ee;
-  --chart-4: #8c62ff;
-  --chart-5: #fe964a;
-  --sidebar: #fafafa;
-  --sidebar-foreground: #111827;
-  --sidebar-primary: #27a376;
+  --secondary: #eeece7;
+  --secondary-foreground: #161514;
+  --muted: #f1efec;
+  --muted-foreground: #6b6864;
+  --accent: #f7eaea;
+  --accent-foreground: #a9332d;
+  --destructive: #d33138;
+  --border: #e6e3de;
+  --input: #e6e3de;
+  --ring: #a9332d;
+  --chart-1: #a9332d;
+  --chart-2: #b8901f;
+  --chart-3: #5b7a94;
+  --chart-4: #6f8a5c;
+  --chart-5: #8a7a6a;
+  --sidebar: #f5f3f0;
+  --sidebar-foreground: #161514;
+  --sidebar-primary: #a9332d;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #e7f7ef;
-  --sidebar-accent-foreground: #27a376;
-  --sidebar-border: #e9eaec;
-  --sidebar-ring: #27a376;
+  --sidebar-accent: #efece7;
+  --sidebar-accent-foreground: #161514;
+  --sidebar-border: #e6e3de;
+  --sidebar-ring: #a9332d;
 
   /*
-   * Humanline design-system primary ramp (bg-primary-base, text-primary-400,
-   * etc. utilities). --primary-base aliases --primary so there's one source
-   * of truth for "the brand color"; the tints below are its lighter steps.
-   * Same values in light and dark mode (no .dark override exists for these,
-   * matching pre-Feature-D behavior) — Feature D's theme override replaces
-   * all five to match whatever hex the ORG_ADMIN picked.
+   * Primary ramp (bg-primary-base, text-primary-400, etc. utilities).
+   * --primary-base aliases --primary so there's one source of truth for
+   * "the brand color"; the tints below are its lighter steps, generated
+   * the same way lib/theme/color-utils.ts derives a custom ORG_ADMIN hex
+   * (lighten toward white, floor saturation at 20%) so the default palette
+   * and any picked brand color produce ramps with the same visual weight.
+   * Same values in light and dark mode (matches Feature D's own derivation,
+   * which also keeps `primary` identical across modes) — Feature D's theme
+   * override replaces all five to match whatever hex the ORG_ADMIN picked.
    */
   --primary-base: var(--primary);
-  --primary-400: #55c790;
-  --primary-300: #86d7b0;
-  --primary-200: #ceefdf;
-  --primary-100: #e7f7ef;
+  --primary-400: #ce746f;
+  --primary-300: #dd9f9c;
+  --primary-200: #eed1cf;
+  --primary-100: #f7eaea;
 
   /*
    * Gym theme presets (Feature D). Seed hex values for the ORG_ADMIN theme
@@ -205,7 +208,8 @@ a {
    * Same swatch in light and dark mode; the full light/dark ramp for whichever
    * one is picked is derived at runtime in lib/theme/color-utils.ts.
    */
-  --theme-preset-green: #27a376; /* default */
+  --theme-preset-garnet: #a9332d; /* default */
+  --theme-preset-green: #27a376;
   --theme-preset-blue: #2f78ee;
   --theme-preset-purple: #8c62ff;
   --theme-preset-orange: #fe964a;
@@ -220,37 +224,37 @@ a {
 }
 
 .dark {
-  --background: #111827;
-  --foreground: #fafafa;
-  --card: #1f2937;
-  --card-foreground: #fafafa;
-  --popover: #1f2937;
-  --popover-foreground: #fafafa;
-  --primary: #27a376;
+  --background: #0d0d0e;
+  --foreground: #f4f3f1;
+  --card: #18181a;
+  --card-foreground: #f4f3f1;
+  --popover: #1c1c1f;
+  --popover-foreground: #f4f3f1;
+  --primary: #a9332d;
   --primary-foreground: #ffffff;
-  --secondary: #ffd023;
-  --secondary-foreground: #111827;
-  --muted: #323b49;
-  --muted-foreground: #a0aec0;
-  --accent: #0ba259;
+  --secondary: #232326;
+  --secondary-foreground: #f4f3f1;
+  --muted: #202023;
+  --muted-foreground: #a3a19d;
+  --accent: #a81710;
   --accent-foreground: #ffffff;
-  --destructive: #e03137;
-  --border: #323b49;
-  --input: #323b49;
-  --ring: #27a376;
-  --chart-1: #55c790;
-  --chart-2: #ffde65;
-  --chart-3: #2f78ee;
-  --chart-4: #8c62ff;
-  --chart-5: #fe964a;
-  --sidebar: #1f2937;
-  --sidebar-foreground: #fafafa;
-  --sidebar-primary: #27a376;
+  --destructive: #e0373d;
+  --border: #2a2a2d;
+  --input: #2a2a2d;
+  --ring: #a9332d;
+  --chart-1: #ce746f;
+  --chart-2: #c9a227;
+  --chart-3: #6b8fb0;
+  --chart-4: #8a9a6b;
+  --chart-5: #9c8d7f;
+  --sidebar: #141416;
+  --sidebar-foreground: #f4f3f1;
+  --sidebar-primary: #a9332d;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #323b49;
-  --sidebar-accent-foreground: #55c790;
-  --sidebar-border: #323b49;
-  --sidebar-ring: #27a376;
+  --sidebar-accent: #202023;
+  --sidebar-accent-foreground: #f4f3f1;
+  --sidebar-border: #2a2a2d;
+  --sidebar-ring: #a9332d;
 }
 
 @layer base {
@@ -261,27 +265,27 @@ a {
     @apply bg-background text-foreground;
   }
 
-  /* Heading Styles - Manrope Bold */
+  /* Heading Styles - Manrope, dashboard scale (not marketing-page scale) */
   h1 {
-    @apply text-6xl font-bold leading-tight tracking-tight;
-    letter-spacing: -0.5px;
+    @apply text-3xl font-bold leading-tight tracking-tight;
+    letter-spacing: -0.3px;
   }
   h2 {
-    @apply text-5xl font-bold leading-tight;
+    @apply text-2xl font-bold leading-tight;
   }
   h3 {
-    @apply text-4xl font-bold;
-    line-height: 1.25;
-  }
-  h4 {
-    @apply text-3xl font-bold;
+    @apply text-xl font-semibold;
     line-height: 1.3;
   }
+  h4 {
+    @apply text-lg font-semibold;
+    line-height: 1.35;
+  }
   h5 {
-    @apply text-2xl font-bold leading-normal;
+    @apply text-base font-semibold leading-normal;
   }
   h6 {
-    @apply text-xl font-bold leading-normal;
+    @apply text-sm font-semibold leading-normal;
   }
 }
 

@@ -11,6 +11,7 @@ import {
   type GymRegisterRequest,
 } from '@repo/contracts';
 import { apiPost, ApiError } from '@/lib/api';
+import { LogoMark } from '@/components/logo-mark';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -51,15 +52,15 @@ export default function RegisterPage() {
 
   if (submitted) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-white">
+      <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="flex w-full max-w-md flex-col items-center gap-6 px-6 text-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary-base/10">
             <span className="text-3xl text-primary-base">✓</span>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-foreground">
             Registration submitted!
           </h1>
-          <p className="text-gray-500">
+          <p className="text-muted-foreground">
             Your gym registration is pending approval. Once a platform admin
             reviews it, you&apos;ll receive a magic-link email to log in.
           </p>
@@ -75,18 +76,20 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-white px-6 py-12">
+    <div className="flex min-h-screen items-center justify-center bg-background px-6 py-12">
       <div className="w-full max-w-lg">
         {/* Header */}
         <div className="mb-8 text-center">
           <div className="mb-4 flex items-center justify-center gap-2">
-            <span className="text-2xl text-primary-base">✦</span>
-            <span className="text-xl font-semibold text-gray-900">GymOS</span>
+            <LogoMark />
+            <span className="text-xl font-semibold text-foreground">
+              Fieldhouse
+            </span>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-foreground">
             Register your gym
           </h1>
-          <p className="mt-2 text-sm text-gray-500">
+          <p className="mt-2 text-sm text-muted-foreground">
             Submit your gym details for approval. You&apos;ll receive a
             magic-link email to get started once approved.
           </p>
@@ -97,7 +100,7 @@ export default function RegisterPage() {
           <div className="flex flex-col gap-2">
             <Label
               htmlFor="name"
-              className="flex gap-0.5 text-sm font-medium text-gray-900"
+              className="flex gap-0.5 text-sm font-medium text-foreground"
             >
               Gym Name <span className="text-error">*</span>
             </Label>
@@ -116,7 +119,7 @@ export default function RegisterPage() {
           <div className="flex flex-col gap-2">
             <Label
               htmlFor="ownerName"
-              className="flex gap-0.5 text-sm font-medium text-gray-900"
+              className="flex gap-0.5 text-sm font-medium text-foreground"
             >
               Your Name <span className="text-error">*</span>
             </Label>
@@ -135,7 +138,7 @@ export default function RegisterPage() {
           <div className="flex flex-col gap-2">
             <Label
               htmlFor="email"
-              className="flex gap-0.5 text-sm font-medium text-gray-900"
+              className="flex gap-0.5 text-sm font-medium text-foreground"
             >
               Email Address <span className="text-error">*</span>
             </Label>
@@ -155,7 +158,7 @@ export default function RegisterPage() {
           <div className="flex flex-col gap-2">
             <Label
               htmlFor="phone"
-              className="flex gap-0.5 text-sm font-medium text-gray-900"
+              className="flex gap-0.5 text-sm font-medium text-foreground"
             >
               Phone Number <span className="text-error">*</span>
             </Label>
@@ -175,7 +178,7 @@ export default function RegisterPage() {
           <div className="flex flex-col gap-2">
             <Label
               htmlFor="address"
-              className="flex gap-0.5 text-sm font-medium text-gray-900"
+              className="flex gap-0.5 text-sm font-medium text-foreground"
             >
               Gym Address <span className="text-error">*</span>
             </Label>
@@ -195,10 +198,12 @@ export default function RegisterPage() {
           <div className="flex flex-col gap-2">
             <Label
               htmlFor="description"
-              className="text-sm font-medium text-gray-900"
+              className="text-sm font-medium text-foreground"
             >
               Description{' '}
-              <span className="text-gray-400 font-normal">(optional)</span>
+              <span className="text-muted-foreground font-normal">
+                (optional)
+              </span>
             </Label>
             <Textarea
               id="description"
@@ -208,7 +213,7 @@ export default function RegisterPage() {
               {...register('description')}
             />
             <div
-              className={`text-xs text-right ${descriptionCharCount > 500 ? 'text-red-500' : 'text-gray-400'}`}
+              className={`text-xs text-right ${descriptionCharCount > 500 ? 'text-error' : 'text-muted-foreground'}`}
             >
               {descriptionCharCount} / 500 characters
             </div>
@@ -221,10 +226,12 @@ export default function RegisterPage() {
           <div className="flex flex-col gap-2">
             <Label
               htmlFor="website"
-              className="text-sm font-medium text-gray-900"
+              className="text-sm font-medium text-foreground"
             >
               Website{' '}
-              <span className="text-gray-400 font-normal">(optional)</span>
+              <span className="text-muted-foreground font-normal">
+                (optional)
+              </span>
             </Label>
             <Input
               id="website"
@@ -240,7 +247,7 @@ export default function RegisterPage() {
 
           <Button
             type="submit"
-            className="h-14 w-full rounded-[10px] bg-gray-900 text-base font-bold text-white hover:bg-gray-900/90 disabled:bg-gray-200 disabled:text-gray-500"
+            className="h-14 w-full rounded-[10px] bg-primary-base text-base font-bold text-white hover:bg-primary-base/90 disabled:bg-muted disabled:text-muted-foreground"
             disabled={isSubmitting}
           >
             {isSubmitting ? (
@@ -254,7 +261,7 @@ export default function RegisterPage() {
           </Button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-gray-500">
+        <p className="mt-6 text-center text-sm text-muted-foreground">
           Already have an account?{' '}
           <Link
             href="/login"

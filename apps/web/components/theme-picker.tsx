@@ -17,7 +17,7 @@ import { isValidHex } from '@/lib/theme/color-utils';
 import { ApiError } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
-const DEFAULT_HEX = '#27a376';
+const DEFAULT_HEX = '#a9332d';
 
 export function ThemePicker() {
   const { user } = useUser({ redirectOnUnauthenticated: false });
@@ -111,8 +111,10 @@ export function ThemePicker() {
   return (
     <div className="space-y-6">
       <div>
-        <Label className="text-sm font-medium text-gray-900">Brand color</Label>
-        <p className="mt-1 text-sm text-gray-500">
+        <Label className="text-sm font-medium text-foreground">
+          Brand color
+        </Label>
+        <p className="mt-1 text-sm text-muted-foreground">
           Pick a color to recolor buttons, links, and accents across your
           dashboard and member portal. Everyone at your gym sees this color.
         </p>
@@ -135,8 +137,8 @@ export function ThemePicker() {
             >
               <span
                 className={cn(
-                  'flex h-9 w-9 items-center justify-center rounded-full ring-2 ring-offset-2 transition-transform group-hover:scale-105',
-                  isSelected ? 'ring-gray-900' : 'ring-transparent',
+                  'flex h-9 w-9 items-center justify-center rounded-full ring-2 ring-offset-2 ring-offset-background transition-transform group-hover:scale-105',
+                  isSelected ? 'ring-foreground' : 'ring-transparent',
                 )}
                 style={{ backgroundColor: `var(${preset.cssVar})` }}
               >
@@ -149,9 +151,12 @@ export function ThemePicker() {
         })}
       </div>
 
-      <div className="flex items-end gap-3 border-t border-gray-200 pt-4">
+      <div className="flex items-end gap-3 border-t border-border pt-4">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="custom-theme-color" className="text-xs text-gray-500">
+          <Label
+            htmlFor="custom-theme-color"
+            className="text-xs text-muted-foreground"
+          >
             Custom color
           </Label>
           <div className="flex items-center gap-2">
@@ -160,7 +165,7 @@ export function ThemePicker() {
               aria-label="Custom color picker"
               value={isValidHex(hexInput) ? hexInput : DEFAULT_HEX}
               onChange={(e) => handleHexInputChange(e.target.value)}
-              className="h-9 w-9 cursor-pointer rounded border border-gray-300 p-0.5"
+              className="h-9 w-9 cursor-pointer rounded border border-input p-0.5"
             />
             <Input
               id="custom-theme-color"
@@ -183,7 +188,7 @@ export function ThemePicker() {
 
         <div className="ml-auto flex items-center gap-2">
           <span
-            className="h-9 w-9 shrink-0 rounded-full border border-gray-200"
+            className="h-9 w-9 shrink-0 rounded-full border border-border"
             style={{ backgroundColor: currentHex }}
             aria-hidden
           />

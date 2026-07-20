@@ -70,11 +70,13 @@ function InfoRow({
   value: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start gap-3 border-b border-gray-100 py-3 last:border-0">
-      <Icon className="mt-0.5 h-5 w-5 shrink-0 text-gray-400" />
+    <div className="flex items-start gap-3 border-b border-border py-3 last:border-0">
+      <Icon className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
       <div className="min-w-0 flex-1">
-        <div className="text-sm text-gray-500">{label}</div>
-        <div className="mt-0.5 text-sm font-medium text-gray-900">{value}</div>
+        <div className="text-sm text-muted-foreground">{label}</div>
+        <div className="mt-0.5 text-sm font-medium text-foreground">
+          {value}
+        </div>
       </div>
     </div>
   );
@@ -272,7 +274,7 @@ function EditSessionDialog({
               ) : (
                 <span />
               )}
-              <p className="text-xs text-gray-400 ml-auto">
+              <p className="text-xs text-muted-foreground ml-auto">
                 {descriptionVal.length}/500
               </p>
             </div>
@@ -598,24 +600,28 @@ export default function SessionDetailPage() {
 
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{session.title}</h1>
+          <h1 className="text-2xl font-bold text-foreground">
+            {session.title}
+          </h1>
           <div className="mt-2 flex items-center gap-2">
             <span
               className={`inline-flex items-center rounded-full border px-3 py-1 text-sm font-medium ${
                 isCancelled
                   ? 'bg-error-light text-error border-error-light'
                   : isCompleted
-                    ? 'bg-gray-200 text-gray-700 border-gray-300'
+                    ? 'bg-muted text-muted-foreground border-border'
                     : 'bg-success/10 text-success border-success/20'
               }`}
             >
               {session.status}
             </span>
             {isPast && !isCancelled && !isCompleted && (
-              <span className="text-xs text-gray-400 italic">Past session</span>
+              <span className="text-xs text-muted-foreground italic">
+                Past session
+              </span>
             )}
             {session.description && (
-              <span className="text-sm text-gray-500 ml-2">
+              <span className="text-sm text-muted-foreground ml-2">
                 {session.description}
               </span>
             )}
@@ -628,7 +634,7 @@ export default function SessionDetailPage() {
             <>
               <Button
                 variant="outline"
-                className="gap-2 text-gray-700"
+                className="gap-2 text-muted-foreground"
                 onClick={() => setShowEditDialog(true)}
               >
                 <Pencil className="h-4 w-4" /> Edit Session
@@ -662,14 +668,14 @@ export default function SessionDetailPage() {
             <InfoRow
               icon={Clock}
               label="Time"
-              value={`${format(new Date(session.startsAt), 'h:mm a')} – ${format(new Date(session.endsAt), 'h:mm a')}`}
+              value={`${format(new Date(session.startsAt), 'h:mm a')} - ${format(new Date(session.endsAt), 'h:mm a')}`}
             />
             <InfoRow
               icon={User}
               label="Instructor"
               value={
                 session.instructor?.name || (
-                  <span className="text-gray-400">Unassigned</span>
+                  <span className="text-muted-foreground">Unassigned</span>
                 )
               }
             />
@@ -687,13 +693,13 @@ export default function SessionDetailPage() {
             <div>
               <div className="flex justify-between text-sm mb-1 font-medium">
                 <span>{bookedCount} Booked</span>
-                <span className="text-gray-500">
+                <span className="text-muted-foreground">
                   {session.capacity} Total Slots
                 </span>
               </div>
-              <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
+              <div className="w-full bg-muted rounded-full h-2.5 overflow-hidden">
                 <div
-                  className={`h-2.5 rounded-full ${capacityPct >= 100 ? 'bg-error' : capacityPct > 80 ? 'bg-amber-400' : 'bg-primary-base'}`}
+                  className={`h-2.5 rounded-full ${capacityPct >= 100 ? 'bg-error' : capacityPct > 80 ? 'bg-warning-dark' : 'bg-primary-base'}`}
                   style={{ width: `${capacityPct}%` }}
                 ></div>
               </div>
@@ -741,7 +747,7 @@ export default function SessionDetailPage() {
                   className={`px-3 py-1 rounded-full text-sm border transition-colors ${
                     bookingStatusFilter === status
                       ? 'bg-primary-base text-white border-primary-base'
-                      : 'border-gray-200 text-gray-600 hover:border-primary-base hover:text-primary-base'
+                      : 'border-border text-muted-foreground hover:border-primary-base hover:text-primary-base'
                   }`}
                 >
                   {status === 'CHECKED_IN'
@@ -758,23 +764,23 @@ export default function SessionDetailPage() {
                 <Skeleton className="h-12 w-full" />
               </div>
             ) : filteredBookings.length === 0 ? (
-              <p className="text-sm text-gray-500 text-center py-4">
+              <p className="text-sm text-muted-foreground text-center py-4">
                 {bookingStatusFilter === 'ALL'
                   ? 'No bookings yet.'
                   : `No ${bookingStatusFilter.toLowerCase().replace('_', ' ')} bookings.`}
               </p>
             ) : (
-              <div className="divide-y divide-gray-100">
+              <div className="divide-y divide-border">
                 {filteredBookings.map((booking) => (
                   <div
                     key={booking.id}
                     className="flex items-center justify-between py-3"
                   >
                     <div>
-                      <div className="text-sm font-medium text-gray-900">
+                      <div className="text-sm font-medium text-foreground">
                         {booking.member.name}
                       </div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-muted-foreground">
                         {booking.member.email}
                       </div>
                     </div>
@@ -785,8 +791,8 @@ export default function SessionDetailPage() {
                           booking.status === 'BOOKED'
                             ? 'bg-success/10 text-success border-success/20'
                             : booking.status === 'CHECKED_IN'
-                              ? 'bg-green-50 text-green-700 border-green-200'
-                              : 'bg-gray-100 text-gray-500 border-gray-200'
+                              ? 'bg-primary-100 text-primary-base border-primary-200'
+                              : 'bg-muted text-muted-foreground border-border'
                         }`}
                       >
                         {booking.status === 'CHECKED_IN'

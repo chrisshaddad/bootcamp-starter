@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 const STATUS_COLORS: Record<string, string> = {
   ACTIVE: 'bg-success/10 text-success border border-success/20',
-  INACTIVE: 'bg-gray-200 text-gray-700 border border-gray-300',
+  INACTIVE: 'bg-muted text-muted-foreground border border-border',
 };
 
 function InfoRow({
@@ -20,11 +20,13 @@ function InfoRow({
   value: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start gap-3 border-b border-gray-100 py-3 last:border-0">
-      <Icon className="mt-0.5 h-5 w-5 shrink-0 text-gray-400" />
+    <div className="flex items-start gap-3 border-b border-border py-3 last:border-0">
+      <Icon className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
       <div className="min-w-0 flex-1">
-        <div className="text-sm text-gray-500">{label}</div>
-        <div className="mt-0.5 text-sm font-medium text-gray-900">{value}</div>
+        <div className="text-sm text-muted-foreground">{label}</div>
+        <div className="mt-0.5 text-sm font-medium text-foreground">
+          {value}
+        </div>
       </div>
     </div>
   );
@@ -36,8 +38,8 @@ export default function MyProfilePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">My Profile</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <h1 className="text-2xl font-bold text-foreground">My Profile</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Your membership details on file with the gym.
         </p>
       </div>
@@ -62,11 +64,11 @@ export default function MyProfilePage() {
               <User className="h-7 w-7 text-primary-base" />
             </div>
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">
+              <h2 className="text-xl font-semibold text-foreground">
                 {profile.name}
               </h2>
               <span
-                className={`mt-1 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[profile.status] ?? 'bg-gray-200 text-gray-700'}`}
+                className={`mt-1 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[profile.status] ?? 'bg-muted text-muted-foreground'}`}
               >
                 {profile.status === 'ACTIVE' ? 'Active Member' : 'Inactive'}
               </span>
@@ -76,7 +78,7 @@ export default function MyProfilePage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
-                <User className="h-5 w-5 text-gray-500" />
+                <User className="h-5 w-5 text-muted-foreground" />
                 Contact Information
               </CardTitle>
             </CardHeader>
@@ -87,7 +89,9 @@ export default function MyProfilePage() {
                 label="Phone"
                 value={
                   profile.phoneNumber ?? (
-                    <span className="text-gray-400">Not provided</span>
+                    <span className="text-muted-foreground">
+                      Not provided
+                    </span>
                   )
                 }
               />
@@ -102,7 +106,9 @@ export default function MyProfilePage() {
                       day: 'numeric',
                     })
                   ) : (
-                    <span className="text-gray-400">Not provided</span>
+                    <span className="text-muted-foreground">
+                      Not provided
+                    </span>
                   )
                 }
               />

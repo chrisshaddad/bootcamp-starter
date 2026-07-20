@@ -251,7 +251,7 @@ function AddSessionDialog({
               ) : (
                 <span />
               )}
-              <p className="text-xs text-gray-400 ml-auto">
+              <p className="text-xs text-muted-foreground ml-auto">
                 {descriptionVal.length}/500
               </p>
             </div>
@@ -414,7 +414,7 @@ function AddSessionDialog({
                 {form.formState.errors.instructorId.message}
               </p>
             )}
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-muted-foreground">
               Only active instructors without overlapping classes are shown.
             </p>
           </div>
@@ -454,7 +454,7 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   },
   COMPLETED: {
     label: 'Completed',
-    className: 'bg-gray-200 text-gray-600 border-gray-300',
+    className: 'bg-muted text-muted-foreground border-border',
   },
 };
 
@@ -501,8 +501,8 @@ export default function SessionsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Schedule</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-foreground">Schedule</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Manage your gym&apos;s classes and sessions
           </p>
         </div>
@@ -527,7 +527,7 @@ export default function SessionsPage() {
               className={`px-3 py-1 rounded-full text-sm font-medium border transition-colors ${
                 statusFilter === s
                   ? 'bg-primary-base text-white border-primary-base'
-                  : 'bg-white text-gray-600 border-gray-200 hover:border-primary-base hover:text-primary-base'
+                  : 'bg-background text-muted-foreground border-border hover:border-primary-base hover:text-primary-base'
               }`}
             >
               {s === 'ALL' ? 'All' : (STATUS_CONFIG[s]?.label ?? s)}
@@ -541,8 +541,8 @@ export default function SessionsPage() {
       ) : !filteredSessions || filteredSessions.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-            <CalendarDays className="h-10 w-10 text-gray-300" />
-            <p className="text-sm text-gray-500">
+            <CalendarDays className="h-10 w-10 text-muted-foreground/50" />
+            <p className="text-sm text-muted-foreground">
               {statusFilter === 'ALL'
                 ? 'No sessions scheduled.'
                 : `No ${STATUS_CONFIG[statusFilter]?.label.toLowerCase()} sessions.`}
@@ -562,7 +562,7 @@ export default function SessionsPage() {
         <div className="space-y-8">
           {sortedDays.map((day) => (
             <div key={day} className="space-y-4">
-              <h2 className="text-lg font-semibold text-gray-900 border-b pb-2">
+              <h2 className="text-lg font-semibold text-foreground border-b pb-2">
                 {format(new Date(day), 'EEEE, MMMM d, yyyy')}
               </h2>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -573,7 +573,7 @@ export default function SessionsPage() {
                     className="block outline-none focus-visible:ring-2 focus-visible:ring-primary-base rounded-xl"
                   >
                     <Card
-                      className={`h-full cursor-pointer hover:border-primary-base transition-colors ${session.status === 'CANCELLED' ? 'opacity-60 bg-gray-50' : ''}`}
+                      className={`h-full cursor-pointer hover:border-primary-base transition-colors ${session.status === 'CANCELLED' ? 'opacity-60 bg-muted' : ''}`}
                     >
                       <CardHeader className="pb-2">
                         <div className="flex justify-between items-start">
@@ -591,17 +591,17 @@ export default function SessionsPage() {
                         </div>
                       </CardHeader>
                       <CardContent className="pt-0 space-y-2">
-                        <div className="flex items-center text-sm text-gray-600">
+                        <div className="flex items-center text-sm text-muted-foreground">
                           <Clock className="mr-2 h-4 w-4 shrink-0" />
                           {format(new Date(session.startsAt), 'h:mm a')} -{' '}
                           {format(new Date(session.endsAt), 'h:mm a')}
                         </div>
-                        <div className="flex items-center text-sm text-gray-600">
+                        <div className="flex items-center text-sm text-muted-foreground">
                           <Users className="mr-2 h-4 w-4 shrink-0" />
                           {session._count?.bookings ?? 0} / {session.capacity}{' '}
                           booked
                         </div>
-                        <div className="text-sm text-gray-500 mt-2 truncate">
+                        <div className="text-sm text-muted-foreground mt-2 truncate">
                           {session.instructor
                             ? `Instructor: ${session.instructor.name}`
                             : 'No instructor assigned'}
