@@ -10,7 +10,7 @@ export class AuditLogSchema {
   entityType!: string;
   entityId!: string;
   entityName!: string | null;
-  metadata!: any | null;
+  metadata!: any;
   ipAddress!: string | null;
   createdAt!: string;
 }
