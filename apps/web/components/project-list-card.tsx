@@ -2,16 +2,11 @@ import Link from 'next/link';
 import { ExternalLink, Pencil } from 'lucide-react';
 import type { ProjectResponse } from '@repo/contracts';
 import { Card } from '@/components/ui/card';
+import { ProjectCoverPlaceholder } from '@/components/project-cover-placeholder';
 import {
   PROJECT_STATUS_COLORS,
   PROJECT_STATUS_LABELS,
 } from '@/lib/project-status';
-
-const THUMB_GRADIENTS = [
-  'from-primary-base to-accent',
-  'from-purple to-accent',
-  'from-orange to-accent',
-];
 
 interface ProjectListCardProps {
   project: {
@@ -33,7 +28,6 @@ interface ProjectListCardProps {
 export function ProjectListCard({
   project,
   href,
-  index,
   editHref,
   publicHref,
 }: ProjectListCardProps) {
@@ -59,8 +53,9 @@ export function ProjectListCard({
               className="h-full w-full object-cover transition-[filter] duration-200 group-hover:brightness-95"
             />
           ) : (
-            <div
-              className={`h-full bg-gradient-to-br transition-[filter] duration-200 group-hover:brightness-110 ${THUMB_GRADIENTS[index % THUMB_GRADIENTS.length]}`}
+            <ProjectCoverPlaceholder
+              title={project.title}
+              logoUrl={project.logoUrl}
             />
           )}
 
