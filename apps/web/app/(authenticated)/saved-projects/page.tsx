@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Bookmark } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card } from '@/components/ui/card';
@@ -34,6 +34,14 @@ export default function SavedProjectsPage() {
   const updateNote = useUpdateSavedProjectNote();
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [savingNoteId, setSavingNoteId] = useState<string | null>(null);
+
+  // Unsaving the last item on a page shrinks totalPages — drop back to the
+  // new last page instead of showing an empty state on a stale page number.
+  useEffect(() => {
+    if (meta && meta.totalPages > 0 && page > meta.totalPages) {
+      setPage(meta.totalPages);
+    }
+  }, [meta, page]);
 
   const handleUnsave = async (projectId: string) => {
     setTogglingId(projectId);

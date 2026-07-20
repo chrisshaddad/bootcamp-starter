@@ -111,7 +111,7 @@ export default function UserPortfolioPage() {
         <Avatar className="h-32 w-32 sm:h-40 sm:w-40 border-4 border-background shadow-md flex-shrink-0">
           <AvatarImage
             src={profile.profilePictureUrl || ''}
-            alt={profile.displayName}
+            alt={profile.displayName || 'Unknown Developer'}
           />
           <AvatarFallback className="text-5xl">
             {profile.displayName?.charAt(0) || 'U'}

@@ -69,7 +69,25 @@ export function ProjectCard({ project, savedState }: ProjectCardProps) {
   };
 
   return (
-    <Card className="group gap-0 overflow-hidden rounded-2xl border p-0 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md">
+    <Card className="group relative gap-0 overflow-hidden rounded-2xl border p-0 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md">
+      {savedState && (
+        <button
+          type="button"
+          title={savedState.isSaved ? 'Unsave project' : 'Save project'}
+          aria-label={savedState.isSaved ? 'Unsave project' : 'Save project'}
+          disabled={savedState.isToggling}
+          onClick={() => savedState.onToggle()}
+          className={cn(
+            'absolute top-3 left-3 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-background/80 text-foreground shadow-sm backdrop-blur transition-colors hover:bg-background disabled:opacity-50',
+            savedState.isSaved && 'text-primary',
+          )}
+        >
+          <Bookmark
+            className="h-3.5 w-3.5"
+            fill={savedState.isSaved ? 'currentColor' : 'none'}
+          />
+        </button>
+      )}
       <Link href={`/projects/${project.slug}`} className="flex flex-1 flex-col">
         <div
           className="relative flex h-28 items-end p-3"
@@ -78,30 +96,6 @@ export function ProjectCard({ project, savedState }: ProjectCardProps) {
           <span className="bg-success/20 text-success absolute top-3 right-3 rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wide uppercase">
             {project.status === 'PUBLISHED' ? 'Published' : project.status}
           </span>
-          {savedState && (
-            <button
-              type="button"
-              title={savedState.isSaved ? 'Unsave project' : 'Save project'}
-              aria-label={
-                savedState.isSaved ? 'Unsave project' : 'Save project'
-              }
-              disabled={savedState.isToggling}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                savedState.onToggle();
-              }}
-              className={cn(
-                'absolute top-3 left-3 flex h-7 w-7 items-center justify-center rounded-full bg-background/80 text-foreground shadow-sm backdrop-blur transition-colors hover:bg-background disabled:opacity-50',
-                savedState.isSaved && 'text-primary',
-              )}
-            >
-              <Bookmark
-                className="h-3.5 w-3.5"
-                fill={savedState.isSaved ? 'currentColor' : 'none'}
-              />
-            </button>
-          )}
           {project.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
