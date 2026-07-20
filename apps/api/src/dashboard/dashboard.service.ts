@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import type {
   DashboardActivity,
   DashboardGrowthPoint,
@@ -9,8 +9,9 @@ import { PrismaService } from '../database/prisma.service';
 
 @Injectable()
 export class DashboardService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(DashboardService.name);
 
+  constructor(private readonly prisma: PrismaService) {}
   async getSuperAdminDashboard(): Promise<SuperAdminDashboardResponse> {
     const months = this.getLastSixMonths();
     const growthStartDate = months[0]?.startDate ?? new Date();
@@ -217,6 +218,8 @@ export class DashboardService {
           new Date(firstActivity.occurredAt).getTime(),
       )
       .slice(0, 4);
+
+    this.logger.log('Fetched Super Admin dashboard data.');
 
     return {
       summary: {

@@ -14,7 +14,7 @@ import type {
   UpdateTeacherResponse,
 } from '@repo/contracts';
 import { PrismaService } from '../database/prisma.service';
-
+import { Prisma } from '@repo/db';
 @Injectable()
 export class TeachersService {
   private readonly logger = new Logger(TeachersService.name);
@@ -137,23 +137,38 @@ export class TeachersService {
       throw new NotFoundException('Teacher not found');
     }
 
-    const updatedTeacher = await this.prisma.user.update({
-      where: {
-        id: teacherId,
-      },
-      data: {
-        ...(payload.name !== undefined ? { name: payload.name } : {}),
-        ...(payload.email !== undefined ? { email: payload.email } : {}),
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        isConfirmed: true,
-        createdAt: true,
-      },
-    });
+    let updatedTeacher;
+
+    try {
+      updatedTeacher = await this.prisma.user.update({
+        where: {
+          id: teacherId,
+        },
+        data: {
+          ...(payload.name !== undefined ? { name: payload.name } : {}),
+          ...(payload.email !== undefined ? { email: payload.email } : {}),
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          isConfirmed: true,
+          createdAt: true,
+        },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        this.logger.warn(`Email conflict while updating teacher ${teacherId}.`);
+
+        throw new ConflictException('A user with this email already exists.');
+      }
+
+      throw error;
+    }
 
     this.logger.log(`Updated teacher ${teacherId}.`);
 

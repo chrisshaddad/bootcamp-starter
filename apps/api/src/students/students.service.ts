@@ -8,6 +8,7 @@ import type {
   UpdateStudentResponse,
 } from '@repo/contracts';
 import { PrismaService } from '../database/prisma.service';
+import { Prisma } from '@repo/db';
 
 @Injectable()
 export class StudentsService {
@@ -245,53 +246,68 @@ export class StudentsService {
       throw new NotFoundException('Student not found');
     }
 
-    await this.prisma.$transaction(async (tx) => {
-      const userData: {
-        name?: string;
-        email?: string;
-      } = {};
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        const userData: { name?: string; email?: string } = {};
 
-      if (payload.name !== undefined) {
-        userData.name = payload.name;
+        if (payload.name !== undefined) {
+          userData.name = payload.name;
+        }
+
+        if (payload.email !== undefined) {
+          userData.email = payload.email;
+        }
+
+        if (Object.keys(userData).length > 0) {
+          await tx.user.update({
+            where: {
+              id: studentProfile.userId,
+            },
+            data: userData,
+          });
+        }
+
+        const studentProfileData: {
+          studentCode?: string;
+          dateOfBirth?: Date | null;
+        } = {};
+
+        if (payload.studentCode !== undefined) {
+          studentProfileData.studentCode = payload.studentCode;
+        }
+
+        if (payload.dateOfBirth !== undefined) {
+          studentProfileData.dateOfBirth = payload.dateOfBirth
+            ? new Date(payload.dateOfBirth)
+            : null;
+        }
+
+        if (Object.keys(studentProfileData).length > 0) {
+          await tx.studentProfile.update({
+            where: {
+              id: studentProfileId,
+            },
+            data: studentProfileData,
+          });
+        }
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        this.logger.warn(
+          `Unique-field conflict while updating student ${studentProfileId}.`,
+        );
+
+        throw new ConflictException(
+          'A user with this email or student code already exists.',
+        );
       }
 
-      if (payload.email !== undefined) {
-        userData.email = payload.email;
-      }
+      throw error;
+    }
 
-      if (Object.keys(userData).length > 0) {
-        await tx.user.update({
-          where: {
-            id: studentProfile.userId,
-          },
-          data: userData,
-        });
-      }
-
-      const studentProfileData: {
-        studentCode?: string;
-        dateOfBirth?: Date | null;
-      } = {};
-
-      if (payload.studentCode !== undefined) {
-        studentProfileData.studentCode = payload.studentCode;
-      }
-
-      if (payload.dateOfBirth !== undefined) {
-        studentProfileData.dateOfBirth = payload.dateOfBirth
-          ? new Date(payload.dateOfBirth)
-          : null;
-      }
-
-      if (Object.keys(studentProfileData).length > 0) {
-        await tx.studentProfile.update({
-          where: {
-            id: studentProfileId,
-          },
-          data: studentProfileData,
-        });
-      }
-    });
     const updatedStudentProfile = await this.prisma.studentProfile.findUnique({
       where: {
         id: studentProfileId,
