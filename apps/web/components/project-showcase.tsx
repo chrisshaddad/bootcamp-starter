@@ -27,7 +27,7 @@ import {
 } from '@/lib/project-status';
 
 // Shared between the public showcase page (/projects/[slug]) and the
-// authenticated owner preview (/projects/[id]/preview) so both render
+// authenticated owner preview (/projects/preview/[id]) so both render
 // identically — the preview is only useful if it matches what recruiters
 // actually see. Both routes' responses carry a superset of
 // PublicProjectMediaResponse, so that's the shape this component needs.

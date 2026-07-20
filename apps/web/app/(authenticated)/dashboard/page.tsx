@@ -326,7 +326,7 @@ function DeveloperDashboard({
                   className="group relative flex flex-col overflow-hidden py-0 shadow-sm transition-colors hover:border-primary/50"
                 >
                   <Link
-                    href={`/projects/${project.id}/preview`}
+                    href={`/projects/preview/${project.id}`}
                     className="flex flex-1 flex-col"
                   >
                     <div className="relative aspect-video overflow-hidden">

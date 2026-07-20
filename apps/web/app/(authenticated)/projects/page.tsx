@@ -120,7 +120,7 @@ export default function ProjectsPage() {
                   role: project.access.currentUserRole,
                   deploymentUrl: project.deploymentUrl,
                 }}
-                href={`/projects/${project.id}/preview`}
+                href={`/projects/preview/${project.id}`}
                 editHref={
                   project.access.capabilities.canEditContent
                     ? `/projects/${project.id}/edit`

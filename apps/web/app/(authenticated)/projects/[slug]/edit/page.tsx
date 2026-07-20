@@ -7,7 +7,14 @@ import Link from 'next/link';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import { ArrowLeft, ImageIcon, Loader2, Star, X } from 'lucide-react';
+import {
+  ArrowLeft,
+  ExternalLink,
+  ImageIcon,
+  Loader2,
+  Star,
+  X,
+} from 'lucide-react';
 import {
   updateProjectRequestSchema,
   type UpdateProjectRequest,
@@ -275,7 +282,9 @@ export default function EditProjectPage() {
     return (
       <div className="space-y-4">
         <Link
-          href={`/projects/${project.id}/preview`}
+          href={`/projects/preview/${project.id}`}
+          target="_blank"
+          rel="noreferrer"
           className="text-muted-foreground inline-flex items-center gap-1.5 text-sm hover:text-foreground"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
@@ -309,8 +318,18 @@ export default function EditProjectPage() {
         Projects
       </Link>
 
-      <div>
+      <div className="flex items-center justify-between gap-4">
         <h1 className="text-foreground text-2xl font-bold">Edit project</h1>
+        <Button asChild variant="outline" size="sm">
+          <Link
+            href={`/projects/preview/${project.id}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            Preview
+          </Link>
+        </Button>
       </div>
 
       <form
