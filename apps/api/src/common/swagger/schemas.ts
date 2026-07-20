@@ -87,7 +87,7 @@ export const updateProfileRequestSchema: ApiBodySchema = withExample(
     bio: 'I build SaaS apps.',
     location: 'Beirut, Lebanon',
     profilePictureUrl:
-      'http://localhost:3001/uploads/profile-pictures/example.png',
+      'http://localhost:9000/bootcamp-media/profile-pictures/example.png',
     linkedinUrl: 'https://www.linkedin.com/in/sarahchen',
     personalWebsiteUrl: 'https://sarahchen.dev',
   },

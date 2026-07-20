@@ -7,9 +7,10 @@ import { RolesGuard } from './guards/roles.guard';
 import { SessionService } from './session.service';
 import { MailModule } from '../mail/mail.module';
 import { RedisClientService } from './redis-client.service';
+import { StorageModule } from '../storage/storage.module';
 
 @Module({
-  imports: [MailModule],
+  imports: [MailModule, StorageModule],
   providers: [
     AuthService,
     SessionService,

@@ -695,22 +695,13 @@ export class ProjectsService {
     }
 
     const previousLogoUrl = project.logoUrl;
-    let previousLogoKey: string | null = null;
-
-    if (previousLogoUrl) {
-      const parts = previousLogoUrl.split('/');
-      const oldFilename = parts[parts.length - 1];
-      if (oldFilename) {
-        previousLogoKey = oldFilename;
-      }
-    }
 
     const updatedProject = await this.prisma.project.update({
       where: { id: projectId },
       data: { logoUrl },
     });
 
-    return { ...updatedProject, previousLogoKey };
+    return { ...updatedProject, previousLogoUrl };
   }
 
   async getProjectBySlug(slug: string) {
@@ -1041,15 +1032,7 @@ export class ProjectsService {
 
     const mediaStorageKeys = project.media.map((m) => m.storageKey);
 
-    if (project.logoUrl) {
-      const parts = project.logoUrl.split('/');
-      const logoKey = parts[parts.length - 1];
-      if (logoKey) {
-        mediaStorageKeys.push(logoKey);
-      }
-    }
-
-    return { mediaStorageKeys };
+    return { mediaStorageKeys, logoUrl: project.logoUrl };
   }
 }
 

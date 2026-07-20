@@ -1,6 +1,4 @@
-import { join } from 'path';
 import { randomUUID } from 'crypto';
-import { readFileSync, unlinkSync, renameSync } from 'fs';
 import {
   Controller,
   Post,
@@ -25,7 +23,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { diskStorage } from 'multer';
+import { memoryStorage } from 'multer';
 import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import { CurrentUser, Public } from './decorators';
@@ -52,6 +50,8 @@ import {
   type ProfilePictureUploadResponse,
 } from '@repo/contracts';
 import { ZodValidationPipe } from '../common/pipes';
+import { ObjectStorageService } from '../storage/storage.service';
+import { imageContentType } from './utils/image-content-type';
 import {
   emailRequestSchema as emailRequestOpenApiSchema,
   loginRequestSchema as loginRequestOpenApiSchema,
@@ -62,12 +62,13 @@ import {
 } from '../common/swagger/schemas';
 
 const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
-const PROFILE_PICTURES_DIR = join(process.cwd(), 'uploads', 'profile-pictures');
-
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly objectStorage: ObjectStorageService,
+  ) {}
 
   @Public()
   @Post('magic-link')
@@ -221,13 +222,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: diskStorage({
-        destination: PROFILE_PICTURES_DIR,
-        // No extension yet — the real type is only known once we've inspected
-        // the file's actual bytes below, since mimetype/originalname are
-        // client-supplied and can be spoofed.
-        filename: (_req, _file, callback) => callback(null, randomUUID()),
-      }),
+      storage: memoryStorage(),
       limits: { fileSize: PROFILE_PICTURE_MAX_SIZE_BYTES },
       fileFilter: (_req, file, callback) => {
         // Cheap early rejection only — not trusted for the actual save below.
@@ -248,25 +243,25 @@ export class AuthController {
       },
     }),
   )
-  uploadProfilePicture(
+  async uploadProfilePicture(
     @UploadedFile() file: Express.Multer.File,
-  ): ProfilePictureUploadResponse {
+  ): Promise<ProfilePictureUploadResponse> {
     if (!file) {
       throw new BadRequestException('No file uploaded');
     }
 
-    const extension = detectImageExtension(readFileSync(file.path));
+    const extension = detectImageExtension(file.buffer);
     if (!extension) {
-      unlinkSync(file.path);
       throw new BadRequestException('The uploaded file is not a valid image');
     }
 
-    const finalFilename = `${file.filename}${extension}`;
-    renameSync(file.path, join(PROFILE_PICTURES_DIR, finalFilename));
-
-    const apiUrl = process.env.API_URL ?? 'http://localhost:3001';
+    const stored = await this.objectStorage.upload(
+      `profile-pictures/${randomUUID()}${extension}`,
+      file.buffer,
+      imageContentType(extension),
+    );
     return {
-      profilePictureUrl: `${apiUrl}/uploads/profile-pictures/${finalFilename}`,
+      profilePictureUrl: stored.publicUrl,
     };
   }
 

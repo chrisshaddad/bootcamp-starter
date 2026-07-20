@@ -1,7 +1,4 @@
-import { join } from 'path';
 import { randomUUID } from 'crypto';
-import { existsSync, mkdirSync } from 'fs';
-import { readFile, unlink, rename } from 'fs/promises';
 import {
   Controller,
   Get,
@@ -26,7 +23,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { diskStorage } from 'multer';
+import { memoryStorage } from 'multer';
 import { ProjectsService } from './projects.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -70,6 +67,8 @@ import {
   updateProjectRequestSchema as updateProjectOpenApiRequestSchema,
 } from '../common/swagger/schemas';
 import { mapProjectMember } from './project-member.mapper';
+import { ObjectStorageService } from '../storage/storage.service';
+import { imageContentType } from '../auth/utils/image-content-type';
 
 const PROJECT_MEDIA_MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
 const PROJECT_MEDIA_ALLOWED_MIME_TYPES = [
@@ -78,12 +77,7 @@ const PROJECT_MEDIA_ALLOWED_MIME_TYPES = [
   'image/webp',
   'image/gif',
 ];
-const PROJECT_MEDIA_DIR = join(process.cwd(), 'uploads', 'project-media');
 const ANONYMOUS_CONTRIBUTOR_NAME = 'Community member';
-
-if (!existsSync(PROJECT_MEDIA_DIR)) {
-  mkdirSync(PROJECT_MEDIA_DIR, { recursive: true });
-}
 
 @ApiTags('projects')
 @ApiCookieAuth('session')
@@ -91,7 +85,10 @@ if (!existsSync(PROJECT_MEDIA_DIR)) {
 export class ProjectsController {
   private readonly logger = new Logger(ProjectsController.name);
 
-  constructor(private readonly projectsService: ProjectsService) {}
+  constructor(
+    private readonly projectsService: ProjectsService,
+    private readonly objectStorage: ObjectStorageService,
+  ) {}
 
   @Post('import-github')
   @Roles(AccountType.DEVELOPER)
@@ -393,11 +390,7 @@ export class ProjectsController {
   @ApiResponse({ status: 200, description: 'Logo successfully uploaded.' })
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: diskStorage({
-        destination: PROJECT_MEDIA_DIR,
-        filename: (_req, _file, callback) =>
-          callback(null, `logo-${randomUUID()}`),
-      }),
+      storage: memoryStorage(),
       limits: { fileSize: PROJECT_MEDIA_MAX_SIZE_BYTES },
       fileFilter: (_req, file, callback) => {
         if (!PROJECT_MEDIA_ALLOWED_MIME_TYPES.includes(file.mimetype)) {
@@ -422,60 +415,30 @@ export class ProjectsController {
       throw new BadRequestException('No file uploaded');
     }
 
-    let fileBuffer: Buffer;
-    try {
-      fileBuffer = await readFile(file.path);
-    } catch (_readError) {
-      try {
-        await unlink(file.path);
-      } catch (_unlinkError) {
-        // Ignored
-      }
-      throw new BadRequestException('Could not read the uploaded file');
-    }
-
-    const extension = detectImageExtension(fileBuffer);
+    const extension = detectImageExtension(file.buffer);
     if (!extension) {
-      try {
-        await unlink(file.path);
-      } catch (_unlinkError) {
-        // Ignored
-      }
       throw new BadRequestException('The uploaded file is not a valid image');
     }
 
-    const finalFilename = `${file.filename}${extension}`;
-    try {
-      await rename(file.path, join(PROJECT_MEDIA_DIR, finalFilename));
-    } catch (_renameError) {
-      try {
-        await unlink(file.path);
-      } catch (_unlinkError) {
-        // Ignored
-      }
-      throw new BadRequestException('Failed to process the uploaded file');
-    }
-
-    const apiUrl = process.env.API_URL ?? 'http://localhost:3001';
-    const publicUrl = `${apiUrl}/uploads/project-media/${finalFilename}`;
+    const stored = await this.objectStorage.upload(
+      `project-media/${projectId}/logos/${randomUUID()}${extension}`,
+      file.buffer,
+      imageContentType(extension),
+    );
 
     let result: Awaited<ReturnType<ProjectsService['uploadLogo']>>;
     try {
       result = await this.projectsService.uploadLogo(
         user,
         projectId,
-        publicUrl,
+        stored.publicUrl,
       );
     } catch (error) {
-      try {
-        await unlink(join(PROJECT_MEDIA_DIR, finalFilename));
-      } catch (_unlinkError) {
-        // Ignored
-      }
+      await this.deleteObjectSafely(stored.key, 'rolled-back project logo');
       throw error;
     }
 
-    const { previousLogoKey, ...project } = result;
+    const { previousLogoUrl, ...project } = result;
     const response = projectResponseSchema.parse({
       ...project,
       createdAt: project.createdAt.toISOString(),
@@ -485,12 +448,10 @@ export class ProjectsController {
 
     // Only remove the old logo after the persisted replacement is confirmed to
     // satisfy the public response contract.
+    const previousLogoKey =
+      this.objectStorage.keyFromPublicUrl(previousLogoUrl);
     if (previousLogoKey) {
-      try {
-        await unlink(join(PROJECT_MEDIA_DIR, previousLogoKey));
-      } catch (_unlinkError) {
-        // Ignored
-      }
+      await this.deleteObjectSafely(previousLogoKey, 'replaced project logo');
     }
 
     return response;
@@ -509,26 +470,13 @@ export class ProjectsController {
     @CurrentUser() user: User,
     @Param('id') projectId: string,
   ): Promise<SuccessResponse> {
-    const { mediaStorageKeys } = await this.projectsService.deleteProject(
-      user,
-      projectId,
-    );
+    const { mediaStorageKeys, logoUrl } =
+      await this.projectsService.deleteProject(user, projectId);
 
-    await Promise.all(
-      mediaStorageKeys.map(async (storageKey) => {
-        try {
-          await unlink(join(PROJECT_MEDIA_DIR, storageKey));
-        } catch (error) {
-          const code = (error as NodeJS.ErrnoException).code;
-          if (code !== 'ENOENT') {
-            const message =
-              error instanceof Error ? error.message : String(error);
-            this.logger.warn(
-              `Failed to delete media file ${storageKey} for removed project ${projectId}: ${message}`,
-            );
-          }
-        }
-      }),
+    const logoKey = this.objectStorage.keyFromPublicUrl(logoUrl);
+    await this.deleteObjectsSafely(
+      logoKey ? [...mediaStorageKeys, logoKey] : mediaStorageKeys,
+      `removed project ${projectId}`,
     );
 
     return successResponseSchema.parse({ success: true });
@@ -621,10 +569,7 @@ export class ProjectsController {
   @ApiResponse({ status: 201, description: 'Media successfully uploaded.' })
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: diskStorage({
-        destination: PROJECT_MEDIA_DIR,
-        filename: (_req, _file, callback) => callback(null, randomUUID()),
-      }),
+      storage: memoryStorage(),
       limits: { fileSize: PROJECT_MEDIA_MAX_SIZE_BYTES },
       fileFilter: (_req, file, callback) => {
         if (!PROJECT_MEDIA_ALLOWED_MIME_TYPES.includes(file.mimetype)) {
@@ -651,51 +596,26 @@ export class ProjectsController {
       throw new BadRequestException('No file uploaded');
     }
 
-    let fileBuffer: Buffer;
-    try {
-      fileBuffer = await readFile(file.path);
-    } catch (_readError) {
-      throw new BadRequestException('Could not read the uploaded file');
-    }
-
-    const extension = detectImageExtension(fileBuffer);
+    const extension = detectImageExtension(file.buffer);
     if (!extension) {
-      try {
-        await unlink(file.path);
-      } catch (_unlinkError) {
-        // Ignored
-      }
       throw new BadRequestException('The uploaded file is not a valid image');
     }
 
-    const finalFilename = `${file.filename}${extension}`;
-    try {
-      await rename(file.path, join(PROJECT_MEDIA_DIR, finalFilename));
-    } catch (_renameError) {
-      try {
-        await unlink(file.path);
-      } catch (_unlinkError) {
-        // Ignored
-      }
-      throw new BadRequestException('Failed to process the uploaded file');
-    }
-
-    const apiUrl = process.env.API_URL ?? 'http://localhost:3001';
-    const publicUrl = `${apiUrl}/uploads/project-media/${finalFilename}`;
+    const stored = await this.objectStorage.upload(
+      `project-media/${projectId}/${randomUUID()}${extension}`,
+      file.buffer,
+      imageContentType(extension),
+    );
 
     let media: Awaited<ReturnType<ProjectsService['addMedia']>>;
     try {
       media = await this.projectsService.addMedia(user, projectId, {
         ...body,
-        storageKey: finalFilename,
-        publicUrl,
+        storageKey: stored.key,
+        publicUrl: stored.publicUrl,
       });
     } catch (error) {
-      try {
-        await unlink(join(PROJECT_MEDIA_DIR, finalFilename));
-      } catch (_unlinkError) {
-        // Ignored
-      }
+      await this.deleteObjectSafely(stored.key, 'rolled-back project media');
       throw error;
     }
 
@@ -782,12 +702,23 @@ export class ProjectsController {
       mediaId,
     );
 
-    try {
-      await unlink(join(PROJECT_MEDIA_DIR, result.storageKey));
-    } catch (_e) {
-      // Ignore error if file is already missing from disk
-    }
+    await this.deleteObjectSafely(result.storageKey, 'removed project media');
 
     return successResponseSchema.parse({ success: true });
+  }
+
+  private async deleteObjectSafely(key: string, context: string) {
+    await this.deleteObjectsSafely([key], context);
+  }
+
+  private async deleteObjectsSafely(keys: string[], context: string) {
+    try {
+      await this.objectStorage.deleteMany(keys);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `Failed to delete object storage data for ${context}: ${message}`,
+      );
+    }
   }
 }
