@@ -105,7 +105,7 @@ export default function ExploreUsersPage() {
             if (!profile) return null;
 
             return (
-              <Link key={u.id} href={`/users/${profile.publicSlug}`}>
+              <Link key={u.id} href={`/developers/${profile.publicSlug}`}>
                 <Card className="hover:border-primary/50 transition-colors h-full">
                   <CardContent className="p-6 flex flex-col items-center text-center gap-4">
                     <Avatar className="h-24 w-24 border-2">

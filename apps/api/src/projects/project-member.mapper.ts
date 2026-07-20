@@ -40,7 +40,7 @@ export function mapProjectMember(
           displayName: member.user.developerProfile.displayName,
           publicSlug: member.user.developerProfile.publicSlug,
           profilePictureUrl:
-            member.user.developerProfile.profilePictureUrl ?? null,
+            member.user.developerProfile.profilePictureUrl?.trim() || null,
         }
       : null,
   });

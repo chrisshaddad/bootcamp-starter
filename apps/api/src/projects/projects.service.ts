@@ -598,38 +598,76 @@ export class ProjectsService {
 
     const newStatus = data.status ? this.mapStatus(data.status) : undefined;
 
-    let githubOwnershipVerifiedAt: Date | undefined;
-    if (newStatus === ProjectStatus.PUBLISHED) {
-      await this.githubService.verifyRepositoryOwnership(
-        project.createdByUserId,
-        project.repository.htmlUrl,
-      );
-      githubOwnershipVerifiedAt = new Date();
-    }
-
-    let publishedAt: Date | null | undefined = undefined;
-    if (newStatus === ProjectStatus.PUBLISHED) {
-      if (!project.publishedAt) {
-        publishedAt = new Date();
-      }
-    } else if (newStatus) {
-      publishedAt = null;
-    }
+    const verifiedRepository =
+      newStatus === ProjectStatus.PUBLISHED
+        ? await this.githubService.verifyRepositoryOwnership(
+            project.createdByUserId,
+            project.repository.htmlUrl,
+          )
+        : null;
 
     try {
-      return await this.prisma.project.update({
-        where: { id: projectId },
-        data: {
-          title: data.title,
-          slug: data.slug,
-          logoUrl: data.logoUrl,
-          shortDescription: data.shortDescription,
-          fullDescription: data.fullDescription,
-          deploymentUrl: data.deploymentUrl,
-          status: newStatus,
-          publishedAt,
-          githubOwnershipVerifiedAt,
-        },
+      return await this.prisma.$transaction(async (tx) => {
+        const githubOwnershipVerifiedAt = verifiedRepository
+          ? new Date()
+          : undefined;
+
+        if (verifiedRepository) {
+          // Projects created before verified collaborator memberships were
+          // added may not have an OWNER row yet. Repair that invariant using
+          // the GitHub identity verified before opening the transaction.
+          await tx.projectMember.upsert({
+            where: {
+              projectId_userId: {
+                projectId,
+                userId: project.createdByUserId,
+              },
+            },
+            create: {
+              projectId,
+              userId: project.createdByUserId,
+              githubUserId: verifiedRepository.ownerGithubUserId,
+              githubUsername: verifiedRepository.ownerLogin,
+              role: ProjectRoleKey.OWNER,
+              verificationStatus: VerificationStatus.VERIFIED,
+              verificationSource: VerificationSource.GITHUB_OWNER,
+              verifiedAt: githubOwnershipVerifiedAt,
+              addedByUserId: project.createdByUserId,
+            },
+            update: {
+              githubUserId: verifiedRepository.ownerGithubUserId,
+              githubUsername: verifiedRepository.ownerLogin,
+              role: ProjectRoleKey.OWNER,
+              verificationStatus: VerificationStatus.VERIFIED,
+              verificationSource: VerificationSource.GITHUB_OWNER,
+              verifiedAt: githubOwnershipVerifiedAt,
+            },
+          });
+        }
+
+        let publishedAt: Date | null | undefined = undefined;
+        if (newStatus === ProjectStatus.PUBLISHED) {
+          if (!project.publishedAt) {
+            publishedAt = new Date();
+          }
+        } else if (newStatus) {
+          publishedAt = null;
+        }
+
+        return tx.project.update({
+          where: { id: projectId },
+          data: {
+            title: data.title,
+            slug: data.slug,
+            logoUrl: data.logoUrl,
+            shortDescription: data.shortDescription,
+            fullDescription: data.fullDescription,
+            deploymentUrl: data.deploymentUrl,
+            status: newStatus,
+            publishedAt,
+            githubOwnershipVerifiedAt,
+          },
+        });
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {

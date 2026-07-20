@@ -7,7 +7,7 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { UsersService } from './users.service';
-
+import { Public } from '../auth/decorators/public.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import {
@@ -18,8 +18,13 @@ import {
   type UsersExploreQuery,
   type UpdateProfileRequest,
   type ExploreUsersResponse,
+  developerPublicProfileResponseSchema,
+  type DeveloperPublicProfileResponse,
 } from '@repo/contracts';
-import { updateProfileRequestSchema as updateProfileOpenApiSchema } from '../common/swagger/schemas';
+import {
+  developerPublicProfileResponseSchema as developerPublicProfileOpenApiSchema,
+  updateProfileRequestSchema as updateProfileOpenApiSchema,
+} from '../common/swagger/schemas';
 
 // 1. Import AccountType and Roles decorators
 import { AccountType } from '@repo/db';
@@ -63,6 +68,23 @@ export class UsersController {
   async getUserBySlug(@Param('slug') slug: string) {
     const user = await this.usersService.getUserBySlug(slug);
     return publicUserResponseSchema.parse(user);
+  }
+
+  @Get('developers/:slug')
+  @Public()
+  @ApiOperation({ summary: 'Get a public developer portfolio by slug' })
+  @ApiResponse({
+    status: 200,
+    description: 'Public developer portfolio with published project work.',
+    schema: developerPublicProfileOpenApiSchema,
+  })
+  @ApiResponse({ status: 404, description: 'Developer profile not found.' })
+  async getDeveloperPublicProfile(
+    @Param('slug') slug: string,
+  ): Promise<DeveloperPublicProfileResponse> {
+    return developerPublicProfileResponseSchema.parse(
+      await this.usersService.getDeveloperPublicProfile(slug),
+    );
   }
 
   @Patch('profile')

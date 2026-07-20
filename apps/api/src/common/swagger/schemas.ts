@@ -15,6 +15,7 @@ import {
   projectsListResponseSchema as projectsListResponseContractSchema,
   projectByIdResponseSchema as projectByIdResponseContractSchema,
   updateProjectRequestSchema as updateProjectRequestContractSchema,
+  developerPublicProfileResponseSchema as developerPublicProfileResponseContractSchema,
 } from '@repo/contracts';
 import { z, type ZodType } from 'zod';
 
@@ -165,3 +166,6 @@ export const projectByIdResponseSchema: ApiBodySchema = toOpenApiSchema(
 export const updateProjectRequestSchema: ApiBodySchema = toOpenApiSchema(
   updateProjectRequestContractSchema,
 );
+
+export const developerPublicProfileResponseSchema: ApiBodySchema =
+  toOpenApiSchema(developerPublicProfileResponseContractSchema);

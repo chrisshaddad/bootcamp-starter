@@ -241,7 +241,33 @@ describe('ProjectsService GitHub import', () => {
       USER_ID,
       'https://github.com/vercel/next.js',
     );
-    expect(prisma.project.update).toHaveBeenCalledWith(
+    expect(tx.projectMember.upsert).toHaveBeenCalledWith({
+      where: {
+        projectId_userId: {
+          projectId: PROJECT_ID,
+          userId: USER_ID,
+        },
+      },
+      create: expect.objectContaining({
+        projectId: PROJECT_ID,
+        userId: USER_ID,
+        githubUserId: 100n,
+        githubUsername: 'vercel',
+        role: 'OWNER',
+        verificationStatus: 'VERIFIED',
+        verificationSource: 'GITHUB_OWNER',
+        verifiedAt: expect.any(Date),
+      }),
+      update: expect.objectContaining({
+        githubUserId: 100n,
+        githubUsername: 'vercel',
+        role: 'OWNER',
+        verificationStatus: 'VERIFIED',
+        verificationSource: 'GITHUB_OWNER',
+        verifiedAt: expect.any(Date),
+      }),
+    });
+    expect(tx.project.update).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           status: 'PUBLISHED',
@@ -460,6 +486,10 @@ function createTransactionMock() {
     project: {
       findUnique: jest.fn().mockResolvedValue(null),
       findMany: jest.fn().mockResolvedValue([]),
+      update: jest.fn().mockResolvedValue({
+        id: PROJECT_ID,
+        status: 'PUBLISHED',
+      }),
       create: jest.fn((input: unknown) => {
         captured.projectCreate = input;
         return Promise.resolve({
@@ -475,6 +505,7 @@ function createTransactionMock() {
       }),
     },
     projectMember: {
+      upsert: jest.fn().mockResolvedValue({ id: 'member-id' }),
       create: jest.fn((input: unknown) => {
         captured.memberCreate = input;
         return Promise.resolve({ id: 'member-id' });
