@@ -67,7 +67,7 @@ export default function NotificationsPage() {
               <p className="text-muted-foreground">No notifications yet</p>
             </div>
           ) : (
-            <ul className="divide-y divide-gray-100">
+            <ul className="divide-y divide-border">
               {notifications.map((n) => (
                 <li
                   key={n.id}

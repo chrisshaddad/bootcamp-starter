@@ -421,6 +421,7 @@ export default function UsersPage() {
                                 ? error.message
                                 : 'Failed to update status',
                             );
+                            throw error;
                           }
                         }}
                       />

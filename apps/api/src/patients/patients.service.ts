@@ -187,8 +187,8 @@ export class PatientsService {
     id: string,
     actor: User,
   ): Promise<PatientDetailResponse> {
-    const patient = await this.prisma.patient.findUnique({
-      where: { id },
+    const patient = await this.prisma.patient.findFirst({
+      where: { id, institutionId: actor.institutionId },
       select: { id: true, institutionId: true, userId: true },
     });
 
@@ -256,12 +256,12 @@ export class PatientsService {
     data: PatientClinicalUpdateRequest,
     actor: User,
   ): Promise<PatientDetailResponse> {
-    const patient = await this.prisma.patient.findUnique({
-      where: { id },
+    const patient = await this.prisma.patient.findFirst({
+      where: { id, institutionId: actor.institutionId },
       select: { id: true, institutionId: true, userId: true },
     });
 
-    if (!patient || patient.institutionId !== actor.institutionId) {
+    if (!patient) {
       throw new NotFoundException(`Patient with ID ${id} not found`);
     }
 
@@ -351,12 +351,12 @@ export class PatientsService {
     id: string,
     actor: User,
   ): Promise<PatientScope> {
-    const patient = await this.prisma.patient.findUnique({
-      where: { id },
+    const patient = await this.prisma.patient.findFirst({
+      where: { id, institutionId: actor.institutionId },
       select: { id: true, institutionId: true, userId: true },
     });
 
-    if (!patient || patient.institutionId !== actor.institutionId) {
+    if (!patient) {
       throw new NotFoundException(`Patient with ID ${id} not found`);
     }
 

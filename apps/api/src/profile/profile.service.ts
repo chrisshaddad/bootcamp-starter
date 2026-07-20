@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import type { User } from '@repo/db';
 import type {
@@ -8,6 +8,8 @@ import type {
 
 @Injectable()
 export class ProfileService {
+  private readonly logger = new Logger(ProfileService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   private async buildResponse(userId: string): Promise<SelfProfileResponse> {
@@ -70,6 +72,7 @@ export class ProfileService {
       }
     });
 
+    this.logger.log(`Profile updated by ${actor.id}`);
     return this.buildResponse(actor.id);
   }
 }

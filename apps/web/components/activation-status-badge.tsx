@@ -35,6 +35,9 @@ export function ActivationStatusBadge({
     try {
       await onConfirm();
       setOpen(false);
+    } catch {
+      // Caller already surfaced the error (toast); keep the dialog open so
+      // the user can see the failed state and retry.
     } finally {
       setIsSubmitting(false);
     }

@@ -48,12 +48,12 @@ export class MedicalRecordsService {
     data: RecordCreateRequest,
     actor: User,
   ): Promise<RecordDetailResponse> {
-    const patient = await this.prisma.patient.findUnique({
-      where: { id: patientId },
+    const patient = await this.prisma.patient.findFirst({
+      where: { id: patientId, institutionId: actor.institutionId },
       select: { id: true, institutionId: true, userId: true },
     });
 
-    if (!patient || patient.institutionId !== actor.institutionId) {
+    if (!patient) {
       throw new NotFoundException(`Patient with ID ${patientId} not found`);
     }
 
@@ -183,8 +183,8 @@ export class MedicalRecordsService {
     query: RecordListQuery,
     actor: User,
   ): Promise<RecordListResponse> {
-    const patient = await this.prisma.patient.findUnique({
-      where: { id: patientId },
+    const patient = await this.prisma.patient.findFirst({
+      where: { id: patientId, institutionId: actor.institutionId },
       select: { id: true, institutionId: true, userId: true },
     });
 
@@ -197,7 +197,9 @@ export class MedicalRecordsService {
     const records = await this.prisma.medicalRecord.findMany({
       where: {
         patientId,
-        ...(query.recordType ? { recordType: query.recordType } : {}),
+        ...(query.recordType?.length
+          ? { recordType: { in: query.recordType } }
+          : {}),
       },
       orderBy: { recordDate: 'desc' },
       include: {
@@ -296,8 +298,8 @@ export class MedicalRecordsService {
     recordId: string,
     actor: User,
   ): Promise<RecordScope> {
-    const record = await this.prisma.medicalRecord.findUnique({
-      where: { id: recordId },
+    const record = await this.prisma.medicalRecord.findFirst({
+      where: { id: recordId, institutionId: actor.institutionId },
       select: {
         id: true,
         patientId: true,

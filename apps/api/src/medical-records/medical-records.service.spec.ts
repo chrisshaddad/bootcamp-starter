@@ -14,11 +14,11 @@ describe('MedicalRecordsService', () => {
         {
           provide: PrismaService,
           useValue: {
-            patient: { findUnique: jest.fn() },
+            patient: { findFirst: jest.fn() },
             assignment: { findFirst: jest.fn() },
             medicalRecord: {
               create: jest.fn(),
-              findUnique: jest.fn(),
+              findFirst: jest.fn(),
               findUniqueOrThrow: jest.fn(),
               findMany: jest.fn(),
             },

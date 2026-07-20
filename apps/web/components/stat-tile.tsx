@@ -16,7 +16,6 @@ export function StatTile({ label, value, icon: Icon, href }: StatTileProps) {
   const card = (
     <Card
       className={cn(
-        'border-border bg-card shadow-sm',
         href &&
           'transition-colors hover:border-primary-300 hover:bg-primary-100/30',
       )}

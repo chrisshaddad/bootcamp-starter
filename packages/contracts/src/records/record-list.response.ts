@@ -20,9 +20,3 @@ export const recordListResponseSchema = z.object({
   records: z.array(recordSummarySchema),
 });
 export type RecordListResponse = z.infer<typeof recordListResponseSchema>;
-
-// Query params for GET /patients/:patientId/records
-export const recordListQuerySchema = z.object({
-  recordType: recordTypeSchema.optional(),
-});
-export type RecordListQuery = z.infer<typeof recordListQuerySchema>;

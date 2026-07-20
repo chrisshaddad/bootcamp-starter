@@ -80,7 +80,7 @@ export function RecordDetailDialog({
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-border">
               <DetailRow
                 label="Type"
                 value={record.recordType.replace(/_/g, ' ')}

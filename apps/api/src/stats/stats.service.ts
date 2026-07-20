@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { bucketCountsByDay, bucketCountsByRecordType } from './stats.util';
 import type { User } from '@repo/db';
@@ -20,6 +20,8 @@ function daysAgo(days: number, from: Date): Date {
 
 @Injectable()
 export class StatsService {
+  private readonly logger = new Logger(StatsService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   private getUnassignedPatientsCount(institutionId: string): Promise<number> {
@@ -38,7 +40,12 @@ export class StatsService {
         return this.getProfessionalStats(actor);
       default:
         // Guarded by @Roles at the controller — unreachable in practice.
-        throw new Error(`No dashboard stats defined for role ${actor.role}`);
+        this.logger.warn(
+          `Dashboard stats requested for unsupported role ${actor.role}`,
+        );
+        throw new BadRequestException(
+          `No dashboard stats defined for role ${actor.role}`,
+        );
     }
   }
 

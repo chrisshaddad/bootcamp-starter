@@ -22,8 +22,62 @@ const TYPE_COLORS: Record<RecordType, string> = {
   CONSULTATION: 'bg-purple text-white',
   PRESCRIPTION: 'bg-success-light text-success-dark',
   SCAN: 'bg-orange text-white',
-  VACCINATION: 'bg-secondary text-secondary-foreground',
+  VACCINATION: 'bg-teal text-white',
 };
+
+// Outlined/muted style for a chip whose type isn't currently selected.
+const TYPE_COLORS_INACTIVE: Record<RecordType, string> = {
+  LAB_RESULT: 'border-blue text-blue',
+  CONSULTATION: 'border-purple text-purple',
+  PRESCRIPTION: 'border-success-dark text-success-dark',
+  SCAN: 'border-orange text-orange',
+  VACCINATION: 'border-teal text-teal',
+};
+
+const ALL_RECORD_TYPES = Object.keys(RECORD_TYPE_LABELS) as RecordType[];
+
+function RecordTypeFilters({
+  selected,
+  onToggle,
+  onClear,
+}: {
+  selected: RecordType[];
+  onToggle: (type: RecordType) => void;
+  onClear: () => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2 border-b border-border px-6 py-3">
+      <button
+        type="button"
+        onClick={onClear}
+        className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+          selected.length === 0
+            ? 'border-foreground bg-foreground text-background'
+            : 'border-border text-muted-foreground hover:border-foreground hover:text-foreground'
+        }`}
+      >
+        All
+      </button>
+      {ALL_RECORD_TYPES.map((type) => {
+        const isActive = selected.includes(type);
+        return (
+          <button
+            key={type}
+            type="button"
+            onClick={() => onToggle(type)}
+            className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+              isActive
+                ? `border-transparent ${TYPE_COLORS[type]}`
+                : `bg-transparent ${TYPE_COLORS_INACTIVE[type]} hover:opacity-80`
+            }`}
+          >
+            {RECORD_TYPE_LABELS[type]}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 interface Props {
   patientId: string;
@@ -31,13 +85,22 @@ interface Props {
 }
 
 export function RecordsSection({ patientId, canAdd }: Props) {
-  const { records, isLoading, error, createRecord } = useRecords(patientId);
+  const [selectedTypes, setSelectedTypes] = useState<RecordType[]>([]);
+  const { records, isLoading, error, createRecord } = useRecords(patientId, {
+    recordTypes: selectedTypes.length ? selectedTypes : undefined,
+  });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
   const openRecord = (id: string) => {
     setSelectedId(id);
     setDetailOpen(true);
+  };
+
+  const toggleType = (type: RecordType) => {
+    setSelectedTypes((prev) =>
+      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type],
+    );
   };
 
   return (
@@ -49,6 +112,11 @@ export function RecordsSection({ patientId, canAdd }: Props) {
         </CardTitle>
         {canAdd && <AddRecordDialog createRecord={createRecord} />}
       </CardHeader>
+      <RecordTypeFilters
+        selected={selectedTypes}
+        onToggle={toggleType}
+        onClear={() => setSelectedTypes([])}
+      />
       <CardContent>
         {isLoading ? (
           <div className="space-y-2">
@@ -62,10 +130,12 @@ export function RecordsSection({ patientId, canAdd }: Props) {
           </div>
         ) : !records?.length ? (
           <div className="py-8 text-center text-muted-foreground">
-            No records yet
+            {selectedTypes.length
+              ? 'No records match the selected filters'
+              : 'No records yet'}
           </div>
         ) : (
-          <ul className="divide-y divide-gray-100">
+          <ul className="divide-y divide-border">
             {records.map((r) => (
               <li
                 key={r.id}

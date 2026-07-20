@@ -59,7 +59,7 @@ function AdminInstitutionCard() {
   if (!institution) return null;
 
   return (
-    <Card className="border-border bg-card shadow-sm">
+    <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
           <Building2 className="h-5 w-5" />
@@ -87,9 +87,18 @@ function StatsGridSkeleton() {
   );
 }
 
-function InstitutionAdminDashboard() {
-  const { stats, isLoading } = useDashboardStats();
+function DashboardStatsError() {
+  return (
+    <div className="rounded-xl border border-border bg-card p-6 text-center text-error">
+      Failed to load dashboard stats. Please try refreshing the page.
+    </div>
+  );
+}
 
+function InstitutionAdminDashboard() {
+  const { stats, isLoading, error } = useDashboardStats();
+
+  if (error) return <DashboardStatsError />;
   if (isLoading || !stats || stats.role !== 'INSTITUTION_ADMIN') {
     return <StatsGridSkeleton />;
   }
@@ -121,7 +130,7 @@ function InstitutionAdminDashboard() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="border-border bg-card shadow-sm">
+        <Card>
           <CardHeader>
             <CardTitle className="text-base">Records added this week</CardTitle>
           </CardHeader>
@@ -132,7 +141,7 @@ function InstitutionAdminDashboard() {
             />
           </CardContent>
         </Card>
-        <Card className="border-border bg-card shadow-sm">
+        <Card>
           <CardHeader>
             <CardTitle className="text-base">
               New patients (last 30 days)
@@ -151,8 +160,9 @@ function InstitutionAdminDashboard() {
 }
 
 function StaffDashboard() {
-  const { stats, isLoading } = useDashboardStats();
+  const { stats, isLoading, error } = useDashboardStats();
 
+  if (error) return <DashboardStatsError />;
   if (isLoading || !stats || stats.role !== 'STAFF') {
     return <StatsGridSkeleton />;
   }
@@ -173,7 +183,7 @@ function StaffDashboard() {
         />
       </div>
 
-      <Card className="border-border bg-card shadow-sm">
+      <Card>
         <CardHeader>
           <CardTitle className="text-base">Recent registrations</CardTitle>
         </CardHeader>
@@ -204,8 +214,9 @@ function StaffDashboard() {
 }
 
 function ProfessionalDashboard() {
-  const { stats, isLoading } = useDashboardStats();
+  const { stats, isLoading, error } = useDashboardStats();
 
+  if (error) return <DashboardStatsError />;
   if (isLoading || !stats || stats.role !== 'PROFESSIONAL') {
     return <StatsGridSkeleton />;
   }
@@ -230,7 +241,7 @@ function ProfessionalDashboard() {
         />
       </div>
 
-      <Card className="border-border bg-card shadow-sm">
+      <Card>
         <CardHeader>
           <CardTitle className="text-base">
             Records this week, by type
@@ -245,7 +256,7 @@ function ProfessionalDashboard() {
       </Card>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="border-border bg-card shadow-sm">
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <CalendarClock className="h-4 w-4" />
@@ -283,7 +294,7 @@ function ProfessionalDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="border-border bg-card shadow-sm">
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Syringe className="h-4 w-4" />

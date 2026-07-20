@@ -286,7 +286,7 @@ export function CareTeamSection({ patient, canManage, onChange }: Props) {
             No professionals assigned yet
           </p>
         ) : (
-          <ul className="divide-y divide-gray-100">
+          <ul className="divide-y divide-border">
             {patient.careTeam.map((member) => (
               <li
                 key={member.assignmentId}

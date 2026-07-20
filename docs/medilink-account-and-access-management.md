@@ -42,6 +42,7 @@ click-the-status-badge-and-confirm pattern.
 - On the Users page, this left the "..." menu with only "Edit" in it — simplified to a plain pencil-icon button instead of a dropdown for a single item.
 - Permission matrix, unchanged in spirit from before, just relocated: Institution Admin can toggle Staff, Professional, and Patient status; Staff can only toggle Patient status; Professional sees a plain, non-clickable badge (view-only).
 - `PatientsService.setStatus` reuses the existing `userStatusRequestSchema`/`UserStatusRequest` contract from the Users module rather than duplicating an identical `{ isActive: boolean }` shape — a Patient's `isActive` lives on the same underlying `User` row.
+- **Fixed: the confirm dialog closed even when the activation/deactivation request failed.** Both the Users and Patients pages' `onConfirm` callbacks caught their own errors to show a toast, but never rethrew — so the promise `ActivationStatusBadge.handleConfirm` awaits always resolved, and it closed the dialog and flipped nothing on faith. A failed action looked identical to a successful one except for the toast. Fixed by rethrowing after the toast in both callers, and adding a catch in `handleConfirm` itself so the dialog now stays open (and the badge stays unchanged) on a real failure, letting the user see the error and retry without reopening anything.
 
 ## QA steps
 
@@ -53,6 +54,7 @@ click-the-status-badge-and-confirm pattern.
 6. On `/patients`, as Institution Admin or Staff, click a status badge — same confirm-dialog pattern, no separate Actions column.
 7. On `/patients`, as a Professional, confirm the status badge is plain (not clickable, no confirm dialog) — Professionals shouldn't be able to change a patient's status.
 8. Confirm clicking a status badge in either table does **not** also trigger the row's own click behavior (e.g. navigating to `/patients/:id`).
+9. Force an activation/deactivation request to fail (e.g. stop the API briefly, or revoke your session) and click a status badge — confirm you get an error toast, the dialog **stays open**, and the badge does not flip; retry once the failure condition clears and confirm it now succeeds normally.
 
 ## Still missing / follow-up
 

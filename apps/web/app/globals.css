@@ -123,6 +123,7 @@ a {
   --color-orange: #fe964a;
   --color-blue: #2f78ee;
   --color-purple: #8c62ff;
+  --color-teal: #0891b2;
 
   /* Typography - Font Sizes */
   --font-size-xs: 0.625rem; /* 10px */

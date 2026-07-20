@@ -164,9 +164,7 @@ export default function PatientsPage() {
   const searchParams = useSearchParams();
   const { user, isLoading: userLoading } = useUser();
   const [search, setSearch] = useState('');
-  const [unassignedOnly, setUnassignedOnly] = useState(
-    () => searchParams.get('unassigned') === 'true',
-  );
+  const unassignedOnly = searchParams.get('unassigned') === 'true';
 
   const role = user?.role;
   const canAccess = role ? ALLOWED_ROLES.includes(role) : false;
@@ -181,7 +179,6 @@ export default function PatientsPage() {
   const { setPatientStatus } = useSetPatientStatus();
 
   const toggleUnassignedOnly = (checked: boolean) => {
-    setUnassignedOnly(checked);
     const params = new URLSearchParams(searchParams.toString());
     if (checked) {
       params.set('unassigned', 'true');
@@ -323,6 +320,7 @@ export default function PatientsPage() {
                                   ? error.message
                                   : 'Failed to update status',
                               );
+                              throw error;
                             }
                           }}
                         />
