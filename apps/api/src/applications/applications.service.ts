@@ -239,7 +239,12 @@ export class ApplicationsService {
         id,
         OR: [
           { userId: currentUser.id },
-          { user: { managerId: currentUser.id } },
+          {
+            user: {
+              managerId: currentUser.id,
+              organizationId: currentUser.organizationId as string,
+            },
+          },
         ],
       };
     } else if (currentUser.role === 'HR' || currentUser.role === 'ORG_ADMIN') {
