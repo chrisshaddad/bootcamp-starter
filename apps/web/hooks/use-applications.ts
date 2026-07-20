@@ -1,7 +1,8 @@
 'use client';
 
 import useSWR, { mutate } from 'swr';
-import { useCallback } from 'react';
+import useSWRInfinite from 'swr/infinite';
+import { useCallback, useEffect, useMemo } from 'react';
 import { apiPost, apiPatch } from '@/lib/api';
 import type {
   ApplicationListResponse,
@@ -53,6 +54,84 @@ export function useApplications(
     isLoading,
     error,
     mutate: swrMutate,
+  };
+}
+
+interface UseApplicationsInfiniteOptions {
+  status?: ApplicationStatus;
+  team?: boolean;
+  pageSize?: number;
+  enabled?: boolean;
+}
+
+interface UseApplicationsInfiniteReturn {
+  applications: ApplicationListResponse['applications'] | undefined;
+  total: number | undefined;
+  isLoading: boolean;
+  isLoadingMore: boolean;
+  hasMore: boolean;
+  loadMore: () => void;
+  error: Error | undefined;
+}
+
+const DEFAULT_PAGE_SIZE = 20;
+
+/**
+ * Fetches applications a page at a time via `loadMore`, so lists beyond the
+ * default page size (e.g. a manager's team-wide applications) stay reachable
+ * instead of being silently truncated.
+ */
+export function useApplicationsInfinite(
+  options: UseApplicationsInfiniteOptions = {},
+): UseApplicationsInfiniteReturn {
+  const {
+    status,
+    team,
+    pageSize = DEFAULT_PAGE_SIZE,
+    enabled = true,
+  } = options;
+
+  const getKey = (
+    pageIndex: number,
+    previousPageData: ApplicationListResponse | null,
+  ) => {
+    if (!enabled) return null;
+    if (previousPageData && previousPageData.applications.length < pageSize) {
+      return null;
+    }
+
+    const params = new URLSearchParams();
+    if (status) params.set('status', status);
+    if (team) params.set('team', 'true');
+    params.set('limit', String(pageSize));
+    params.set('page', String(pageIndex + 1));
+    return `/applications?${params.toString()}`;
+  };
+
+  const { data, error, isLoading, isValidating, size, setSize } =
+    useSWRInfinite<ApplicationListResponse>(getKey);
+
+  useEffect(() => {
+    setSize(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, team, enabled]);
+
+  const applications = useMemo(
+    () => data?.flatMap((page) => page.applications),
+    [data],
+  );
+  const total = data?.[0]?.total;
+  const loaded = applications?.length ?? 0;
+  const hasMore = total !== undefined && loaded < total;
+
+  return {
+    applications,
+    total,
+    isLoading,
+    isLoadingMore: isValidating && size > 1,
+    hasMore,
+    loadMore: () => setSize(size + 1),
+    error,
   };
 }
 

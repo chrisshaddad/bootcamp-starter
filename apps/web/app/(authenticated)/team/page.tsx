@@ -1,12 +1,12 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, Briefcase, FileText, ShieldX, Users } from 'lucide-react';
 import { useUser } from '@/hooks/use-auth';
 import { useEmployee } from '@/hooks/use-employee';
-import { useEmployees } from '@/hooks/use-employees';
+import { useEmployeesInfinite } from '@/hooks/use-employees';
 import { useOpportunities } from '@/hooks/use-opportunities';
 import { useApplications } from '@/hooks/use-applications';
 import { Card } from '@/components/ui/card';
@@ -123,11 +123,14 @@ function SkillBreakdownBar({ row }: { row: SkillBreakdownRow }) {
 // down to PENDING (see ApplicationsService.toPublicStatus) - so "pending
 // review" for a manager is simply the public PENDING status.
 
-// Team-scoped lists are capped at the API's max page size rather than
-// paginated in the UI - a manager's direct-report count/application volume
-// realistically stays well under this, but stat *counts* below still use the
-// API's `total` (unaffected by this cap) so they're accurate either way.
-const TEAM_LIST_LIMIT = 100;
+// Only the 5 most recent applications are displayed, so a small page
+// (already newest-first from the API) is all that's needed here.
+const RECENT_APPLICATIONS_LIMIT = 5;
+
+// How many team members are shown before the "Show more" control appears.
+// The underlying data is fully loaded via `useEmployeesInfinite` regardless
+// of team size - this only paginates what's rendered.
+const MEMBERS_PAGE_SIZE = 8;
 
 export default function TeamOverviewPage() {
   const router = useRouter();
@@ -139,11 +142,12 @@ export default function TeamOverviewPage() {
     employees,
     total: employeesTotal,
     isLoading: employeesLoading,
-  } = useEmployees({
+  } = useEmployeesInfinite({
     mine: true,
-    limit: TEAM_LIST_LIMIT,
     enabled: isManager,
   });
+  const [visibleMemberCount, setVisibleMemberCount] =
+    useState(MEMBERS_PAGE_SIZE);
   // Only the count is displayed, so fetch a minimal page.
   const { total: opportunitiesTotal, isLoading: opportunitiesLoading } =
     useOpportunities({
@@ -154,7 +158,7 @@ export default function TeamOverviewPage() {
     });
   const { applications, isLoading: applicationsLoading } = useApplications({
     team: true,
-    limit: TEAM_LIST_LIMIT,
+    limit: RECENT_APPLICATIONS_LIMIT,
     enabled: isManager,
   });
   // Counted via the API's `total` (a real count query) rather than the
@@ -205,7 +209,7 @@ export default function TeamOverviewPage() {
       );
   }, [employees]);
 
-  const recentApplications = (applications ?? []).slice(0, 5);
+  const recentApplications = applications ?? [];
 
   if (isUserLoading) {
     return <LoadingSkeleton />;
@@ -345,28 +349,42 @@ export default function TeamOverviewPage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {employees.map((member) => (
-              <div
-                key={member.id}
-                className="flex items-center gap-3 rounded-lg border border-gray-100 p-3"
-              >
-                <Avatar>
-                  <AvatarFallback className="bg-primary-base text-sm font-medium text-white">
-                    {getInitials(member.name)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-gray-900">
-                    {member.name}
-                  </p>
-                  <p className="truncate text-xs text-gray-500">
-                    {member.title ?? 'No title set'}
-                  </p>
+          <>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {employees.slice(0, visibleMemberCount).map((member) => (
+                <div
+                  key={member.id}
+                  className="flex items-center gap-3 rounded-lg border border-gray-100 p-3"
+                >
+                  <Avatar>
+                    <AvatarFallback className="bg-primary-base text-sm font-medium text-white">
+                      {getInitials(member.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-gray-900">
+                      {member.name}
+                    </p>
+                    <p className="truncate text-xs text-gray-500">
+                      {member.title ?? 'No title set'}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+            {visibleMemberCount < employees.length && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() =>
+                  setVisibleMemberCount((count) => count + MEMBERS_PAGE_SIZE)
+                }
+                className="mx-auto text-sm text-primary-base hover:text-primary-base/80"
+              >
+                Show more
+              </Button>
+            )}
+          </>
         )}
       </Card>
     </div>

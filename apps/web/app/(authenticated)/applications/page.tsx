@@ -4,7 +4,7 @@ import { Suspense, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Calendar, FileText, Search, TrendingUp } from 'lucide-react';
 import { useUser } from '@/hooks/use-auth';
-import { useApplications } from '@/hooks/use-applications';
+import { useApplicationsInfinite } from '@/hooks/use-applications';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -90,14 +90,11 @@ function ApplicationsContent() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
 
-  const { applications, isLoading, error } = useApplications({
-    status: statusFilter === 'ALL' ? undefined : statusFilter,
-    team: teamView,
-    // A manager's team-wide application volume can exceed the default page
-    // size; the personal view stays on the default since a single person's
-    // application count realistically won't.
-    limit: teamView ? 100 : undefined,
-  });
+  const { applications, isLoading, hasMore, isLoadingMore, loadMore, error } =
+    useApplicationsInfinite({
+      status: statusFilter === 'ALL' ? undefined : statusFilter,
+      team: teamView,
+    });
 
   const filtered = useMemo(() => {
     let result = applications ?? [];
@@ -216,6 +213,18 @@ function ApplicationsContent() {
               </div>
             </Card>
           ))}
+          {hasMore && (
+            <div className="flex justify-center pt-2">
+              <Button
+                variant="outline"
+                onClick={loadMore}
+                disabled={isLoadingMore}
+                className="h-9 rounded-lg border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                {isLoadingMore ? 'Loading...' : 'Load more'}
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>
