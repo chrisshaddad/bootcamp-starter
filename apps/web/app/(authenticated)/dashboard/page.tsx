@@ -527,7 +527,7 @@ function RecentActivityCard() {
 
   return (
     <Card className="glass-card card-elevated rounded-xl border-border bg-card">
-      <CardHeader className="pb-4 border-b border-border/50">
+      <CardHeader className="pb-3 border-b border-border/50">
         <div className="flex w-full items-center justify-between">
           <CardTitle className="text-lg font-bold text-foreground">
             Recent Activity
@@ -536,25 +536,31 @@ function RecentActivityCard() {
             variant="outline"
             size="sm"
             asChild
-            className="h-8 gap-1.5 text-xs font-medium"
+            className="h-8 gap-1.5 text-xs font-medium hover:border-primary-base hover:text-primary-base transition-colors"
           >
             <Link href="/audit-logs">View all</Link>
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="pt-4">
+      <CardContent className="pt-2 pb-3">
         {isLoading ? (
-          <div className="space-y-4">
+          <div className="divide-y divide-border/40">
             {[...Array(5)].map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full rounded-xl" />
+              <div key={i} className="py-3.5 flex items-center gap-3">
+                <Skeleton className="h-10 w-10 rounded-full shrink-0" />
+                <div className="space-y-1.5 flex-1">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/4" />
+                </div>
+              </div>
             ))}
           </div>
         ) : !auditLogs || auditLogs.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-6">
+          <p className="text-sm text-muted-foreground text-center py-8">
             No activity yet
           </p>
         ) : (
-          <div className="space-y-3">
+          <div className="divide-y divide-border/40">
             {auditLogs.map((log) => {
               const { icon: ActionIcon, colorClass } = getActionDetails(
                 log.action,
@@ -563,35 +569,33 @@ function RecentActivityCard() {
               return (
                 <div
                   key={log.id}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-card/60 p-3 transition-colors hover:bg-muted/50"
+                  className="flex items-center justify-between gap-4 py-3.5 first:pt-2 last:pb-1 transition-colors hover:bg-muted/30 px-2 rounded-lg -mx-2"
                 >
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="flex items-center gap-3.5 min-w-0 flex-1">
                     <div
-                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl font-semibold ${colorClass}`}
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-semibold shadow-2xs ${colorClass}`}
                     >
                       <ActionIcon className="h-4 w-4" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="truncate font-semibold text-sm text-foreground">
-                          {log.userName || 'System'}
+                      <p className="text-sm font-medium text-foreground truncate">
+                        {log.userName || 'System'}{' '}
+                        <span className="font-normal text-muted-foreground">
+                          {formatActionShort(log.action)}
                         </span>
-                        <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground shrink-0">
-                          {log.entityType.replace(/_/g, ' ')}
-                        </span>
-                      </div>
-                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                        {formatActionShort(log.action)}
                         {log.entityName && (
-                          <span className="font-medium text-foreground">
+                          <span className="font-semibold text-foreground">
                             {' '}
-                            — {log.entityName}
+                            {log.entityName}
                           </span>
                         )}
                       </p>
+                      <p className="text-xs text-muted-foreground/80 mt-0.5 capitalize">
+                        {log.entityType.toLowerCase().replace(/_/g, ' ')}
+                      </p>
                     </div>
                   </div>
-                  <span className="shrink-0 rounded-md bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">
+                  <span className="shrink-0 text-xs font-medium text-muted-foreground">
                     {formatRelativeTime(log.createdAt)}
                   </span>
                 </div>
@@ -691,7 +695,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Activity feed row */}
-      <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2 animate-stagger">
+      <div className="grid gap-4 sm:grid-cols-1 animate-stagger">
         <RecentActivityCard />
       </div>
     </div>
