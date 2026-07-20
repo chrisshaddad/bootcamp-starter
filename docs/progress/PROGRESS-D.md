@@ -247,7 +247,7 @@ section above has the complete bug/fix history.
   `phoneNumber` + address + bio + `profilePictureUrl` columns — only
   `phoneNumber` is surfaced here; the rest stay unused until a real need
   shows up). `getMe()` now includes `profile: { select: { phoneNumber:
-true } }` and returns it flattened. **If a future task needs to *edit* this
+true } }` and returns it flattened. **If a future task needs to _edit_ this
   profile:** an earlier pass in this session built and then reverted a
   `PATCH /auth/me` (contracts `userProfileUpdateRequestSchema`, an
   `authService.updateMe()` transaction updating `User.name` +

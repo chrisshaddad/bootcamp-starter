@@ -26,8 +26,24 @@ export function LogoMark({ className }: { className?: string }) {
       >
         {/* barbell */}
         <line x1="6" y1="8" x2="42" y2="8" />
-        <rect x="3" y="2.5" width="6" height="11" rx="1.5" fill="white" stroke="none" />
-        <rect x="39" y="2.5" width="6" height="11" rx="1.5" fill="white" stroke="none" />
+        <rect
+          x="3"
+          y="2.5"
+          width="6"
+          height="11"
+          rx="1.5"
+          fill="white"
+          stroke="none"
+        />
+        <rect
+          x="39"
+          y="2.5"
+          width="6"
+          height="11"
+          rx="1.5"
+          fill="white"
+          stroke="none"
+        />
         {/* lifter */}
         <circle cx="24" cy="15" r="4.6" fill="white" stroke="none" />
         <path d="M13 8 L24 21 L35 8" />

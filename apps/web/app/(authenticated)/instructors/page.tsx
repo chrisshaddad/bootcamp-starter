@@ -55,7 +55,9 @@ function ActiveBadge({ isActive }: { isActive: boolean }) {
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-        isActive ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'
+        isActive
+          ? 'bg-success/10 text-success'
+          : 'bg-muted text-muted-foreground'
       }`}
     >
       {isActive ? (

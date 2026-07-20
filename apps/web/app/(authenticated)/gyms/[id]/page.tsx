@@ -67,9 +67,7 @@ function ForbiddenPage() {
   return (
     <div className="flex flex-col items-center justify-center py-20">
       <ShieldX className="h-16 w-16 text-error mb-4" />
-      <h1 className="text-2xl font-bold text-foreground mb-2">
-        Access Denied
-      </h1>
+      <h1 className="text-2xl font-bold text-foreground mb-2">Access Denied</h1>
       <p className="text-muted-foreground text-center max-w-md">
         You don&apos;t have permission to access this page. Only Super Admins
         can manage gyms.

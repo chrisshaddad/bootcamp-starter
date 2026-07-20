@@ -89,9 +89,7 @@ export default function MyProfilePage() {
                 label="Phone"
                 value={
                   profile.phoneNumber ?? (
-                    <span className="text-muted-foreground">
-                      Not provided
-                    </span>
+                    <span className="text-muted-foreground">Not provided</span>
                   )
                 }
               />
@@ -106,9 +104,7 @@ export default function MyProfilePage() {
                       day: 'numeric',
                     })
                   ) : (
-                    <span className="text-muted-foreground">
-                      Not provided
-                    </span>
+                    <span className="text-muted-foreground">Not provided</span>
                   )
                 }
               />

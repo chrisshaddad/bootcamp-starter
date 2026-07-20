@@ -139,8 +139,7 @@ function BookingCard({
           </h3>
           <span
             className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-              STATUS_COLORS[booking.status] ??
-              'bg-muted text-muted-foreground'
+              STATUS_COLORS[booking.status] ?? 'bg-muted text-muted-foreground'
             }`}
           >
             {STATUS_LABELS[booking.status] ?? booking.status}

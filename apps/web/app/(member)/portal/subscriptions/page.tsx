@@ -32,9 +32,7 @@ function SubscriptionRow({ sub }: { sub: SubscriptionResponse }) {
       <div className="min-w-0 flex-1">
         <p className="font-medium text-foreground">
           {sub.plan?.name ?? (
-            <span className="text-muted-foreground italic">
-              Plan removed
-            </span>
+            <span className="text-muted-foreground italic">Plan removed</span>
           )}
         </p>
         <p className="mt-0.5 text-sm text-muted-foreground">
@@ -74,9 +72,7 @@ export default function MySubscriptionsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">
-          My Subscriptions
-        </h1>
+        <h1 className="text-2xl font-bold text-foreground">My Subscriptions</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Your full membership history.
         </p>
@@ -89,9 +85,7 @@ export default function MySubscriptionsPage() {
             Subscription History
           </CardTitle>
           {total !== undefined && (
-            <span className="text-sm text-muted-foreground">
-              {total} total
-            </span>
+            <span className="text-sm text-muted-foreground">{total} total</span>
           )}
         </CardHeader>
         <CardContent className="pt-0">

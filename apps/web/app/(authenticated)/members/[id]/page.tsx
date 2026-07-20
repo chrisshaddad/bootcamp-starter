@@ -549,9 +549,11 @@ export default function MemberDetailPage() {
             <DialogTitle>Invite to Member Portal</DialogTitle>
             <DialogDescription>
               A magic-link login email will be sent to{' '}
-              <span className="font-medium text-foreground">{member.email}</span>.
-              The member will be able to log in and view their subscriptions and
-              available plans.
+              <span className="font-medium text-foreground">
+                {member.email}
+              </span>
+              . The member will be able to log in and view their subscriptions
+              and available plans.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
