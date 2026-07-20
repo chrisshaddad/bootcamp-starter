@@ -1,4 +1,8 @@
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { AdminService } from './admin.service';
 import type { DatabaseService } from '../database/prisma.service';
 import type { SessionService } from '../auth/session.service';
@@ -63,15 +67,13 @@ function projectRecord(overrides: Record<string, unknown> = {}) {
   };
 }
 
-interface AccountUpdateArgs {
-  where: { id: string };
+interface StatusUpdateArgs {
+  where: { id: string; status: string };
   data: Record<string, unknown>;
-  include: unknown;
 }
 
-interface ProjectUpdateArgs {
+interface FindRecordArgs {
   where: { id: string };
-  data: Record<string, unknown>;
   include: unknown;
 }
 
@@ -80,8 +82,14 @@ interface AuditCreateArgs {
 }
 
 interface TransactionMocks {
-  user: { update: jest.Mock<unknown, [AccountUpdateArgs]> };
-  project: { update: jest.Mock<unknown, [ProjectUpdateArgs]> };
+  user: {
+    updateMany: jest.Mock<Promise<{ count: number }>, [StatusUpdateArgs]>;
+    findUniqueOrThrow: jest.Mock<Promise<unknown>, [FindRecordArgs]>;
+  };
+  project: {
+    updateMany: jest.Mock<Promise<{ count: number }>, [StatusUpdateArgs]>;
+    findUniqueOrThrow: jest.Mock<Promise<unknown>, [FindRecordArgs]>;
+  };
   adminAuditLog: { create: jest.Mock<unknown, [AuditCreateArgs]> };
 }
 
@@ -96,14 +104,28 @@ describe('AdminService', () => {
   };
   let tx: TransactionMocks;
   let sessions: {
-    deleteAllUserSessions: jest.Mock<Promise<void>, [string]>;
+    deleteAllUserSessions: jest.Mock<Promise<void>, [string, unknown?]>;
   };
   let service: AdminService;
 
   beforeEach(() => {
     tx = {
-      user: { update: jest.fn<unknown, [AccountUpdateArgs]>() },
-      project: { update: jest.fn<unknown, [ProjectUpdateArgs]>() },
+      user: {
+        updateMany: jest
+          .fn<Promise<{ count: number }>, [StatusUpdateArgs]>()
+          .mockResolvedValue({ count: 1 }),
+        findUniqueOrThrow: jest
+          .fn<Promise<unknown>, [FindRecordArgs]>()
+          .mockResolvedValue(accountRecord()),
+      },
+      project: {
+        updateMany: jest
+          .fn<Promise<{ count: number }>, [StatusUpdateArgs]>()
+          .mockResolvedValue({ count: 1 }),
+        findUniqueOrThrow: jest
+          .fn<Promise<unknown>, [FindRecordArgs]>()
+          .mockResolvedValue(projectRecord()),
+      },
       adminAuditLog: { create: jest.fn<unknown, [AuditCreateArgs]>() },
     };
     database = {
@@ -115,7 +137,7 @@ describe('AdminService', () => {
       >((callback) => callback(tx)),
     };
     sessions = {
-      deleteAllUserSessions: jest.fn<Promise<void>, [string]>(),
+      deleteAllUserSessions: jest.fn<Promise<void>, [string, unknown?]>(),
     };
     service = new AdminService(
       database as unknown as DatabaseService,
@@ -129,15 +151,13 @@ describe('AdminService', () => {
       accountType: 'DEVELOPER',
       status: 'ACTIVE',
     });
-    tx.user.update.mockResolvedValue(accountRecord());
-
     const result = await service.updateAccountStatus(ACTOR_ID, USER_ID, {
       status: 'SUSPENDED',
       reason: 'Repeated platform abuse',
     });
 
-    const accountUpdate = tx.user.update.mock.calls[0]?.[0];
-    expect(accountUpdate?.where).toEqual({ id: USER_ID });
+    const accountUpdate = tx.user.updateMany.mock.calls[0]?.[0];
+    expect(accountUpdate?.where).toEqual({ id: USER_ID, status: 'ACTIVE' });
     expect(accountUpdate?.data).toEqual(
       expect.objectContaining({
         status: 'SUSPENDED',
@@ -152,7 +172,7 @@ describe('AdminService', () => {
         targetId: USER_ID,
       }),
     );
-    expect(sessions.deleteAllUserSessions).toHaveBeenCalledWith(USER_ID);
+    expect(sessions.deleteAllUserSessions).toHaveBeenCalledWith(USER_ID, tx);
     expect(result).not.toHaveProperty('passwordHash');
     expect(result.status).toBe('SUSPENDED');
   });
@@ -165,6 +185,44 @@ describe('AdminService', () => {
       }),
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(database.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('rejects a concurrent account status transition before side effects', async () => {
+    database.user.findUnique.mockResolvedValue({
+      id: USER_ID,
+      accountType: 'DEVELOPER',
+      status: 'ACTIVE',
+    });
+    tx.user.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(
+      service.updateAccountStatus(ACTOR_ID, USER_ID, {
+        status: 'SUSPENDED',
+        reason: 'Repeated platform abuse',
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(sessions.deleteAllUserSessions).not.toHaveBeenCalled();
+    expect(tx.adminAuditLog.create).not.toHaveBeenCalled();
+  });
+
+  it('keeps suspension and session invalidation in one transaction', async () => {
+    database.user.findUnique.mockResolvedValue({
+      id: USER_ID,
+      accountType: 'DEVELOPER',
+      status: 'ACTIVE',
+    });
+    sessions.deleteAllUserSessions.mockRejectedValue(
+      new Error('Session store unavailable'),
+    );
+
+    await expect(
+      service.updateAccountStatus(ACTOR_ID, USER_ID, {
+        status: 'SUSPENDED',
+        reason: 'Repeated platform abuse',
+      }),
+    ).rejects.toThrow('Session store unavailable');
+    expect(tx.adminAuditLog.create).not.toHaveBeenCalled();
+    expect(tx.user.findUniqueOrThrow).not.toHaveBeenCalled();
   });
 
   it('prevents moderation of another super-admin account', async () => {
@@ -188,15 +246,16 @@ describe('AdminService', () => {
       moderatedAt: null,
       moderatedByUserId: null,
     });
-    tx.project.update.mockResolvedValue(projectRecord());
-
     const result = await service.moderateProject(ACTOR_ID, PROJECT_ID, {
       action: 'SUSPEND',
       reason: 'Unsafe content was published',
     });
 
-    const suspensionUpdate = tx.project.update.mock.calls[0]?.[0];
-    expect(suspensionUpdate?.where).toEqual({ id: PROJECT_ID });
+    const suspensionUpdate = tx.project.updateMany.mock.calls[0]?.[0];
+    expect(suspensionUpdate?.where).toEqual({
+      id: PROJECT_ID,
+      status: 'PUBLISHED',
+    });
     expect(suspensionUpdate?.data).toEqual(
       expect.objectContaining({
         status: 'SUSPENDED',
@@ -215,7 +274,7 @@ describe('AdminService', () => {
       moderatedAt: NOW,
       moderatedByUserId: ACTOR_ID,
     });
-    tx.project.update.mockResolvedValue(
+    tx.project.findUniqueOrThrow.mockResolvedValue(
       projectRecord({
         status: 'DRAFT',
         moderatedAt: null,
@@ -229,11 +288,30 @@ describe('AdminService', () => {
       reason: 'The moderation concern has been resolved',
     });
 
-    const restoreUpdate = tx.project.update.mock.calls[0]?.[0];
+    const restoreUpdate = tx.project.updateMany.mock.calls[0]?.[0];
     expect(restoreUpdate?.data).toEqual(
       expect.objectContaining({ status: 'DRAFT', publishedAt: null }),
     );
     expect(result.status).toBe('DRAFT');
+  });
+
+  it('rejects a concurrent project status transition before auditing', async () => {
+    database.project.findUnique.mockResolvedValue({
+      id: PROJECT_ID,
+      status: 'PUBLISHED',
+      moderatedAt: null,
+      moderatedByUserId: null,
+    });
+    tx.project.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(
+      service.moderateProject(ACTOR_ID, PROJECT_ID, {
+        action: 'SUSPEND',
+        reason: 'Unsafe content was published',
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(tx.adminAuditLog.create).not.toHaveBeenCalled();
+    expect(tx.project.findUniqueOrThrow).not.toHaveBeenCalled();
   });
 
   it('does not restore a project archived by its owner', async () => {

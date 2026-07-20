@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   Logger,
@@ -270,15 +271,24 @@ export class AdminService {
         ? AdminAuditAction.ACCOUNT_SUSPENDED
         : AdminAuditAction.ACCOUNT_REACTIVATED;
     const updated = await this.database.$transaction(async (tx) => {
-      const account = await tx.user.update({
-        where: { id: userId },
+      const transition = await tx.user.updateMany({
+        where: { id: userId, status: existing.status },
         data: {
           status: input.status,
           suspendedAt: input.status === 'SUSPENDED' ? new Date() : null,
           suspensionReason: input.status === 'SUSPENDED' ? input.reason : null,
         },
-        include: accountInclude(),
       });
+      if (transition.count === 0) {
+        throw new ConflictException(
+          'Account status changed concurrently; please retry',
+        );
+      }
+
+      if (input.status === 'SUSPENDED') {
+        await this.sessionService.deleteAllUserSessions(userId, tx);
+      }
+
       await tx.adminAuditLog.create({
         data: {
           actorUserId,
@@ -292,12 +302,12 @@ export class AdminService {
           },
         },
       });
-      return account;
+      return tx.user.findUniqueOrThrow({
+        where: { id: userId },
+        include: accountInclude(),
+      });
     });
 
-    if (input.status === 'SUSPENDED') {
-      await this.sessionService.deleteAllUserSessions(userId);
-    }
     this.logger.log(`${action} target=${userId} actor=${actorUserId}`);
     return this.mapAccount(updated);
   }
@@ -386,8 +396,8 @@ export class AdminService {
         ? ProjectStatus.SUSPENDED
         : ProjectStatus.DRAFT;
     const updated = await this.database.$transaction(async (tx) => {
-      const project = await tx.project.update({
-        where: { id: projectId },
+      const transition = await tx.project.updateMany({
+        where: { id: projectId, status: existing.status },
         data: {
           status: nextStatus,
           moderatedAt: input.action === 'SUSPEND' ? new Date() : null,
@@ -395,8 +405,13 @@ export class AdminService {
           moderationReason: input.action === 'SUSPEND' ? input.reason : null,
           publishedAt: null,
         },
-        include: projectInclude,
       });
+      if (transition.count === 0) {
+        throw new ConflictException(
+          'Project status changed concurrently; please retry',
+        );
+      }
+
       await tx.adminAuditLog.create({
         data: {
           actorUserId,
@@ -407,7 +422,10 @@ export class AdminService {
           metadata: { previousStatus: existing.status, nextStatus },
         },
       });
-      return project;
+      return tx.project.findUniqueOrThrow({
+        where: { id: projectId },
+        include: projectInclude,
+      });
     });
 
     this.logger.log(`${action} target=${projectId} actor=${actorUserId}`);

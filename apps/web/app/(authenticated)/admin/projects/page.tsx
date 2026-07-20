@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from 'react';
 import Link from 'next/link';
-import { Archive, ExternalLink, RotateCcw } from 'lucide-react';
+import { ExternalLink, RotateCcw, ShieldBan } from 'lucide-react';
 import { toast } from 'sonner';
 import type { AdminProjectResponse } from '@repo/contracts';
 import {
@@ -234,9 +234,9 @@ export default function AdminProjectsPage() {
                               {canRestore ? (
                                 <RotateCcw className="h-4 w-4" />
                               ) : (
-                                <Archive className="h-4 w-4" />
+                                <ShieldBan className="h-4 w-4" />
                               )}
-                              {canRestore ? 'Restore' : 'Archive'}
+                              {canRestore ? 'Restore' : 'Suspend'}
                             </Button>
                           )}
                         </TableCell>

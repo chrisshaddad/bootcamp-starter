@@ -96,7 +96,7 @@ export class AdminController {
   }
 
   @Patch('projects/:id/moderation')
-  @ApiOperation({ summary: 'Archive or restore a project for moderation' })
+  @ApiOperation({ summary: 'Suspend or restore a project for moderation' })
   @ApiBody({ schema: toOpenApiSchema(adminProjectModerationSchema) })
   @ApiResponse({
     status: 200,
