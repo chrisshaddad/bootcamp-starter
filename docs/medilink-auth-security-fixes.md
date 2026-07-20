@@ -14,7 +14,7 @@ medical-record lookups enforce institution scoping.
 | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
 | Requesting a magic link for an unregistered email                              | Always returned success (anti-enumeration: never reveals whether an email exists)                                              | Returns a 404 "No account found with this email address"                                                        |
 | Accepting an invite/magic link while already authenticated in the same browser | Middleware redirected straight to `/dashboard` **before** the token was ever verified — the old session silently stayed active | `/auth/verify` always runs and correctly switches to the new session, regardless of any existing session cookie |
-| Cross-tenant patient/assignment/record lookups | Fetched by `id` alone, `institutionId` compared afterward in application code | Institution filter folded directly into the Prisma `where` clause (`findFirst({ id, institutionId })`) |
+| Cross-tenant patient/assignment/record lookups                                 | Fetched by `id` alone, `institutionId` compared afterward in application code                                                  | Institution filter folded directly into the Prisma `where` clause (`findFirst({ id, institutionId })`)          |
 
 ## Design decisions worth knowing
 

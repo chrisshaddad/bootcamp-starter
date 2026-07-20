@@ -10,14 +10,14 @@ care-team professional-profile view and a searchable replacement for the
 
 ## What changed, at a glance
 
-| Area                                  | Before                                                                                            | After                                                                                                 |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Patient's own view                    | `/portal`, one page cramming Administrative + Clinical + Care Team + Records into a 2-column grid | `/my-health`, one page with **tabs**: Clinical, Care Team, Records, **Administrative** (last)         |
-| Staff/Admin/Professional patient view | `/patients/[id]`, same 4 sections stacked vertically in one column                                | Same 4 sections, now as tabs (Records tab hidden for Staff/Admin, who can't view clinical records)    |
-| Field-level layout                    | Administrative section's fields (Full Name, Email, Phone, …) in a 2-column grid                   | Single column — was the last "boxes side by side" spot once the section cards themselves were stacked |
-| Long email display                    | Overflowed outside its box                                                                        | Truncates with `…` and shows the full value on hover (`title` attribute)                              |
-| Care team                             | Showed name/specialty/phone only                                                                  | "View Profile" dialog per member: specialty, bio, phone, email — each with a copy-to-clipboard icon   |
-| Assign professional                   | Plain `<Select>` dropdown listing every professional, unfiltered                                  | Debounced (300ms) search-as-you-type box, server-side filtered via `GET /users?search=`               |
+| Area                                  | Before                                                                                            | After                                                                                                                   |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Patient's own view                    | `/portal`, one page cramming Administrative + Clinical + Care Team + Records into a 2-column grid | `/my-health`, one page with **tabs**: Clinical, Care Team, Records, **Administrative** (last)                           |
+| Staff/Admin/Professional patient view | `/patients/[id]`, same 4 sections stacked vertically in one column                                | Same 4 sections, now as tabs (Records tab hidden for Staff/Admin, who can't view clinical records)                      |
+| Field-level layout                    | Administrative section's fields (Full Name, Email, Phone, …) in a 2-column grid                   | Single column — was the last "boxes side by side" spot once the section cards themselves were stacked                   |
+| Long email display                    | Overflowed outside its box                                                                        | Truncates with `…` and shows the full value on hover (`title` attribute)                                                |
+| Care team                             | Showed name/specialty/phone only                                                                  | "View Profile" dialog per member: specialty, bio, phone, email — each with a copy-to-clipboard icon                     |
+| Assign professional                   | Plain `<Select>` dropdown listing every professional, unfiltered                                  | Debounced (300ms) search-as-you-type box, server-side filtered via `GET /users?search=`                                 |
 | Records filtering                     | No way to filter the records list at all                                                          | Multi-select colored toggle pills (one per record type, plus "All") above the list; several types can be active at once |
 
 ## Design decisions worth knowing
