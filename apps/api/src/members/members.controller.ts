@@ -57,6 +57,13 @@ export class MembersController {
     description: 'Filter by member status',
   })
   @ApiQuery({
+    name: 'activeSubscription',
+    required: false,
+    type: Boolean,
+    description:
+      'Filter to members with a currently active (non-expired) subscription',
+  })
+  @ApiQuery({
     name: 'page',
     required: false,
     type: Number,

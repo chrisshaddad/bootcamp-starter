@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { toast } from 'sonner';
 import { format, differenceInDays } from 'date-fns';
 import {
@@ -9,24 +10,19 @@ import {
   AlertTriangle,
   Building2,
   Settings,
-  ChevronDown,
   Loader2,
+  ArrowRight,
+  Bell,
+  CheckCircle2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
 import { useUser } from '@/hooks/use-auth';
 import { useDashboard, useUpdateGymSettings } from '@/hooks/use-dashboard';
 import { ApiError } from '@/lib/api';
+import { AnalyticsPanels } from './analytics-panels';
 
 function DashboardSkeleton() {
   return (
@@ -42,72 +38,33 @@ function DashboardSkeleton() {
   );
 }
 
-/**
- * Dialog trigger + scrollable list, shared by the Active Members and
- * Expiring Soon cards. The list body scrolls independently of the header so
- * arbitrarily long lists never push the dialog past the viewport.
- */
-function ListDialog({
-  triggerLabel,
-  title,
-  description,
-  itemCount,
-  emptyMessage,
-  children,
-}: {
-  triggerLabel: string;
-  title: string;
-  description?: string;
-  itemCount: number;
-  emptyMessage: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <button
-          type="button"
-          className="mt-3 flex items-center gap-1 text-xs font-medium text-primary-base hover:underline"
-        >
-          <ChevronDown className="h-3 w-3" /> {triggerLabel}
-        </button>
-      </DialogTrigger>
-      <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          {description && <DialogDescription>{description}</DialogDescription>}
-        </DialogHeader>
-        <div className="-mx-6 min-h-0 flex-1 overflow-y-auto overscroll-contain px-6">
-          {itemCount === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">
-              {emptyMessage}
-            </p>
-          ) : (
-            children
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-/** A single stat card with icon, value, and label */
+/** A single stat card with icon, value, and label. Optionally links elsewhere. */
 function StatCard({
   icon: Icon,
   label,
   value,
   sub,
   color = 'text-primary-base',
+  href,
+  hint,
 }: {
   icon: React.ElementType;
   label: string;
   value: number | string;
   sub?: string;
   color?: string;
+  href?: string;
+  hint?: string;
 }) {
-  return (
-    <Card>
-      <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
+  const card = (
+    <Card
+      className={
+        href
+          ? 'h-full transition-colors hover:border-primary-base/40'
+          : undefined
+      }
+    >
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">
           {label}
         </CardTitle>
@@ -116,53 +73,24 @@ function StatCard({
       <CardContent>
         <p className="text-3xl font-extrabold text-foreground">{value}</p>
         {sub && <p className="mt-1 text-xs text-muted-foreground">{sub}</p>}
-      </CardContent>
-    </Card>
-  );
-}
-
-function ActiveMembersCard({
-  count,
-  items,
-}: {
-  count: number;
-  items: { memberId: string; memberName: string }[];
-}) {
-  return (
-    <Card>
-      <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          Active Members
-        </CardTitle>
-        <UserCheck className="h-5 w-5 text-success" />
-      </CardHeader>
-      <CardContent>
-        <p className="text-3xl font-extrabold text-foreground">{count}</p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          With an active subscription
-        </p>
-        {items.length > 0 && (
-          <ListDialog
-            triggerLabel="Show list"
-            title={`Active Members (${items.length})`}
-            description="Members with an active subscription."
-            itemCount={items.length}
-            emptyMessage="No active members."
-          >
-            <ul className="space-y-1.5 py-1">
-              {items.map((item) => (
-                <li
-                  key={item.memberId}
-                  className="flex items-center rounded-md bg-success/10 px-2 py-1.5 text-xs font-medium wrap-break-word text-foreground"
-                >
-                  {item.memberName}
-                </li>
-              ))}
-            </ul>
-          </ListDialog>
+        {hint && (
+          <p className="mt-3 flex items-center gap-1 text-xs font-medium text-primary-base">
+            {hint} <ArrowRight className="h-3 w-3" />
+          </p>
         )}
       </CardContent>
     </Card>
+  );
+
+  if (!href) return card;
+
+  return (
+    <Link
+      href={href}
+      className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-base"
+    >
+      {card}
+    </Link>
   );
 }
 
@@ -182,7 +110,7 @@ function CapacityCard({
 
   return (
     <Card>
-      <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">
           Live Capacity
         </CardTitle>
@@ -246,68 +174,100 @@ function CapacityCard({
   );
 }
 
-/** Expiring-soon list */
-function ExpiringSoonCard({
-  count,
+/**
+ * Inline "needs attention" panel for memberships expiring within 30 days.
+ * Lives on the dashboard itself (no modal) so it reads like a task list:
+ * soonest-expiring first, each row jumps straight to that member's profile.
+ */
+function ExpiringSoonPanel({
   items,
 }: {
-  count: number;
   items: {
     memberId: string;
     memberName: string;
     subscriptionId: string;
+    planName: string | null;
     endDate: Date | string;
   }[];
 }) {
+  const sorted = [...items].sort(
+    (a, b) => new Date(a.endDate).getTime() - new Date(b.endDate).getTime(),
+  );
+
   return (
     <Card>
-      <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          Expiring Soon
-        </CardTitle>
-        <AlertTriangle
-          className={`h-5 w-5 ${count > 0 ? 'text-warning-dark' : 'text-muted-foreground/40'}`}
-        />
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-warning/10">
+            <Bell className="h-4 w-4 text-warning-dark" />
+          </div>
+          <div>
+            <CardTitle className="text-sm font-semibold text-foreground">
+              Needs Attention
+            </CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Memberships expiring within 30 days
+            </p>
+          </div>
+        </div>
+        {sorted.length > 0 && (
+          <span className="shrink-0 rounded-full bg-warning/10 px-2 py-0.5 text-xs font-semibold text-warning-dark">
+            {sorted.length}
+          </span>
+        )}
       </CardHeader>
-      <CardContent>
-        <p className="text-3xl font-extrabold text-foreground">{count}</p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          subscriptions expiring in 30 days
-        </p>
-        {items.length > 0 && (
-          <ListDialog
-            triggerLabel="Show list"
-            title={`Expiring Soon (${items.length})`}
-            description="Active subscriptions ending within 30 days."
-            itemCount={items.length}
-            emptyMessage="No subscriptions expiring soon."
-          >
-            <ul className="space-y-1.5 py-1">
-              {items.map((item) => {
-                const daysLeft = differenceInDays(
-                  new Date(item.endDate),
-                  new Date(),
-                );
-                return (
-                  <li
-                    key={item.subscriptionId}
-                    className="flex items-center justify-between gap-2 rounded-md bg-warning/10 px-2 py-1.5 text-xs"
+      <CardContent className="pt-0">
+        {sorted.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 py-8 text-center">
+            <CheckCircle2 className="h-8 w-8 text-success" />
+            <p className="text-sm text-muted-foreground">
+              All caught up. No memberships expiring soon.
+            </p>
+          </div>
+        ) : (
+          <ul className="-mx-2 max-h-80 space-y-0.5 overflow-y-auto overscroll-contain">
+            {sorted.map((item) => {
+              const daysLeft = differenceInDays(
+                new Date(item.endDate),
+                new Date(),
+              );
+              const urgent = daysLeft <= 7;
+              return (
+                <li key={item.subscriptionId}>
+                  <Link
+                    href={`/members/${item.memberId}`}
+                    className="flex items-center gap-3 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-muted"
                   >
-                    <span className="min-w-0 wrap-break-word font-medium text-foreground">
-                      {item.memberName}
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground">
+                      {item.memberName.charAt(0).toUpperCase()}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium text-foreground">
+                        {item.memberName}
+                      </span>
+                      {item.planName && (
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {item.planName}
+                        </span>
+                      )}
                     </span>
                     <span
-                      className={`shrink-0 font-semibold ${daysLeft <= 7 ? 'text-destructive' : 'text-warning-dark'}`}
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${
+                        urgent
+                          ? 'bg-destructive/10 text-destructive'
+                          : 'bg-warning/10 text-warning-dark'
+                      }`}
                     >
-                      {daysLeft <= 0
-                        ? 'Expires today'
-                        : `${daysLeft}d left, ${format(new Date(item.endDate), 'MMM d')}`}
+                      {daysLeft <= 0 ? 'Expires today' : `${daysLeft}d left`}
                     </span>
-                  </li>
-                );
-              })}
-            </ul>
-          </ListDialog>
+                    <span className="hidden shrink-0 text-xs text-muted-foreground sm:inline">
+                      {format(new Date(item.endDate), 'MMM d')}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
         )}
       </CardContent>
     </Card>
@@ -417,11 +377,7 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">
             Welcome back,{' '}
-            {user?.profile?.firstName ||
-              user?.name ||
-              user?.email?.split('@')[0] ||
-              'Manager'}
-            !
+            {user?.name || user?.email?.split('@')[0] || 'Manager'}!
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Here&apos;s what&apos;s happening at your gym today.
@@ -455,19 +411,46 @@ export default function DashboardPage() {
           value={stats?.totalMembers ?? 0}
           sub="All registered members"
         />
-        <ActiveMembersCard
-          count={stats?.totalActiveMembers ?? 0}
-          items={stats?.activeMembersList ?? []}
+        <StatCard
+          icon={UserCheck}
+          label="Active Members"
+          value={stats?.totalActiveMembers ?? 0}
+          sub="With an active subscription"
+          color="text-success"
+          href="/members?activeSubscription=true"
+          hint="View members"
         />
-        <ExpiringSoonCard
-          count={stats?.expiringSoon.length ?? 0}
-          items={stats?.expiringSoon ?? []}
+        <StatCard
+          icon={AlertTriangle}
+          label="Expiring Soon"
+          value={stats?.expiringSoon.length ?? 0}
+          sub="Subscriptions expiring in 30 days"
+          color={
+            (stats?.expiringSoon.length ?? 0) > 0
+              ? 'text-warning-dark'
+              : 'text-muted-foreground/40'
+          }
         />
         <CapacityCard
           current={stats?.currentOccupancy ?? 0}
           max={stats?.maxCapacity ?? null}
           onEditClick={() => setShowSettings(true)}
         />
+      </div>
+
+      {/* Left: trend + plan-mix analytics (wider column — charts need the room).
+          Right: actionable "needs attention" rail (replaces the old popup for
+          expiring memberships) — same place a reader expects an action feed. */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
+        <div className="lg:col-span-3">
+          <AnalyticsPanels
+            checkInTrend={stats?.checkInTrend ?? []}
+            subscriptionsByPlan={stats?.subscriptionsByPlan ?? []}
+          />
+        </div>
+        <div className="lg:col-span-2">
+          <ExpiringSoonPanel items={stats?.expiringSoon ?? []} />
+        </div>
       </div>
     </div>
   );

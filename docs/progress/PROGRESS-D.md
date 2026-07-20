@@ -231,3 +231,28 @@ the five D3 bug entries above). If you're touching this area later:
 Full detail in [`../gym-management-plan.md`](../gym-management-plan.md)
 "Feature D" for the original design; this file's Decisions & deviations
 section above has the complete bug/fix history.
+
+- 2026-07-20 (Claude, post-completion addition, user-verified in browser):
+  added a **read-only** Profile card to `settings/page.tsx` (Name, Email,
+  Phone, Role) — same `InfoRow` pattern as `app/(member)/portal/profile/page.tsx`,
+  no edit form, per explicit instruction ("just read only, the admin can't
+  edit anything"). Along the way found `GET /auth/me`'s `profile` field
+  (`userResponseSchema` in `packages/contracts/src/users/user.response.ts`)
+  was dead: declared (`firstName`/`lastName`/`phone`/`avatarUrl`/`dateOfBirth`)
+  but `auth.service.ts#getMe()` never populated it, so it was always
+  `undefined` — one call site (`dashboard/page.tsx`'s welcome heading) was
+  silently depending on it via `??` fallthrough. Replaced with a real flat
+  `phoneNumber: string | null` field, backed by the pre-existing but
+  previously unwired `UserProfile` Prisma table (1:1 on `User`, already had
+  `phoneNumber` + address + bio + `profilePictureUrl` columns — only
+  `phoneNumber` is surfaced here; the rest stay unused until a real need
+  shows up). `getMe()` now includes `profile: { select: { phoneNumber:
+true } }` and returns it flattened. **If a future task needs to *edit* this
+  profile:** an earlier pass in this session built and then reverted a
+  `PATCH /auth/me` (contracts `userProfileUpdateRequestSchema`, an
+  `authService.updateMe()` transaction updating `User.name` +
+  `UserProfile.upsert`) — reintroduce that shape rather than re-deriving it,
+  but confirm with the user first since read-only was an explicit,
+  deliberate choice here, not a default. `lint`/`check-types`/`prettier`
+  clean across `packages/contracts`, `apps/api`, `apps/web`; verified in a
+  real logged-in Playwright session (screenshot).

@@ -45,17 +45,36 @@ export class MembersService {
     @InjectQueue(MAIL_QUEUE) private readonly mailQueue: Queue,
   ) {}
 
-  /** List all members for a gym with optional status filter and pagination */
+  /** List all members for a gym with optional status/active-subscription filters and pagination */
   async findAll(
     gymId: string,
-    options: { status?: MemberStatus; page?: number; limit?: number },
+    options: {
+      status?: MemberStatus;
+      activeSubscription?: boolean;
+      page?: number;
+      limit?: number;
+    },
   ): Promise<MemberListResponse> {
-    const { status, page = 1, limit = 20 } = options;
+    const { status, activeSubscription, page = 1, limit = 20 } = options;
     if (page < 1 || limit < 1) {
       throw new BadRequestException('page and limit must be positive integers');
     }
     const skip = (page - 1) * limit;
-    const where = { gymId, ...(status ? { status } : {}) };
+    const where = {
+      gymId,
+      ...(status ? { status } : {}),
+      ...(activeSubscription
+        ? {
+            subscriptions: {
+              some: {
+                gymId,
+                status: 'ACTIVE' as const,
+                endDate: { gte: new Date() },
+              },
+            },
+          }
+        : {}),
+    };
 
     const [members, total] = await Promise.all([
       this.prisma.member.findMany({

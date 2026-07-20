@@ -3,15 +3,6 @@ import { userRoleSchema } from './user-role.schema';
 import { gymStatusSchema } from '../gyms/gym-status.schema';
 import { memberStatusSchema } from '../members/member-status.schema';
 
-// User profile (optional nested object)
-const userProfileSchema = z.object({
-  firstName: z.string().nullable(),
-  lastName: z.string().nullable(),
-  phone: z.string().nullable(),
-  avatarUrl: z.string().nullable(),
-  dateOfBirth: z.string().nullable(),
-});
-
 // Response from /auth/me endpoint
 export const userResponseSchema = z.object({
   id: z.uuid(),
@@ -20,7 +11,7 @@ export const userResponseSchema = z.object({
   role: userRoleSchema,
   gymId: z.uuid().nullable(),
   isConfirmed: z.boolean(),
-  profile: userProfileSchema.nullable().optional(),
+  phoneNumber: z.string().nullable(),
   gymStatus: gymStatusSchema.nullable().optional(),
   gymStatusReason: z.string().nullable().optional(),
   memberStatus: memberStatusSchema.nullable().optional(),

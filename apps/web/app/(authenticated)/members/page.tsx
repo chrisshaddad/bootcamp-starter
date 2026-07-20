@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import { Users, Plus, CalendarIcon } from 'lucide-react';
+import { Users, Plus, CalendarIcon, X } from 'lucide-react';
 import { format } from 'date-fns';
 import {
   memberCreateRequestSchema,
@@ -84,9 +84,21 @@ function LoadingSkeleton() {
   );
 }
 
-export default function MembersPage() {
+function MembersContent() {
   const router = useRouter();
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const searchParams = useSearchParams();
+  const initialStatus = searchParams.get('status');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(
+    initialStatus === 'ACTIVE' || initialStatus === 'INACTIVE'
+      ? initialStatus
+      : 'all',
+  );
+  // Distinct from `statusFilter` (member account status): true only when
+  // deep-linked from the dashboard's "Active Members" card, which counts
+  // members holding a currently active *subscription*.
+  const [activeSubscriptionOnly, setActiveSubscriptionOnly] = useState(
+    searchParams.get('activeSubscription') === 'true',
+  );
   const [page, setPage] = useState(1);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -94,6 +106,7 @@ export default function MembersPage() {
 
   const { members, total, isLoading, error } = useMembers({
     status: statusFilter === 'all' ? undefined : statusFilter,
+    activeSubscription: activeSubscriptionOnly || undefined,
     page,
   });
   const totalPages = Math.ceil((total ?? 0) / MEMBERS_PAGE_SIZE);
@@ -147,9 +160,27 @@ export default function MembersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Members</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Manage your gym members
-          </p>
+          {activeSubscriptionOnly ? (
+            <span className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-primary-100/10 px-2.5 py-1 text-xs font-medium text-primary-base">
+              Active subscription only
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveSubscriptionOnly(false);
+                  setPage(1);
+                  router.replace('/members');
+                }}
+                className="cursor-pointer rounded-full hover:bg-primary-base/10"
+                aria-label="Clear active-subscription filter"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ) : (
+            <p className="mt-1 text-sm text-muted-foreground">
+              Manage your gym members
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-3">
           <Select
@@ -442,5 +473,13 @@ export default function MembersPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+export default function MembersPage() {
+  return (
+    <Suspense fallback={<LoadingSkeleton />}>
+      <MembersContent />
+    </Suspense>
   );
 }

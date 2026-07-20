@@ -171,11 +171,18 @@ a {
   --border: #e6e3de;
   --input: #e6e3de;
   --ring: #a9332d;
+  /*
+   * Categorical order (garnet/blue/amber/green/violet) — validated colorblind-safe
+   * and >=3:1 vs both surfaces via the dataviz skill's validate_palette.js.
+   * chart-1 doubles as the brand anchor: it's the only slot Feature D's
+   * deriveThemeTokens() overrides per-gym (see lib/theme/color-utils.ts) —
+   * chart-2..5 stay fixed regardless of the picked brand color.
+   */
   --chart-1: #a9332d;
-  --chart-2: #b8901f;
-  --chart-3: #5b7a94;
-  --chart-4: #6f8a5c;
-  --chart-5: #8a7a6a;
+  --chart-2: #2f6fb8;
+  --chart-3: #c9821a;
+  --chart-4: #2f8a52;
+  --chart-5: #7a4a8a;
   --sidebar: #f5f3f0;
   --sidebar-foreground: #161514;
   --sidebar-primary: #a9332d;
@@ -243,10 +250,10 @@ a {
   --input: #2a2a2d;
   --ring: #a9332d;
   --chart-1: #ce746f;
-  --chart-2: #c9a227;
-  --chart-3: #6b8fb0;
-  --chart-4: #8a9a6b;
-  --chart-5: #9c8d7f;
+  --chart-2: #4a86cc;
+  --chart-3: #b8862a;
+  --chart-4: #3e9c63;
+  --chart-5: #9868b0;
   --sidebar: #141416;
   --sidebar-foreground: #f4f3f1;
   --sidebar-primary: #a9332d;

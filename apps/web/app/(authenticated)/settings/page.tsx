@@ -1,10 +1,33 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Settings, Palette } from 'lucide-react';
+import { Palette, User, Mail, Phone, ShieldCheck } from 'lucide-react';
 import { useUser } from '@/hooks/use-auth';
 import { ThemePicker } from '@/components/theme-picker';
 import { ThemeToggle } from '@/components/theme-toggle';
+
+/** Read-only profile field — the org admin's account is managed by the platform, not self-editable */
+function InfoRow({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-start gap-3 border-b border-border py-3 last:border-0">
+      <Icon className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+      <div className="min-w-0 flex-1">
+        <div className="text-sm text-muted-foreground">{label}</div>
+        <div className="mt-0.5 text-sm font-medium text-foreground">
+          {value}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function SettingsPage() {
   const { user } = useUser({ redirectOnUnauthenticated: false });
@@ -42,22 +65,27 @@ export default function SettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg font-semibold text-foreground">
-            <Settings className="h-5 w-5 text-muted-foreground" />
-            Account Settings
+            <User className="h-5 w-5 text-muted-foreground" />
+            Profile
           </CardTitle>
         </CardHeader>
-        <CardContent className="flex min-h-75 flex-col items-center justify-center">
-          <div className="text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-              <Settings className="h-8 w-8 text-muted-foreground" />
-            </div>
-            <h3 className="text-lg font-medium text-foreground">
-              Coming Soon
-            </h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Settings features are being developed.
-            </p>
-          </div>
+        <CardContent className="pt-0">
+          <InfoRow icon={User} label="Name" value={user?.name ?? '—'} />
+          <InfoRow icon={Mail} label="Email" value={user?.email ?? '—'} />
+          <InfoRow
+            icon={Phone}
+            label="Phone"
+            value={
+              user?.phoneNumber ?? (
+                <span className="text-muted-foreground">Not provided</span>
+              )
+            }
+          />
+          <InfoRow
+            icon={ShieldCheck}
+            label="Role"
+            value={user?.role === 'ORG_ADMIN' ? 'Gym Admin' : user?.role}
+          />
         </CardContent>
       </Card>
     </div>

@@ -15,6 +15,7 @@ export const MEMBERS_PAGE_SIZE = 100;
 
 interface UseMembersOptions {
   status?: MemberStatus;
+  activeSubscription?: boolean;
   page?: number;
   enabled?: boolean;
 }
@@ -29,13 +30,14 @@ interface UseMembersReturn {
 
 /** Fetch the paginated list of members with optional status filter */
 export function useMembers(options: UseMembersOptions = {}): UseMembersReturn {
-  const { status, page = 1, enabled = true } = options;
+  const { status, activeSubscription, page = 1, enabled = true } = options;
 
   const params = new URLSearchParams({
     page: String(page),
     limit: String(MEMBERS_PAGE_SIZE),
   });
   if (status) params.set('status', status);
+  if (activeSubscription) params.set('activeSubscription', 'true');
   const endpoint = `/members?${params.toString()}`;
 
   const {
