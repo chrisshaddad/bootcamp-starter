@@ -1,7 +1,8 @@
 'use client';
 
-import type { ElementType } from 'react';
+import { useEffect, type ElementType } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   FolderKanban,
   CheckCircle2,
@@ -141,6 +142,7 @@ function SetupChecklist({ steps }: { steps: SetupStep[] }) {
 }
 
 export default function DashboardPage() {
+  const router = useRouter();
   const { user, isLoading: isUserLoading, error: userError } = useUser();
   const {
     projects,
@@ -149,7 +151,17 @@ export default function DashboardPage() {
   } = useProjects();
   const error = userError ?? projectsError;
 
-  if (isUserLoading || isProjectsLoading) {
+  useEffect(() => {
+    if (user?.accountType === 'SUPER_ADMIN') {
+      router.replace('/admin');
+    }
+  }, [router, user?.accountType]);
+
+  if (
+    isUserLoading ||
+    isProjectsLoading ||
+    user?.accountType === 'SUPER_ADMIN'
+  ) {
     return <DashboardSkeleton />;
   }
 

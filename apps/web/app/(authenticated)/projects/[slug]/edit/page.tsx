@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useForm, Controller } from 'react-hook-form';
@@ -47,6 +47,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { ProjectInvitationsManager } from '@/components/project-invitations-manager';
+import { PROJECT_STATUS_LABELS } from '@/lib/project-status';
 
 export default function EditProjectPage() {
   const params = useParams<{ slug: string }>();
@@ -82,9 +83,11 @@ export default function EditProjectPage() {
             shortDescription: project.shortDescription,
             fullDescription: project.fullDescription,
             deploymentUrl: project.deploymentUrl,
-            status: project.access.capabilities.canPublish
-              ? project.status
-              : undefined,
+            status:
+              project.access.capabilities.canPublish &&
+              project.status !== 'SUSPENDED'
+                ? project.status
+                : undefined,
           }
         : undefined,
     // Deliberately depending on the scalar fields, not `project` itself —
@@ -105,18 +108,18 @@ export default function EditProjectPage() {
     register,
     handleSubmit,
     control,
+    reset,
     formState: { errors },
   } = useForm<UpdateProjectRequest>({
     resolver: zodResolver(updateProjectRequestSchema),
     defaultValues: {
       status: 'DRAFT',
     },
-    // `values` (not a one-time `reset()` in an effect) keeps the form in
-    // sync with `project` from the very first render — using `reset()`
-    // here left the Radix Select mounting one tick with an undefined
-    // value, which made it get stuck displaying blank.
-    values: formValues,
   });
+
+  useEffect(() => {
+    if (formValues) reset(formValues);
+  }, [formValues, reset]);
 
   const onSubmit = async (data: UpdateProjectRequest) => {
     if (!project) return;
@@ -280,9 +283,15 @@ export default function EditProjectPage() {
         </Link>
         <Card className="border-dashed py-12 text-center">
           <CardContent>
-            <p className="font-medium">This project is read-only for you.</p>
+            <p className="font-medium">
+              {project.status === 'SUSPENDED'
+                ? 'This project has been suspended by an administrator.'
+                : 'This project is read-only for you.'}
+            </p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Contributors can view the project but cannot edit it.
+              {project.status === 'SUSPENDED'
+                ? 'It cannot be edited or republished until an administrator restores it.'
+                : 'Contributors can view the project but cannot edit it.'}
             </p>
           </CardContent>
         </Card>
@@ -486,11 +495,15 @@ export default function EditProjectPage() {
                     control={control}
                     render={({ field }) => (
                       <Select
-                        value={field.value}
+                        value={field.value || project.status}
                         onValueChange={field.onChange}
                       >
                         <SelectTrigger id="status" className="w-full">
-                          <SelectValue />
+                          <SelectValue placeholder="Select status">
+                            {PROJECT_STATUS_LABELS[
+                              field.value || project.status
+                            ] ?? 'Select status'}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="DRAFT">Draft</SelectItem>

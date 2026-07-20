@@ -10,6 +10,7 @@ export * from './project-by-slug.response';
 export * from './project-list.request';
 export * from './project-list.response';
 export * from './project-scope.schema';
+export * from './project-status.schema';
 export * from './project-access.response';
 export * from './project-public.response';
 export * from './project-explore.request';

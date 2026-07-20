@@ -9,6 +9,7 @@ import type {
   MagicLinkRequest,
   MagicLinkVerifyRequest,
   SignupRequest,
+  AuthResponse,
   UpdateProfileRequest,
   UserResponse,
 } from '@repo/contracts';
@@ -73,7 +74,7 @@ export function useAuth() {
 
   const verifyMagicLink = useCallback(
     async (data: MagicLinkVerifyRequest) => {
-      const result = await apiPost<{ user: UserResponse }>(
+      const result = await apiPost<AuthResponse>(
         '/auth/magic-link/verify',
         data,
       );
@@ -85,7 +86,7 @@ export function useAuth() {
 
   const login = useCallback(
     async (data: LoginRequest) => {
-      const result = await apiPost<{ user: UserResponse }>('/auth/login', data);
+      const result = await apiPost<AuthResponse>('/auth/login', data);
       mutate();
       return result;
     },
@@ -94,10 +95,7 @@ export function useAuth() {
 
   const signup = useCallback(
     async (data: SignupRequest) => {
-      const result = await apiPost<{ user: UserResponse }>(
-        '/auth/signup',
-        data,
-      );
+      const result = await apiPost<AuthResponse>('/auth/signup', data);
       mutate();
       return result;
     },

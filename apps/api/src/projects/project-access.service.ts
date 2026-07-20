@@ -6,6 +6,7 @@ import {
 import type { ProjectAccessResponse } from '@repo/contracts';
 import {
   AccountType,
+  ProjectStatus,
   ProjectRoleKey,
   VerificationStatus,
   type User,
@@ -31,6 +32,7 @@ export class ProjectAccessService {
       where: { id: projectId },
       select: {
         id: true,
+        status: true,
         createdByUserId: true,
         members: {
           where: {
@@ -55,6 +57,7 @@ export class ProjectAccessService {
     user: User,
     project: {
       createdByUserId: string;
+      status: ProjectStatus;
       members: Array<{ userId: string | null; role: ProjectRoleKey }>;
     },
   ): ProjectAccessResponse {
@@ -71,15 +74,16 @@ export class ProjectAccessService {
     const currentUserRole = isOwner ? ProjectRoleKey.OWNER : collaborationRole;
     const isEditor = currentUserRole === ProjectRoleKey.EDITOR;
     const isContributor = currentUserRole === ProjectRoleKey.CONTRIBUTOR;
+    const isSuspended = project.status === ProjectStatus.SUSPENDED;
 
     return {
       currentUserRole,
       capabilities: {
         canView: isOwner || isEditor || isContributor || isSuperAdmin,
-        canEditContent: isOwner || isEditor || isSuperAdmin,
-        canPublish: isOwner,
-        canManageInvitations: isOwner,
-        canDelete: isOwner || isSuperAdmin,
+        canEditContent: !isSuspended && (isOwner || isEditor),
+        canPublish: !isSuspended && isOwner,
+        canManageInvitations: !isSuspended && isOwner,
+        canDelete: !isSuspended && isOwner,
       },
     };
   }

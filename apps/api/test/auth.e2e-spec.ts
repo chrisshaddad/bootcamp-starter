@@ -53,7 +53,7 @@ describe('AuthController (e2e)', () => {
     await app.close();
   });
 
-  it('/auth/signup (POST) - Success', async () => {
+  it('/auth/signup (POST) - Creates an unconfirmed account', async () => {
     const response = await request(app.getHttpServer() as Server)
       .post('/auth/signup')
       .send({
@@ -68,9 +68,31 @@ describe('AuthController (e2e)', () => {
 
     const body = response.body as AuthResponse;
     expect(body.user.email).toBe('e2e@test.com');
+    expect(response.headers['set-cookie']).toBeUndefined();
+  });
+
+  it('/auth/magic-link (POST) - Confirms the account and creates a session', async () => {
+    await request(app.getHttpServer() as Server)
+      .post('/auth/magic-link')
+      .send({ email: 'e2e@test.com' })
+      .expect(200);
+
+    const magicLink = await prisma.magicLink.findFirst({
+      where: { user: { email: 'e2e@test.com' }, usedAt: null },
+      orderBy: { createdAt: 'desc' },
+      select: { token: true },
+    });
+    expect(magicLink).not.toBeNull();
+
+    const response = await request(app.getHttpServer() as Server)
+      .post('/auth/magic-link/verify')
+      .send({ token: magicLink!.token })
+      .expect(200);
+
+    const body = response.body as AuthResponse;
+    expect(body.user.email).toBe('e2e@test.com');
     expect(response.headers['set-cookie']).toBeDefined();
 
-    // Safely extract the cookie with fallback
     const setCookie = response.headers['set-cookie'];
     cookie = setCookie?.[0] ?? '';
   });
@@ -87,6 +109,7 @@ describe('AuthController (e2e)', () => {
 
     const body = response.body as AuthResponse;
     expect(body.user.email).toBe('e2e@test.com');
+    cookie = response.headers['set-cookie']?.[0] ?? '';
   });
 
   it('/auth/me (GET) - Success with Cookie', async () => {

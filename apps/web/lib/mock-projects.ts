@@ -77,7 +77,7 @@ export interface MockProjectCard {
   slug: string;
   shortDescription: string | null;
   fullDescription: string | null;
-  status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+  status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SUSPENDED';
   deploymentUrl: string | null;
   repositoryFullName: string;
   technologies: MockTechnology[];

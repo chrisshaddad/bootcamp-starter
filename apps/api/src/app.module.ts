@@ -13,6 +13,7 @@ import { UsersModule } from './users/users.module';
 import { TechnologiesModule } from './technologies/technologies.module';
 import { SavedProjectsModule } from './saved-projects/saved-projects.module';
 import { ProjectInvitationsModule } from './project-invitations/project-invitations.module';
+import { AdminModule } from './admin/admin.module';
 @Module({
   imports: [
     ConfigModule.forRoot(),
@@ -31,6 +32,7 @@ import { ProjectInvitationsModule } from './project-invitations/project-invitati
     TechnologiesModule,
     SavedProjectsModule,
     ProjectInvitationsModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [AppService],

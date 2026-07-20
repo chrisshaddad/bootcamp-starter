@@ -49,16 +49,18 @@ export function TopNavbar() {
       <div className="flex items-center gap-4">
         <SidebarTrigger className="text-muted-foreground hover:bg-accent hover:text-accent-foreground -ml-1 h-9 w-9" />
 
-        <div className="relative">
-          <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
-          <Input
-            type="search"
-            placeholder={isSuperAdmin ? 'Search organizations...' : 'Search...'}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="border-border bg-input/30 placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-primary/20 h-10 w-64 rounded-lg pl-10 text-sm"
-          />
-        </div>
+        {!isSuperAdmin && (
+          <div className="relative">
+            <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+            <Input
+              type="search"
+              placeholder="Search..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="border-border bg-input/30 placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-primary/20 h-10 w-64 rounded-lg pl-10 text-sm"
+            />
+          </div>
+        )}
       </div>
 
       {/* Right Section - User */}
