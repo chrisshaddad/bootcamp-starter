@@ -21,31 +21,31 @@ export default function DeactivatedPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="max-w-md w-full text-center space-y-6">
+    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+      <div className="max-w-md w-full text-center space-y-6 glass-card card-elevated p-8 rounded-2xl border border-border bg-card">
         <div className="flex justify-center">
-          <div className="rounded-full bg-gray-100 p-4">
-            <UserX className="h-10 w-10 text-gray-500" />
+          <div className="rounded-full bg-muted p-4 border border-border">
+            <UserX className="h-10 w-10 text-muted-foreground" />
           </div>
         </div>
 
         <div className="space-y-2">
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-foreground">
             Account Deactivated
           </h1>
-          <p className="text-gray-700">
+          <p className="text-foreground/90 leading-relaxed">
             Your membership has been deactivated by the gym. You no longer have
             access to the member portal.
           </p>
         </div>
 
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-muted-foreground">
           If you believe this is a mistake, please contact your gym directly.
         </p>
 
         <Button
           variant="outline"
-          className="w-full"
+          className="w-full font-semibold"
           onClick={handleLogout}
           disabled={isLoggingOut}
         >

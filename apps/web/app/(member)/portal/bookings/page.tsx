@@ -32,8 +32,9 @@ import type { MeBookingResponse, BookingStatus } from '@repo/contracts';
 
 const STATUS_COLORS: Record<string, string> = {
   BOOKED: 'bg-success/10 text-success border border-success/20',
-  CHECKED_IN: 'bg-green-100 text-green-700 border border-green-200',
-  CANCELLED: 'bg-error-light text-error border border-error/20',
+  CHECKED_IN:
+    'bg-primary-base/10 text-primary-base border border-primary-base/20 dark:bg-primary-base/20 dark:text-primary-300',
+  CANCELLED: 'bg-error/10 text-error border border-error/20',
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -85,14 +86,16 @@ function CancelBookingDialog({
     <Dialog open={!!booking} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-error">
+          <DialogTitle className="flex items-center gap-2 text-error font-bold">
             <AlertCircle className="h-5 w-5" />
             Cancel Class Booking
           </DialogTitle>
-          <DialogDescription className="pt-2 text-sm text-gray-600">
+          <DialogDescription className="pt-2 text-sm text-muted-foreground">
             Are you sure you want to cancel your registration for{' '}
-            <strong className="text-gray-900">{booking?.session.title}</strong>?
-            This will free up your spot for other members.
+            <strong className="text-foreground">
+              {booking?.session.title}
+            </strong>
+            ? This will free up your spot for other members.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="mt-4 gap-2">
@@ -129,15 +132,15 @@ function BookingCard({
   const isUpcoming = startsAt > new Date() && booking.status === 'BOOKED';
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition-all hover:border-gray-300">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl border border-border bg-card p-5 shadow-sm transition-all hover:border-primary-base/50">
       <div className="space-y-2.5 flex-1 min-w-0">
         <div className="flex items-center gap-3 flex-wrap">
-          <h3 className="text-lg font-semibold text-gray-900 truncate">
+          <h3 className="text-lg font-bold text-foreground truncate">
             {session.title}
           </h3>
           <span
-            className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-              STATUS_COLORS[booking.status] ?? 'bg-gray-100 text-gray-700'
+            className={`rounded-full px-3 py-0.5 text-xs font-semibold ${
+              STATUS_COLORS[booking.status] ?? 'bg-muted text-muted-foreground'
             }`}
           >
             {STATUS_LABELS[booking.status] ?? booking.status}
@@ -145,15 +148,15 @@ function BookingCard({
         </div>
 
         {session.description && (
-          <p className="text-sm text-gray-600 line-clamp-2">
+          <p className="text-sm text-muted-foreground line-clamp-2">
             {session.description}
           </p>
         )}
 
-        <div className="flex flex-wrap items-center gap-y-2 gap-x-5 text-xs text-gray-500 pt-1">
+        <div className="flex flex-wrap items-center gap-y-2 gap-x-5 text-xs text-muted-foreground pt-1">
           <div className="flex items-center gap-1.5">
             <Calendar className="h-4 w-4 text-primary-base" />
-            <span className="font-medium text-gray-700">
+            <span className="font-semibold text-foreground">
               {format(startsAt, 'EEEE, MMMM d, yyyy')}
             </span>
           </div>
@@ -170,7 +173,9 @@ function BookingCard({
             <UserIcon className="h-4 w-4 text-primary-base" />
             <span>
               {session.instructor?.name ?? (
-                <span className="italic text-gray-400">Unassigned Trainer</span>
+                <span className="italic text-muted-foreground/60">
+                  Unassigned Trainer
+                </span>
               )}
             </span>
           </div>
@@ -178,12 +183,12 @@ function BookingCard({
       </div>
 
       {isUpcoming && (
-        <div className="flex sm:flex-col justify-end shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-100">
+        <div className="flex sm:flex-col justify-end shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-border">
           <Button
             variant="outline"
             size="sm"
             onClick={() => onCancel(booking)}
-            className="border-error/30 text-error hover:bg-error-light hover:border-error/50 transition-colors"
+            className="border-error/30 text-error hover:bg-error/10 hover:border-error/50 transition-colors font-medium"
           >
             <XCircle className="mr-1.5 h-4 w-4" />
             Cancel Booking
@@ -222,12 +227,12 @@ function EmptyState({ filter }: { filter: string }) {
   const activeMsg = messages[filter] || messages.ALL || defaultMsg;
 
   return (
-    <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 py-12 text-center">
-      <CalendarX className="mx-auto h-12 w-12 text-gray-300" />
-      <h3 className="mt-4 text-base font-semibold text-gray-800">
+    <div className="rounded-xl border border-dashed border-border bg-card py-12 text-center">
+      <CalendarX className="mx-auto h-12 w-12 text-muted-foreground/60" />
+      <h3 className="mt-4 text-base font-bold text-foreground">
         {activeMsg.title}
       </h3>
-      <p className="mt-1 text-sm text-gray-500 max-w-sm mx-auto">
+      <p className="mt-1 text-sm text-muted-foreground max-w-sm mx-auto">
         {activeMsg.desc}
       </p>
     </div>
@@ -270,14 +275,14 @@ export default function MyBookingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">My Bookings</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <h1 className="text-2xl font-bold text-foreground">My Bookings</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           View your scheduled classes, timing, and instructor assignments.
         </p>
       </div>
 
       {/* Status filter tabs */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-gray-200 pb-3">
+      <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3">
         {filterTabs.map((tab) => {
           const isActive = statusFilter === tab.id;
           return (
@@ -286,8 +291,8 @@ export default function MyBookingsPage() {
               onClick={() => handleFilterChange(tab.id)}
               className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${
                 isActive
-                  ? 'bg-primary-base text-white shadow-sm'
-                  : 'border border-gray-200 bg-white text-gray-600 hover:border-primary-base hover:text-primary-base'
+                  ? 'bg-primary-base text-white shadow-sm font-semibold'
+                  : 'border border-border bg-card text-muted-foreground hover:border-primary-base hover:text-primary-base'
               }`}
             >
               {tab.label}
@@ -301,7 +306,7 @@ export default function MyBookingsPage() {
           {isLoading && <LoadingSkeleton />}
 
           {!isLoading && error && (
-            <div className="rounded-xl border border-error/20 bg-error-light py-8 text-center text-sm text-error font-medium">
+            <div className="rounded-xl border border-error/20 bg-error/10 py-8 text-center text-sm text-error font-semibold">
               Failed to load bookings. Please refresh the page.
             </div>
           )}
@@ -324,8 +329,8 @@ export default function MyBookingsPage() {
 
           {/* Pagination controls */}
           {!isLoading && !error && total !== undefined && totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-gray-200 pt-5 mt-6">
-              <p className="text-sm text-gray-500">
+            <div className="flex items-center justify-between border-t border-border pt-5 mt-6">
+              <p className="text-sm text-muted-foreground">
                 Showing {(page - 1) * MY_BOOKINGS_PAGE_SIZE + 1}–
                 {Math.min(page * MY_BOOKINGS_PAGE_SIZE, total)} of {total}
               </p>
@@ -338,7 +343,7 @@ export default function MyBookingsPage() {
                 >
                   Previous
                 </Button>
-                <span className="text-sm font-medium text-gray-700 px-2">
+                <span className="text-sm font-semibold text-foreground px-2">
                   Page {page} of {totalPages}
                 </span>
                 <Button

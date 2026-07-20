@@ -57,13 +57,13 @@ export function MemberSidebar() {
   };
 
   return (
-    <Sidebar className="border-r border-gray-200 bg-white">
+    <Sidebar className="border-r border-border bg-card">
       <SidebarHeader className="px-5 py-6">
         <Link href="/portal" className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-base">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-base shadow-2xs">
             <span className="text-lg font-bold text-white">✦</span>
           </div>
-          <span className="text-xl font-semibold text-gray-900">
+          <span className="text-xl font-semibold text-foreground">
             Member Portal
           </span>
         </Link>
@@ -71,7 +71,7 @@ export function MemberSidebar() {
 
       <SidebarContent className="overflow-x-hidden px-3">
         <SidebarGroup>
-          <SidebarGroupLabel className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-gray-500">
+          <SidebarGroupLabel className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
             My Gym
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -84,12 +84,12 @@ export function MemberSidebar() {
                     className={cn(
                       'h-11 gap-3 rounded-lg px-3 text-sm font-medium transition-colors',
                       isActive(item.url)
-                        ? 'bg-primary-100 text-gray-900 hover:bg-primary-200'
-                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+                        ? 'bg-primary-base/10 text-primary-base dark:bg-primary-base/20 dark:text-primary-300 font-semibold'
+                        : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
                     )}
                   >
                     <Link href={item.url}>
-                      <item.icon className="h-5 w-5 text-gray-500" />
+                      <item.icon className="h-5 w-5 shrink-0" />
                       <span>{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
@@ -99,17 +99,21 @@ export function MemberSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarSeparator className="my-4" />
+        <SidebarSeparator className="my-4 border-border/60" />
 
         {user && (
           <SidebarGroup>
-            <SidebarGroupLabel className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-gray-500">
+            <SidebarGroupLabel className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Account
             </SidebarGroupLabel>
             <SidebarGroupContent>
-              <div className="rounded-lg bg-gray-50 px-3 py-2">
-                <p className="text-sm font-medium text-gray-900">{user.name}</p>
-                <p className="text-xs text-gray-500">{user.email}</p>
+              <div className="rounded-lg bg-muted/40 border border-border/60 px-3 py-2.5">
+                <p className="text-sm font-semibold text-foreground truncate">
+                  {user.name}
+                </p>
+                <p className="text-xs text-muted-foreground truncate mt-0.5">
+                  {user.email}
+                </p>
               </div>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -121,9 +125,9 @@ export function MemberSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={() => logout()}
-              className="h-11 gap-3 rounded-lg px-3 text-sm font-medium text-gray-600 transition-colors hover:bg-red-50 hover:text-red-600"
+              className="h-11 gap-3 rounded-lg px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-error/10 hover:text-error"
             >
-              <LogOut className="h-5 w-5 text-gray-500" />
+              <LogOut className="h-5 w-5 shrink-0" />
               <span>Logout</span>
             </SidebarMenuButton>
           </SidebarMenuItem>

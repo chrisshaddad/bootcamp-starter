@@ -9,8 +9,8 @@ import type { SubscriptionResponse } from '@repo/contracts';
 
 const STATUS_COLORS: Record<string, string> = {
   ACTIVE: 'bg-success/10 text-success border border-success/20',
-  EXPIRED: 'bg-gray-200 text-gray-600 border border-gray-300',
-  CANCELLED: 'bg-error-light text-error border border-error/20',
+  EXPIRED: 'bg-muted text-muted-foreground border border-border',
+  CANCELLED: 'bg-error/10 text-error border border-error/20',
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -28,17 +28,17 @@ function SubscriptionRow({ sub }: { sub: SubscriptionResponse }) {
   }).format(sub.price / 100);
 
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-gray-100 py-4 last:border-0">
+    <div className="flex items-start justify-between gap-4 border-b border-border py-4 last:border-0">
       <div className="min-w-0 flex-1">
-        <p className="font-medium text-gray-900">
+        <p className="font-bold text-foreground">
           {sub.plan?.name ?? (
-            <span className="text-gray-400 italic">Plan removed</span>
+            <span className="text-muted-foreground italic">Plan removed</span>
           )}
         </p>
-        <p className="mt-0.5 text-sm text-gray-500">
+        <p className="mt-1 text-sm text-muted-foreground">
           {startDate} — {endDate}
           {sub.plan && (
-            <span className="ml-2 text-gray-400">
+            <span className="ml-2 text-muted-foreground/80 font-medium">
               · {sub.plan.durationDays} days
             </span>
           )}
@@ -46,11 +46,11 @@ function SubscriptionRow({ sub }: { sub: SubscriptionResponse }) {
       </div>
       <div className="flex shrink-0 flex-col items-end gap-1.5">
         <span
-          className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[sub.status] ?? 'bg-gray-200 text-gray-600'}`}
+          className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_COLORS[sub.status] ?? 'bg-muted text-muted-foreground'}`}
         >
           {STATUS_LABELS[sub.status] ?? sub.status}
         </span>
-        <span className="text-sm font-medium text-gray-700">{price}</span>
+        <span className="text-sm font-bold text-foreground">{price}</span>
       </div>
     </div>
   );
@@ -60,7 +60,7 @@ function LoadingSkeleton() {
   return (
     <div className="space-y-4">
       {[1, 2, 3].map((i) => (
-        <Skeleton key={i} className="h-16 w-full" />
+        <Skeleton key={i} className="h-16 w-full rounded-xl" />
       ))}
     </div>
   );
@@ -72,27 +72,29 @@ export default function MySubscriptionsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">My Subscriptions</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <h1 className="text-2xl font-bold text-foreground">My Subscriptions</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Your full membership history.
         </p>
       </div>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-3">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <ClipboardList className="h-5 w-5 text-gray-500" />
+      <Card className="glass-card card-elevated rounded-xl border-border bg-card">
+        <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-border/50">
+          <CardTitle className="flex items-center gap-2 text-lg font-bold text-foreground">
+            <ClipboardList className="h-5 w-5 text-muted-foreground" />
             Subscription History
           </CardTitle>
           {total !== undefined && (
-            <span className="text-sm text-gray-500">{total} total</span>
+            <span className="text-sm font-medium text-muted-foreground">
+              {total} total
+            </span>
           )}
         </CardHeader>
-        <CardContent className="pt-0">
+        <CardContent className="pt-4">
           {isLoading && <LoadingSkeleton />}
 
           {!isLoading && error && (
-            <div className="py-6 text-center text-sm text-error">
+            <div className="py-6 text-center text-sm font-semibold text-error">
               Failed to load subscriptions. Please refresh.
             </div>
           )}
@@ -100,12 +102,12 @@ export default function MySubscriptionsPage() {
           {!isLoading &&
             !error &&
             (!subscriptions || subscriptions.length === 0) && (
-              <div className="rounded-lg border border-gray-200 bg-gray-50 py-8 text-center">
-                <ClipboardList className="mx-auto h-8 w-8 text-gray-300" />
-                <p className="mt-3 text-sm font-medium text-gray-600">
+              <div className="rounded-xl border border-dashed border-border bg-card py-12 text-center">
+                <ClipboardList className="mx-auto h-10 w-10 text-muted-foreground/60" />
+                <p className="mt-3 text-sm font-bold text-foreground">
                   No subscriptions yet
                 </p>
-                <p className="mt-1 text-sm text-gray-400">
+                <p className="mt-1 text-sm text-muted-foreground">
                   Contact your gym to get started.
                 </p>
               </div>
@@ -115,7 +117,7 @@ export default function MySubscriptionsPage() {
             !error &&
             subscriptions &&
             subscriptions.length > 0 && (
-              <div>
+              <div className="divide-y divide-border/60">
                 {subscriptions.map((sub) => (
                   <SubscriptionRow key={sub.id} sub={sub} />
                 ))}
