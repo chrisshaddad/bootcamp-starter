@@ -3,70 +3,42 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { useUser, useAuth } from '@/hooks/use-auth';
+import { useAuth, useUser } from '@/hooks/use-auth';
 import { usePortalMemberships } from '@/hooks/use-portal-memberships';
+import { invalidateByPrefix } from '@/lib/swr';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { StatusBadge } from '@/components/status-badge';
-import { Library } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Library, ArrowRight } from 'lucide-react';
 import { ApiError } from '@/lib/api';
-
-const STATUS_LABELS: Record<string, string> = {
-  ACTIVE: 'Active',
-  PENDING: 'Pending Approval',
-  EXPIRED: 'Expired',
-  SUSPENDED: 'Suspended',
-  CANCELLED: 'Cancelled',
-};
-
-const STATUS_COLORS: Record<string, string> = {
-  ACTIVE: 'bg-success-light text-success-dark',
-  PENDING: 'bg-warning-light text-warning-dark',
-  EXPIRED: 'bg-muted text-muted-foreground',
-  SUSPENDED: 'bg-library-accent-100 text-library-accent-800',
-  CANCELLED: 'bg-error-light text-error',
-};
 
 export default function MyLibrariesPage() {
   const router = useRouter();
   const { user } = useUser();
   const { setActiveOrganization } = useAuth();
-  const { memberships, isLoading, error, deactivateMembership } =
-    usePortalMemberships();
-  const [activatingId, setActivatingId] = useState<string | null>(null);
-  const [deactivatingId, setDeactivatingId] = useState<string | null>(null);
+  const { memberships, isLoading, error } = usePortalMemberships();
+  const [enteringId, setEnteringId] = useState<string | null>(null);
 
-  const handleActivate = async (organizationId: string) => {
-    setActivatingId(organizationId);
+  const activeMemberships = (memberships ?? []).filter(
+    (m) => m.membershipStatus === 'ACTIVE',
+  );
+
+  const handleEnter = async (organizationId: string) => {
+    if (organizationId === user?.activeOrganizationId) {
+      router.push('/browse');
+      return;
+    }
+
+    setEnteringId(organizationId);
     try {
       await setActiveOrganization({ organizationId });
-      toast.success('Library activated');
+      await invalidateByPrefix('/portal/');
       router.push('/browse');
     } catch (err) {
-      if (err instanceof ApiError) {
-        toast.error(err.message);
-      } else {
-        toast.error('Failed to activate library');
-      }
-    } finally {
-      setActivatingId(null);
-    }
-  };
-
-  const handleDeactivate = async (membershipId: string) => {
-    setDeactivatingId(membershipId);
-    try {
-      await deactivateMembership(membershipId);
-      toast.success('Membership deactivated');
-    } catch (err) {
-      if (err instanceof ApiError) {
-        toast.error(err.message);
-      } else {
-        toast.error('Failed to deactivate membership');
-      }
-    } finally {
-      setDeactivatingId(null);
+      toast.error(
+        err instanceof ApiError ? err.message : 'Failed to open this library',
+      );
+      setEnteringId(null);
     }
   };
 
@@ -75,88 +47,75 @@ export default function MyLibrariesPage() {
       <div>
         <h1 className="text-2xl font-bold text-foreground">My Libraries</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Libraries you&apos;ve requested to join, and their status
+          Pick a library to start browsing its catalog
         </p>
       </div>
 
       {isLoading ? (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {[...Array(3)].map((_, i) => (
-            <Skeleton key={i} className="h-24 w-full" />
+            <Skeleton key={i} className="h-28 w-full" />
           ))}
         </div>
       ) : error ? (
         <div className="py-10 text-center text-error">
           Failed to load your libraries
         </div>
-      ) : !memberships?.length ? (
+      ) : !activeMemberships.length ? (
         <div className="py-10 text-center text-muted-foreground">
-          You haven&apos;t requested to join any libraries yet.{' '}
+          You don&apos;t have any active library memberships yet.{' '}
           <a href="/discover" className="text-library-primary hover:underline">
             Discover libraries
+          </a>{' '}
+          or check{' '}
+          <a
+            href="/my-memberships"
+            className="text-library-primary hover:underline"
+          >
+            your pending requests
           </a>
+          .
         </div>
       ) : (
-        <div className="space-y-3">
-          {memberships.map((membership) => {
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {activeMemberships.map((membership) => {
             const isActiveHere =
               user?.activeOrganizationId === membership.organizationId;
+            const isEntering = enteringId === membership.organizationId;
 
             return (
-              <Card key={membership.id}>
-                <CardContent className="flex items-center justify-between py-4">
-                  <div className="flex items-center gap-3">
-                    <Library className="h-8 w-8 text-library-primary" />
-                    <div>
-                      <div className="font-medium text-foreground">
+              <button
+                key={membership.id}
+                type="button"
+                disabled={isEntering}
+                onClick={() => handleEnter(membership.organizationId)}
+                className="w-full text-left disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <Card className="h-full transition-shadow hover:shadow-md">
+                  <CardContent className="flex items-center gap-3 py-6">
+                    <Library className="h-8 w-8 shrink-0 text-library-primary" />
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate font-medium text-foreground">
                         {membership.organization.name}
                       </div>
-                      <div className="text-sm text-muted-foreground">
-                        Card #{membership.libraryCardNumber}
+                      <div className="truncate text-sm text-muted-foreground">
+                        {isEntering
+                          ? 'Opening...'
+                          : `Card #${membership.libraryCardNumber}`}
                       </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <StatusBadge
-                      status={membership.membershipStatus}
-                      labels={STATUS_LABELS}
-                      colors={STATUS_COLORS}
-                    />
-                    {membership.membershipStatus === 'ACTIVE' && (
-                      <>
-                        <Button
-                          size="sm"
-                          variant={isActiveHere ? 'outline' : 'default'}
-                          disabled={
-                            isActiveHere ||
-                            activatingId === membership.organizationId
-                          }
-                          onClick={() =>
-                            handleActivate(membership.organizationId)
-                          }
-                        >
-                          {isActiveHere
-                            ? 'Currently Active'
-                            : activatingId === membership.organizationId
-                              ? 'Activating...'
-                              : 'Activate'}
-                        </Button>
-                        <Button
-                          size="sm"
+                      {isActiveHere && (
+                        <Badge
                           variant="outline"
-                          className="text-error border-error/30 hover:bg-error-light"
-                          disabled={deactivatingId === membership.id}
-                          onClick={() => handleDeactivate(membership.id)}
+                          className="mt-1.5 bg-success-light text-xs text-success-dark"
                         >
-                          {deactivatingId === membership.id
-                            ? 'Deactivating...'
-                            : 'Deactivate'}
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+                          Currently browsing
+                        </Badge>
+                      )}
+                    </div>
+                    <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  </CardContent>
+                </Card>
+              </button>
             );
           })}
         </div>

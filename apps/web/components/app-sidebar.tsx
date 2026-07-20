@@ -13,6 +13,7 @@ import {
   Building,
   Compass,
   Library,
+  IdCard,
   BookOpen,
   Clock,
   Bookmark,
@@ -135,10 +136,10 @@ const patronNavGroups: NavGroup[] = [
     items: [
       { title: 'Discover', url: '/discover', icon: Compass },
       { title: 'My Libraries', url: '/my-libraries', icon: Library },
-      { title: 'Browse Books', url: '/browse', icon: BookOpen },
       { title: 'Cart', url: '/cart', icon: ShoppingCart },
       { title: 'My Rentals', url: '/my-rentals', icon: Clock },
       { title: 'My Reservations', url: '/my-reservations', icon: Bookmark },
+      { title: 'My Memberships', url: '/my-memberships', icon: IdCard },
     ],
   },
 ];
