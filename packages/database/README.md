@@ -1,6 +1,6 @@
 # @repo/db
 
-Prisma schema, generated client, and migrations for Forward-Mena. Backed by PostgreSQL.
+Prisma schema, generated client, and migrations for Property Manager. Backed by PostgreSQL.
 
 This package is the **single source of truth for the database**. The NestJS API
 (`apps/api`) is its only consumer — its `PrismaService` extends the `PrismaClient`

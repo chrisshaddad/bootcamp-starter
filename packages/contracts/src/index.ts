@@ -2,8 +2,8 @@ import { z } from 'zod';
 
 /**
  * @repo/contracts — the single source of truth for the HTTP API contract
- * shared between the NestJS backend (forward-mena-be) and the Next.js client
- * (forward-mena-fe). Enums are zod schemas (runtime-checkable); response/body
+ * shared between the NestJS backend (property-manager-be) and the Next.js client
+ * (property-manager-fe). Enums are zod schemas (runtime-checkable); response/body
  * shapes are plain types. The web's `src/types/api.ts` re-exports this module.
  */
 

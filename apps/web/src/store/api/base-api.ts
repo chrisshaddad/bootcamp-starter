@@ -40,7 +40,7 @@ const rawBaseQuery = fetchBaseQuery({
   prepareHeaders: (headers, { getState }) => {
     const { ui } = getState() as RootState;
     headers.set('Accept-Language', ui.locale);
-    headers.set('X-Client', 'forward-mena-web');
+    headers.set('X-Client', 'property-manager-web');
     return headers;
   },
 });

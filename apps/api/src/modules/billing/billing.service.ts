@@ -62,8 +62,11 @@ export class BillingService {
     }
 
     const frontendUrl = this.config.getOrThrow<string>('app.frontendUrl');
-    // Resolve priceId: per-plan override or env fallback
-    const priceId = plan.stripePriceId;
+    // Resolve priceId: per-plan env price (stripe.prices[planKey]) → catalog
+    // override → undefined (StripeService then falls back to env STRIPE_PRICE_ID).
+    const perPlanPrices =
+      this.config.get<Record<string, string>>('stripe.prices') ?? {};
+    const priceId = perPlanPrices[planKey] || plan.stripePriceId || undefined;
     return this.stripe.createSubscriptionCheckoutSession({
       orgId,
       customerId,

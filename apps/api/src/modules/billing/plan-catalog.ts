@@ -1,10 +1,10 @@
 /**
- * PLAN CATALOG — single source of truth for plan definitions.
+ * PLAN CATALOG — single source of truth for plan definitions (display + limits).
  *
- * All stripePriceId fields are intentionally undefined here so all plans
- * fall back to the env STRIPE_PRICE_ID. This is the seam for the future
- * Stripe account: set distinct price ids per plan when ready, and this
- * file is the only place that needs to change.
+ * Per-plan Stripe price ids are resolved at checkout time from env
+ * (STRIPE_PRICE_STARTER / _GROWTH / _PRO via stripe.config `prices`), falling
+ * back to the catalog `stripePriceId` override below, then to the single env
+ * STRIPE_PRICE_ID. Set the per-plan env vars to bill each plan at its own price.
  */
 
 export type PlanKey = 'starter' | 'growth' | 'pro';
@@ -29,7 +29,7 @@ export const PLAN_CATALOG: Record<PlanKey, PlanDef> = {
   starter: {
     key: 'starter',
     displayName: 'Starter',
-    price: 20,
+    price: 29,
     currency: 'usd',
     buildingsLimit: 3,
     usersLimit: 5,
@@ -38,7 +38,7 @@ export const PLAN_CATALOG: Record<PlanKey, PlanDef> = {
   growth: {
     key: 'growth',
     displayName: 'Growth',
-    price: 20,
+    price: 79,
     currency: 'usd',
     buildingsLimit: 5,
     usersLimit: 10,
@@ -48,7 +48,7 @@ export const PLAN_CATALOG: Record<PlanKey, PlanDef> = {
   pro: {
     key: 'pro',
     displayName: 'Pro',
-    price: 20,
+    price: 199,
     currency: 'usd',
     buildingsLimit: null,
     usersLimit: null,

@@ -1,7 +1,7 @@
 {
-  "name": "forward-mena-be",
+  "name": "property-manager-be",
   "version": "0.1.0",
-  "description": "Forward-Mena multi-org rentals SaaS backend",
+  "description": "Property Manager multi-org rentals SaaS backend",
   "author": "",
   "private": true,
   "license": "UNLICENSED",

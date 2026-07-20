@@ -1,0 +1,80 @@
+# Property Manager — production compose (Docker Compose deploy on the shared VPS).
+#
+# ADDITIVE ONLY: own compose project (`property-manager`), own bridge network,
+# own named volume, loopback-only host publishes. Images are built locally and
+# pulled from a VPS-local registry (see deploy notes). Nothing here modifies the
+# existing fm-* infra — the api merely ATTACHES to fm-postgres's external network
+# to reach it by DNS.
+#
+# Interpolation vars come from a sibling `.env` file (REGISTRY / TAG / FMNET).
+# Runtime app env comes from ./api.env and ./web.env (authored on the VPS, gitignored).
+
+name: property-manager
+
+services:
+  # Dedicated Redis for BullMQ — internal only (no host publish).
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    networks:
+      - app
+
+  # NestJS API. On `app` (redis + web) AND `fmnet` (reach fm-postgres by DNS).
+  # Publishes ONLY on loopback for the nginx /stripe/webhook proxy.
+  api:
+    image: ${REGISTRY:-127.0.0.1:20103}/property-manager-api:${TAG:-latest}
+    restart: unless-stopped
+    env_file:
+      - ./api.env
+    depends_on:
+      - redis
+    ports:
+      - "127.0.0.1:20101:20101"
+    networks:
+      - app
+      - fmnet
+
+  # Next.js standalone. `app` net only; loopback publish for the nginx root proxy.
+  web:
+    image: ${REGISTRY:-127.0.0.1:20103}/property-manager-web:${TAG:-latest}
+    restart: unless-stopped
+    env_file:
+      - ./web.env
+    depends_on:
+      - api
+    ports:
+      - "127.0.0.1:20100:3000"
+    networks:
+      - app
+
+  # One-shot migration runner (profile-gated; not started by `up`).
+  #   docker compose -f docker-compose.prod.yml --profile migrate run --rm migrate
+  migrate:
+    image: ${REGISTRY:-127.0.0.1:20103}/property-manager-api:${TAG:-latest}
+    # Run from the db package so Prisma 7 discovers prisma.config.ts (which supplies
+    # datasource.url from DATABASE_URL — schema.prisma's datasource has no url).
+    working_dir: /app/packages/database
+    command: ["npx", "prisma", "migrate", "deploy"]
+    env_file:
+      - ./api.env
+    networks:
+      - fmnet
+    profiles:
+      - migrate
+    restart: "no"
+
+networks:
+  app:
+    driver: bridge
+  # Existing fm-postgres network — attach only (external: true never mutates it).
+  # Set the real name in the sibling .env (FMNET=...), discovered at deploy via:
+  #   docker inspect fm-postgres -f '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}{{end}}'
+  fmnet:
+    external: true
+    name: ${FMNET:-fm_default}
+
+volumes:
+  redis-data:

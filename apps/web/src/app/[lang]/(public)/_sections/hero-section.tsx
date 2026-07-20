@@ -86,7 +86,7 @@ export function HeroSection({
           className="text-sm font-semibold tracking-[0.15em] uppercase"
           style={{ color: 'rgba(201,163,91,0.85)' }}
         >
-          Forward Mena
+          {isRtl ? 'إدارة العقارات' : 'Property Manager'}
         </span>
         <div className="flex items-center gap-5">
           {/* Log in — WIRED IN WAVE 3 */}

@@ -1,0 +1,32 @@
+# Build context excludes — keep images lean and secret-free.
+
+# deps & build outputs (installed/built fresh inside the image)
+**/node_modules
+**/.next
+**/dist
+**/coverage
+**/*.tsbuildinfo
+.turbo
+**/.turbo
+
+# vcs / editor / tooling
+.git
+.gitignore
+.vscode
+.claude
+.github
+
+# secrets & env — injected at RUNTIME via compose env_file; NEXT_PUBLIC_* via build-arg.
+# Never bake .env files into an image layer.
+**/.env
+**/.env.*
+
+# local-only docs (may contain prior brand text) — never ship in images
+*.md
+docs
+VPS-*.md
+CLAUDE.md
+AGENTS.md
+
+# screenshots / misc binaries
+**/*.png

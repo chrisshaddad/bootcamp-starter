@@ -37,7 +37,7 @@ yarn-error.log*
 .DS_Store
 *.pem
 
-# --- Forward-Mena additions ---
+# --- Property Manager additions ---
 # Harden env handling: ignore every env file except *.env.example
 .env
 .env.*
@@ -51,7 +51,7 @@ yarn-error.log*
 id_*
 *_rsa
 *_ed25519
-forward_mena_vps*
+*_vps*
 
 # Private / local-only docs — NEVER commit to the shared bootcamp repo
 docs/

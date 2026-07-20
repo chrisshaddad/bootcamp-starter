@@ -3,7 +3,8 @@
  * numbers) and 3 Keycloak logins (org_admin / finance / tenant) in OUR realm,
  * wired exactly like the app (client roles on the web client + org_id attr).
  * Run: node apps/api/scripts/seed-demo.js   (cwd anywhere; abs paths used) */
-const API_DIR = '/home/mouhannad/Projects/Forward-Mena/apps/api';
+const path = require('path');
+const API_DIR = path.resolve(__dirname, '..');
 require('dotenv').config({ path: API_DIR + '/.env.local' });
 const axios = require('axios');
 const { PrismaClient } = require('@repo/db');
@@ -19,7 +20,7 @@ const ADMIN_CID = process.env.KEYCLOAK_API_CLIENT_ID;
 const ADMIN_SECRET = process.env.KEYCLOAK_API_CLIENT_SECRET;
 const WEB_CID = process.env.KEYCLOAK_WEB_CLIENT_ID;
 const PASSWORD = 'ForwardDemo!2026';
-const ORG_NAME = 'Forward Mena Demo Co';
+const ORG_NAME = 'Property Manager Demo Co';
 
 const http = axios.create({ baseURL: KC, timeout: 15000 });
 let token;
@@ -115,11 +116,11 @@ async function assignClientRole(userId, roleName) {
   out.orgId = org.id;
 
   // 2) Keycloak users.
-  const adminSub = await ensureUser('demo.admin@forward-mena.local', 'Demo', 'Admin', org.id);
+  const adminSub = await ensureUser('demo.admin@prorentallb.cloud', 'Demo', 'Admin', org.id);
   await assignClientRole(adminSub, 'org_admin');
-  const financeSub = await ensureUser('demo.finance@forward-mena.local', 'Demo', 'Finance', org.id);
+  const financeSub = await ensureUser('demo.finance@prorentallb.cloud', 'Demo', 'Finance', org.id);
   await assignClientRole(financeSub, 'finance');
-  const tenantSub = await ensureUser('demo.tenant@forward-mena.local', 'Layla', 'Hassan', org.id);
+  const tenantSub = await ensureUser('demo.tenant@prorentallb.cloud', 'Layla', 'Hassan', org.id);
   await assignClientRole(tenantSub, 'tenant');
   out.users = { adminSub, financeSub, tenantSub };
 
@@ -143,7 +144,7 @@ async function assignClientRole(userId, roleName) {
     const renter = await prisma.renter.create({
       data: {
         orgId: org.id, fullName: 'Layla Hassan',
-        email: 'demo.tenant@forward-mena.local', phone: '+971500000000',
+        email: 'demo.tenant@prorentallb.cloud', phone: '+971500000000',
         renterUserId: tenantSub,
       },
     });
@@ -185,14 +186,14 @@ async function assignClientRole(userId, roleName) {
     await prisma.notification.create({
       data: {
         orgId: org.id, userId: tenantSub, type: 'welcome',
-        title: 'Welcome to Forward Mena', body: 'Your tenant portal is ready.', data: {},
+        title: 'Welcome to Property Manager', body: 'Your tenant portal is ready.', data: {},
       },
     });
     out.rentals = { building: building.id, apartment: apt.id, lease: lease.id, invoices: [inv1.id, inv2.id] };
   } else {
     // Ensure the renter link points at the current tenant sub.
     await prisma.renter.updateMany({
-      where: { orgId: org.id, email: 'demo.tenant@forward-mena.local' },
+      where: { orgId: org.id, email: 'demo.tenant@prorentallb.cloud' },
       data: { renterUserId: tenantSub },
     });
     out.rentals = 'already seeded (renter link refreshed)';

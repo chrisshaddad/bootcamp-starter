@@ -5,7 +5,7 @@ import type { RootState } from './index';
 export const PERSIST_VERSION = 2;
 
 /**
- * Persistence config for Forward-Mena.
+ * Persistence config for Property Manager.
  *
  * Persisted slices:
  *   - ui: locale + theme preferences
@@ -24,7 +24,7 @@ export const PERSIST_VERSION = 2;
  * users' browsers).
  */
 export const persistConfig = {
-  key: 'forward-mena',
+  key: 'property-manager',
   version: PERSIST_VERSION,
   storage,
   whitelist: ['ui', 'auth'] satisfies Array<keyof RootState>,

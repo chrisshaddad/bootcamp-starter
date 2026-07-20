@@ -1,7 +1,8 @@
 /* O1 verification (live DB): prove checkout activation is atomic.
  * Throwaway — lives under apps/api/scripts so bare requires resolve from
  * apps/api/node_modules. Absolute paths for env + dist so cwd doesn't matter. */
-const API_DIR = '/home/mouhannad/Projects/Forward-Mena/apps/api';
+const path = require('path');
+const API_DIR = path.resolve(__dirname, '..');
 require('dotenv').config({ path: API_DIR + '/.env.local' });
 require('tsconfig-paths').register({
   baseUrl: API_DIR + '/dist',

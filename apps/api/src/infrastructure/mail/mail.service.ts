@@ -47,7 +47,7 @@ export class MailService {
   async sendMail(options: SendMailOptions): Promise<void> {
     const from = this.config.get<string>(
       'mail.from',
-      'Forward-Mena <notifications@forward-mena.local>',
+      'Property Manager <notifications@prorentallb.cloud>',
     );
     await this.getTransporter().sendMail({
       from,

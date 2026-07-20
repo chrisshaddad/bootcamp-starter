@@ -13,5 +13,5 @@ export const mailConfig = registerAs('mail', () => ({
   port: Number(process.env.SMTP_PORT ?? 1025),
   from:
     process.env.NOTIFICATIONS_EMAIL_FROM ??
-    'Forward-Mena <notifications@forward-mena.local>',
+    'Property Manager <notifications@prorentallb.cloud>',
 }));

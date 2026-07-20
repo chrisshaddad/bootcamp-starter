@@ -27,6 +27,7 @@ type PlanDisplay = {
   key: PlanKey;
   nameEn: string;
   nameAr: string;
+  price: number;
   buildings: number | null;
   users: number | null;
   highlighted?: boolean;
@@ -56,6 +57,7 @@ export function BillingShell({
     key: p.key,
     nameEn: p.displayName,
     nameAr: p.nameAr,
+    price: p.price,
     buildings: p.buildingsLimit,
     users: p.usersLimit,
     highlighted: p.highlighted,
@@ -194,7 +196,7 @@ export function BillingShell({
                   className="text-2xl font-extrabold tracking-tight"
                   style={{ color: '#F5F0E8' }}
                 >
-                  $20
+                  {`$${plan.price}`}
                 </span>
                 <span
                   className="mb-0.5 text-xs"
