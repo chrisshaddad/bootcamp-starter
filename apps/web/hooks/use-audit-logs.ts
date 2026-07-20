@@ -17,6 +17,7 @@ interface UseAuditLogsReturn {
   totalPages: number | undefined;
   page: number | undefined;
   isLoading: boolean;
+  isValidating: boolean;
   error: Error | undefined;
   mutate: () => void;
 }
@@ -42,9 +43,10 @@ export function useAuditLogs(
 
   const endpoint = `/audit-logs?${params.toString()}`;
 
-  const { data, error, isLoading, mutate } = useSWR<AuditLogListResponse>(
-    enabled ? endpoint : null,
-  );
+  const { data, error, isLoading, isValidating, mutate } =
+    useSWR<AuditLogListResponse>(enabled ? endpoint : null, {
+      keepPreviousData: true,
+    });
 
   return {
     auditLogs: data?.data,
@@ -52,6 +54,7 @@ export function useAuditLogs(
     totalPages: data?.totalPages,
     page: data?.page,
     isLoading,
+    isValidating,
     error,
     mutate,
   };

@@ -103,53 +103,21 @@ function formatActionText(log: AuditLogResponse) {
   );
 }
 
-function LoadingSkeleton() {
-  return (
-    <div className="space-y-6">
-      <Skeleton className="h-8 w-48" />
-      <Skeleton className="h-4 w-64" />
-      <div className="flex gap-2">
-        {[...Array(5)].map((_, i) => (
-          <Skeleton key={i} className="h-8 w-24 rounded-full" />
-        ))}
-      </div>
-      <div className="space-y-4">
-        {[...Array(5)].map((_, i) => (
-          <Skeleton key={i} className="h-24 w-full rounded-xl" />
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export default function AuditLogsPage() {
   const [activeFilter, setActiveFilter] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
 
-  const { auditLogs, total, totalPages, isLoading, error } = useAuditLogs({
-    page: currentPage,
-    limit: 20,
-    entityType: activeFilter !== 'All' ? activeFilter : undefined,
-  });
+  const { auditLogs, total, totalPages, isLoading, isValidating, error } =
+    useAuditLogs({
+      page: currentPage,
+      limit: 20,
+      entityType: activeFilter !== 'All' ? activeFilter : undefined,
+    });
 
   // Reset page when filter changes
   useEffect(() => {
     setCurrentPage(1);
   }, [activeFilter]);
-
-  if (isLoading) return <LoadingSkeleton />;
-
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 text-center">
-        <AlertCircle className="h-10 w-10 text-destructive mb-4" />
-        <h2 className="text-xl font-semibold mb-2">
-          Failed to load activity log
-        </h2>
-        <p className="text-muted-foreground">Please try refreshing the page.</p>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -177,7 +145,23 @@ export default function AuditLogsPage() {
         ))}
       </div>
 
-      {!auditLogs?.length ? (
+      {error ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <AlertCircle className="h-10 w-10 text-destructive mb-4" />
+          <h2 className="text-xl font-semibold mb-2">
+            Failed to load activity log
+          </h2>
+          <p className="text-muted-foreground">
+            Please try refreshing the page.
+          </p>
+        </div>
+      ) : isLoading && !auditLogs ? (
+        <div className="space-y-4 pt-2">
+          {[...Array(5)].map((_, i) => (
+            <Skeleton key={i} className="h-24 w-full rounded-xl" />
+          ))}
+        </div>
+      ) : !auditLogs?.length ? (
         <div className="flex flex-col items-center justify-center py-20 text-center glass-card rounded-xl">
           <Clock className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
           <h3 className="text-lg font-medium text-foreground mb-1">
@@ -190,7 +174,12 @@ export default function AuditLogsPage() {
           </p>
         </div>
       ) : (
-        <div className="space-y-4 animate-stagger relative before:absolute before:inset-0 before:ml-8 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-border before:to-transparent">
+        <div
+          className={cn(
+            'space-y-4 animate-stagger relative before:absolute before:inset-0 before:ml-8 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-border before:to-transparent transition-opacity duration-200',
+            isValidating && 'opacity-60',
+          )}
+        >
           {auditLogs.map((log) => {
             const { icon: ActionIcon, colorClass } = getActionDetails(
               log.action,
