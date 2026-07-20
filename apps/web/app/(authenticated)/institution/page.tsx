@@ -30,9 +30,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
-      <dt className="text-sm text-gray-500">{label}</dt>
-      <dd className="mt-0.5 text-sm font-medium text-gray-900">
-        {value || <span className="text-gray-400">—</span>}
+      <dt className="text-sm text-muted-foreground">{label}</dt>
+      <dd className="mt-0.5 text-sm font-medium text-foreground">
+        {value || <span className="text-muted-foreground">—</span>}
       </dd>
     </div>
   );
@@ -102,8 +102,8 @@ export default function InstitutionPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">My Institution</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <h1 className="text-2xl font-bold text-foreground">My Institution</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Manage your institution profile
         </p>
       </div>
@@ -153,7 +153,7 @@ export default function InstitutionPage() {
               <Label htmlFor="inst-type">Type</Label>
               <select
                 id="inst-type"
-                className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm"
+                className="h-10 w-full rounded-md border border-border bg-card px-3 text-sm"
                 {...register('type')}
               >
                 <option value="CLINIC">Clinic</option>
@@ -169,7 +169,7 @@ export default function InstitutionPage() {
               <Label htmlFor="inst-phone">Phone</Label>
               <Input id="inst-phone" {...register('phone')} />
             </div>
-            <label className="flex items-center gap-2 text-sm text-gray-700">
+            <label className="flex items-center gap-2 text-sm text-foreground">
               <input type="checkbox" {...register('emailNotifications')} />
               Enable email notifications
             </label>

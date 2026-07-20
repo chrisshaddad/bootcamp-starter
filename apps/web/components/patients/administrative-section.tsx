@@ -34,10 +34,13 @@ function formatDate(value: string | Date | null): string {
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div>
-      <dt className="text-sm text-gray-500">{label}</dt>
-      <dd className="mt-0.5 text-sm font-medium text-gray-900">
-        {value || <span className="text-gray-400">—</span>}
+    <div className="min-w-0">
+      <dt className="text-sm text-muted-foreground">{label}</dt>
+      <dd
+        className="mt-0.5 truncate text-sm font-medium text-foreground"
+        title={typeof value === 'string' ? value : undefined}
+      >
+        {value || <span className="text-muted-foreground">—</span>}
       </dd>
     </div>
   );
@@ -105,7 +108,7 @@ export function AdministrativeSection({ patient, canEdit, onSave }: Props) {
         )}
       </CardHeader>
       <CardContent>
-        <dl className="grid grid-cols-2 gap-4">
+        <dl className="grid grid-cols-1 gap-4">
           <Field label="Full Name" value={patient.fullName} />
           <Field label="Email" value={patient.email} />
           <Field label="Phone" value={patient.phone} />
@@ -162,7 +165,7 @@ export function AdministrativeSection({ patient, canEdit, onSave }: Props) {
                 <Label htmlFor="admin-gender">Gender</Label>
                 <select
                   id="admin-gender"
-                  className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm"
+                  className="h-10 w-full rounded-md border border-border bg-card px-3 text-sm"
                   {...register('gender', {
                     // The blank option must become null, not '', or the enum
                     // (MALE | FEMALE | OTHER) validation rejects it.

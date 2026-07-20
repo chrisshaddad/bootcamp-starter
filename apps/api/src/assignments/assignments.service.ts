@@ -56,27 +56,27 @@ export class AssignmentsService {
     data: AssignmentCreateRequest,
     actor: User,
   ): Promise<AssignmentResponse> {
-    const patient = await this.prisma.patient.findUnique({
-      where: { id: data.patientId },
+    const patient = await this.prisma.patient.findFirst({
+      where: { id: data.patientId, institutionId: actor.institutionId },
       select: { id: true, institutionId: true },
     });
 
-    if (!patient || patient.institutionId !== actor.institutionId) {
+    if (!patient) {
       throw new NotFoundException(
         `Patient with ID ${data.patientId} not found`,
       );
     }
 
-    const professional = await this.prisma.user.findUnique({
-      where: { id: data.professionalId },
+    const professional = await this.prisma.user.findFirst({
+      where: {
+        id: data.professionalId,
+        institutionId: actor.institutionId,
+        role: 'PROFESSIONAL',
+      },
       select: { id: true, role: true, institutionId: true, isActive: true },
     });
 
-    if (
-      !professional ||
-      professional.institutionId !== actor.institutionId ||
-      professional.role !== 'PROFESSIONAL'
-    ) {
+    if (!professional) {
       throw new BadRequestException(
         'Invalid professional for this institution',
       );
@@ -139,12 +139,12 @@ export class AssignmentsService {
     patientId: string,
     actor: User,
   ): Promise<AssignmentListResponse> {
-    const patient = await this.prisma.patient.findUnique({
-      where: { id: patientId },
+    const patient = await this.prisma.patient.findFirst({
+      where: { id: patientId, institutionId: actor.institutionId },
       select: { id: true, institutionId: true },
     });
 
-    if (!patient || patient.institutionId !== actor.institutionId) {
+    if (!patient) {
       throw new NotFoundException(`Patient with ID ${patientId} not found`);
     }
 
@@ -165,12 +165,12 @@ export class AssignmentsService {
   }
 
   async deactivate(id: string, actor: User): Promise<AssignmentResponse> {
-    const existing = await this.prisma.assignment.findUnique({
-      where: { id },
+    const existing = await this.prisma.assignment.findFirst({
+      where: { id, institutionId: actor.institutionId },
       select: { id: true, institutionId: true },
     });
 
-    if (!existing || existing.institutionId !== actor.institutionId) {
+    if (!existing) {
       throw new NotFoundException(`Assignment with ID ${id} not found`);
     }
 

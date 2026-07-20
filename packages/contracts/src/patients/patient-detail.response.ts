@@ -9,7 +9,9 @@ export const careTeamMemberSchema = z.object({
   professionalId: z.uuid(),
   fullName: z.string(),
   specialty: z.string().nullable(),
+  bio: z.string().nullable(),
   phone: z.string(),
+  email: z.email(),
 });
 export type CareTeamMember = z.infer<typeof careTeamMemberSchema>;
 

@@ -14,72 +14,30 @@ interface InstitutionSeed {
   admin: InstitutionAdminSeed;
 }
 
-// Sample institutions with varied statuses
+// Colleague-admin institutions — kept to exactly these two, alongside the
+// reserved platform institution (seedUsers.ts) and Central Perk Medical
+// Center (seedFriendsInstitution.ts), for a total of 4 institutions.
 const INSTITUTIONS: InstitutionSeed[] = [
   {
-    name: 'TechCorp Medical Center',
-    type: 'CLINIC',
-    status: 'ACTIVE',
-    address: '100 Innovation Drive, San Francisco, CA',
-    admin: {
-      email: 'admin@techcorp.example.com',
-      fullName: 'Sarah Chen',
-      phone: '+14155550101',
-    },
-  },
-  {
-    name: 'Green Valley Hospital',
+    name: 'Cedar Heights Medical Group',
     type: 'HOSPITAL',
     status: 'ACTIVE',
-    address: '200 Renewable Way, Austin, TX',
+    address: '600 Cedar Heights Blvd, Chicago, IL',
     admin: {
-      email: 'admin@greenvalley.example.com',
-      fullName: 'Michael Green',
-      phone: '+15125550102',
+      email: 'jad.hneiny@cedarheightsmedical.example.com',
+      fullName: 'Jad Hneiny',
+      phone: '+13125550107',
     },
   },
   {
-    name: 'HealthFirst Diagnostics Lab',
-    type: 'LAB',
-    status: 'PENDING',
-    address: '300 Wellness Blvd, Boston, MA',
-    admin: {
-      email: 'admin@healthfirst.example.com',
-      fullName: 'Dr. Emily Watson',
-      phone: '+16175550103',
-    },
-  },
-  {
-    name: 'Urban Care Clinic',
+    name: 'Bellerive Health Clinic',
     type: 'CLINIC',
-    status: 'PENDING',
-    address: '400 Main St, Denver, CO',
+    status: 'ACTIVE',
+    address: '700 Bellerive Lane, Miami, FL',
     admin: {
-      email: 'admin@urbancare.example.com',
-      fullName: 'Robert Martinez',
-      phone: '+13035550104',
-    },
-  },
-  {
-    name: 'Fraudulent Health Services',
-    type: 'CLINIC',
-    status: 'REJECTED',
-    address: null,
-    admin: {
-      email: 'admin@fraudulent.example.com',
-      fullName: 'John Suspicious',
-      phone: '+19995550105',
-    },
-  },
-  {
-    name: 'DataSync Radiology',
-    type: 'LAB',
-    status: 'SUSPENDED',
-    address: '500 Analytics Ave, Seattle, WA',
-    admin: {
-      email: 'admin@datasync.example.com',
-      fullName: 'Anna Data',
-      phone: '+12065550106',
+      email: 'jean-luc.kiami@bellerivehealth.example.com',
+      fullName: 'Jean-Luc Kiami',
+      phone: '+13055550108',
     },
   },
 ];

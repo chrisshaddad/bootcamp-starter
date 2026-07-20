@@ -9,16 +9,19 @@ import type {
   PatientCreateRequest,
   PatientAdminUpdateRequest,
   PatientClinicalUpdateRequest,
+  UserStatusRequest,
 } from '@repo/contracts';
 
 interface UsePatientsOptions {
   search?: string;
+  unassigned?: boolean;
   enabled?: boolean;
 }
 
 function buildPatientsKey(options: UsePatientsOptions): string {
   const params = new URLSearchParams();
   if (options.search) params.set('search', options.search);
+  if (options.unassigned) params.set('unassigned', 'true');
   const qs = params.toString();
   return qs ? `/patients?${qs}` : '/patients';
 }
@@ -57,6 +60,23 @@ export function useCreatePatient() {
   }, []);
 
   return { createPatient };
+}
+
+export function useSetPatientStatus() {
+  const setPatientStatus = useCallback(
+    async (id: string, isActive: boolean) => {
+      const payload: UserStatusRequest = { isActive };
+      const result = await apiPatch<PatientDetailResponse>(
+        `/patients/${id}/status`,
+        payload,
+      );
+      invalidatePatientsList();
+      return result;
+    },
+    [],
+  );
+
+  return { setPatientStatus };
 }
 
 export function usePatient(id: string, options: { enabled?: boolean } = {}) {

@@ -11,11 +11,12 @@ import {
   HeartPulse,
   Building2,
   Bell,
-  Settings,
+  UserCircle,
   LogOut,
 } from 'lucide-react';
 import type { Role } from '@repo/contracts';
 import { useAuth, useUser } from '@/hooks/use-auth';
+import { useMyInstitution } from '@/hooks/use-my-institution';
 import { cn } from '@/lib/utils';
 import {
   Sidebar,
@@ -38,36 +39,37 @@ interface NavItem {
 }
 
 // Main navigation per role. Backend guards remain the real enforcement — this
-// just hides items a role can't use. Settings is shared (see below).
+// just hides items a role can't use.
 const NAV_ITEMS_BY_ROLE: Record<Role, NavItem[]> = {
   SUPER_ADMIN: [
     { title: 'Institutions', url: '/institutions', icon: Building2 },
   ],
   INSTITUTION_ADMIN: [
+    { title: 'Notifications', url: '/notifications', icon: Bell },
     { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
     { title: 'Patients', url: '/patients', icon: UsersRound },
     { title: 'Staff & Doctors', url: '/users', icon: Users },
     { title: 'My Institution', url: '/institution', icon: Building2 },
-    { title: 'Notifications', url: '/notifications', icon: Bell },
   ],
   STAFF: [
+    { title: 'Notifications', url: '/notifications', icon: Bell },
     { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
     { title: 'Patients', url: '/patients', icon: UsersRound },
-    { title: 'Notifications', url: '/notifications', icon: Bell },
   ],
   PROFESSIONAL: [
+    { title: 'Notifications', url: '/notifications', icon: Bell },
     { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
     { title: 'My Patients', url: '/patients', icon: Stethoscope },
-    { title: 'Notifications', url: '/notifications', icon: Bell },
   ],
   PATIENT: [
-    { title: 'My Health', url: '/portal', icon: HeartPulse },
     { title: 'Notifications', url: '/notifications', icon: Bell },
+    { title: 'My Health', url: '/my-health', icon: HeartPulse },
   ],
 };
 
+// Shared across every role — each user's own account info.
 const SECONDARY_NAV_ITEMS: NavItem[] = [
-  { title: 'Settings', url: '/settings', icon: Settings },
+  { title: 'Profile', url: '/profile', icon: UserCircle },
 ];
 
 export function AppSidebar() {
@@ -79,29 +81,39 @@ export function AppSidebar() {
   const isSuperAdmin = role === 'SUPER_ADMIN';
   const mainNavItems = role ? NAV_ITEMS_BY_ROLE[role] : [];
 
+  // Super Admin manages every institution, so it keeps the MediLink brand.
+  // Every other role belongs to exactly one institution, which takes over
+  // the sidebar header instead.
+  const { institution } = useMyInstitution({
+    enabled: !!role && !isSuperAdmin,
+  });
+  const brandName = isSuperAdmin ? 'MediLink' : institution?.name || 'MediLink';
+
   const isActive = (url: string) => {
-    if (url === '/dashboard' || url === '/portal') {
+    if (url === '/dashboard') {
       return pathname === url;
     }
     return pathname.startsWith(url);
   };
 
   return (
-    <Sidebar className="border-r border-gray-200 bg-white">
+    <Sidebar className="border-r border-sidebar-border bg-sidebar">
       <SidebarHeader className="px-5 py-6">
         {/* Logo */}
         <Link href="/dashboard" className="flex items-center gap-2.5">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-base">
             <HeartPulse className="h-5 w-5 text-white" />
           </div>
-          <span className="text-xl font-semibold text-gray-900">MediLink</span>
+          <span className="text-xl font-semibold text-sidebar-foreground">
+            {brandName}
+          </span>
         </Link>
       </SidebarHeader>
 
       <SidebarContent className="overflow-x-hidden px-3">
         {/* Main Navigation */}
         <SidebarGroup>
-          <SidebarGroupLabel className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-gray-500">
+          <SidebarGroupLabel className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-sidebar-foreground/60">
             {isSuperAdmin ? 'Administration' : 'Main'}
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -114,12 +126,12 @@ export function AppSidebar() {
                     className={cn(
                       'h-11 gap-3 rounded-lg px-3 text-sm font-medium transition-colors',
                       isActive(item.url)
-                        ? 'bg-primary-100 text-gray-900 hover:bg-primary-200'
-                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+                        ? 'bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent/80'
+                        : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
                     )}
                   >
                     <Link href={item.url}>
-                      <item.icon className="h-5 w-5 text-gray-500" />
+                      <item.icon className="h-5 w-5 text-sidebar-foreground/60" />
                       <span>{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
@@ -133,8 +145,8 @@ export function AppSidebar() {
 
         {/* Secondary Navigation */}
         <SidebarGroup>
-          <SidebarGroupLabel className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-gray-500">
-            Support
+          <SidebarGroupLabel className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-sidebar-foreground/60">
+            Account
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -146,12 +158,12 @@ export function AppSidebar() {
                     className={cn(
                       'h-11 gap-3 rounded-lg px-3 text-sm font-medium transition-colors',
                       isActive(item.url)
-                        ? 'bg-primary-100 text-gray-900 hover:bg-primary-200'
-                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+                        ? 'bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent/80'
+                        : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
                     )}
                   >
                     <Link href={item.url}>
-                      <item.icon className="h-5 w-5 text-gray-500" />
+                      <item.icon className="h-5 w-5 text-sidebar-foreground/60" />
                       <span>{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
@@ -167,9 +179,9 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={() => logout()}
-              className="h-11 gap-3 rounded-lg px-3 text-sm font-medium text-gray-600 transition-colors hover:bg-error-light hover:text-error"
+              className="h-11 gap-3 rounded-lg px-3 text-sm font-medium text-sidebar-foreground/70 transition-colors hover:bg-error-light hover:text-error"
             >
-              <LogOut className="h-5 w-5 text-gray-500" />
+              <LogOut className="h-5 w-5 text-sidebar-foreground/60" />
               <span>Logout</span>
             </SidebarMenuButton>
           </SidebarMenuItem>

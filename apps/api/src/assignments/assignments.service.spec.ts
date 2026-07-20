@@ -13,13 +13,12 @@ describe('AssignmentsService', () => {
         {
           provide: PrismaService,
           useValue: {
-            patient: { findUnique: jest.fn() },
-            user: { findUnique: jest.fn() },
+            patient: { findFirst: jest.fn() },
+            user: { findFirst: jest.fn() },
             assignment: {
               create: jest.fn(),
-              findUnique: jest.fn(),
-              findMany: jest.fn(),
               findFirst: jest.fn(),
+              findMany: jest.fn(),
               update: jest.fn(),
             },
           },

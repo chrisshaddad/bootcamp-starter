@@ -77,29 +77,29 @@ a {
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  /* Primary Colors (Green) */
-  --color-primary-base: #27a376;
-  --color-primary-400: #55c790;
-  --color-primary-300: #86d7b0;
-  --color-primary-200: #ceefdf;
-  --color-primary-100: #e7f7ef;
+  /* Primary Colors (Blue) */
+  --color-primary-base: #3f78a8;
+  --color-primary-400: #6bacd6;
+  --color-primary-300: #8fc1e8;
+  --color-primary-200: #c9e2f2;
+  --color-primary-100: #eaf4fa;
 
-  /* Secondary Colors (Yellow) */
-  --color-secondary-base: #ffd023;
-  --color-secondary-400: #ffde65;
-  --color-secondary-300: #ffeca7;
-  --color-secondary-200: #fff6d3;
-  --color-secondary-100: #fffae9;
+  /* Secondary Colors (Neutral - deprecated as a brand color, kept for compatibility) */
+  --color-secondary-base: #64748b;
+  --color-secondary-400: #94a3b8;
+  --color-secondary-300: #cbd5e1;
+  --color-secondary-200: #e2e8f0;
+  --color-secondary-100: #f1f5f9;
 
   /* Alert - Success */
-  --color-success: #0caf60;
-  --color-success-dark: #0ba259;
-  --color-success-light: #55c790;
+  --color-success: #10a37f;
+  --color-success-dark: #0b7a5c;
+  --color-success-light: #c8f0e3;
 
   /* Alert - Warning */
-  --color-warning: #ffd023;
-  --color-warning-dark: #e6bb20;
-  --color-warning-light: #ffde65;
+  --color-warning: #f97316;
+  --color-warning-dark: #c2570c;
+  --color-warning-light: #fed7aa;
 
   /* Alert - Error */
   --color-error: #e03137;
@@ -123,6 +123,7 @@ a {
   --color-orange: #fe964a;
   --color-blue: #2f78ee;
   --color-purple: #8c62ff;
+  --color-teal: #0891b2;
 
   /* Typography - Font Sizes */
   --font-size-xs: 0.625rem; /* 10px */
@@ -147,38 +148,38 @@ a {
 :root {
   --radius: 0.625rem;
 
-  /* Light Theme - Updated with Humanline Design System */
+  /* Light Theme - MediLink Blue */
   --background: #ffffff;
   --foreground: #111827;
   --card: #ffffff;
   --card-foreground: #111827;
   --popover: #ffffff;
   --popover-foreground: #111827;
-  --primary: #27a376;
+  --primary: #3f78a8;
   --primary-foreground: #ffffff;
-  --secondary: #ffd023;
+  --secondary: #f8f8f8;
   --secondary-foreground: #111827;
   --muted: #f1f2f4;
   --muted-foreground: #687588;
-  --accent: #e7f7ef;
-  --accent-foreground: #27a376;
+  --accent: #eaf4fa;
+  --accent-foreground: #3f78a8;
   --destructive: #e03137;
   --border: #e9eaec;
   --input: #e9eaec;
-  --ring: #27a376;
-  --chart-1: #27a376;
-  --chart-2: #ffd023;
-  --chart-3: #2f78ee;
-  --chart-4: #8c62ff;
-  --chart-5: #fe964a;
+  --ring: #3f78a8;
+  --chart-1: #3f78a8;
+  --chart-2: #fe964a;
+  --chart-3: #8c62ff;
+  --chart-4: #0891b2;
+  --chart-5: #64748b;
   --sidebar: #fafafa;
   --sidebar-foreground: #111827;
-  --sidebar-primary: #27a376;
+  --sidebar-primary: #3f78a8;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #e7f7ef;
-  --sidebar-accent-foreground: #27a376;
+  --sidebar-accent: #eaf4fa;
+  --sidebar-accent-foreground: #3f78a8;
   --sidebar-border: #e9eaec;
-  --sidebar-ring: #27a376;
+  --sidebar-ring: #3f78a8;
 }
 
 .dark {
@@ -188,31 +189,31 @@ a {
   --card-foreground: #fafafa;
   --popover: #1f2937;
   --popover-foreground: #fafafa;
-  --primary: #27a376;
+  --primary: #3f78a8;
   --primary-foreground: #ffffff;
-  --secondary: #ffd023;
-  --secondary-foreground: #111827;
+  --secondary: #323b49;
+  --secondary-foreground: #fafafa;
   --muted: #323b49;
   --muted-foreground: #a0aec0;
-  --accent: #0ba259;
+  --accent: #2c5478;
   --accent-foreground: #ffffff;
   --destructive: #e03137;
   --border: #323b49;
   --input: #323b49;
-  --ring: #27a376;
-  --chart-1: #55c790;
-  --chart-2: #ffde65;
-  --chart-3: #2f78ee;
-  --chart-4: #8c62ff;
-  --chart-5: #fe964a;
-  --sidebar: #1f2937;
+  --ring: #3f78a8;
+  --chart-1: #8fc1e8;
+  --chart-2: #fe964a;
+  --chart-3: #8c62ff;
+  --chart-4: #0891b2;
+  --chart-5: #64748b;
+  --sidebar: #182130;
   --sidebar-foreground: #fafafa;
-  --sidebar-primary: #27a376;
+  --sidebar-primary: #3f78a8;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #323b49;
-  --sidebar-accent-foreground: #55c790;
+  --sidebar-accent: #24425c;
+  --sidebar-accent-foreground: #8fc1e8;
   --sidebar-border: #323b49;
-  --sidebar-ring: #27a376;
+  --sidebar-ring: #3f78a8;
 }
 
 @layer base {

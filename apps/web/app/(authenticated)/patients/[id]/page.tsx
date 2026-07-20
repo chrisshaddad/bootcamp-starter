@@ -8,6 +8,7 @@ import { ForbiddenPage } from '@/components/forbidden-page';
 import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AdministrativeSection } from '@/components/patients/administrative-section';
 import { ClinicalSection } from '@/components/patients/clinical-section';
 import { CareTeamSection } from '@/components/patients/care-team-section';
@@ -76,36 +77,56 @@ export default function PatientDetailPage() {
         Back to Patients
       </Button>
 
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold text-foreground">
             {patient.fullName}
           </h1>
-          <p className="mt-1 text-sm text-gray-500">{patient.email}</p>
+          <p
+            className="mt-1 truncate text-sm text-muted-foreground"
+            title={patient.email}
+          >
+            {patient.email}
+          </p>
         </div>
         <StatusBadge status={patient.isActive ? 'ACTIVE' : 'INACTIVE'} />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <AdministrativeSection
-          patient={patient}
-          canEdit={canEditAdmin}
-          onSave={updateAdmin}
-        />
-        <ClinicalSection
-          patient={patient}
-          canEdit={canEditClinical}
-          onSave={updateClinical}
-        />
-        <CareTeamSection
-          patient={patient}
-          canManage={canManageCareTeam}
-          onChange={mutate}
-        />
+      <Tabs defaultValue="clinical">
+        <TabsList>
+          <TabsTrigger value="clinical">Clinical</TabsTrigger>
+          <TabsTrigger value="care-team">Care Team</TabsTrigger>
+          {canViewRecords && <TabsTrigger value="records">Records</TabsTrigger>}
+          <TabsTrigger value="administrative">Administrative</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="clinical">
+          <ClinicalSection
+            patient={patient}
+            canEdit={canEditClinical}
+            onSave={updateClinical}
+          />
+        </TabsContent>
+        <TabsContent value="care-team">
+          <CareTeamSection
+            patient={patient}
+            canManage={canManageCareTeam}
+            onChange={mutate}
+          />
+        </TabsContent>
         {canViewRecords && (
-          <RecordsSection patientId={patient.id} canAdd={canAddRecords} />
+          <TabsContent value="records">
+            <RecordsSection patientId={patient.id} canAdd={canAddRecords} />
+          </TabsContent>
         )}
-      </div>
+        <TabsContent value="administrative">
+          <AdministrativeSection
+            patient={patient}
+            canEdit={canEditAdmin}
+            onSave={updateAdmin}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

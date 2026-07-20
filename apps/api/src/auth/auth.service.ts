@@ -82,10 +82,11 @@ export class AuthService {
     });
 
     if (!user) {
-      // Don't reveal if user exists - still return success. Avoid logging the
-      // raw email (PII); the success path likewise logs only a non-sensitive id.
+      // Deliberately reveals account existence, per product decision — this
+      // is an anti-pattern for most auth flows (enables email enumeration)
+      // but was explicitly requested over the safer silent-success default.
       this.logger.warn('Magic link requested for a non-existent account');
-      return { success: true };
+      throw new NotFoundException('No account found with this email address');
     }
 
     const token = await this.createMagicLinkToken(user.id);

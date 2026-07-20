@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import { Users as UsersIcon, Plus, MoreHorizontal } from 'lucide-react';
+import { Users as UsersIcon, Plus, Pencil } from 'lucide-react';
 import {
   userCreateRequestSchema,
   userUpdateRequestSchema,
@@ -22,7 +22,7 @@ import {
 } from '@/hooks/use-users';
 import { ApiError } from '@/lib/api';
 import { ForbiddenPage } from '@/components/forbidden-page';
-import { StatusBadge } from '@/components/status-badge';
+import { ActivationStatusBadge } from '@/components/activation-status-badge';
 import {
   Table,
   TableBody,
@@ -52,12 +52,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 
 const ROLE_LABELS: Record<string, string> = {
   STAFF: 'Staff',
@@ -147,7 +141,7 @@ function CreateUserDialog() {
             <Label htmlFor="role">Role</Label>
             <select
               id="role"
-              className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm"
+              className="h-10 w-full rounded-md border border-border bg-card px-3 text-sm"
               {...register('role')}
             >
               <option value="STAFF">Staff</option>
@@ -278,40 +272,19 @@ function EditUserDialog({
 }
 
 function UserRowActions({ user }: { user: UserListItem }) {
-  const { setUserStatus } = useSetUserStatus();
   const [editOpen, setEditOpen] = useState(false);
-
-  const toggleStatus = async () => {
-    try {
-      await setUserStatus(user.id, !user.isActive);
-      toast.success(user.isActive ? 'User deactivated' : 'User reactivated');
-    } catch (error) {
-      toast.error(
-        error instanceof ApiError ? error.message : 'Failed to update status',
-      );
-    }
-  };
 
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8">
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => setEditOpen(true)}>
-            Edit
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={toggleStatus}
-            className={user.isActive ? 'text-error focus:text-error' : ''}
-          >
-            {user.isActive ? 'Deactivate' : 'Reactivate'}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8"
+        onClick={() => setEditOpen(true)}
+        aria-label="Edit"
+      >
+        <Pencil className="h-4 w-4" />
+      </Button>
       <EditUserDialog user={user} open={editOpen} onOpenChange={setEditOpen} />
     </>
   );
@@ -327,6 +300,7 @@ export default function UsersPage() {
     role: roleFilter === 'all' ? undefined : roleFilter,
     enabled: isAdmin,
   });
+  const { setUserStatus } = useSetUserStatus();
 
   if (userLoading) {
     return <Skeleton className="h-64 w-full" />;
@@ -342,8 +316,10 @@ export default function UsersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Staff & Doctors</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-foreground">
+            Staff & Doctors
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Manage staff and professional accounts
           </p>
         </div>
@@ -371,7 +347,7 @@ export default function UsersPage() {
             <UsersIcon className="h-5 w-5" />
             Users
             {total !== undefined && (
-              <span className="text-sm font-normal text-gray-500">
+              <span className="text-sm font-normal text-muted-foreground">
                 ({total} total)
               </span>
             )}
@@ -389,7 +365,7 @@ export default function UsersPage() {
               Failed to load users
             </div>
           ) : !users?.length ? (
-            <div className="py-10 text-center text-gray-500">
+            <div className="py-10 text-center text-muted-foreground">
               No users found
             </div>
           ) : (
@@ -407,20 +383,47 @@ export default function UsersPage() {
                 {users.map((u) => (
                   <TableRow key={u.id}>
                     <TableCell>
-                      <div className="font-medium text-gray-900">
+                      <div className="font-medium text-foreground">
                         {u.fullName}
                       </div>
-                      <div className="text-sm text-gray-500">{u.email}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {u.email}
+                      </div>
                     </TableCell>
-                    <TableCell className="text-gray-600">
+                    <TableCell className="text-muted-foreground">
                       {ROLE_LABELS[u.role] || u.role}
                     </TableCell>
-                    <TableCell className="text-gray-600">
-                      {u.specialty || <span className="text-gray-400">—</span>}
+                    <TableCell className="text-muted-foreground">
+                      {u.specialty || (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell>
-                      <StatusBadge
-                        status={u.isActive ? 'ACTIVE' : 'INACTIVE'}
+                      <ActivationStatusBadge
+                        isActive={u.isActive}
+                        name={u.fullName}
+                        entityLabel={
+                          u.role === 'PROFESSIONAL'
+                            ? 'professional'
+                            : 'staff member'
+                        }
+                        onConfirm={async () => {
+                          try {
+                            await setUserStatus(u.id, !u.isActive);
+                            toast.success(
+                              u.isActive
+                                ? 'User deactivated'
+                                : 'User reactivated',
+                            );
+                          } catch (error) {
+                            toast.error(
+                              error instanceof ApiError
+                                ? error.message
+                                : 'Failed to update status',
+                            );
+                            throw error;
+                          }
+                        }}
                       />
                     </TableCell>
                     <TableCell>

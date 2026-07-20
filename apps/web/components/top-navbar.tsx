@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Search, Settings, LogOut, ChevronDown, Bell } from 'lucide-react';
+import { useTheme } from 'next-themes';
+import { LogOut, ChevronDown, Bell, Sun, Moon, UserCircle } from 'lucide-react';
 import { useAuth, useUser } from '@/hooks/use-auth';
 import { useNotifications } from '@/hooks/use-notifications';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -21,9 +21,14 @@ export function TopNavbar() {
   const { user } = useUser({ redirectOnUnauthenticated: false });
   const { logout } = useAuth();
   const { unreadCount } = useNotifications({ enabled: !!user });
-  const [searchQuery, setSearchQuery] = useState('');
+  const { resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
 
-  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const isDark = mounted && resolvedTheme === 'dark';
 
   const getInitials = (name?: string | null, email?: string) => {
     if (name) {
@@ -43,31 +48,31 @@ export function TopNavbar() {
   };
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-gray-200 bg-white px-6">
-      {/* Left Section - Sidebar Toggle & Search */}
+    <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-border bg-background px-6">
+      {/* Left Section - Sidebar Toggle */}
       <div className="flex items-center gap-4">
-        <SidebarTrigger className="-ml-1 h-9 w-9 text-gray-500 hover:bg-gray-100 hover:text-gray-900" />
-
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <Input
-            type="search"
-            placeholder={isSuperAdmin ? 'Search institutions...' : 'Search...'}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-10 w-64 rounded-lg border-gray-200 bg-gray-50 pl-10 text-sm placeholder:text-gray-400 focus-visible:border-primary-base focus-visible:ring-primary-base/20"
-          />
-        </div>
+        <SidebarTrigger className="-ml-1 h-9 w-9 text-muted-foreground hover:bg-accent hover:text-accent-foreground" />
       </div>
 
       {/* Right Section - User */}
       <div className="flex items-center gap-3">
+        {/* Dark mode toggle */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-10 w-10 rounded-lg text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+          onClick={() => setTheme(isDark ? 'light' : 'dark')}
+          aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
+          {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+        </Button>
+
         {/* Notifications bell */}
         <Button
           asChild
           variant="ghost"
           size="icon"
-          className="relative h-10 w-10 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+          className="relative h-10 w-10 rounded-lg text-muted-foreground hover:bg-accent hover:text-accent-foreground"
         >
           <Link href="/notifications" aria-label="Notifications">
             <Bell className="h-5 w-5" />
@@ -84,7 +89,7 @@ export function TopNavbar() {
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className="flex h-10 items-center gap-2 rounded-lg px-2 hover:bg-gray-100"
+              className="flex h-10 items-center gap-2 rounded-lg px-2 hover:bg-accent"
             >
               <Avatar className="h-8 w-8">
                 <AvatarImage src={undefined} />
@@ -93,18 +98,18 @@ export function TopNavbar() {
                 </AvatarFallback>
               </Avatar>
               <div className="hidden text-left md:block">
-                <p className="text-sm font-medium text-gray-900">
+                <p className="text-sm font-medium text-foreground">
                   {getDisplayName()}
                 </p>
               </div>
-              <ChevronDown className="h-4 w-4 text-gray-500" />
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
             <DropdownMenuItem asChild>
-              <Link href="/settings" className="flex items-center gap-2">
-                <Settings className="h-4 w-4" />
-                <span>Settings</span>
+              <Link href="/profile" className="flex items-center gap-2">
+                <UserCircle className="h-4 w-4" />
+                <span>Profile</span>
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />

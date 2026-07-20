@@ -39,7 +39,7 @@ export class InstitutionsController {
   // The caller's own institution. Declared before :id so "me" isn't captured
   // as an institution id.
   @Get('me')
-  @Roles('INSTITUTION_ADMIN', 'STAFF', 'PROFESSIONAL')
+  @Roles('INSTITUTION_ADMIN', 'STAFF', 'PROFESSIONAL', 'PATIENT')
   async findMine(
     @CurrentUser() user: User,
   ): Promise<InstitutionDetailResponse> {

@@ -99,19 +99,26 @@ export class PatientsService {
     query: PatientListQuery,
     actor: User,
   ): Promise<PatientListResponse> {
-    const { search, page, limit } = query;
+    const { search, unassigned, page, limit } = query;
     const skip = (page - 1) * limit;
+
+    // Both are `assignments` relation filters, so they're combined via `AND`
+    // rather than spread onto the same key (which would let the second
+    // silently overwrite the first).
+    const assignmentFilters: Prisma.PatientWhereInput[] = [];
+    if (actor.role === 'PROFESSIONAL') {
+      // Professionals only see patients they are actively assigned to.
+      assignmentFilters.push({
+        assignments: { some: { professionalId: actor.id, status: 'ACTIVE' } },
+      });
+    }
+    if (unassigned) {
+      assignmentFilters.push({ assignments: { none: { status: 'ACTIVE' } } });
+    }
 
     const where: Prisma.PatientWhereInput = {
       institutionId: actor.institutionId,
-      // Professionals only see patients they are actively assigned to.
-      ...(actor.role === 'PROFESSIONAL'
-        ? {
-            assignments: {
-              some: { professionalId: actor.id, status: 'ACTIVE' },
-            },
-          }
-        : {}),
+      ...(assignmentFilters.length ? { AND: assignmentFilters } : {}),
       ...(search
         ? {
             OR: [
@@ -180,8 +187,8 @@ export class PatientsService {
     id: string,
     actor: User,
   ): Promise<PatientDetailResponse> {
-    const patient = await this.prisma.patient.findUnique({
-      where: { id },
+    const patient = await this.prisma.patient.findFirst({
+      where: { id, institutionId: actor.institutionId },
       select: { id: true, institutionId: true, userId: true },
     });
 
@@ -249,12 +256,12 @@ export class PatientsService {
     data: PatientClinicalUpdateRequest,
     actor: User,
   ): Promise<PatientDetailResponse> {
-    const patient = await this.prisma.patient.findUnique({
-      where: { id },
+    const patient = await this.prisma.patient.findFirst({
+      where: { id, institutionId: actor.institutionId },
       select: { id: true, institutionId: true, userId: true },
     });
 
-    if (!patient || patient.institutionId !== actor.institutionId) {
+    if (!patient) {
       throw new NotFoundException(`Patient with ID ${id} not found`);
     }
 
@@ -280,6 +287,24 @@ export class PatientsService {
           : {}),
       },
     });
+
+    return this.buildDetail(id);
+  }
+
+  async setStatus(
+    id: string,
+    isActive: boolean,
+    actor: User,
+  ): Promise<PatientDetailResponse> {
+    const patient = await this.getInstitutionPatient(id, actor);
+
+    await this.prisma.user.update({
+      where: { id: patient.userId },
+      data: { isActive },
+    });
+    this.logger.log(
+      `Patient ${id} ${isActive ? 'reactivated' : 'deactivated'} by ${actor.id}`,
+    );
 
     return this.buildDetail(id);
   }
@@ -326,12 +351,12 @@ export class PatientsService {
     id: string,
     actor: User,
   ): Promise<PatientScope> {
-    const patient = await this.prisma.patient.findUnique({
-      where: { id },
+    const patient = await this.prisma.patient.findFirst({
+      where: { id, institutionId: actor.institutionId },
       select: { id: true, institutionId: true, userId: true },
     });
 
-    if (!patient || patient.institutionId !== actor.institutionId) {
+    if (!patient) {
       throw new NotFoundException(`Patient with ID ${id} not found`);
     }
 
@@ -360,7 +385,8 @@ export class PatientsService {
                 id: true,
                 fullName: true,
                 phone: true,
-                professionalProfile: { select: { specialty: true } },
+                email: true,
+                professionalProfile: { select: { specialty: true, bio: true } },
               },
             },
           },
@@ -393,7 +419,9 @@ export class PatientsService {
         professionalId: a.professionalId,
         fullName: a.professional.fullName,
         specialty: a.professional.professionalProfile?.specialty ?? null,
+        bio: a.professional.professionalProfile?.bio ?? null,
         phone: a.professional.phone,
+        email: a.professional.email,
       })),
       createdAt: patient.createdAt,
       updatedAt: patient.updatedAt,

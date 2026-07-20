@@ -11,6 +11,8 @@ import { PatientsModule } from './patients/patients.module';
 import { AssignmentsModule } from './assignments/assignments.module';
 import { MedicalRecordsModule } from './medical-records/medical-records.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { StatsModule } from './stats/stats.module';
+import { ProfileModule } from './profile/profile.module';
 import { DatabaseModule } from './database/database.module';
 
 @Module({
@@ -30,6 +32,8 @@ import { DatabaseModule } from './database/database.module';
     AssignmentsModule,
     MedicalRecordsModule,
     NotificationsModule,
+    StatsModule,
+    ProfileModule,
   ],
   controllers: [AppController],
   providers: [AppService],

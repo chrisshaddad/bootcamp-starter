@@ -34,8 +34,8 @@ export default function NotificationsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Notifications</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-foreground">Notifications</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             {unreadCount > 0
               ? `You have ${unreadCount} unread notification${unreadCount === 1 ? '' : 's'}`
               : 'You are all caught up'}
@@ -63,16 +63,16 @@ export default function NotificationsPage() {
             </div>
           ) : !notifications?.length ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
-              <Bell className="mb-3 h-10 w-10 text-gray-300" />
-              <p className="text-gray-500">No notifications yet</p>
+              <Bell className="mb-3 h-10 w-10 text-muted-foreground" />
+              <p className="text-muted-foreground">No notifications yet</p>
             </div>
           ) : (
-            <ul className="divide-y divide-gray-100">
+            <ul className="divide-y divide-border">
               {notifications.map((n) => (
                 <li
                   key={n.id}
                   className={cn(
-                    'flex cursor-pointer items-start gap-3 px-4 py-4 transition-colors hover:bg-gray-50',
+                    'flex cursor-pointer items-start gap-3 px-4 py-4 transition-colors hover:bg-muted',
                     !n.isRead && 'bg-primary-100/40',
                   )}
                   onClick={() => !n.isRead && markRead(n.id)}
@@ -85,12 +85,14 @@ export default function NotificationsPage() {
                   />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="font-medium text-gray-900">{n.title}</p>
-                      <span className="shrink-0 text-xs text-gray-400">
+                      <p className="font-medium text-foreground">{n.title}</p>
+                      <span className="shrink-0 text-xs text-muted-foreground">
                         {timeAgo(n.createdAt)}
                       </span>
                     </div>
-                    <p className="mt-0.5 text-sm text-gray-600">{n.body}</p>
+                    <p className="mt-0.5 text-sm text-muted-foreground">
+                      {n.body}
+                    </p>
                   </div>
                 </li>
               ))}

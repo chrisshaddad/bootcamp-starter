@@ -14,11 +14,14 @@ import type {
 /** Records timeline for a patient. */
 export function useRecords(
   patientId: string,
-  options: { recordType?: RecordType; enabled?: boolean } = {},
+  options: { recordTypes?: RecordType[]; enabled?: boolean } = {},
 ) {
-  const { recordType, enabled = true } = options;
-  const key = recordType
-    ? `/patients/${patientId}/records?recordType=${recordType}`
+  const { recordTypes, enabled = true } = options;
+  const params = new URLSearchParams();
+  recordTypes?.forEach((type) => params.append('recordType', type));
+  const qs = params.toString();
+  const key = qs
+    ? `/patients/${patientId}/records?${qs}`
     : `/patients/${patientId}/records`;
 
   const { data, error, isLoading, mutate } = useSWR<RecordListResponse>(

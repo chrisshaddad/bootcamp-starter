@@ -4,6 +4,7 @@ import { useUser } from '@/hooks/use-auth';
 import { usePatientMe } from '@/hooks/use-patients';
 import { ForbiddenPage } from '@/components/forbidden-page';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AdministrativeSection } from '@/components/patients/administrative-section';
 import { ClinicalSection } from '@/components/patients/clinical-section';
 import { CareTeamSection } from '@/components/patients/care-team-section';
@@ -12,7 +13,7 @@ import { RecordsSection } from '@/components/patients/records-section';
 // Read-only view: patients can view everything, edit nothing.
 const noop = async () => undefined;
 
-export default function PortalPage() {
+export default function MyHealthPage() {
   const { user, isLoading: userLoading } = useUser();
   const isPatient = user?.role === 'PATIENT';
 
@@ -44,22 +45,41 @@ export default function PortalPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">My Health</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <h1 className="text-2xl font-bold text-foreground">My Health</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Your profile, care team, and medical records
         </p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <AdministrativeSection
-          patient={patient}
-          canEdit={false}
-          onSave={noop}
-        />
-        <ClinicalSection patient={patient} canEdit={false} onSave={noop} />
-        <CareTeamSection patient={patient} canManage={false} onChange={noop} />
-        <RecordsSection patientId={patient.id} canAdd={false} />
-      </div>
+      <Tabs defaultValue="clinical">
+        <TabsList>
+          <TabsTrigger value="clinical">Clinical</TabsTrigger>
+          <TabsTrigger value="care-team">Care Team</TabsTrigger>
+          <TabsTrigger value="records">Records</TabsTrigger>
+          <TabsTrigger value="administrative">Administrative</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="clinical">
+          <ClinicalSection patient={patient} canEdit={false} onSave={noop} />
+        </TabsContent>
+        <TabsContent value="care-team">
+          <CareTeamSection
+            patient={patient}
+            canManage={false}
+            onChange={noop}
+          />
+        </TabsContent>
+        <TabsContent value="records">
+          <RecordsSection patientId={patient.id} canAdd={false} />
+        </TabsContent>
+        <TabsContent value="administrative">
+          <AdministrativeSection
+            patient={patient}
+            canEdit={false}
+            onSave={noop}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

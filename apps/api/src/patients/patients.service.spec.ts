@@ -16,6 +16,7 @@ describe('PatientsService', () => {
             patient: {
               findMany: jest.fn(),
               findUnique: jest.fn(),
+              findFirst: jest.fn(),
               findUniqueOrThrow: jest.fn(),
               count: jest.fn(),
               create: jest.fn(),

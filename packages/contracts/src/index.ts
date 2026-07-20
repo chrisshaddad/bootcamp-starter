@@ -6,3 +6,5 @@ export * from './patients';
 export * from './assignments';
 export * from './records';
 export * from './notifications';
+export * from './stats';
+export * from './profile';

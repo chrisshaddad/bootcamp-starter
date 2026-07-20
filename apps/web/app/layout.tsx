@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Manrope } from 'next/font/google';
+import { ThemeProvider } from 'next-themes';
 import { Toaster } from '@/components/ui/sonner';
 import { SWRProvider } from '@/lib/swr-provider';
 import './globals.css';
@@ -11,8 +12,8 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: 'Bootcamp Starter',
-  description: 'Full-stack bootcamp starter',
+  title: 'MediLink',
+  description: 'Coordinated care records, one institution at a time.',
 };
 
 export default function RootLayout({
@@ -21,12 +22,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={`${manrope.variable} font-sans antialiased`}>
-        <SWRProvider>
-          {children}
-          <Toaster richColors position="top-right" />
-        </SWRProvider>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <SWRProvider>
+            {children}
+            <Toaster richColors position="top-right" />
+          </SWRProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

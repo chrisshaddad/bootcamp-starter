@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
@@ -11,10 +11,15 @@ import {
   type PatientCreateRequest,
 } from '@repo/contracts';
 import { useUser } from '@/hooks/use-auth';
-import { usePatients, useCreatePatient } from '@/hooks/use-patients';
+import {
+  usePatients,
+  useCreatePatient,
+  useSetPatientStatus,
+} from '@/hooks/use-patients';
 import { ApiError } from '@/lib/api';
 import { ForbiddenPage } from '@/components/forbidden-page';
 import { StatusBadge } from '@/components/status-badge';
+import { ActivationStatusBadge } from '@/components/activation-status-badge';
 import {
   Table,
   TableBody,
@@ -28,6 +33,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -128,7 +134,7 @@ function CreatePatientDialog() {
               <Label htmlFor="gender">Gender</Label>
               <select
                 id="gender"
-                className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm"
+                className="h-10 w-full rounded-md border border-border bg-card px-3 text-sm"
                 {...register('gender')}
               >
                 <option value="">—</option>
@@ -155,8 +161,10 @@ function CreatePatientDialog() {
 
 export default function PatientsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, isLoading: userLoading } = useUser();
   const [search, setSearch] = useState('');
+  const unassignedOnly = searchParams.get('unassigned') === 'true';
 
   const role = user?.role;
   const canAccess = role ? ALLOWED_ROLES.includes(role) : false;
@@ -165,8 +173,21 @@ export default function PatientsPage() {
 
   const { patients, total, isLoading, error } = usePatients({
     search: search || undefined,
+    unassigned: unassignedOnly || undefined,
     enabled: canAccess,
   });
+  const { setPatientStatus } = useSetPatientStatus();
+
+  const toggleUnassignedOnly = (checked: boolean) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (checked) {
+      params.set('unassigned', 'true');
+    } else {
+      params.delete('unassigned');
+    }
+    const qs = params.toString();
+    router.replace(qs ? `/patients?${qs}` : '/patients', { scroll: false });
+  };
 
   if (userLoading) {
     return <Skeleton className="h-64 w-full" />;
@@ -182,16 +203,33 @@ export default function PatientsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-foreground">
             {isProfessional ? 'My Patients' : 'Patients'}
           </h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-muted-foreground">
             {isProfessional
               ? 'Patients assigned to your care'
               : 'Manage patient records and care teams'}
           </p>
         </div>
         <div className="flex items-center gap-4">
+          {!isProfessional && (
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="unassigned-filter"
+                checked={unassignedOnly}
+                onCheckedChange={(checked) =>
+                  toggleUnassignedOnly(checked === true)
+                }
+              />
+              <Label
+                htmlFor="unassigned-filter"
+                className="text-sm font-normal text-foreground"
+              >
+                No care team
+              </Label>
+            </div>
+          )}
           <Input
             placeholder="Search patients..."
             value={search}
@@ -208,7 +246,7 @@ export default function PatientsPage() {
             <UsersRound className="h-5 w-5" />
             Patients
             {total !== undefined && (
-              <span className="text-sm font-normal text-gray-500">
+              <span className="text-sm font-normal text-muted-foreground">
                 ({total} total)
               </span>
             )}
@@ -226,7 +264,7 @@ export default function PatientsPage() {
               Failed to load patients
             </div>
           ) : !patients?.length ? (
-            <div className="py-10 text-center text-gray-500">
+            <div className="py-10 text-center text-muted-foreground">
               No patients found
             </div>
           ) : (
@@ -247,21 +285,50 @@ export default function PatientsPage() {
                     onClick={() => router.push(`/patients/${p.id}`)}
                   >
                     <TableCell>
-                      <div className="font-medium text-gray-900">
+                      <div className="font-medium text-foreground">
                         {p.fullName}
                       </div>
-                      <div className="text-sm text-gray-500">{p.email}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {p.email}
+                      </div>
                     </TableCell>
-                    <TableCell className="text-gray-600">
-                      {p.nationalId || <span className="text-gray-400">—</span>}
+                    <TableCell className="text-muted-foreground">
+                      {p.nationalId || (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
-                    <TableCell className="text-gray-600">
+                    <TableCell className="text-muted-foreground">
                       {formatDate(p.dateOfBirth)}
                     </TableCell>
                     <TableCell>
-                      <StatusBadge
-                        status={p.isActive ? 'ACTIVE' : 'INACTIVE'}
-                      />
+                      {canCreate ? (
+                        <ActivationStatusBadge
+                          isActive={p.isActive}
+                          name={p.fullName}
+                          entityLabel="patient"
+                          onConfirm={async () => {
+                            try {
+                              await setPatientStatus(p.id, !p.isActive);
+                              toast.success(
+                                p.isActive
+                                  ? 'Patient deactivated'
+                                  : 'Patient reactivated',
+                              );
+                            } catch (error) {
+                              toast.error(
+                                error instanceof ApiError
+                                  ? error.message
+                                  : 'Failed to update status',
+                              );
+                              throw error;
+                            }
+                          }}
+                        />
+                      ) : (
+                        <StatusBadge
+                          status={p.isActive ? 'ACTIVE' : 'INACTIVE'}
+                        />
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
