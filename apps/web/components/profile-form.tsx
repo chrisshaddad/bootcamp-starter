@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { mutate } from 'swr';
 import { useForm, useWatch, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -8,8 +8,6 @@ import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import {
   updateProfileRequestSchema,
-  PROFILE_PICTURE_MAX_SIZE_BYTES,
-  PROFILE_PICTURE_ALLOWED_MIME_TYPES,
   type UpdateProfileRequest,
   type UserResponse,
   type ProfilePictureUploadResponse,
@@ -21,6 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ProfilePictureEditorDialog } from '@/components/profile-picture-editor-dialog';
 import {
   Select,
   SelectContent,
@@ -43,8 +42,7 @@ const ORGANIZATION_TYPES = [
 export function ProfileForm({ user }: ProfileFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploadingPicture, setIsUploadingPicture] = useState(false);
-  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isPictureEditorOpen, setIsPictureEditorOpen] = useState(false);
   const { updateProfile } = useAuth();
   const isDeveloper = user.accountType === 'DEVELOPER';
 
@@ -86,33 +84,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
 
   const profilePictureUrl = useWatch({ control, name: 'profilePictureUrl' });
 
-  // A freshly picked file's real name takes priority; otherwise fall back to
-  // a generic label, so the control never has to lie and say "No file
-  // chosen" when a picture already exists. We don't persist the original
-  // filename, so this can't show the literal name after a reload/relogin.
-  const currentFileLabel =
-    selectedFileName ?? (profilePictureUrl ? 'Current photo' : null);
-
-  const handlePictureChange = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (
-      !(PROFILE_PICTURE_ALLOWED_MIME_TYPES as readonly string[]).includes(
-        file.type,
-      )
-    ) {
-      toast.error('Only JPEG, PNG, WEBP, or GIF images are allowed');
-      return;
-    }
-    if (file.size > PROFILE_PICTURE_MAX_SIZE_BYTES) {
-      toast.error('Image must be smaller than 5MB');
-      return;
-    }
-
-    setSelectedFileName(file.name);
+  const handlePictureSave = async (file: File) => {
     setIsUploadingPicture(true);
     try {
       const formData = new FormData();
@@ -121,13 +93,15 @@ export function ProfileForm({ user }: ProfileFormProps) {
         '/auth/profile/picture',
         formData,
       );
+      // Photo edits are saved from their own dialog, matching the behavior of
+      // profile-focused products and avoiding a surprising second save step.
+      await updateProfile({ profilePictureUrl: result.profilePictureUrl });
       setValue('profilePictureUrl', result.profilePictureUrl, {
-        shouldDirty: true,
+        shouldDirty: false,
         shouldValidate: true,
       });
 
-      // Reflect the new picture everywhere (navbar, sidebar, etc.) right away —
-      // the DB write still only happens when the user hits Save.
+      // Reflect the new picture everywhere (navbar, sidebar, etc.) right away.
       await mutate(
         '/auth/me',
         (current?: UserResponse) =>
@@ -142,10 +116,15 @@ export function ProfileForm({ user }: ProfileFormProps) {
             : current,
         { revalidate: false },
       );
+      toast.success('Profile photo updated');
+      return true;
     } catch (error) {
       toast.error(
-        error instanceof ApiError ? error.message : 'Unable to upload image',
+        error instanceof ApiError
+          ? error.message
+          : 'Unable to update profile photo',
       );
+      return false;
     } finally {
       setIsUploadingPicture(false);
     }
@@ -252,7 +231,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="profilePicture">Profile picture</Label>
+            <Label>Profile picture</Label>
             <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-4">
               <Avatar className="h-16 w-16 shrink-0">
                 <AvatarImage src={profilePictureUrl || undefined} />
@@ -262,38 +241,34 @@ export function ProfileForm({ user }: ProfileFormProps) {
                     .toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <div className="w-full min-w-0 flex-1 space-y-1">
-                <div className="flex items-center gap-3">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={isUploadingPicture}
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    Choose file
-                  </Button>
-                  <span className="text-muted-foreground truncate text-sm">
-                    {currentFileLabel ?? 'No file chosen'}
-                  </span>
-                  <input
-                    ref={fileInputRef}
-                    id="profilePicture"
-                    type="file"
-                    accept={PROFILE_PICTURE_ALLOWED_MIME_TYPES.join(',')}
-                    disabled={isUploadingPicture}
-                    onChange={handlePictureChange}
-                    className="hidden"
-                  />
-                </div>
-                {isUploadingPicture && (
-                  <p className="flex items-center gap-1.5 text-muted-foreground text-sm">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    Uploading...
-                  </p>
-                )}
+              <div className="w-full min-w-0 flex-1 space-y-1.5">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isUploadingPicture}
+                  onClick={() => setIsPictureEditorOpen(true)}
+                >
+                  {isUploadingPicture ? (
+                    <Loader2 className="animate-spin" />
+                  ) : null}
+                  Edit photo
+                </Button>
+                <p className="text-muted-foreground text-sm">
+                  Drag and zoom to choose how your photo appears.
+                </p>
               </div>
             </div>
+            <ProfilePictureEditorDialog
+              open={isPictureEditorOpen}
+              onOpenChange={setIsPictureEditorOpen}
+              currentImageUrl={profilePictureUrl || undefined}
+              fallback={(user.developerProfile?.displayName ?? user.email)
+                .charAt(0)
+                .toUpperCase()}
+              isSaving={isUploadingPicture}
+              onSave={handlePictureSave}
+            />
             {errors.profilePictureUrl && (
               <p className="text-sm text-destructive">
                 {errors.profilePictureUrl.message}
