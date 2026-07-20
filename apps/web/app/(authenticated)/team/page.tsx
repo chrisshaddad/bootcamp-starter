@@ -204,8 +204,7 @@ export default function TeamOverviewPage() {
         averageLevel: Math.round(total / count),
       }))
       .sort(
-        (a, b) =>
-          b.memberCount - a.memberCount || a.name.localeCompare(b.name),
+        (a, b) => b.memberCount - a.memberCount || a.name.localeCompare(b.name),
       );
   }, [employees]);
 
@@ -332,9 +331,7 @@ export default function TeamOverviewPage() {
       </div>
 
       <Card className="gap-4 border-gray-200 p-5 shadow-sm">
-        <h2 className="text-base font-semibold text-gray-900">
-          Team Members
-        </h2>
+        <h2 className="text-base font-semibold text-gray-900">Team Members</h2>
         {employeesLoading ? (
           <div className="space-y-3">
             {[...Array(2)].map((_, i) => (

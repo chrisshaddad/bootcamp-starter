@@ -85,7 +85,8 @@ function ApplicationsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useUser();
-  const teamView = searchParams.get('team') === 'true' && Boolean(user?.isManager);
+  const teamView =
+    searchParams.get('team') === 'true' && Boolean(user?.isManager);
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
@@ -117,7 +118,7 @@ function ApplicationsContent() {
         </h1>
         <p className="mt-1 text-sm text-gray-500">
           {teamView
-            ? "Review the opportunities your direct reports have applied to"
+            ? 'Review the opportunities your direct reports have applied to'
             : "Track the status of the opportunities you've applied to"}
         </p>
       </div>
