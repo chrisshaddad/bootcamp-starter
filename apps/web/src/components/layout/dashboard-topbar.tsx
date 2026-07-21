@@ -1,7 +1,6 @@
 'use client';
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Sun, Moon, UserIcon } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { federatedLogout } from '@/auth/federated-logout';
@@ -116,6 +115,7 @@ function UserDropdown({
   dict: Dictionary;
 }) {
   const userInitial = userName ? userName.charAt(0).toUpperCase() : 'U';
+  const router = useRouter();
 
   return (
     <DropdownMenu>
@@ -136,7 +136,9 @@ function UserDropdown({
           </p>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem render={<Link href={`/${locale}/dashboard/profile`} />}>
+        <DropdownMenuItem
+          onClick={() => router.push(`/${locale}/dashboard/profile`)}
+        >
           <UserIcon />
           {dict.nav.profile}
         </DropdownMenuItem>
