@@ -1,5 +1,24 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MinLength,
+  ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+
+export class PortalLoginDto {
+  @ApiProperty()
+  @IsEmail()
+  email: string;
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(8)
+  password: string;
+}
 
 export class CreateRenterDto {
   @ApiProperty()
@@ -40,4 +59,14 @@ export class CreateRenterDto {
   @IsOptional()
   @IsString()
   renterUserId?: string | null;
+
+  @ApiPropertyOptional({
+    description:
+      'When present, the API mints a Keycloak tenant login for this renter and links it (sets renterUserId to the new sub). Admin-provisioned only — no self-registration. If both portalLogin and renterUserId are provided, portalLogin wins.',
+    type: PortalLoginDto,
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => PortalLoginDto)
+  portalLogin?: PortalLoginDto;
 }

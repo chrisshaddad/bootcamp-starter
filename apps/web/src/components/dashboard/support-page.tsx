@@ -43,10 +43,14 @@ import type { Dictionary } from '@/i18n/get-dictionary';
 
 // ── Static option lists (labels resolved from the dictionary at render) ───────
 
+// Maintenance is intentionally excluded from the CREATE form: a tenant's
+// category:'maintenance' ticket can never be actioned by the maintenance role
+// (resolve/close excludes them) — the real channel for that is a
+// MaintenanceRequest, not a support ticket. Existing tickets already tagged
+// 'maintenance' still render fine (CATEGORY_STYLES/t.categories keep the key).
 const CATEGORIES: SupportTicketCategory[] = [
   'general',
   'billing',
-  'maintenance',
   'technical',
   'other',
 ];

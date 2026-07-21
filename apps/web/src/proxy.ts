@@ -143,7 +143,8 @@ export default auth((request) => {
   const sessionExpired = session?.error === 'RefreshAccessTokenError';
 
   // Route classification.
-  const isProtected = area === 'dashboard' || area === 'billing';
+  const isProtected =
+    area === 'dashboard' || area === 'billing' || area === 'portal';
   const isAnonOnly = area === undefined || area === 'login'; // landing root + login
 
   // Direct role-named segments (e.g. /<locale>/org_admin) are not real routes →
@@ -163,6 +164,19 @@ export default auth((request) => {
         ),
       );
       return sessionExpired ? clearSessionCookies(response, request) : response;
+    }
+
+    // ── Portal ⇄ dashboard isolation ─────────────────────────────────────
+    // Tenants live in the resident portal, never the admin dashboard shell;
+    // every other role is the inverse. Keeps the two audiences fully separated
+    // at the edge (the layout guards remain the authoritative gate).
+    if (area === 'dashboard' && sessionRole === 'tenant') {
+      return NextResponse.redirect(new URL(`/${locale}/portal`, nextUrl));
+    }
+    if (area === 'portal' && sessionRole && sessionRole !== 'tenant') {
+      return NextResponse.redirect(
+        new URL(dashboardPathForRole(sessionRole, locale), nextUrl),
+      );
     }
 
     // ── Paywall gate — DELIBERATELY NOT done here ────────────────────────

@@ -2,12 +2,15 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { isAxiosError } from 'axios';
 import { PrismaService } from '@/infrastructure/prisma/prisma.service';
 import { TimelineService } from '@/modules/timeline/timeline.service';
 import { BuildingAccessService } from '@/common/building-access/building-access.service';
 import { LeaseStatusService } from '@/common/lease-status/lease-status.service';
+import { KeycloakAdminService } from '@/infrastructure/keycloak/keycloak-admin.service';
 import { formatLease, LeaseRow } from '@/modules/leases/lease-formatter';
 import { Role } from '@/common/enums';
 import {
@@ -34,11 +37,14 @@ type RenterRow = {
 
 @Injectable()
 export class RentersService {
+  private readonly logger = new Logger(RentersService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly timeline: TimelineService,
     private readonly buildingAccess: BuildingAccessService,
     private readonly leaseStatus: LeaseStatusService,
+    private readonly keycloakAdmin: KeycloakAdminService,
   ) {}
 
   // ── Format helpers ────────────────────────────────────────────────────────
@@ -148,18 +154,65 @@ export class RentersService {
     actorId: string,
     dto: CreateRenterDto,
   ): Promise<{ data: RenterResponse }> {
-    const renter = await this.prisma.renter.create({
-      data: {
-        orgId,
-        fullName: dto.fullName,
-        email: dto.email,
-        phone: dto.phone,
-        emergencyContactName: dto.emergencyContactName,
-        emergencyContactPhone: dto.emergencyContactPhone,
-        notes: dto.notes,
-        renterUserId: dto.renterUserId,
-      },
-    });
+    // portalLogin wins over a passed-through renterUserId (see CreateRenterBody).
+    let renterUserId = dto.renterUserId;
+    let portalLoginMinted = false;
+
+    if (dto.portalLogin) {
+      const [firstName = '', ...rest] = dto.fullName.trim().split(' ');
+      const lastName = rest.join(' ');
+
+      try {
+        renterUserId = await this.keycloakAdmin.createUserWithPassword({
+          username: dto.portalLogin.email,
+          password: dto.portalLogin.password,
+          email: dto.portalLogin.email,
+          firstName,
+          lastName,
+          attributes: { org_id: [orgId] },
+        });
+      } catch (error) {
+        if (isAxiosError(error) && error.response?.status === 409) {
+          throw new ConflictException(
+            'A portal login with this email already exists.',
+          );
+        }
+        throw error;
+      }
+
+      // Tenant is NOT a CAPPED_ROLE and does not get building assignments —
+      // unlike staff (see UsersService.create).
+      await this.keycloakAdmin.setSingleClientRole(renterUserId, Role.TENANT);
+      portalLoginMinted = true;
+    }
+
+    let renter: RenterRow;
+    try {
+      renter = await this.prisma.renter.create({
+        data: {
+          orgId,
+          fullName: dto.fullName,
+          email: dto.email,
+          phone: dto.phone,
+          emergencyContactName: dto.emergencyContactName,
+          emergencyContactPhone: dto.emergencyContactPhone,
+          notes: dto.notes,
+          renterUserId,
+        },
+      });
+    } catch (error) {
+      // Best-effort rollback: don't strand a Keycloak login with no renter row.
+      if (portalLoginMinted && renterUserId) {
+        try {
+          await this.keycloakAdmin.deleteUser(renterUserId);
+        } catch (cleanupError) {
+          this.logger.warn(
+            `Failed to roll back Keycloak user ${renterUserId} after renter creation failure: ${String(cleanupError)}`,
+          );
+        }
+      }
+      throw error;
+    }
 
     await this.timeline.emit({
       orgId,
@@ -167,7 +220,10 @@ export class RentersService {
       action: 'renter.created',
       targetType: 'Renter',
       targetId: renter.id,
-      metadata: { fullName: renter.fullName },
+      metadata: {
+        fullName: renter.fullName,
+        ...(portalLoginMinted && { portalLogin: true }),
+      },
     });
 
     return { data: this.formatRenter(renter, null) };

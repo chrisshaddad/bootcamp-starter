@@ -35,7 +35,8 @@ export const ROLE_DASHBOARD: Record<Role, string> = {
   supervisor: '/dashboard',
   finance: '/dashboard',
   maintenance: '/dashboard',
-  tenant: '/dashboard',
+  // Tenants get the dedicated resident portal, not the admin dashboard shell.
+  tenant: '/portal',
 };
 
 /**

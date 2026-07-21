@@ -364,6 +364,17 @@ export type CreateRenterBody = {
   notes?: string;
   /** Keycloak `sub` of the tenant user to link (enables their portal). */
   renterUserId?: string | null;
+  /**
+   * When present, the API mints a Keycloak tenant login for this renter and
+   * links it (sets `renterUserId` to the new `sub`). Admin-provisioned only —
+   * no self-registration. `email` becomes the login username (must be unique in
+   * the realm); `password` is set permanent (no forced reset). The tenant does
+   * NOT consume a plan staff seat. See TENANT-PORTAL-ROADMAP.md TP1.
+   */
+  portalLogin?: {
+    email: string;
+    password: string;
+  };
 };
 
 export type PatchRenterBody = {
@@ -1121,6 +1132,12 @@ export type TenantOverviewResponse = {
     phone?: string | null;
   } | null;
   lease: TenantLeaseView | null;
+  /**
+   * All of the tenant's leases, newest start first — the portal's lease-history
+   * + "apartments I've leased" surface (TP3). `lease` remains the single
+   * currently-surfaced one; this is the full list.
+   */
+  leaseHistory: TenantLeaseView[];
   balance: TenantBalance;
   /** Latest invoices for the tenant's lease(s), newest dueDate first. */
   invoices: TenantInvoiceView[];

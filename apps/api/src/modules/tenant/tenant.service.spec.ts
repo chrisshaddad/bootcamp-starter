@@ -72,6 +72,7 @@ describe('TenantService', () => {
       expect(data.linked).toBe(false);
       expect(data.renter).toBeNull();
       expect(data.lease).toBeNull();
+      expect(data.leaseHistory).toEqual([]);
       expect(data.invoices).toEqual([]);
       expect(data.maintenanceRequests).toEqual([]);
       expect(data.balance).toEqual({
@@ -155,6 +156,44 @@ describe('TenantService', () => {
       expect(data.maintenanceRequests).toEqual([
         expect.objectContaining({ id: 'mr-1', unitNumber: '4B' }),
       ]);
+    });
+
+    it('returns the full lease history newest-first, distinct from the single current lease', async () => {
+      const olderLease = leaseRow({
+        id: 'lease-0',
+        startDate: new Date('2024-01-01T00:00:00.000Z'),
+        endDate: new Date('2025-01-01T00:00:00.000Z'),
+        status: 'ended',
+        apartment: { unitNumber: '2A', building: { name: 'Old Building' } },
+      });
+      const currentLease = leaseRow(); // startDate 2026-01-01, newer
+      const { service } = makeService({
+        renter: { findFirst: jest.fn().mockResolvedValue(renter) },
+        // Prisma orders by startDate desc, so the mock returns newest first.
+        lease: {
+          findMany: jest
+            .fn()
+            .mockResolvedValue([currentLease, olderLease]),
+        },
+      });
+
+      const { data } = await service.getOverview(orgId, sub, now);
+
+      expect(data.leaseHistory).toHaveLength(2);
+      expect(data.leaseHistory.map((l) => l.id)).toEqual([
+        'lease-1',
+        'lease-0',
+      ]);
+      expect(data.leaseHistory[1]).toEqual(
+        expect.objectContaining({
+          id: 'lease-0',
+          unitNumber: '2A',
+          buildingName: 'Old Building',
+          status: 'ended',
+        }),
+      );
+      // `lease` remains the single current one, unaffected by the history list.
+      expect(data.lease?.id).toBe('lease-1');
     });
 
     it('derives effectiveStatus expired for an active lease whose endDate has passed', async () => {

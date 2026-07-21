@@ -29,10 +29,9 @@
  *   "notifications" → /dashboard/notifications (a personal inbox, like the
  *                   header bell — every role gets 'full', there is no
  *                   restricted view of someone else's notifications)
- *   "availableUnits" → /dashboard/available-units (F6.2 — renter-facing vacant
- *                   units showcase; tenant gets 'full' since expressing
- *                   interest — via a support ticket — is the whole point of
- *                   the page for them; staff roles get 'readonly' visibility)
+ *
+ * Note: available-units is NOT an admin area — the vacant-units showcase lives
+ * only in the tenant portal (/[lang]/portal/available-units), display-only.
  */
 
 import type { Role } from '@/auth/roles';
@@ -51,8 +50,7 @@ export type DashboardArea =
   | 'invoices'
   | 'support'
   | 'leases'
-  | 'notifications'
-  | 'availableUnits';
+  | 'notifications';
 
 /**
  * Per-role access level for an area.
@@ -80,13 +78,12 @@ export const PERMISSION_MATRIX: PermissionMatrix = {
     support: 'full',
     leases: 'full',
     notifications: 'full',
-    availableUnits: 'readonly',
   },
   supervisor: {
     dashboard: 'readonly',
     buildings: 'readonly',
     users: 'readonly',
-    payments: 'readonly',
+    payments: 'none',
     reports: 'none',
     billing: 'none',
     timeline: 'readonly',
@@ -97,7 +94,6 @@ export const PERMISSION_MATRIX: PermissionMatrix = {
     support: 'full',
     leases: 'readonly',
     notifications: 'full',
-    availableUnits: 'readonly',
   },
   finance: {
     dashboard: 'readonly',
@@ -114,7 +110,6 @@ export const PERMISSION_MATRIX: PermissionMatrix = {
     support: 'readonly',
     leases: 'readonly',
     notifications: 'full',
-    availableUnits: 'readonly',
   },
   maintenance: {
     dashboard: 'readonly',
@@ -131,7 +126,6 @@ export const PERMISSION_MATRIX: PermissionMatrix = {
     support: 'readonly',
     leases: 'readonly',
     notifications: 'full',
-    availableUnits: 'readonly',
   },
   tenant: {
     dashboard: 'readonly',
@@ -151,9 +145,6 @@ export const PERMISSION_MATRIX: PermissionMatrix = {
     support: 'readonly',
     leases: 'none',
     notifications: 'full',
-    // full = this page IS the tenant's flow (browse vacant units → express
-    // interest via a support ticket); there's no write action to restrict.
-    availableUnits: 'full',
   },
 };
 

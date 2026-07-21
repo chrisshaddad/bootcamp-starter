@@ -23,7 +23,6 @@ import {
   LifeBuoy,
   ScrollText,
   Bell,
-  KeyRound,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -93,13 +92,6 @@ function buildNavItems(
       icon: ScrollText,
       href: `/${locale}/dashboard/leases`,
       areaKey: 'leases',
-    },
-    {
-      key: 'availableUnits',
-      label: dict.nav.availableUnits,
-      icon: KeyRound,
-      href: `/${locale}/dashboard/available-units`,
-      areaKey: 'availableUnits',
     },
     {
       key: 'vendors',

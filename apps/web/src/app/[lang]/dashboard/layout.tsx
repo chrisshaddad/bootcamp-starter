@@ -1,4 +1,6 @@
+import { redirect } from 'next/navigation';
 import { requireSession, requireActiveOrg } from '@/auth/guards';
+import { normalizeRole } from '@/auth/roles';
 import { getDictionary } from '@/i18n/get-dictionary';
 import { isLocale } from '@/i18n/config';
 import { serverEnv } from '@/lib/env';
@@ -31,6 +33,11 @@ export default async function DashboardLayout({
   const { lang } = await params;
   const locale = isLocale(lang) ? lang : 'en';
   const session = await requireSession({ locale });
+
+  // Tenants belong to the resident portal, never the admin dashboard shell.
+  // Authoritative in-RSC counterpart to the edge redirect in proxy.ts.
+  const sessionRole = normalizeRole(session.role ?? session.user?.role);
+  if (sessionRole === 'tenant') redirect(`/${locale}/portal`);
 
   // Authoritative paywall for the WHOLE dashboard subtree (incl. every
   // sub-page). "Has paid?" is org.status === ACTIVE in the DB — token-

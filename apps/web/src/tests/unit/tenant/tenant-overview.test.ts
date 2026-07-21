@@ -27,6 +27,7 @@ function overview(
     balance: { invoiced: '0.00', paid: '0.00', outstanding: '0.00' },
     invoices: [],
     maintenanceRequests: [],
+    leaseHistory: [],
     ...overrides,
   };
 }

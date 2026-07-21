@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
@@ -11,14 +11,19 @@ import {
   MoreHorizontalIcon,
   ContactIcon,
   EyeIcon,
+  EyeOffIcon,
   PencilIcon,
   TrashIcon,
+  CopyIcon,
+  CheckIcon,
+  RefreshCwIcon,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -34,6 +39,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
   DialogClose,
 } from '@/components/ui/dialog';
@@ -51,7 +57,11 @@ import {
   useUpdateRenterMutation,
   useDeleteRenterMutation,
 } from '@/store/api/endpoints/renters.api';
-import type { RenterEffectiveStatus, RenterResponse } from '@/types/api';
+import type {
+  RenterEffectiveStatus,
+  RenterResponse,
+  ApiErrorEnvelope,
+} from '@/types/api';
 import type { Dictionary } from '@/i18n/get-dictionary';
 
 // ── Status badge ─────────────────────────────────────────────────────────────
@@ -109,6 +119,86 @@ const EMPTY_VALUES: RenterFormValues = {
   notes: '',
 };
 
+// ── Create-only: optional tenant portal login section (Sprint TP1) ───────────
+// An admin creating a renter may also mint a Keycloak tenant login in the same
+// step. `portalEmail`/`portalPassword` are only required when the toggle is on
+// — enforced via `superRefine` so the base `RenterFormValues` shape (shared
+// with the edit form, which has no portal-login section) stays untouched.
+function buildCreateRenterSchema(t: Dictionary['renters']['dialog']) {
+  return buildRenterSchema(t)
+    .extend({
+      createPortalLogin: z.boolean(),
+      portalEmail: z.string().optional(),
+      portalPassword: z.string().optional(),
+    })
+    .superRefine((values, ctx) => {
+      if (!values.createPortalLogin) return;
+
+      const email = values.portalEmail?.trim() ?? '';
+      if (!email) {
+        ctx.addIssue({
+          code: 'custom',
+          message: t.portalLogin.emailRequired,
+          path: ['portalEmail'],
+        });
+      } else if (!z.string().email().safeParse(email).success) {
+        ctx.addIssue({
+          code: 'custom',
+          message: t.portalLogin.invalidEmail,
+          path: ['portalEmail'],
+        });
+      }
+
+      const password = values.portalPassword ?? '';
+      if (!password) {
+        ctx.addIssue({
+          code: 'custom',
+          message: t.portalLogin.passwordRequired,
+          path: ['portalPassword'],
+        });
+      } else if (password.length < 8) {
+        ctx.addIssue({
+          code: 'custom',
+          message: t.portalLogin.passwordMinLength,
+          path: ['portalPassword'],
+        });
+      }
+    });
+}
+
+type CreateRenterFormValues = z.infer<
+  ReturnType<typeof buildCreateRenterSchema>
+>;
+
+const CREATE_EMPTY_VALUES: CreateRenterFormValues = {
+  ...EMPTY_VALUES,
+  createPortalLogin: false,
+  portalEmail: '',
+  portalPassword: '',
+};
+
+const PASSWORD_CHARS =
+  'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
+
+/**
+ * A strong, random password for the "Generate" button. Avoids visually
+ * ambiguous characters (0/O, 1/l/I) since an admin may need to read it aloud
+ * or retype it for the tenant.
+ */
+function generateStrongPassword(length = 14): string {
+  const bytes = new Uint32Array(length);
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    crypto.getRandomValues(bytes);
+  } else {
+    for (let i = 0; i < length; i++) {
+      bytes[i] = Math.floor(Math.random() * PASSWORD_CHARS.length);
+    }
+  }
+  return Array.from(bytes, (n) => PASSWORD_CHARS[n % PASSWORD_CHARS.length]).join(
+    '',
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 interface RentersPageProps {
@@ -129,17 +219,32 @@ export function RentersPage({ canWrite, locale, dict }: RentersPageProps) {
   const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<RenterResponse | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<RenterResponse | null>(null);
+  const [showPortalPassword, setShowPortalPassword] = useState(false);
+  // Set once, right after a successful create-with-login — shown exactly once
+  // for handoff to the tenant, then discarded (never persisted or refetched).
+  const [portalCredentials, setPortalCredentials] = useState<{
+    email: string;
+    password: string;
+  } | null>(null);
 
   const renterSchema = useMemo(() => buildRenterSchema(t.dialog), [t.dialog]);
+  const createRenterSchema = useMemo(
+    () => buildCreateRenterSchema(t.dialog),
+    [t.dialog],
+  );
 
   const {
     register: regCreate,
     handleSubmit: handleCreate,
     reset: resetCreate,
+    control: controlCreate,
+    watch: watchCreate,
+    getValues: getCreateValues,
+    setValue: setCreateValue,
     formState: { errors: createErrors },
-  } = useForm<RenterFormValues>({
-    resolver: zodResolver(renterSchema),
-    defaultValues: EMPTY_VALUES,
+  } = useForm<CreateRenterFormValues>({
+    resolver: zodResolver(createRenterSchema),
+    defaultValues: CREATE_EMPTY_VALUES,
   });
 
   const {
@@ -152,11 +257,28 @@ export function RentersPage({ canWrite, locale, dict }: RentersPageProps) {
     defaultValues: EMPTY_VALUES,
   });
 
+  const createPortalLogin = watchCreate('createPortalLogin');
+
   function goToRenter(renterId: string) {
     router.push(`/${locale}/dashboard/renters/${renterId}`);
   }
 
-  async function onCreateSubmit(values: RenterFormValues) {
+  function closeCreateDialog() {
+    setCreateOpen(false);
+    setShowPortalPassword(false);
+    resetCreate(CREATE_EMPTY_VALUES);
+  }
+
+  async function onCreateSubmit(values: CreateRenterFormValues) {
+    // Only forward portalLogin when the toggle is on AND both fields passed
+    // validation — guards against a stale/partial value if the toggle was
+    // flipped off after typing.
+    const portalEmail = values.createPortalLogin
+      ? (values.portalEmail?.trim() ?? '')
+      : '';
+    const portalPassword = values.createPortalLogin
+      ? (values.portalPassword ?? '')
+      : '';
     try {
       await createRenter({
         fullName: values.fullName,
@@ -165,12 +287,29 @@ export function RentersPage({ canWrite, locale, dict }: RentersPageProps) {
         emergencyContactName: values.emergencyContactName || undefined,
         emergencyContactPhone: values.emergencyContactPhone || undefined,
         notes: values.notes || undefined,
+        ...(portalEmail && portalPassword
+          ? { portalLogin: { email: portalEmail, password: portalPassword } }
+          : {}),
       }).unwrap();
       toast.success(t.dialog.createdToast);
       setCreateOpen(false);
-      resetCreate(EMPTY_VALUES);
-    } catch {
-      toast.error(t.dialog.createErrorToast);
+      setShowPortalPassword(false);
+      if (portalEmail && portalPassword) {
+        // Hand off the credentials once — the dialog close resets the form,
+        // so this is the only place they're readable after this point.
+        setPortalCredentials({ email: portalEmail, password: portalPassword });
+      }
+      resetCreate(CREATE_EMPTY_VALUES);
+    } catch (err) {
+      const apiErr = err as Partial<ApiErrorEnvelope>;
+      if (portalEmail && apiErr?.status === 409) {
+        // Keycloak username (email) already taken — dialog stays open (we
+        // never call setCreateOpen(false) on this path) so the admin can fix
+        // the email and resubmit.
+        toast.error(t.dialog.portalLogin.emailConflictError);
+      } else {
+        toast.error(t.dialog.createErrorToast);
+      }
     }
   }
 
@@ -378,7 +517,13 @@ export function RentersPage({ canWrite, locale, dict }: RentersPageProps) {
       </div>
 
       {/* ── Create Renter Dialog ───────────────────────────────────────────── */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+      <Dialog
+        open={createOpen}
+        onOpenChange={(open) => {
+          if (open) setCreateOpen(true);
+          else closeCreateDialog();
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{t.dialog.addTitle}</DialogTitle>
@@ -389,17 +534,141 @@ export function RentersPage({ canWrite, locale, dict }: RentersPageProps) {
           >
             <RenterFormFields
               idPrefix="r"
-              register={regCreate}
+              // `regCreate` is `UseFormRegister<CreateRenterFormValues>`, a
+              // strict superset of `RenterFormValues` (same base fields, plus
+              // the portal-login ones). `RenterFormFields` only ever
+              // registers the shared base fields, so this is safe — but TS
+              // can't verify cross-form-shape register() assignability on
+              // its own.
+              register={
+                regCreate as unknown as ReturnType<
+                  typeof useForm<RenterFormValues>
+                >['register']
+              }
               errors={createErrors}
               t={t.dialog}
             />
+
+            {/* ── Optional tenant portal login (Sprint TP1) ─────────────── */}
+            <div className="flex flex-col gap-3 rounded-lg border p-3">
+              <div className="flex items-start gap-2">
+                <Controller
+                  control={controlCreate}
+                  name="createPortalLogin"
+                  render={({ field }) => (
+                    <Checkbox
+                      id="r-create-portal-login"
+                      checked={field.value}
+                      onCheckedChange={(checked) => {
+                        const next = checked === true;
+                        field.onChange(next);
+                        // Prefill the login email from the renter's own
+                        // email, if any — only when the admin hasn't already
+                        // typed one in.
+                        if (next && !getCreateValues('portalEmail')) {
+                          const baseEmail = getCreateValues('email');
+                          if (baseEmail) {
+                            setCreateValue('portalEmail', baseEmail);
+                          }
+                        }
+                      }}
+                      className="mt-0.5"
+                    />
+                  )}
+                />
+                <div className="flex flex-col gap-0.5">
+                  <Label
+                    htmlFor="r-create-portal-login"
+                    className="font-normal"
+                  >
+                    {t.dialog.portalLogin.toggleLabel}
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    {t.dialog.portalLogin.toggleHelp}
+                  </p>
+                </div>
+              </div>
+
+              {createPortalLogin && (
+                <div className="flex flex-col gap-3 ps-6">
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="r-portal-email">
+                      {t.dialog.portalLogin.emailLabel}{' '}
+                      <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="r-portal-email"
+                      type="email"
+                      placeholder={t.dialog.portalLogin.placeholderEmail}
+                      aria-invalid={!!createErrors.portalEmail}
+                      {...regCreate('portalEmail')}
+                    />
+                    {createErrors.portalEmail && (
+                      <p className="text-xs text-destructive">
+                        {createErrors.portalEmail.message}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="r-portal-password">
+                      {t.dialog.portalLogin.passwordLabel}{' '}
+                      <span className="text-destructive">*</span>
+                    </Label>
+                    <div className="flex items-center gap-1.5">
+                      <div className="relative flex-1">
+                        <Input
+                          id="r-portal-password"
+                          type={showPortalPassword ? 'text' : 'password'}
+                          placeholder={t.dialog.portalLogin.placeholderPassword}
+                          aria-invalid={!!createErrors.portalPassword}
+                          className="pe-9"
+                          {...regCreate('portalPassword')}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          className="absolute inset-y-0 end-0 my-auto"
+                          aria-label={
+                            showPortalPassword
+                              ? t.dialog.portalLogin.hidePassword
+                              : t.dialog.portalLogin.showPassword
+                          }
+                          onClick={() => setShowPortalPassword((prev) => !prev)}
+                        >
+                          {showPortalPassword ? <EyeOffIcon /> : <EyeIcon />}
+                        </Button>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const generated = generateStrongPassword();
+                          setCreateValue('portalPassword', generated, {
+                            shouldValidate: true,
+                          });
+                          setShowPortalPassword(true);
+                        }}
+                      >
+                        <RefreshCwIcon className="size-3.5" />
+                        {t.dialog.portalLogin.generate}
+                      </Button>
+                    </div>
+                    {createErrors.portalPassword && (
+                      <p className="text-xs text-destructive">
+                        {createErrors.portalPassword.message}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <DialogFooter>
               <DialogClose
                 render={<Button variant="outline" type="button" />}
-                onClick={() => {
-                  setCreateOpen(false);
-                  resetCreate(EMPTY_VALUES);
-                }}
+                onClick={closeCreateDialog}
               >
                 {dict.common.cancel}
               </DialogClose>
@@ -491,6 +760,97 @@ export function RentersPage({ canWrite, locale, dict }: RentersPageProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ── Portal Login Credentials (shown once for handoff) ─────────────── */}
+      <Dialog
+        open={!!portalCredentials}
+        onOpenChange={(open) => {
+          if (!open) setPortalCredentials(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t.dialog.portalLogin.successTitle}</DialogTitle>
+            <DialogDescription>
+              {t.dialog.portalLogin.successDescription}
+            </DialogDescription>
+          </DialogHeader>
+          {portalCredentials && (
+            <div className="flex flex-col gap-3">
+              <CredentialRow
+                label={t.dialog.portalLogin.emailFieldLabel}
+                value={portalCredentials.email}
+                copyLabel={t.dialog.portalLogin.copyEmailLabel}
+                copiedText={t.dialog.portalLogin.copied}
+              />
+              <CredentialRow
+                label={t.dialog.portalLogin.passwordFieldLabel}
+                value={portalCredentials.password}
+                copyLabel={t.dialog.portalLogin.copyPasswordLabel}
+                copiedText={t.dialog.portalLogin.copied}
+              />
+            </div>
+          )}
+          <DialogFooter>
+            <DialogClose
+              render={<Button type="button" />}
+              onClick={() => setPortalCredentials(null)}
+            >
+              {t.dialog.portalLogin.done}
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// ── Portal login credentials row (copy-to-clipboard) ──────────────────────────
+
+function CredentialRow({
+  label,
+  value,
+  copyLabel,
+  copiedText,
+}: {
+  label: string;
+  value: string;
+  copyLabel: string;
+  copiedText: string;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard API unavailable/denied — the value is still visible to
+      // select and copy manually.
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-1">
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <div className="flex items-center gap-1.5">
+        <code className="flex-1 truncate rounded-md border bg-muted px-2 py-1.5 font-mono text-sm">
+          {value}
+        </code>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon-sm"
+          aria-label={copyLabel}
+          onClick={handleCopy}
+        >
+          {copied ? <CheckIcon className="text-green-600" /> : <CopyIcon />}
+        </Button>
+      </div>
+      {copied && (
+        <p className="text-xs text-muted-foreground">{copiedText}</p>
+      )}
     </div>
   );
 }

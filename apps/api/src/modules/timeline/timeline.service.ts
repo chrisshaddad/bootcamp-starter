@@ -73,17 +73,21 @@ export class TimelineService {
       // Tenant: only own events
       where = { orgId, actorId: caller.sub };
     } else if (role === Role.FINANCE) {
-      // Finance: billing/payment/subscription events only
+      // Finance: invoice/invoice-payment/expense events only (finance's actual
+      // domain — NOT the platform's own Stripe subscription billing, which
+      // finance cannot even reach; see billing.controller.ts @Roles).
       where = {
         orgId,
         action: {
           in: [
-            'subscription.created',
-            'subscription.updated',
-            'subscription.canceled',
-            'payment.paid',
-            'payment.failed',
-            'checkout.completed',
+            'invoice.created',
+            'invoice.updated',
+            'invoice.deleted',
+            'invoice_payment.created',
+            'invoice_payment.deleted',
+            'expense.created',
+            'expense.updated',
+            'expense.deleted',
           ],
         },
       };
