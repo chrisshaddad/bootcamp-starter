@@ -272,7 +272,7 @@ export class GithubService {
 
   async disconnectGithub(userId: string): Promise<void> {
     await this.db.$transaction([
-      this.db.developerProfile.update({
+      this.db.developerProfile.updateMany({
         where: { userId },
         data: {
           githubUserId: null,
