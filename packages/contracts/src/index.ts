@@ -21,8 +21,15 @@ export type ApiEnvelope<TData> = {
   message?: string;
 };
 
+/**
+ * Paginated list envelope. The array field is `items` (NOT `data`) — this must
+ * match the backend list services (payments.service, timeline.service) exactly,
+ * or FE consumers reading the array get an empty list. Do not rename to `data`:
+ * the `unwrap` transform on the client keys on a top-level `data` property to
+ * peel the optional ApiEnvelope, so a `data` array here would be mis-unwrapped.
+ */
 export type PaginatedResponse<T> = {
-  data: T[];
+  items: T[];
   total: number;
   page: number;
   limit: number;
@@ -177,6 +184,9 @@ export type TimelineEvent = {
   id: string;
   orgId: string;
   actorId?: string | null;
+  /** F5.2: the actor's resolved display name (Keycloak), or null for
+   * system-generated events / unresolvable actors. Rendered as the "who". */
+  actorName?: string | null;
   action: string;
   targetType?: string | null;
   targetId?: string | null;
@@ -354,6 +364,17 @@ export type CreateRenterBody = {
   notes?: string;
   /** Keycloak `sub` of the tenant user to link (enables their portal). */
   renterUserId?: string | null;
+  /**
+   * When present, the API mints a Keycloak tenant login for this renter and
+   * links it (sets `renterUserId` to the new `sub`). Admin-provisioned only —
+   * no self-registration. `email` becomes the login username (must be unique in
+   * the realm); `password` is set permanent (no forced reset). The tenant does
+   * NOT consume a plan staff seat. See TENANT-PORTAL-ROADMAP.md TP1.
+   */
+  portalLogin?: {
+    email: string;
+    password: string;
+  };
 };
 
 export type PatchRenterBody = {
@@ -425,6 +446,12 @@ export type CreateLeaseBody = {
   status?: LeaseStatus;
   renewalTerms?: string;
   notes?: string;
+  /**
+   * F4.3 (decision D3): a NEW active lease may not silently start in the past.
+   * Set this to explicitly record an already-existing lease with a back-dated
+   * start; without it, a past start on an active lease is rejected (400).
+   */
+  recordExisting?: boolean;
 };
 
 export type PatchLeaseBody = {
@@ -576,6 +603,10 @@ export type WorkOrderStatus = z.infer<typeof workOrderStatusSchema>;
 export type WorkOrderResponse = {
   id: string;
   orgId: string;
+  /** Org-scoped sequential number (raw integer). */
+  number: number;
+  /** Pre-formatted display label, e.g. `WO-000123`. */
+  numberLabel: string;
   maintenanceRequestId: string;
   vendorId?: string | null;
   assignedUserId?: string | null;
@@ -583,13 +614,66 @@ export type WorkOrderResponse = {
   cost?: string | null; // Decimal(12,2) serialized as string
   resolutionNotes?: string | null;
   completedAt?: string | null;
+  /** Opt-in: bill this work order to the tenant on completion (F3.2, default false). */
+  chargeToTenant: boolean;
+  /** Amount to charge the tenant (Decimal(12,2) as string), when chargeToTenant. */
+  tenantChargeAmount?: string | null;
+  /** When the tenant charge was applied to an invoice (idempotency guard); null = not yet. */
+  tenantChargedAt?: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+/**
+ * Canonical work-order number formatter used on both the API and the web app so
+ * `WO-000123` renders identically everywhere a work order is referenced.
+ */
+export function formatWorkOrderNumber(n: number): string {
+  return `WO-${String(n).padStart(6, '0')}`;
+}
+
+/**
+ * F6.2 — a vacant apartment surfaced in the renter-facing "Available units"
+ * showcase (GET /available-units), enriched with building/floor names for
+ * display. Read-only; prospective tenants express interest via a support ticket.
+ */
+export type AvailableUnit = {
+  id: string;
+  buildingId: string;
+  buildingName: string;
+  floorId: string;
+  floorName: string;
+  unitNumber: string;
+  bedrooms: number;
+  bathrooms: string; // Decimal serialized as string
+  sqft?: number | null;
+};
+
+export type AvailableUnitListResponse = {
+  data: AvailableUnit[];
 };
 
 /** GET /maintenance-requests/:id response — MaintenanceRequestResponse plus its full Work Order history. */
 export type MaintenanceRequestDetailResponse = MaintenanceRequestResponse & {
   workOrders: WorkOrderResponse[];
+};
+
+/**
+ * A work order assigned to the calling user, enriched with the parent request /
+ * apartment / building context so it can be surfaced as a standalone "My work
+ * orders" list (GET /work-orders/assigned-to-me) without drilling into a request.
+ */
+export type AssignedWorkOrderRow = WorkOrderResponse & {
+  requestTitle: string;
+  requestStatus: MaintenanceRequestStatus;
+  buildingId: string;
+  buildingName: string;
+  apartmentId: string;
+  apartmentUnit: string;
+};
+
+export type AssignedWorkOrderListResponse = {
+  data: AssignedWorkOrderRow[];
 };
 
 /**
@@ -604,6 +688,8 @@ export type CreateWorkOrderBody = {
   status?: WorkOrderStatus;
   cost?: number;
   resolutionNotes?: string;
+  chargeToTenant?: boolean;
+  tenantChargeAmount?: number | null;
 };
 
 export type PatchWorkOrderBody = {
@@ -613,6 +699,28 @@ export type PatchWorkOrderBody = {
   cost?: number | null;
   resolutionNotes?: string | null;
   completedAt?: string | null;
+  chargeToTenant?: boolean;
+  tenantChargeAmount?: number | null;
+};
+
+/**
+ * Result of a recurring-invoice generation run (F3.1). The scheduled daily job
+ * and the manual "generate now" trigger both return this shape.
+ */
+export type RecurringInvoiceRunResponse = {
+  generated: number; // invoices created this run
+  leasesConsidered: number; // active leases inspected
+  skippedExisting: number; // periods that already had an invoice (idempotent no-op)
+};
+
+/**
+ * Result of an apartment-status expiry sweep (F4.2): reverts `occupied`
+ * apartments that no longer have an effectively-active lease (and no open work
+ * order) back to `vacant`. Runs daily via the scheduler and on-demand.
+ */
+export type ApartmentStatusSweepResponse = {
+  reverted: number; // apartments flipped occupied -> vacant
+  considered: number; // occupied apartments inspected
 };
 
 // ── Expenses ─────────────────────────────────────────────────────────────────
@@ -633,6 +741,8 @@ export type ExpenseResponse = {
   buildingId?: string | null;
   vendorId?: string | null;
   workOrderId?: string | null;
+  /** Pre-formatted `WO-000123` for the linked work order, if any (display). */
+  workOrderNumberLabel?: string | null;
   category: ExpenseCategory;
   amount: string; // Decimal(12,2) serialized as string
   incurredAt: string;
@@ -1022,6 +1132,12 @@ export type TenantOverviewResponse = {
     phone?: string | null;
   } | null;
   lease: TenantLeaseView | null;
+  /**
+   * All of the tenant's leases, newest start first — the portal's lease-history
+   * + "apartments I've leased" surface (TP3). `lease` remains the single
+   * currently-surfaced one; this is the full list.
+   */
+  leaseHistory: TenantLeaseView[];
   balance: TenantBalance;
   /** Latest invoices for the tenant's lease(s), newest dueDate first. */
   invoices: TenantInvoiceView[];

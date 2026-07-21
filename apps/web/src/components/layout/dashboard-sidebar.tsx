@@ -108,13 +108,6 @@ function buildNavItems(
       areaKey: 'users',
     },
     {
-      key: 'payments',
-      label: dict.nav.payments,
-      icon: DollarSign,
-      href: `/${locale}/dashboard/payments`,
-      areaKey: 'payments',
-    },
-    {
       key: 'reports',
       label: dict.nav.reports,
       icon: BarChart3,
@@ -148,6 +141,13 @@ function buildNavItems(
       icon: CreditCard,
       href: `/${locale}/dashboard/billing`,
       areaKey: 'billing',
+    },
+    {
+      key: 'payments',
+      label: dict.nav.payments,
+      icon: DollarSign,
+      href: `/${locale}/dashboard/payments`,
+      areaKey: 'payments',
     },
     {
       key: 'timeline',
@@ -214,8 +214,9 @@ function SidebarContent({
 
       <Separator className="bg-white/10" />
 
-      {/* Navigation */}
-      <nav className="flex-1 space-y-0.5 px-3 py-4">
+      {/* Navigation — scrolls independently so the user/sign-out block below
+          stays pinned to the bottom of the viewport regardless of item count. */}
+      <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
         {visibleItems.map((item) => {
           const active = isActive(item.href);
           const Icon = item.icon;

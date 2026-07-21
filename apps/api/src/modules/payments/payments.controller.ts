@@ -8,9 +8,8 @@ import { Role } from '@/common/enums';
 
 @ApiTags('payments')
 @ApiBearerAuth()
-// Supervisor is read-only — no mutating payment endpoints are exposed to supervisor.
 // TODO: scope by buildingId once Payment is building-linked.
-@Roles(Role.ORG_ADMIN, Role.FINANCE, Role.SUPERVISOR)
+@Roles(Role.ORG_ADMIN, Role.FINANCE)
 @Controller('payments')
 export class PaymentsController {
   constructor(

@@ -141,12 +141,6 @@ const EMPTY_VALUES: ExpenseFormValues = {
   notes: '',
 };
 
-// ── Work order label (WorkOrderResponse has no title/description) ────────────
-
-function workOrderLabel(id: string) {
-  return `#${id.slice(-6)}`;
-}
-
 // ── Shared form fields (create + edit dialogs) ────────────────────────────────
 
 function ExpenseFormFields({
@@ -173,7 +167,8 @@ function ExpenseFormFields({
   canLinkWorkOrder: boolean;
   maintenanceRequestId: string;
   onMaintenanceRequestChange: (id: string) => void;
-  workOrders: { id: string; vendorId?: string | null }[] | undefined;
+  workOrders:
+    { id: string; vendorId?: string | null; numberLabel: string }[] | undefined;
   setValue: ReturnType<typeof useForm<ExpenseFormValues>>['setValue'];
   getValues: ReturnType<typeof useForm<ExpenseFormValues>>['getValues'];
   dict: Dictionary;
@@ -381,7 +376,8 @@ function ExpenseFormFields({
                     {(value: string | null) =>
                       !value || value === NONE
                         ? t.workOrderSection.workOrderNone
-                        : workOrderLabel(value)
+                        : (workOrders?.find((w) => w.id === value)
+                            ?.numberLabel ?? value)
                     }
                   </SelectValue>
                 </SelectTrigger>
@@ -391,7 +387,7 @@ function ExpenseFormFields({
                   </SelectItem>
                   {workOrders?.map((w) => (
                     <SelectItem key={w.id} value={w.id}>
-                      {workOrderLabel(w.id)}
+                      {w.numberLabel}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -601,6 +597,9 @@ export function ExpensesPage({
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{t.title}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">{t.subtitle}</p>
+          <p className="text-xs text-muted-foreground mt-1 max-w-2xl">
+            {t.notBilledToTenantsNote}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           {!canWrite && (
@@ -798,7 +797,7 @@ export function ExpensesPage({
                       : '—'}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {expense.workOrderId ?? '—'}
+                    {expense.workOrderNumberLabel ?? '—'}
                   </TableCell>
                   {canWrite && (
                     <TableCell>

@@ -29,6 +29,9 @@
  *   "notifications" → /dashboard/notifications (a personal inbox, like the
  *                   header bell — every role gets 'full', there is no
  *                   restricted view of someone else's notifications)
+ *
+ * Note: available-units is NOT an admin area — the vacant-units showcase lives
+ * only in the tenant portal (/[lang]/portal/available-units), display-only.
  */
 
 import type { Role } from '@/auth/roles';
@@ -80,7 +83,7 @@ export const PERMISSION_MATRIX: PermissionMatrix = {
     dashboard: 'readonly',
     buildings: 'readonly',
     users: 'readonly',
-    payments: 'readonly',
+    payments: 'none',
     reports: 'none',
     billing: 'none',
     timeline: 'readonly',

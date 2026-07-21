@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsDateString,
   IsEnum,
   IsNumber,
@@ -40,4 +41,17 @@ export class UpdateWorkOrderDto {
   @IsOptional()
   @IsDateString()
   completedAt?: string | null;
+
+  @ApiPropertyOptional({
+    description: 'Opt-in: bill this work order to the tenant on completion.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  chargeToTenant?: boolean;
+
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  tenantChargeAmount?: number | null;
 }

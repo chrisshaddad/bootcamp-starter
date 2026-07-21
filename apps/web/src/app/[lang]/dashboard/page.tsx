@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation';
 import { requireSession, requireActiveOrg } from '@/auth/guards';
 import { normalizeRole } from '@/auth/roles';
 import { isLocale } from '@/i18n/config';
@@ -7,7 +8,6 @@ import { SessionRefresher } from '@/components/auth/session-refresher';
 import { OrgAdminDashboard } from '@/components/dashboard/org-admin-dashboard';
 import { FinanceDashboard } from '@/components/dashboard/finance-dashboard';
 import { StaffDashboard } from '@/components/dashboard/staff-dashboard';
-import { TenantDashboard } from '@/components/dashboard/tenant-dashboard';
 import { DefaultDashboard } from '@/components/dashboard/default-dashboard';
 import type { MeResponse } from '@/types/api';
 
@@ -75,8 +75,11 @@ export default async function DashboardPage({
     if (role === 'supervisor' || role === 'maintenance') {
       return <StaffDashboard me={me} locale={locale} role={role} dict={dict} />;
     }
+    // Tenants belong to the resident portal, never the admin dashboard — the
+    // dashboard layout + proxy already redirect them. This is the last-resort
+    // guard so a tenant can never render an admin dashboard body.
     if (role === 'tenant') {
-      return <TenantDashboard me={me} locale={locale} dict={dict} />;
+      redirect(`/${locale}/portal`);
     }
     return (
       <DefaultDashboard me={me} locale={locale} role={role ?? 'unknown'} />

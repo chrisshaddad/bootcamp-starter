@@ -3,29 +3,140 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma } from '@repo/db';
 import { PrismaService } from '@/infrastructure/prisma/prisma.service';
 import { BuildingAccessService } from '@/common/building-access/building-access.service';
 import { TimelineService } from '@/modules/timeline/timeline.service';
+import { NotificationsService } from '@/modules/notifications/notifications.service';
+import { LeaseStatusService } from '@/common/lease-status/lease-status.service';
 import { WorkOrderApartmentStatusService } from './work-order-apartment-status.service';
 import { Role } from '@/common/enums';
-import { WorkOrderResponse } from '@repo/contracts';
+import {
+  AssignedWorkOrderListResponse,
+  MaintenanceRequestStatus,
+  WorkOrderResponse,
+  formatWorkOrderNumber,
+} from '@repo/contracts';
 import { formatWorkOrder } from './work-order-formatter';
 import { CreateWorkOrderDto } from './dto/create-work-order.dto';
 import { UpdateWorkOrderDto } from './dto/update-work-order.dto';
 
 const OPEN_STATUSES = new Set(['scheduled', 'in_progress']);
 const MAINTENANCE_ALLOWED_FIELDS = new Set(['status', 'resolutionNotes']);
+/** How long a tenant has to pay a work-order charge (F3.2, decision D2). */
+const TENANT_CHARGE_DUE_DAYS = 30;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+/** Just what {@link WorkOrdersService.chargeTenantIfDue} needs from a freshly created/updated row. */
+type ChargeableWorkOrder = {
+  id: string;
+  number: number;
+  chargeToTenant: boolean;
+  tenantChargeAmount: Prisma.Decimal | null;
+  tenantChargedAt: Date | null;
+};
 
 @Injectable()
 export class WorkOrdersService {
+  private readonly logger = new Logger(WorkOrdersService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly buildingAccess: BuildingAccessService,
     private readonly timeline: TimelineService,
+    private readonly notifications: NotificationsService,
+    private readonly leaseStatus: LeaseStatusService,
     private readonly workOrderApartmentStatus: WorkOrderApartmentStatusService,
   ) {}
+
+  /**
+   * F3.2 (decision D2, opt-in/default OFF): when a work order is or becomes
+   * `completed` and is flagged `chargeToTenant` with a `tenantChargeAmount`,
+   * bill the apartment's currently active lease via a new one-line-item
+   * invoice, due in 30 days. Guarded by `tenantChargedAt` so re-completing an
+   * already-charged work order is a no-op. Never throws — a missing active
+   * lease is logged and skipped rather than blocking the status transition.
+   */
+  private async chargeTenantIfDue(
+    orgId: string,
+    actorId: string,
+    apartmentId: string,
+    requestTitle: string,
+    workOrder: ChargeableWorkOrder,
+  ): Promise<void> {
+    if (
+      !workOrder.chargeToTenant ||
+      workOrder.tenantChargeAmount === null ||
+      workOrder.tenantChargedAt !== null
+    ) {
+      return;
+    }
+
+    const now = new Date();
+    const activeLease = await this.prisma.lease.findFirst({
+      where: { orgId, apartmentId, status: 'active' },
+      orderBy: { startDate: 'desc' },
+    });
+
+    if (
+      !activeLease ||
+      !this.leaseStatus.isEffectivelyActive(
+        { status: activeLease.status, endDate: activeLease.endDate },
+        now,
+      )
+    ) {
+      this.logger.warn(
+        `Work order ${workOrder.id} is chargeToTenant but apartment ${apartmentId} has no active lease — skipping tenant charge.`,
+      );
+      return;
+    }
+
+    const dueDate = new Date(
+      now.getTime() + TENANT_CHARGE_DUE_DAYS * MS_PER_DAY,
+    );
+    const numberLabel = formatWorkOrderNumber(workOrder.number);
+
+    const invoice = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.invoice.create({
+        data: {
+          orgId,
+          buildingId: activeLease.buildingId,
+          leaseId: activeLease.id,
+          dueDate,
+          lineItems: {
+            create: [
+              {
+                category: 'other',
+                description: `Work order ${numberLabel}: ${requestTitle}`,
+                amount: workOrder.tenantChargeAmount,
+              },
+            ],
+          },
+        },
+      });
+      await tx.workOrder.update({
+        where: { id: workOrder.id },
+        data: { tenantChargedAt: now },
+      });
+      return created;
+    });
+
+    await this.timeline.emit({
+      orgId,
+      actorId,
+      action: 'work_order.tenant_charged',
+      targetType: 'WorkOrder',
+      targetId: workOrder.id,
+      metadata: {
+        invoiceId: invoice.id,
+        leaseId: activeLease.id,
+        amount: workOrder.tenantChargeAmount.toString(),
+      },
+    });
+  }
 
   async findAllForRequest(
     orgId: string,
@@ -81,6 +192,58 @@ export class WorkOrdersService {
     return { data: formatWorkOrder(workOrder) };
   }
 
+  /**
+   * All work orders assigned to the caller across every maintenance request
+   * in the org (Sprint F2.2 "My work orders" data source). Scoped by
+   * assignedUserId = callerId, so no separate building-access check is
+   * needed — a maintenance user can only ever see their own assignments.
+   */
+  async findAssignedToCaller(
+    orgId: string,
+    callerId: string,
+  ): Promise<AssignedWorkOrderListResponse> {
+    const workOrders = await this.prisma.workOrder.findMany({
+      where: { orgId, assignedUserId: callerId },
+      include: {
+        maintenanceRequest: {
+          select: {
+            title: true,
+            status: true,
+            buildingId: true,
+            apartmentId: true,
+            apartment: {
+              select: {
+                unitNumber: true,
+                building: { select: { name: true } },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // Active (scheduled/in_progress) work orders surface first; within each
+    // group the query's createdAt-desc order is preserved because
+    // Array#sort is a stable sort.
+    const activeRank = (status: string) => (OPEN_STATUSES.has(status) ? 0 : 1);
+    const sorted = [...workOrders].sort(
+      (a, b) => activeRank(a.status) - activeRank(b.status),
+    );
+
+    return {
+      data: sorted.map((w) => ({
+        ...formatWorkOrder(w),
+        requestTitle: w.maintenanceRequest.title,
+        requestStatus: w.maintenanceRequest.status as MaintenanceRequestStatus,
+        buildingId: w.maintenanceRequest.buildingId,
+        buildingName: w.maintenanceRequest.apartment.building.name,
+        apartmentId: w.maintenanceRequest.apartmentId,
+        apartmentUnit: w.maintenanceRequest.apartment.unitNumber,
+      })),
+    };
+  }
+
   // ── CRUD (write) ──────────────────────────────────────────────────────────
 
   async create(
@@ -98,7 +261,7 @@ export class WorkOrdersService {
 
     const request = await this.prisma.maintenanceRequest.findFirst({
       where: { id: maintenanceRequestId, orgId },
-      select: { apartmentId: true },
+      select: { apartmentId: true, title: true },
     });
     if (!request) {
       throw new NotFoundException('Maintenance request not found.');
@@ -110,16 +273,30 @@ export class WorkOrdersService {
       );
     }
 
-    const workOrder = await this.prisma.workOrder.create({
-      data: {
-        orgId,
-        maintenanceRequestId,
-        vendorId: dto.vendorId,
-        assignedUserId: dto.assignedUserId,
-        status: dto.status,
-        cost: dto.cost,
-        resolutionNotes: dto.resolutionNotes,
-      },
+    // Assign the next org-scoped sequential number under a per-org advisory lock
+    // so concurrent creates cannot collide on a number. The @@unique([orgId,
+    // number]) index is the backstop if two writers ever race the lock.
+    const workOrder = await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`work_order_number:${orgId}`}))`;
+      const { _max } = await tx.workOrder.aggregate({
+        where: { orgId },
+        _max: { number: true },
+      });
+      const nextNumber = (_max.number ?? 0) + 1;
+      return tx.workOrder.create({
+        data: {
+          orgId,
+          number: nextNumber,
+          maintenanceRequestId,
+          vendorId: dto.vendorId,
+          assignedUserId: dto.assignedUserId,
+          status: dto.status,
+          cost: dto.cost,
+          resolutionNotes: dto.resolutionNotes,
+          chargeToTenant: dto.chargeToTenant,
+          tenantChargeAmount: dto.tenantChargeAmount,
+        },
+      });
     });
 
     await this.workOrderApartmentStatus.onWorkOrderOpened(request.apartmentId);
@@ -137,6 +314,36 @@ export class WorkOrdersService {
       },
     });
 
+    // F5.1: notify the assignee — skip silently if there is none (vendor-
+    // assigned work orders have no in-app user to notify) or if the actor
+    // assigned it to themself.
+    if (workOrder.assignedUserId && workOrder.assignedUserId !== actorId) {
+      await this.notifications.enqueue({
+        orgId,
+        userId: workOrder.assignedUserId,
+        type: 'work_order.assigned',
+        title: 'You were assigned a work order',
+        body: `You've been assigned to work order ${formatWorkOrderNumber(workOrder.number)}: ${request.title}`,
+        data: {
+          workOrderId: workOrder.id,
+          maintenanceRequestId,
+          numberLabel: formatWorkOrderNumber(workOrder.number),
+        },
+      });
+    }
+    // TODO F5.1 follow-up: role-fanout notifications (e.g. maintenance-created
+    // -> supervisors) need a shared org-members-by-role helper — out of scope here.
+
+    if (workOrder.status === 'completed') {
+      await this.chargeTenantIfDue(
+        orgId,
+        actorId,
+        request.apartmentId,
+        request.title,
+        workOrder,
+      );
+    }
+
     return { data: formatWorkOrder(workOrder) };
   }
 
@@ -151,7 +358,9 @@ export class WorkOrdersService {
   ): Promise<{ data: WorkOrderResponse }> {
     const existing = await this.prisma.workOrder.findFirst({
       where: { id: workOrderId, orgId, maintenanceRequestId },
-      include: { maintenanceRequest: { select: { apartmentId: true } } },
+      include: {
+        maintenanceRequest: { select: { apartmentId: true, title: true } },
+      },
     });
     if (!existing) {
       throw new NotFoundException('Work order not found.');
@@ -219,6 +428,19 @@ export class WorkOrdersService {
     }
 
     const reassigning = vendorProvided || assigneeProvided;
+    const completingNow =
+      dto.status === 'completed' && existing.status !== 'completed';
+
+    // F5.1: only notify when this update is a genuine reassignment TO a new
+    // user (not just re-affirming the existing assignee), and never notify
+    // the actor about assigning it to themself.
+    const newAssignee =
+      assigneeProvided &&
+      assignedUserId &&
+      assignedUserId !== existing.assignedUserId &&
+      assignedUserId !== actorId
+        ? assignedUserId
+        : null;
 
     const workOrder = await this.prisma.workOrder.update({
       where: { id: workOrderId },
@@ -230,6 +452,12 @@ export class WorkOrdersService {
           resolutionNotes: dto.resolutionNotes,
         }),
         ...(completedAt !== undefined && { completedAt }),
+        ...(dto.chargeToTenant !== undefined && {
+          chargeToTenant: dto.chargeToTenant,
+        }),
+        ...(dto.tenantChargeAmount !== undefined && {
+          tenantChargeAmount: dto.tenantChargeAmount,
+        }),
       },
     });
 
@@ -251,6 +479,31 @@ export class WorkOrdersService {
       targetId: workOrderId,
       metadata: { changes: Object.keys(dto) },
     });
+
+    if (newAssignee) {
+      await this.notifications.enqueue({
+        orgId,
+        userId: newAssignee,
+        type: 'work_order.assigned',
+        title: 'You were assigned a work order',
+        body: `You've been assigned to work order ${formatWorkOrderNumber(workOrder.number)}: ${existing.maintenanceRequest.title}`,
+        data: {
+          workOrderId: workOrder.id,
+          maintenanceRequestId,
+          numberLabel: formatWorkOrderNumber(workOrder.number),
+        },
+      });
+    }
+
+    if (completingNow) {
+      await this.chargeTenantIfDue(
+        orgId,
+        actorId,
+        existing.maintenanceRequest.apartmentId,
+        existing.maintenanceRequest.title,
+        workOrder,
+      );
+    }
 
     return { data: formatWorkOrder(workOrder) };
   }

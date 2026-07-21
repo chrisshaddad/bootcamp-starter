@@ -10,7 +10,7 @@
     "billing": "Subscription",
     "users": "Team",
     "timeline": "Activity",
-    "payments": "Payments",
+    "payments": "Subscription Payments",
     "buildings": "Buildings",
     "myBuildings": "My Buildings",
     "renters": "Renters",
@@ -25,7 +25,9 @@
     "language": "Language",
     "role": "Role",
     "menu": "Open menu",
-    "close": "Close"
+    "close": "Close",
+    "profile": "Profile",
+    "availableUnits": "Available Units"
   },
   "auth": {
     "signIn": "Sign in",
@@ -173,6 +175,11 @@
         "medium": "Medium",
         "high": "High",
         "urgent": "Urgent"
+      },
+      "myWorkOrders": {
+        "title": "My work orders",
+        "subtitle": "Work orders assigned to you.",
+        "empty": "No work orders assigned to you yet."
       }
     },
     "tenant": {
@@ -282,7 +289,9 @@
       "ytdNet": "Net (YTD)",
       "rangeIncome": "Income (range)",
       "rangeExpenses": "Expenses (range)",
-      "rangeNet": "Net (range)"
+      "rangeNet": "Net (range)",
+      "incomeHint": "Rent collected, not invoiced",
+      "netHint": "Income minus expenses"
     },
     "chart": {
       "title": "Income vs expenses",
@@ -314,7 +323,8 @@
       "balance": "Balance",
       "daysOverdue": "Days overdue",
       "empty": "No overdue invoices — everyone's paid up."
-    }
+    },
+    "methodologyNote": "Income reflects rent payments actually recorded (cash basis), not invoiced amounts — a gap between invoiced and collected is expected while invoices remain unpaid."
   },
   "leases": {
     "title": "Leases",
@@ -376,8 +386,11 @@
         "startDate": "Start date is required",
         "endDate": "End date is required",
         "endAfterStart": "End date must be on or after the start date",
-        "invalidAmount": "Enter a valid, non-negative amount"
-      }
+        "invalidAmount": "Enter a valid, non-negative amount",
+        "pastStartDate": "Start date can't be in the past for a new active lease. Check \"Record an existing lease\" to back-date it."
+      },
+      "recordExisting": "Record an existing lease",
+      "recordExistingHelp": "Allow a start date in the past for a lease that already began before today."
     }
   },
   "support": {
@@ -680,7 +693,9 @@
         "depositAmount": "Deposit amount",
         "renewalTerms": "Renewal terms",
         "notes": "Notes",
-        "optional": "(optional)"
+        "optional": "(optional)",
+        "recordExisting": "Record an existing lease",
+        "recordExistingHelp": "Allow a start date in the past for a lease that already began before today."
       },
       "errors": {
         "renter": "Renter is required",
@@ -688,7 +703,8 @@
         "endDate": "End date is required",
         "endAfterStart": "End date must be on or after the start date",
         "mustBeNumber": "{label} must be a number",
-        "cannotBeNegative": "{label} cannot be negative"
+        "cannotBeNegative": "{label} cannot be negative",
+        "pastStartDate": "Start date can't be in the past for a new active lease. Check \"Record an existing lease\" to back-date it."
       },
       "create": {
         "title": "New lease",
@@ -768,7 +784,33 @@
       "updatedToast": "Renter updated.",
       "updateErrorToast": "Failed to update renter.",
       "deletedToast": "Renter deleted.",
-      "deleteErrorToast": "Failed to delete renter."
+      "deleteErrorToast": "Failed to delete renter.",
+      "portalLogin": {
+        "toggleLabel": "Create a portal login for this tenant",
+        "toggleHelp": "Lets this renter sign in to the tenant portal to view their leases and available units, and submit support requests.",
+        "emailLabel": "Login email",
+        "placeholderEmail": "jane@example.com",
+        "emailRequired": "Portal login email is required",
+        "invalidEmail": "Enter a valid email address",
+        "passwordLabel": "Password",
+        "placeholderPassword": "Min. 8 characters",
+        "passwordRequired": "Password is required",
+        "passwordMinLength": "Password must be at least 8 characters",
+        "showPassword": "Show password",
+        "hidePassword": "Hide password",
+        "generate": "Generate",
+        "generatedToast": "A strong password was generated.",
+        "emailConflictError": "That email is already registered. Please use a different email for the portal login.",
+        "successTitle": "Portal login created",
+        "successDescription": "Give these credentials to the tenant now — for security, the password won't be shown again.",
+        "emailFieldLabel": "Email",
+        "passwordFieldLabel": "Password",
+        "copy": "Copy",
+        "copied": "Copied",
+        "copyEmailLabel": "Copy email",
+        "copyPasswordLabel": "Copy password",
+        "done": "Done"
+      }
     },
     "detail": {
       "notFound": "Renter not found.",
@@ -1040,6 +1082,12 @@
           "success": "Invoice deleted.",
           "error": "Failed to delete invoice. Please try again."
         }
+      },
+      "generateRecurring": {
+        "button": "Generate rent invoices",
+        "hint": "Create this month's rent invoices for active leases (also runs automatically each day).",
+        "result": "Generated {generated} rent invoice(s); {skipped} already existed.",
+        "error": "Couldn't generate rent invoices."
       }
     },
     "detail": {
@@ -1138,10 +1186,14 @@
         "assignee": "Vendor / Assignee",
         "cost": "Cost",
         "resolutionNotes": "Resolution notes",
-        "completed": "Completed"
+        "completed": "Completed",
+        "number": "Work order"
       },
       "empty": "No work orders yet.",
-      "updateStatusAction": "Update status"
+      "updateStatusAction": "Update status",
+      "assignedToYou": "Assigned to you",
+      "tenantChargeBilled": "Billed to tenant",
+      "tenantChargePending": "Will bill tenant"
     },
     "workOrder": {
       "fields": {
@@ -1151,7 +1203,10 @@
         "status": "Status",
         "cost": "Cost",
         "optional": "(optional)",
-        "resolutionNotes": "Resolution notes"
+        "resolutionNotes": "Resolution notes",
+        "chargeToTenant": "Charge to tenant",
+        "tenantChargeAmount": "Amount to charge",
+        "tenantChargeAmountRequired": "Enter an amount to charge the tenant."
       },
       "create": {
         "title": "New work order",
@@ -1213,7 +1268,8 @@
       "actions": {
         "view": "View"
       },
-      "loadError": "Failed to load maintenance requests. Please try again."
+      "loadError": "Failed to load maintenance requests. Please try again.",
+      "noMatch": "No maintenance requests match the current filters."
     },
     "empty": {
       "default": "No maintenance requests yet.",
@@ -1277,6 +1333,12 @@
         "success": "Maintenance request deleted.",
         "error": "Failed to delete maintenance request."
       }
+    },
+    "filters": {
+      "statusLabel": "Status",
+      "allStatuses": "All statuses",
+      "priorityLabel": "Priority",
+      "allPriorities": "All priorities"
     }
   },
   "expenses": {
@@ -1354,6 +1416,142 @@
       "deleting": "Deleting…",
       "success": "Expense deleted.",
       "error": "Failed to delete expense. It may be referenced elsewhere."
+    },
+    "notBilledToTenantsNote": "Expenses are your organization's own costs (repairs, vendor payments, utilities) — they are not bills sent to tenants. Tenant charges are billed through invoices."
+  },
+  "timeline": {
+    "system": "System",
+    "by": "by"
+  },
+  "profile": {
+    "title": "Profile",
+    "subtitle": "Your account details and organization.",
+    "name": "Full name",
+    "email": "Email",
+    "role": "Role",
+    "organization": "Organization",
+    "status": "Status",
+    "manageAccount": "Manage account",
+    "manageAccountHint": "Update your password, enable two-factor authentication, and manage your account security."
+  },
+  "availableUnits": {
+    "title": "Available Units",
+    "subtitle": "Browse vacant units and let us know if you're interested — our team will follow up.",
+    "empty": "No units are available right now. Check back soon.",
+    "loadError": "Failed to load available units. Please try again.",
+    "table": {
+      "building": "Building",
+      "unit": "Unit",
+      "floor": "Floor",
+      "bedrooms": "Bedrooms",
+      "bathrooms": "Bathrooms",
+      "sqft": "Sqft"
+    },
+    "expressInterest": "Express interest",
+    "submitting": "Submitting…",
+    "interestSubmitted": "Interest submitted — our team will reach out soon.",
+    "interestError": "Couldn't submit your interest. Please try again.",
+    "interestSubjectTemplate": "Interest in {building} · Unit {unit}",
+    "interestDescriptionTemplate": "I'm interested in Unit {unit} ({bedrooms} bd / {bathrooms} ba) at {building}, {floor}. Please reach out with more details."
+  },
+  "portal": {
+    "brandSubtitle": "Resident portal",
+    "nav": {
+      "home": "Home",
+      "availableUnits": "Available units",
+      "support": "Support",
+      "profile": "Profile"
+    },
+    "userMenu": {
+      "signedInAs": "Signed in as",
+      "profile": "Profile",
+      "signOut": "Sign out",
+      "openMenu": "Open account menu"
+    },
+    "home": {
+      "welcome": "Welcome home",
+      "subtitle": "Your home, at a glance",
+      "leaseTitle": "Your current lease",
+      "unit": "Unit",
+      "building": "Building",
+      "status": "Status",
+      "term": "Lease term",
+      "rent": "Monthly rent",
+      "to": "to",
+      "noLease": "You don't have an active lease yet. Your property manager will link one to your account.",
+      "notLinkedTitle": "Your account isn't linked yet",
+      "notLinkedDesc": "We couldn't find a lease connected to your account. Your property manager will link your unit shortly — check back soon.",
+      "loadError": "We couldn't load your home details. Please refresh and try again.",
+      "viewSupport": "Need something? Contact support",
+      "historyTitle": "Your apartments",
+      "current": "Current",
+      "deposit": "Deposit",
+      "emptyHistory": "No lease history yet. Once your property manager links a lease, it will appear here."
+    },
+    "leaseStatus": {
+      "draft": "Draft",
+      "active": "Active",
+      "expired": "Expired",
+      "terminated": "Terminated"
+    },
+    "comingSoon": {
+      "badge": "Coming soon",
+      "availableUnitsTitle": "Available units",
+      "availableUnitsDesc": "Browse open units in your community. This is on its way — you'll be able to explore available homes here soon.",
+      "supportTitle": "Support & requests",
+      "supportDesc": "Raise maintenance requests and track their progress. This space is being prepared for you.",
+      "profileTitle": "Your profile",
+      "profileDesc": "View and manage your contact details and account. Coming soon."
+    },
+    "availableUnits": {
+      "title": "Available units",
+      "subtitle": "Vacant homes in your community.",
+      "empty": "There are no available units right now. Please check back later.",
+      "loadError": "We couldn't load available units. Please refresh and try again.",
+      "floor": "Floor",
+      "bedrooms": "Bedrooms",
+      "bathrooms": "Bathrooms",
+      "area": "Area",
+      "sqftUnit": "sqft"
+    },
+    "support": {
+      "title": "Support / Requests",
+      "subtitle": "Raise a maintenance request for your apartment and track it.",
+      "new": "New request",
+      "noLease": "You need an active lease before you can open a maintenance request.",
+      "empty": "You have no requests yet.",
+      "emptyActive": "You have no requests yet. Open one whenever you need help.",
+      "created": "Request submitted.",
+      "createError": "Something went wrong. Please try again.",
+      "unit": "Unit",
+      "status": {
+        "open": "Open",
+        "in_progress": "In progress",
+        "resolved": "Resolved",
+        "closed": "Closed"
+      },
+      "priority": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High",
+        "urgent": "Urgent"
+      },
+      "form": {
+        "title": "New maintenance request",
+        "titleLabel": "Title",
+        "titlePlaceholder": "e.g. Leaking kitchen tap",
+        "titleRequired": "Please add a short title.",
+        "priorityLabel": "Priority",
+        "descriptionLabel": "Description",
+        "descriptionPlaceholder": "Describe the issue in a little more detail…",
+        "cancel": "Cancel",
+        "submit": "Submit request",
+        "submitting": "Submitting…"
+      }
+    },
+    "profile": {
+      "changePassword": "Change password",
+      "changePasswordHint": "Update the password you use to sign in to the portal."
     }
   }
 }

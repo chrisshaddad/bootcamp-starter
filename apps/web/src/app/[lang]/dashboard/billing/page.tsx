@@ -1,5 +1,6 @@
 import { requireSession } from '@/auth/guards';
 import { normalizeRole } from '@/auth/roles';
+import { canAccess } from '@/auth/permissions';
 import { redirect } from 'next/navigation';
 import { isLocale } from '@/i18n/config';
 import { getDictionary } from '@/i18n/get-dictionary';
@@ -14,7 +15,7 @@ export default async function DashboardBillingPage({
   const locale = isLocale(lang) ? lang : 'en';
   const session = await requireSession({ locale });
   const role = normalizeRole(session.role ?? session.user?.role);
-  if (role !== 'org_admin') redirect(`/${locale}/dashboard`);
+  if (!canAccess(role, 'billing')) redirect(`/${locale}/dashboard`);
   const dict = await getDictionary(locale);
   return <BillingPageContent locale={locale} dict={dict} />;
 }

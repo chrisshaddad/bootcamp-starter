@@ -1,6 +1,7 @@
 import { baseApi } from '@/store/api/base-api';
 import type {
   ApiEnvelope,
+  AssignedWorkOrderRow,
   CreateWorkOrderBody,
   PatchWorkOrderBody,
   WorkOrderResponse,
@@ -95,6 +96,23 @@ export const workOrdersApi = baseApi.injectEndpoints({
       ],
     }),
 
+    // Work orders assigned to the calling (maintenance-role) user, enriched
+    // with request/building/apartment context — powers the "My work orders"
+    // dashboard section without drilling into each maintenance request.
+    getAssignedWorkOrders: build.query<AssignedWorkOrderRow[], void>({
+      query: () => ({ url: '/work-orders/assigned-to-me', method: 'GET' }),
+      transformResponse: (
+        response: AssignedWorkOrderRow[] | ApiEnvelope<AssignedWorkOrderRow[]>,
+      ) => unwrap(response),
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.map(({ id }) => ({ type: 'WorkOrder' as const, id })),
+              { type: 'WorkOrder', id: 'ASSIGNED_TO_ME' },
+            ]
+          : [{ type: 'WorkOrder', id: 'ASSIGNED_TO_ME' }],
+    }),
+
     deleteWorkOrder: build.mutation<
       { id: string },
       MaintenanceRequestScope & { workOrderId: string }
@@ -126,4 +144,5 @@ export const {
   useCreateWorkOrderMutation,
   useUpdateWorkOrderMutation,
   useDeleteWorkOrderMutation,
+  useGetAssignedWorkOrdersQuery,
 } = workOrdersApi;

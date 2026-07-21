@@ -19,3 +19,4 @@ import './support-tickets.api';
 import './notifications.api';
 import './reports.api';
 import './tenant.api';
+import './available-units.api';

@@ -245,6 +245,9 @@ export function ReportsPage({ locale, dict }: ReportsPageProps) {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">{t.title}</h1>
         <p className="mt-0.5 text-sm text-muted-foreground">{t.subtitle}</p>
+        <p className="mt-1 max-w-2xl text-xs text-muted-foreground">
+          {t.methodologyNote}
+        </p>
       </div>
 
       {/* Date-range filter */}
@@ -315,6 +318,7 @@ export function ReportsPage({ locale, dict }: ReportsPageProps) {
                   label={t.kpis.mtdIncome}
                   value={money.format(Number(summary.mtdIncome))}
                   icon={<WalletIcon className="size-4" />}
+                  hint={t.kpis.incomeHint}
                 />
                 <StatTile
                   label={t.kpis.mtdNet}
@@ -327,6 +331,7 @@ export function ReportsPage({ locale, dict }: ReportsPageProps) {
                       <TrendingDownIcon className="size-4" />
                     )
                   }
+                  hint={t.kpis.netHint}
                 />
               </>
             )}
@@ -339,6 +344,7 @@ export function ReportsPage({ locale, dict }: ReportsPageProps) {
                 label={t.kpis.rangeIncome}
                 value={money.format(Number(summary.range.income))}
                 icon={<WalletIcon className="size-4" />}
+                hint={t.kpis.incomeHint}
               />
               <StatTile
                 label={t.kpis.rangeExpenses}
@@ -356,6 +362,7 @@ export function ReportsPage({ locale, dict }: ReportsPageProps) {
                     <TrendingDownIcon className="size-4" />
                   )
                 }
+                hint={t.kpis.netHint}
               />
             </div>
           )}

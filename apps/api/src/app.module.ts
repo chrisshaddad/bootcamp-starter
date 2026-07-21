@@ -44,6 +44,9 @@ import { NotificationsModule } from '@/modules/notifications/notifications.modul
 import { SupportTicketsModule } from '@/modules/support-tickets/support-tickets.module';
 import { ReportsModule } from '@/modules/reports/reports.module';
 import { TenantModule } from '@/modules/tenant/tenant.module';
+import { RecurringInvoicesModule } from '@/modules/recurring-invoices/recurring-invoices.module';
+import { ApartmentStatusSweepModule } from '@/modules/apartment-status-sweep/apartment-status-sweep.module';
+import { AvailableUnitsModule } from '@/modules/available-units/available-units.module';
 
 @Module({
   imports: [
@@ -110,6 +113,9 @@ import { TenantModule } from '@/modules/tenant/tenant.module';
     SupportTicketsModule,
     ReportsModule,
     TenantModule,
+    RecurringInvoicesModule,
+    ApartmentStatusSweepModule,
+    AvailableUnitsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

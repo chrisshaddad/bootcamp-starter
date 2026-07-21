@@ -16,9 +16,12 @@ import {
   WrenchIcon,
 } from 'lucide-react';
 
+import { formatWorkOrderNumber } from '@repo/contracts';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
@@ -156,6 +159,11 @@ const createWorkOrderSchema = z.object({
   status: z.enum(['scheduled', 'in_progress', 'completed', 'canceled']),
   cost: z.string().optional(),
   resolutionNotes: z.string().optional(),
+  // F3.2: opt-in tenant billing. Default false; amount required in
+  // onCreateSubmit below (mirrors the vendor/staff manual checks) rather
+  // than a zod .refine, since this schema has no dictionary-driven messages.
+  chargeToTenant: z.boolean(),
+  tenantChargeAmount: z.string().optional(),
 });
 
 type CreateWorkOrderFormValues = z.infer<typeof createWorkOrderSchema>;
@@ -167,6 +175,8 @@ const CREATE_WORK_ORDER_EMPTY: CreateWorkOrderFormValues = {
   status: 'scheduled',
   cost: '',
   resolutionNotes: '',
+  chargeToTenant: false,
+  tenantChargeAmount: '',
 };
 
 // ── Edit Work Order form (org_admin only, full) ─────────────────────────────
@@ -178,6 +188,8 @@ const editWorkOrderSchema = z.object({
   status: z.enum(['scheduled', 'in_progress', 'completed', 'canceled']),
   cost: z.string().optional(),
   resolutionNotes: z.string().optional(),
+  chargeToTenant: z.boolean(),
+  tenantChargeAmount: z.string().optional(),
 });
 
 type EditWorkOrderFormValues = z.infer<typeof editWorkOrderSchema>;
@@ -206,6 +218,13 @@ interface MaintenanceRequestDetailPageProps {
    * backend's per-row 403 + toast is the real enforcement.
    */
   isMaintenanceCaller: boolean;
+  /**
+   * The caller's Keycloak `sub`, used to highlight work orders assigned to
+   * them. Decoded server-side from the session access token (the session
+   * object itself does not expose `sub`/`id` for the JWT strategy) — undefined
+   * falls back to no highlight rather than a wrong one.
+   */
+  callerSub?: string;
   dict: Dictionary;
 }
 
@@ -214,6 +233,7 @@ export function MaintenanceRequestDetailPage({
   locale,
   canWrite,
   isMaintenanceCaller,
+  callerSub,
   dict,
 }: MaintenanceRequestDetailPageProps) {
   const t = dict.maintenance;
@@ -258,6 +278,7 @@ export function MaintenanceRequestDetailPage({
     defaultValues: CREATE_WORK_ORDER_EMPTY,
   });
   const createMode = watchCreate('assignmentMode');
+  const createChargeToTenant = watchCreate('chargeToTenant');
 
   const {
     control: editControl,
@@ -269,6 +290,7 @@ export function MaintenanceRequestDetailPage({
     resolver: zodResolver(editWorkOrderSchema),
   });
   const editMode = watchEdit('assignmentMode');
+  const editChargeToTenant = watchEdit('chargeToTenant');
 
   const {
     control: statusControl,
@@ -334,6 +356,10 @@ export function MaintenanceRequestDetailPage({
       toast.error(t.workOrder.create.staffRequired);
       return;
     }
+    if (values.chargeToTenant && !values.tenantChargeAmount) {
+      toast.error(t.workOrder.fields.tenantChargeAmountRequired);
+      return;
+    }
     try {
       await createWorkOrder({
         maintenanceRequestId: id,
@@ -347,6 +373,11 @@ export function MaintenanceRequestDetailPage({
           status: values.status,
           cost: values.cost ? Number(values.cost) : undefined,
           resolutionNotes: values.resolutionNotes || undefined,
+          chargeToTenant: values.chargeToTenant,
+          tenantChargeAmount:
+            values.chargeToTenant && values.tenantChargeAmount
+              ? Number(values.tenantChargeAmount)
+              : undefined,
         },
       }).unwrap();
       toast.success(t.workOrder.create.success);
@@ -366,11 +397,17 @@ export function MaintenanceRequestDetailPage({
       status: workOrder.status,
       cost: workOrder.cost ?? '',
       resolutionNotes: workOrder.resolutionNotes ?? '',
+      chargeToTenant: workOrder.chargeToTenant,
+      tenantChargeAmount: workOrder.tenantChargeAmount ?? '',
     });
   }
 
   async function onEditSubmit(values: EditWorkOrderFormValues) {
     if (!editTarget) return;
+    if (values.chargeToTenant && !values.tenantChargeAmount) {
+      toast.error(t.workOrder.fields.tenantChargeAmountRequired);
+      return;
+    }
     try {
       await updateWorkOrder({
         maintenanceRequestId: id,
@@ -387,6 +424,11 @@ export function MaintenanceRequestDetailPage({
           status: values.status,
           cost: values.cost ? Number(values.cost) : null,
           resolutionNotes: values.resolutionNotes || null,
+          chargeToTenant: values.chargeToTenant,
+          tenantChargeAmount:
+            values.chargeToTenant && values.tenantChargeAmount
+              ? Number(values.tenantChargeAmount)
+              : null,
         },
       }).unwrap();
       toast.success(t.workOrder.edit.success);
@@ -535,6 +577,7 @@ export function MaintenanceRequestDetailPage({
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>{t.detail.table.number}</TableHead>
               <TableHead>{t.detail.table.status}</TableHead>
               <TableHead>{t.detail.table.assignee}</TableHead>
               <TableHead>{t.detail.table.cost}</TableHead>
@@ -549,7 +592,7 @@ export function MaintenanceRequestDetailPage({
             {request.workOrders.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={canWrite || isMaintenanceCaller ? 6 : 5}
+                  colSpan={canWrite || isMaintenanceCaller ? 7 : 6}
                   className="text-center py-10 text-muted-foreground"
                 >
                   <WrenchIcon className="size-8 mx-auto mb-2 opacity-30" />
@@ -557,77 +600,116 @@ export function MaintenanceRequestDetailPage({
                 </TableCell>
               </TableRow>
             ) : (
-              request.workOrders.map((workOrder) => (
-                <TableRow key={workOrder.id}>
-                  <TableCell>
-                    <WorkOrderStatusBadge
-                      status={workOrder.status}
-                      labels={t.workOrderStatus}
-                    />
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {assigneeLabel(workOrder)}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {workOrder.cost ?? '—'}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {workOrder.resolutionNotes ?? '—'}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {workOrder.completedAt
-                      ? new Date(workOrder.completedAt).toLocaleDateString()
-                      : '—'}
-                  </TableCell>
-                  {(canWrite || isMaintenanceCaller) && (
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger
-                          render={
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              aria-label={t.detail.actionsLabel}
-                            >
-                              <MoreHorizontalIcon />
-                            </Button>
-                          }
-                        />
-                        <DropdownMenuContent align="end">
-                          {canWrite && (
-                            <DropdownMenuItem
-                              onClick={() => openEdit(workOrder)}
-                            >
-                              <PencilIcon className="size-3.5 mr-1.5" />
-                              {dict.common.edit}
-                            </DropdownMenuItem>
-                          )}
-                          {isMaintenanceCaller && !canWrite && (
-                            <DropdownMenuItem
-                              onClick={() => openStatusUpdate(workOrder)}
-                            >
-                              <PencilIcon className="size-3.5 mr-1.5" />
-                              {t.detail.updateStatusAction}
-                            </DropdownMenuItem>
-                          )}
-                          {canWrite && (
-                            <>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                variant="destructive"
-                                onClick={() => setDeleteTarget(workOrder)}
-                              >
-                                <TrashIcon className="size-3.5 mr-1.5" />
-                                {dict.common.delete}
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+              request.workOrders.map((workOrder) => {
+                const assignedToCaller =
+                  Boolean(callerSub) &&
+                  Boolean(workOrder.assignedUserId) &&
+                  workOrder.assignedUserId === callerSub;
+                return (
+                  <TableRow
+                    key={workOrder.id}
+                    className={assignedToCaller ? 'bg-primary/5' : undefined}
+                  >
+                    <TableCell className="text-sm font-medium">
+                      {workOrder.numberLabel ??
+                        formatWorkOrderNumber(workOrder.number)}
                     </TableCell>
-                  )}
-                </TableRow>
-              ))
+                    <TableCell>
+                      <WorkOrderStatusBadge
+                        status={workOrder.status}
+                        labels={t.workOrderStatus}
+                      />
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      <span className="inline-flex items-center gap-1.5">
+                        {assigneeLabel(workOrder)}
+                        {assignedToCaller && (
+                          <Badge
+                            variant="outline"
+                            className="bg-primary/10 text-primary border-primary/20"
+                          >
+                            {t.detail.assignedToYou}
+                          </Badge>
+                        )}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      <span className="inline-flex items-center gap-1.5">
+                        {workOrder.cost ?? '—'}
+                        {workOrder.chargeToTenant && (
+                          <Badge
+                            variant="outline"
+                            className={
+                              workOrder.tenantChargedAt
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : 'bg-amber-50 text-amber-700 border-amber-200'
+                            }
+                          >
+                            {workOrder.tenantChargedAt
+                              ? t.detail.tenantChargeBilled
+                              : t.detail.tenantChargePending}
+                          </Badge>
+                        )}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {workOrder.resolutionNotes ?? '—'}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {workOrder.completedAt
+                        ? new Date(workOrder.completedAt).toLocaleDateString()
+                        : '—'}
+                    </TableCell>
+                    {(canWrite || isMaintenanceCaller) && (
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            render={
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                aria-label={t.detail.actionsLabel}
+                              >
+                                <MoreHorizontalIcon />
+                              </Button>
+                            }
+                          />
+                          <DropdownMenuContent align="end">
+                            {canWrite && (
+                              <DropdownMenuItem
+                                onClick={() => openEdit(workOrder)}
+                              >
+                                <PencilIcon className="size-3.5 mr-1.5" />
+                                {dict.common.edit}
+                              </DropdownMenuItem>
+                            )}
+                            {isMaintenanceCaller && !canWrite && (
+                              <DropdownMenuItem
+                                onClick={() => openStatusUpdate(workOrder)}
+                              >
+                                <PencilIcon className="size-3.5 mr-1.5" />
+                                {t.detail.updateStatusAction}
+                              </DropdownMenuItem>
+                            )}
+                            {canWrite && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  variant="destructive"
+                                  onClick={() => setDeleteTarget(workOrder)}
+                                >
+                                  <TrashIcon className="size-3.5 mr-1.5" />
+                                  {dict.common.delete}
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>
@@ -789,6 +871,41 @@ export function MaintenanceRequestDetailPage({
                 placeholder="0.00"
                 {...regCreate('cost')}
               />
+            </div>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <Controller
+                  control={createControl}
+                  name="chargeToTenant"
+                  render={({ field }) => (
+                    <Checkbox
+                      id="wo-charge-to-tenant"
+                      checked={field.value}
+                      onCheckedChange={(checked) =>
+                        field.onChange(checked === true)
+                      }
+                    />
+                  )}
+                />
+                <Label htmlFor="wo-charge-to-tenant" className="font-normal">
+                  {t.workOrder.fields.chargeToTenant}
+                </Label>
+              </div>
+              {createChargeToTenant && (
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="wo-tenant-charge-amount">
+                    {t.workOrder.fields.tenantChargeAmount}
+                  </Label>
+                  <Input
+                    id="wo-tenant-charge-amount"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    {...regCreate('tenantChargeAmount')}
+                  />
+                </div>
+              )}
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="wo-notes">
@@ -972,6 +1089,41 @@ export function MaintenanceRequestDetailPage({
                 placeholder="0.00"
                 {...regEdit('cost')}
               />
+            </div>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <Controller
+                  control={editControl}
+                  name="chargeToTenant"
+                  render={({ field }) => (
+                    <Checkbox
+                      id="woe-charge-to-tenant"
+                      checked={field.value}
+                      onCheckedChange={(checked) =>
+                        field.onChange(checked === true)
+                      }
+                    />
+                  )}
+                />
+                <Label htmlFor="woe-charge-to-tenant" className="font-normal">
+                  {t.workOrder.fields.chargeToTenant}
+                </Label>
+              </div>
+              {editChargeToTenant && (
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="woe-tenant-charge-amount">
+                    {t.workOrder.fields.tenantChargeAmount}
+                  </Label>
+                  <Input
+                    id="woe-tenant-charge-amount"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    {...regEdit('tenantChargeAmount')}
+                  />
+                </div>
+              )}
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="woe-notes">

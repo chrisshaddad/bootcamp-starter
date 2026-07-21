@@ -19,6 +19,7 @@ describe('RentersService', () => {
       renter?: Partial<Record<string, jest.Mock>>;
       lease?: Partial<Record<string, jest.Mock>>;
       buildingAccess?: Partial<Record<string, jest.Mock>>;
+      keycloakAdmin?: Partial<Record<string, jest.Mock>>;
     } = {},
   ) {
     const prisma = {
@@ -42,14 +43,21 @@ describe('RentersService', () => {
       getAllowedBuildingIds: jest.fn().mockResolvedValue(null),
       ...overrides.buildingAccess,
     };
+    const keycloakAdmin = {
+      createUserWithPassword: jest.fn().mockResolvedValue('kc-sub-1'),
+      setSingleClientRole: jest.fn().mockResolvedValue(undefined),
+      deleteUser: jest.fn().mockResolvedValue(undefined),
+      ...overrides.keycloakAdmin,
+    };
     const leaseStatus = new LeaseStatusService();
     const service = new RentersService(
       prisma as any,
       timeline as any,
       buildingAccess as any,
       leaseStatus,
+      keycloakAdmin as any,
     );
-    return { service, prisma, timeline, buildingAccess };
+    return { service, prisma, timeline, buildingAccess, keycloakAdmin };
   }
 
   const renterRow = (overrides: Partial<Record<string, unknown>> = {}) => ({
@@ -221,7 +229,7 @@ describe('RentersService', () => {
     const dto = { fullName: 'Jane Doe' };
 
     it('creates a renter scoped to the org and emits renter.created', async () => {
-      const { service, prisma, timeline } = makeService();
+      const { service, prisma, timeline, keycloakAdmin } = makeService();
       prisma.renter.create.mockResolvedValue(renterRow());
 
       await service.create(orgId, actorId, dto);
@@ -245,6 +253,71 @@ describe('RentersService', () => {
           targetType: 'Renter',
         }),
       );
+      // No portalLogin was passed → zero Keycloak calls, behavior unchanged.
+      expect(keycloakAdmin.createUserWithPassword).not.toHaveBeenCalled();
+      expect(keycloakAdmin.setSingleClientRole).not.toHaveBeenCalled();
+      expect(keycloakAdmin.deleteUser).not.toHaveBeenCalled();
+    });
+
+    it('mints a Keycloak tenant login when portalLogin is provided, links renterUserId to the new sub, and tags the timeline event', async () => {
+      const { service, prisma, timeline, keycloakAdmin } = makeService();
+      prisma.renter.create.mockResolvedValue(
+        renterRow({ renterUserId: 'kc-sub-1' }),
+      );
+
+      const portalDto = {
+        fullName: 'Jane Doe',
+        portalLogin: { email: 'jane@tenant.test', password: 'password123' },
+      };
+
+      await service.create(orgId, actorId, portalDto);
+
+      expect(keycloakAdmin.createUserWithPassword).toHaveBeenCalledWith({
+        username: 'jane@tenant.test',
+        password: 'password123',
+        email: 'jane@tenant.test',
+        firstName: 'Jane',
+        lastName: 'Doe',
+        attributes: { org_id: [orgId] },
+      });
+      expect(keycloakAdmin.setSingleClientRole).toHaveBeenCalledWith(
+        'kc-sub-1',
+        Role.TENANT,
+      );
+      expect(prisma.renter.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ renterUserId: 'kc-sub-1' }),
+      });
+      expect(timeline.emit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'renter.created',
+          metadata: expect.objectContaining({ portalLogin: true }),
+        }),
+      );
+    });
+
+    it('maps a Keycloak 409 (email already taken) to ConflictException and persists no renter', async () => {
+      const conflict = {
+        isAxiosError: true,
+        response: { status: 409 },
+        message: 'Request failed with status code 409',
+      };
+
+      const { service, prisma, keycloakAdmin } = makeService({
+        keycloakAdmin: {
+          createUserWithPassword: jest.fn().mockRejectedValue(conflict),
+        },
+      });
+
+      const portalDto = {
+        fullName: 'Jane Doe',
+        portalLogin: { email: 'jane@tenant.test', password: 'password123' },
+      };
+
+      await expect(
+        service.create(orgId, actorId, portalDto),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(prisma.renter.create).not.toHaveBeenCalled();
+      expect(keycloakAdmin.setSingleClientRole).not.toHaveBeenCalled();
     });
   });
 

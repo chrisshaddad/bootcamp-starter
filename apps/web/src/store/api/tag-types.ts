@@ -20,6 +20,7 @@ export const TAG_TYPES = [
   'Notification',
   'Report',
   'TenantOverview',
+  'AvailableUnit',
 ] as const;
 
 export type TagType = (typeof TAG_TYPES)[number];

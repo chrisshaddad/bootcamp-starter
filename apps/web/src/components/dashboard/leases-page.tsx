@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -90,6 +91,18 @@ function LeaseStatusBadge({
 const NONE = '__none__';
 const ALL = '__all__';
 
+/**
+ * Today as a local `YYYY-MM-DD` string — matches the value shape of a native
+ * `<input type="date">` so it can be used directly as `min` and compared
+ * lexically against form date strings.
+ */
+function todayDateInputValue(): string {
+  const d = new Date();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
 function buildLeaseSchema(t: Dictionary['leases']['dialog']) {
   const numericField = () =>
     z
@@ -111,10 +124,17 @@ function buildLeaseSchema(t: Dictionary['leases']['dialog']) {
       depositAmount: numericField(),
       renewalTerms: z.string().optional(),
       notes: z.string().optional(),
+      // F4.3 (decision D3): a new active lease may not silently start in the
+      // past unless the creator explicitly flags it as an existing lease.
+      recordExisting: z.boolean(),
     })
     .refine((v) => v.endDate >= v.startDate, {
       message: t.errors.endAfterStart,
       path: ['endDate'],
+    })
+    .refine((v) => v.recordExisting || v.startDate >= todayDateInputValue(), {
+      message: t.errors.pastStartDate,
+      path: ['startDate'],
     });
 }
 
@@ -131,6 +151,7 @@ const DEFAULT_VALUES: NewLeaseFormValues = {
   depositAmount: '',
   renewalTerms: '',
   notes: '',
+  recordExisting: false,
 };
 
 // ── New lease dialog ─────────────────────────────────────────────────────────
@@ -169,6 +190,8 @@ function NewLeaseDialog({
 
   const buildingId = watch('buildingId');
   const floorId = watch('floorId');
+  const recordExisting = watch('recordExisting');
+  const todayStr = todayDateInputValue();
 
   const { data: floors } = useListFloorsQuery(buildingId, {
     skip: !buildingId,
@@ -197,6 +220,7 @@ function NewLeaseDialog({
           depositAmount: Number(values.depositAmount),
           renewalTerms: values.renewalTerms || undefined,
           notes: values.notes || undefined,
+          ...(values.recordExisting ? { recordExisting: true } : {}),
         },
       }).unwrap();
       toast.success(t.success);
@@ -388,6 +412,30 @@ function NewLeaseDialog({
             )}
           </div>
 
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center gap-2">
+              <Controller
+                control={control}
+                name="recordExisting"
+                render={({ field }) => (
+                  <Checkbox
+                    id="nl-record-existing"
+                    checked={field.value}
+                    onCheckedChange={(checked) =>
+                      field.onChange(checked === true)
+                    }
+                  />
+                )}
+              />
+              <Label htmlFor="nl-record-existing" className="font-normal">
+                {t.recordExisting}
+              </Label>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {t.recordExistingHelp}
+            </p>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="nl-start">
@@ -396,6 +444,7 @@ function NewLeaseDialog({
               <Input
                 id="nl-start"
                 type="date"
+                min={recordExisting ? undefined : todayStr}
                 aria-invalid={!!errors.startDate}
                 {...register('startDate')}
               />

@@ -1,4 +1,6 @@
+import { redirect } from 'next/navigation';
 import { requireSession, requireActiveOrg } from '@/auth/guards';
+import { normalizeRole } from '@/auth/roles';
 import { getDictionary } from '@/i18n/get-dictionary';
 import { isLocale } from '@/i18n/config';
 import { serverEnv } from '@/lib/env';
@@ -32,6 +34,11 @@ export default async function DashboardLayout({
   const locale = isLocale(lang) ? lang : 'en';
   const session = await requireSession({ locale });
 
+  // Tenants belong to the resident portal, never the admin dashboard shell.
+  // Authoritative in-RSC counterpart to the edge redirect in proxy.ts.
+  const sessionRole = normalizeRole(session.role ?? session.user?.role);
+  if (sessionRole === 'tenant') redirect(`/${locale}/portal`);
+
   // Authoritative paywall for the WHOLE dashboard subtree (incl. every
   // sub-page). "Has paid?" is org.status === ACTIVE in the DB — token-
   // independent, so it correctly bounces a lapsed (PAST_DUE/CANCELED) or
@@ -49,7 +56,11 @@ export default async function DashboardLayout({
   const userName = session.user?.name ?? session.user?.email ?? '';
 
   return (
-    <div className="flex min-h-screen bg-background">
+    // h-screen + overflow-hidden turns this into a fixed app-shell: the sidebar
+    // stays viewport-height and the main column scrolls on its own, so a long
+    // page (e.g. the Activity feed) can never push the sidebar's Sign-out
+    // control below the fold. See dashboard-sidebar for the internal nav scroll.
+    <div className="flex h-screen overflow-hidden bg-background">
       <DashboardSidebar
         locale={locale}
         role={role}
@@ -63,7 +74,7 @@ export default async function DashboardLayout({
           role={role}
           dict={dict}
         />
-        <main className="flex-1 p-6 lg:p-8">{children}</main>
+        <main className="flex-1 overflow-y-auto p-6 lg:p-8">{children}</main>
       </div>
     </div>
   );

@@ -17,7 +17,7 @@ export class BillingController {
     private readonly orgScope: OrgScopeService,
   ) {}
 
-  @Roles(Role.ORG_ADMIN, Role.FINANCE)
+  @Roles(Role.ORG_ADMIN)
   @Get('subscription')
   async getSubscription(@CurrentUser() user: AuthenticatedUser) {
     const { orgId } = await this.orgScope.resolveForCaller(user);

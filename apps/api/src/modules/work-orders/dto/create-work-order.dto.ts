@@ -1,4 +1,11 @@
-import { IsEnum, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+} from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { WorkOrderStatus } from '@repo/db';
 
@@ -31,4 +38,18 @@ export class CreateWorkOrderDto {
   @IsOptional()
   @IsString()
   resolutionNotes?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Opt-in: bill this work order to the tenant on completion. Defaults to false.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  chargeToTenant?: boolean;
+
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  tenantChargeAmount?: number | null;
 }

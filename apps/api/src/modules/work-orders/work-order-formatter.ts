@@ -1,9 +1,10 @@
 import { Prisma } from '@repo/db';
-import { WorkOrderResponse } from '@repo/contracts';
+import { WorkOrderResponse, formatWorkOrderNumber } from '@repo/contracts';
 
 export type WorkOrderRow = {
   id: string;
   orgId: string;
+  number: number;
   maintenanceRequestId: string;
   vendorId: string | null;
   assignedUserId: string | null;
@@ -11,6 +12,9 @@ export type WorkOrderRow = {
   cost: Prisma.Decimal | null;
   resolutionNotes: string | null;
   completedAt: Date | null;
+  chargeToTenant: boolean;
+  tenantChargeAmount: Prisma.Decimal | null;
+  tenantChargedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -20,6 +24,8 @@ export function formatWorkOrder(workOrder: WorkOrderRow): WorkOrderResponse {
   return {
     id: workOrder.id,
     orgId: workOrder.orgId,
+    number: workOrder.number,
+    numberLabel: formatWorkOrderNumber(workOrder.number),
     maintenanceRequestId: workOrder.maintenanceRequestId,
     vendorId: workOrder.vendorId,
     assignedUserId: workOrder.assignedUserId,
@@ -27,6 +33,9 @@ export function formatWorkOrder(workOrder: WorkOrderRow): WorkOrderResponse {
     cost: workOrder.cost?.toString() ?? null,
     resolutionNotes: workOrder.resolutionNotes,
     completedAt: workOrder.completedAt?.toISOString() ?? null,
+    chargeToTenant: workOrder.chargeToTenant,
+    tenantChargeAmount: workOrder.tenantChargeAmount?.toString() ?? null,
+    tenantChargedAt: workOrder.tenantChargedAt?.toISOString() ?? null,
     createdAt: workOrder.createdAt.toISOString(),
     updatedAt: workOrder.updatedAt.toISOString(),
   };

@@ -230,7 +230,7 @@ export function OrgAdminDashboard({ me, locale, dict }: OrgAdminDashboardProps) 
           <h2 className="text-sm font-semibold">{t.recentActivity}</h2>
         </div>
         <div className="rounded-xl border bg-card px-4 py-3">
-          <TimelineFeed locale={locale} limit={8} />
+          <TimelineFeed locale={locale} limit={8} dict={dict} />
         </div>
       </div>
     </div>

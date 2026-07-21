@@ -74,6 +74,7 @@ export class TenantService {
       linked: false,
       renter: null,
       lease: null,
+      leaseHistory: [],
       balance: { invoiced: '0.00', paid: '0.00', outstanding: '0.00' },
       invoices: [],
       maintenanceRequests: [],
@@ -226,6 +227,12 @@ export class TenantService {
           phone: renter.phone,
         },
         lease: current ? this.formatLease(current, now) : null,
+        // Full lease history for the portal (TP3) — same per-lease formatter as
+        // `lease`, applied to every lease the tenant has ever held, newest first
+        // (leases were already fetched ordered by startDate desc).
+        leaseHistory: (leases as LeaseRow[]).map((l) =>
+          this.formatLease(l, now),
+        ),
         balance: {
           invoiced: this.money(totalInvoiced),
           paid: this.money(totalPaid),

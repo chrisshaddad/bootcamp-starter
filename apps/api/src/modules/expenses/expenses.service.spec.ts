@@ -53,6 +53,7 @@ describe('ExpensesService', () => {
     buildingId,
     vendorId: null,
     workOrderId: null,
+    workOrder: null,
     category: 'repairs',
     amount: { toString: () => '150.00' },
     incurredAt: new Date('2026-01-05T00:00:00.000Z'),
@@ -61,6 +62,10 @@ describe('ExpensesService', () => {
     updatedAt: new Date('2026-01-05T00:00:00.000Z'),
     ...overrides,
   });
+
+  const WORK_ORDER_NUMBER_INCLUDE = {
+    workOrder: { select: { number: true } },
+  };
 
   describe('findAll', () => {
     it('returns all org expenses for an org-wide role (org_admin)', async () => {
@@ -77,6 +82,7 @@ describe('ExpensesService', () => {
       );
       expect(prisma.expense.findMany).toHaveBeenCalledWith({
         where: { orgId },
+        include: WORK_ORDER_NUMBER_INCLUDE,
         orderBy: { incurredAt: 'desc' },
       });
       expect(result.data).toEqual([
@@ -100,6 +106,7 @@ describe('ExpensesService', () => {
       );
       expect(prisma.expense.findMany).toHaveBeenCalledWith({
         where: { orgId },
+        include: WORK_ORDER_NUMBER_INCLUDE,
         orderBy: { incurredAt: 'desc' },
       });
     });
@@ -115,8 +122,33 @@ describe('ExpensesService', () => {
 
       expect(prisma.expense.findMany).toHaveBeenCalledWith({
         where: { orgId, buildingId: { in: [buildingId] } },
+        include: WORK_ORDER_NUMBER_INCLUDE,
         orderBy: { incurredAt: 'desc' },
       });
+    });
+
+    it('populates workOrderNumberLabel for a row with a linked work order', async () => {
+      const { service, prisma } = makeService({
+        expense: {
+          findMany: jest
+            .fn()
+            .mockResolvedValue([
+              expenseRow({ workOrderId: 'wo-1', workOrder: { number: 123 } }),
+            ]),
+        },
+      });
+
+      const result = await service.findAll(orgId, callerId, Role.ORG_ADMIN);
+
+      expect(prisma.expense.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ include: WORK_ORDER_NUMBER_INCLUDE }),
+      );
+      expect(result.data).toEqual([
+        expect.objectContaining({
+          workOrderId: 'wo-1',
+          workOrderNumberLabel: 'WO-000123',
+        }),
+      ]);
     });
   });
 
@@ -135,6 +167,7 @@ describe('ExpensesService', () => {
 
       expect(prisma.expense.findFirst).toHaveBeenCalledWith({
         where: { id: 'expense-1', orgId },
+        include: WORK_ORDER_NUMBER_INCLUDE,
       });
       expect(result.data).toEqual(expect.objectContaining({ id: 'expense-1' }));
     });
@@ -201,6 +234,7 @@ describe('ExpensesService', () => {
           incurredAt: new Date('2026-01-05T00:00:00.000Z'),
           notes: undefined,
         },
+        include: WORK_ORDER_NUMBER_INCLUDE,
       });
       expect(timeline.emit).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -242,12 +276,14 @@ describe('ExpensesService', () => {
         where: { id: 'wo-1', orgId },
         select: { vendorId: true },
       });
-      expect(prisma.expense.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          vendorId: 'vendor-1',
-          workOrderId: 'wo-1',
+      expect(prisma.expense.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            vendorId: 'vendor-1',
+            workOrderId: 'wo-1',
+          }),
         }),
-      });
+      );
     });
 
     it('rejects when vendorId and workOrderId are both provided but do not match', async () => {
@@ -280,12 +316,14 @@ describe('ExpensesService', () => {
         vendorId: 'vendor-1',
       });
 
-      expect(prisma.expense.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          vendorId: 'vendor-1',
-          workOrderId: 'wo-1',
+      expect(prisma.expense.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            vendorId: 'vendor-1',
+            workOrderId: 'wo-1',
+          }),
         }),
-      });
+      );
     });
 
     it('rejects with ForbiddenException for a supervisor caller', async () => {
@@ -322,6 +360,7 @@ describe('ExpensesService', () => {
       expect(prisma.expense.update).toHaveBeenCalledWith({
         where: { id: 'expense-1' },
         data: { notes: 'Paid in full' },
+        include: WORK_ORDER_NUMBER_INCLUDE,
       });
       expect(timeline.emit).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'expense.updated' }),
