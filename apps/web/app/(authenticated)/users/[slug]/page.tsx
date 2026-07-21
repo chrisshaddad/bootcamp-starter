@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUser } from '@/hooks/use-auth';
 import { fetcher, ApiError } from '@/lib/api';
+import { SaveCandidateButton } from '@/components/save-candidate-button';
 import type {
   ExploreUsersResponse,
   ExploreProjectsResponse,
@@ -130,6 +131,16 @@ export default function UserPortfolioPage() {
             <p className="mt-4 max-w-2xl text-muted-foreground leading-relaxed">
               {profile.bio}
             </p>
+          )}
+
+          {isAuthorized && (
+            <div className="mt-6">
+              <SaveCandidateButton
+                candidateId={targetUser.id}
+                variant="default"
+                size="lg"
+              />
+            </div>
           )}
         </div>
       </div>

@@ -15,6 +15,7 @@ import {
   Mail,
   Activity,
   ScrollText,
+  UserCheck,
 } from 'lucide-react';
 import { useUser } from '@/hooks/use-auth';
 import { useInvitationPendingCount } from '@/hooks/use-project-invitations';
@@ -81,9 +82,14 @@ const recruiterNavItems: NavItem[] = [
     icon: Compass,
   },
   {
-    title: 'Browse Profiles', // Replaced Projects with Browse Profiles
+    title: 'Browse Profiles',
     url: '/users',
     icon: Users,
+  },
+  {
+    title: 'Saved Candidates',
+    url: '/saved-candidates',
+    icon: UserCheck,
   },
   {
     title: 'Saved Projects',

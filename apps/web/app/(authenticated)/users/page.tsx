@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
+import { SaveCandidateButton } from '@/components/save-candidate-button';
 import type { ExploreUsersResponse } from '@repo/contracts';
 
 export default function ExploreUsersPage() {
@@ -115,8 +116,14 @@ export default function ExploreUsersPage() {
             if (!profile) return null;
 
             return (
-              <Link key={u.id} href={`/developers/${profile.publicSlug}`}>
-                <Card className="hover:border-primary/50 transition-colors h-full">
+              <Card
+                key={u.id}
+                className="hover:border-primary/50 transition-colors h-full flex flex-col justify-between"
+              >
+                <Link
+                  href={`/developers/${profile.publicSlug}`}
+                  className="flex-1"
+                >
                   <CardContent className="p-6 flex flex-col items-center text-center gap-4">
                     <Avatar className="h-24 w-24 border-2">
                       <AvatarImage
@@ -127,7 +134,7 @@ export default function ExploreUsersPage() {
                         {profile.displayName?.charAt(0) || 'U'}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="space-y-1">
+                    <div className="space-y-1 w-full">
                       <h2 className="font-semibold text-lg line-clamp-1">
                         {profile.displayName || 'Unknown Developer'}
                       </h2>
@@ -136,8 +143,17 @@ export default function ExploreUsersPage() {
                       </p>
                     </div>
                   </CardContent>
-                </Card>
-              </Link>
+                </Link>
+
+                {isAuthorized && (
+                  <div className="p-4 pt-0 mt-auto w-full">
+                    <SaveCandidateButton
+                      candidateId={u.id}
+                      className="w-full"
+                    />
+                  </div>
+                )}
+              </Card>
             );
           })}
         </div>
