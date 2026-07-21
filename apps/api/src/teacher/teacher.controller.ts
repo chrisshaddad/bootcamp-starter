@@ -10,17 +10,24 @@ import {
 import type { User } from '@repo/db';
 import {
   createTeacherAssignmentRequestSchema,
+  createTeacherQuizRequestSchema,
   gradeSubmissionRequestSchema,
   type CreateTeacherAssignmentRequest,
+  type CreateTeacherQuizRequest,
   type DeleteTeacherAssignmentResponse,
   type GradeSubmissionRequest,
   type GradeSubmissionResponse,
   type TeacherAssignmentListResponse,
   type TeacherAssignmentResponse,
   type TeacherCourseListResponse,
+  type TeacherQuizListResponse,
+  type TeacherQuizResponse,
   type TeacherSubmissionListResponse,
   type UpdateTeacherAssignmentRequest,
   updateTeacherAssignmentRequestSchema,
+  type DeleteTeacherQuizResponse,
+  type UpdateTeacherQuizRequest,
+  updateTeacherQuizRequestSchema,
 } from '@repo/contracts';
 import { CurrentUser, Roles } from '../auth/decorators';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
@@ -36,6 +43,34 @@ export class TeacherController {
     @CurrentUser() user: User,
   ): Promise<TeacherCourseListResponse> {
     return this.teacherService.findMyCourses(user.id, user.organizationId);
+  }
+
+  @Get('quizzes')
+  async findMyQuizzes(
+    @CurrentUser() user: User,
+  ): Promise<TeacherQuizListResponse> {
+    return this.teacherService.findMyQuizzes(user.id, user.organizationId);
+  }
+
+  @Post('quizzes')
+  async createQuiz(
+    @CurrentUser() user: User,
+    @Body(new ZodValidationPipe(createTeacherQuizRequestSchema))
+    body: CreateTeacherQuizRequest,
+  ): Promise<TeacherQuizResponse> {
+    return this.teacherService.createQuiz(user.id, user.organizationId, body);
+  }
+
+  @Get('quizzes/:quizId')
+  async findQuizById(
+    @CurrentUser() user: User,
+    @Param('quizId') quizId: string,
+  ): Promise<TeacherQuizResponse> {
+    return this.teacherService.findQuizById(
+      user.id,
+      user.organizationId,
+      quizId,
+    );
   }
 
   @Get('assignments')
@@ -79,6 +114,29 @@ export class TeacherController {
       assignmentId,
     );
   }
+  @Patch('quizzes/:quizId')
+  async updateQuiz(
+    @CurrentUser() user: User,
+    @Param('quizId') quizId: string,
+    @Body(new ZodValidationPipe(updateTeacherQuizRequestSchema))
+    body: UpdateTeacherQuizRequest,
+  ): Promise<TeacherQuizResponse> {
+    return this.teacherService.updateQuiz(
+      user.id,
+      user.organizationId,
+      quizId,
+      body,
+    );
+  }
+
+  @Delete('quizzes/:quizId')
+  async deleteQuiz(
+    @CurrentUser() user: User,
+    @Param('quizId') quizId: string,
+  ): Promise<DeleteTeacherQuizResponse> {
+    return this.teacherService.deleteQuiz(user.id, user.organizationId, quizId);
+  }
+
   @Patch('submissions/:submissionId/grade')
   async gradeSubmission(
     @CurrentUser() user: User,

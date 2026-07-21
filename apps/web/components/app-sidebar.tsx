@@ -7,6 +7,7 @@ import {
   BookOpen,
   Building2,
   ClipboardList,
+  FileQuestion,
   LayoutDashboard,
   LogOut,
   Settings,
@@ -50,6 +51,11 @@ const organizationNavItems: NavItem[] = [
     title: 'Assignments',
     url: '/teacher/assignments',
     icon: ClipboardList,
+  },
+  {
+    title: 'Quizzes',
+    url: '/teacher/quizzes',
+    icon: FileQuestion,
   },
 ];
 
