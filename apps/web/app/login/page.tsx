@@ -118,14 +118,16 @@ function LoginForm() {
   const onSubmit = async (data: LoginRequest) => {
     setIsSubmitting(true);
     try {
-      await login(data);
+      const { user } = await login(data);
       const rawRedirect = searchParams.get('redirect');
       const redirectPath =
-        rawRedirect &&
-        rawRedirect.startsWith('/') &&
-        !rawRedirect.startsWith('//')
-          ? rawRedirect
-          : '/dashboard';
+        user.role === 'SUPER_ADMIN'
+          ? '/admin'
+          : rawRedirect &&
+              rawRedirect.startsWith('/') &&
+              !rawRedirect.startsWith('//')
+            ? rawRedirect
+            : '/dashboard';
 
       router.push(redirectPath);
     } catch (error) {

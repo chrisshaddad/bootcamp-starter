@@ -11,7 +11,9 @@ import { GithubModule } from './github/github.module';
 import { ProjectsModule } from './projects/projects.module';
 import { UsersModule } from './users/users.module';
 import { TechnologiesModule } from './technologies/technologies.module';
+import { SavedProjectsModule } from './saved-projects/saved-projects.module';
 import { ProjectInvitationsModule } from './project-invitations/project-invitations.module';
+import { AdminModule } from './admin/admin.module';
 @Module({
   imports: [
     ConfigModule.forRoot(),
@@ -28,7 +30,9 @@ import { ProjectInvitationsModule } from './project-invitations/project-invitati
     ProjectsModule,
     UsersModule,
     TechnologiesModule,
+    SavedProjectsModule,
     ProjectInvitationsModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [AppService],

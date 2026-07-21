@@ -41,12 +41,13 @@ export default function ExploreUsersPage() {
   // Only fetch users if authorized
   const isAuthorized =
     user?.accountType === 'HIRING' || user?.accountType === 'SUPER_ADMIN';
-  const { data, isLoading: isDataLoading } = useSWR<
-    ExploreUsersResponse,
-    ApiError
-  >(
+  const {
+    data,
+    error,
+    isLoading: isDataLoading,
+  } = useSWR<ExploreUsersResponse, ApiError>(
     isAuthorized
-      ? `/users/explore?page=1&limit=20${debouncedSearch ? `&search=${debouncedSearch}` : ''}`
+      ? `/users/explore?page=1&limit=20${debouncedSearch ? `&search=${encodeURIComponent(debouncedSearch)}` : ''}`
       : null,
     fetcher,
   );
@@ -90,7 +91,16 @@ export default function ExploreUsersPage() {
         </div>
       </div>
 
-      {data?.data?.length === 0 ? (
+      {error ? (
+        <Card className="flex flex-col items-center py-16 text-center border-dashed">
+          <p className="font-semibold">Unable to load developers</p>
+          <p className="text-muted-foreground text-sm max-w-sm mt-1">
+            {error instanceof ApiError
+              ? error.message
+              : 'Something went wrong.'}
+          </p>
+        </Card>
+      ) : data?.data?.length === 0 ? (
         <Card className="flex flex-col items-center py-16 text-center border-dashed">
           <Users className="h-10 w-10 text-muted-foreground mb-4" />
           <h3 className="text-lg font-semibold">No developers found</h3>
@@ -109,7 +119,10 @@ export default function ExploreUsersPage() {
                 <Card className="hover:border-primary/50 transition-colors h-full">
                   <CardContent className="p-6 flex flex-col items-center text-center gap-4">
                     <Avatar className="h-24 w-24 border-2">
-                      <AvatarImage src={profile.profilePictureUrl || ''} />
+                      <AvatarImage
+                        src={profile.profilePictureUrl || ''}
+                        alt={profile.displayName || 'Developer avatar'}
+                      />
                       <AvatarFallback className="text-xl">
                         {profile.displayName?.charAt(0) || 'U'}
                       </AvatarFallback>

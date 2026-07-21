@@ -27,12 +27,12 @@ function VerifyContent() {
 
     const verify = async () => {
       try {
-        await verifyMagicLink({ token });
+        const { user } = await verifyMagicLink({ token });
         setStatus('success');
         toast.success('Successfully logged in!');
         // Small delay to show success state before redirecting
         setTimeout(() => {
-          router.replace('/dashboard');
+          router.replace(user.role === 'SUPER_ADMIN' ? '/admin' : '/dashboard');
         }, 1000);
       } catch (error) {
         setStatus('error');

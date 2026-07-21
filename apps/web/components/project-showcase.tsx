@@ -39,9 +39,16 @@ interface ProjectShowcaseProps {
     members: ProjectMemberResponse[];
   };
   onSave?: () => void;
+  isSaved?: boolean;
+  isSaving?: boolean;
 }
 
-export function ProjectShowcase({ project, onSave }: ProjectShowcaseProps) {
+export function ProjectShowcase({
+  project,
+  onSave,
+  isSaved,
+  isSaving,
+}: ProjectShowcaseProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const lightboxMedia =
     lightboxIndex !== null ? project.media[lightboxIndex] : null;
@@ -100,9 +107,16 @@ export function ProjectShowcase({ project, onSave }: ProjectShowcaseProps) {
             </Button>
           )}
           {onSave && (
-            <Button onClick={onSave}>
-              <Bookmark className="h-4 w-4" />
-              Save
+            <Button
+              onClick={onSave}
+              disabled={isSaving}
+              variant={isSaved ? 'outline' : 'default'}
+            >
+              <Bookmark
+                className="h-4 w-4"
+                fill={isSaved ? 'currentColor' : 'none'}
+              />
+              {isSaved ? 'Saved' : 'Save'}
             </Button>
           )}
         </div>

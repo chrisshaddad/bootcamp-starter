@@ -2,7 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { randomBytes } from 'crypto';
 import Redis from 'ioredis';
 import { PrismaService } from '../database/prisma.service';
-import { User, DeveloperProfile, HiringProfile } from '@repo/db';
+import { User, DeveloperProfile, HiringProfile, Prisma } from '@repo/db';
 
 const SESSION_PREFIX = 'session:';
 const SESSION_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days
@@ -142,8 +142,11 @@ export class SessionService {
   /**
    * Deletes all sessions for a user (logout from all devices)
    */
-  async deleteAllUserSessions(userId: string): Promise<void> {
-    const sessions = await this.prisma.session.findMany({
+  async deleteAllUserSessions(
+    userId: string,
+    database: Pick<Prisma.TransactionClient, 'session'> = this.prisma,
+  ): Promise<void> {
+    const sessions = await database.session.findMany({
       where: { userId },
       select: { id: true },
     });
@@ -155,7 +158,7 @@ export class SessionService {
     }
 
     // Delete from DB
-    await this.prisma.session.deleteMany({ where: { userId } });
+    await database.session.deleteMany({ where: { userId } });
 
     this.logger.log(`All sessions deleted for user ${userId}`);
   }

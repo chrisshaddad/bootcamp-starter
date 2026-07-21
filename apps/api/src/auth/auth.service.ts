@@ -3,6 +3,7 @@ import {
   Logger,
   NotFoundException,
   ConflictException,
+  ForbiddenException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
@@ -167,6 +168,10 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
+    if (user.status === 'SUSPENDED') {
+      throw new ForbiddenException('This account has been suspended');
+    }
+
     const sessionId = await this.sessionService.createSession(user.id);
 
     return {
@@ -191,6 +196,11 @@ export class AuthService {
 
     if (!user) {
       this.logger.warn(`Magic link requested for non-existent email: ${email}`);
+      return { success: true };
+    }
+
+    if (user.status === 'SUSPENDED') {
+      this.logger.warn(`Magic link requested for suspended user ${user.id}`);
       return { success: true };
     }
 
@@ -263,6 +273,10 @@ export class AuthService {
 
     if (magicLink.expiresAt < new Date()) {
       throw new NotFoundException('This magic link has expired');
+    }
+
+    if (magicLink.user.status === 'SUSPENDED') {
+      throw new ForbiddenException('This account has been suspended');
     }
 
     await this.prisma.magicLink.update({

@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ProfileForm } from '@/components/profile-form';
@@ -10,7 +12,18 @@ import { Button } from '@/components/ui/button';
 import { ExternalLink } from 'lucide-react';
 
 export default function ProfilePage() {
+  const router = useRouter();
   const { user, isLoading, error } = useUser();
+
+  useEffect(() => {
+    if (user?.accountType === 'SUPER_ADMIN') {
+      router.replace('/admin');
+    }
+  }, [router, user?.accountType]);
+
+  if (isLoading || user?.accountType === 'SUPER_ADMIN') {
+    return <Skeleton className="h-[520px] w-full rounded-xl" />;
+  }
 
   return (
     <div className="space-y-6">
@@ -43,7 +56,7 @@ export default function ProfilePage() {
             <p className="text-sm text-destructive">
               Unable to load your profile. Please refresh the page.
             </p>
-          ) : isLoading || !user ? (
+          ) : !user ? (
             <div className="space-y-5">
               <Skeleton className="h-14 w-full" />
               <Skeleton className="h-14 w-full" />

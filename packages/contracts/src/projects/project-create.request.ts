@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { projectStatusSchema } from './project-status.schema';
+import { projectOwnerStatusSchema } from './project-status.schema';
 export const createProjectRequestSchema = z.object({
   repositoryId: z.string().uuid('Invalid repository ID'),
   title: z.string().min(1, 'Title is required'),
@@ -14,6 +14,6 @@ export const createProjectRequestSchema = z.object({
     .nullable()
     .transform((val) => (val === '' ? null : val))
     .optional(),
-  status: projectStatusSchema.optional(),
+  status: projectOwnerStatusSchema.optional(),
 });
 export type CreateProjectRequest = z.infer<typeof createProjectRequestSchema>;

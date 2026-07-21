@@ -16,6 +16,30 @@ enum AccountType {
   @@schema("public")
 }
 
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+
+  @@schema("public")
+}
+
+enum AdminAuditAction {
+  ACCOUNT_SUSPENDED
+  ACCOUNT_REACTIVATED
+  PROJECT_ARCHIVED
+  PROJECT_SUSPENDED
+  PROJECT_RESTORED
+
+  @@schema("public")
+}
+
+enum AdminAuditTargetType {
+  USER
+  PROJECT
+
+  @@schema("public")
+}
+
 enum OrganizationType {
   COMPANY
   AGENCY
@@ -29,6 +53,7 @@ enum ProjectStatus {
   DRAFT
   PUBLISHED
   ARCHIVED
+  SUSPENDED
 
   @@schema("public")
 }
@@ -110,7 +135,11 @@ model User {
   email        String      @unique
   passwordHash String
   accountType  AccountType
+  status       AccountStatus @default(ACTIVE)
   isConfirmed  Boolean     @default(false)
+
+  suspendedAt      DateTime?
+  suspensionReason String?   @db.Text
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -130,8 +159,11 @@ model User {
   uploadedMedia       ProjectMedia[]
   savedProjects       SavedProject[]
   addedTechnologies   ProjectTechnology[] @relation("ProjectTechAddedBy")
+  adminAuditLogs      AdminAuditLog[]     @relation("AdminAuditActor")
+  moderatedProjects   Project[]           @relation("ProjectModerator")
 
   @@index([accountType])
+  @@index([status])
   @@schema("public")
 }
 
@@ -247,8 +279,13 @@ model Project {
   updatedAt   DateTime  @updatedAt
   publishedAt DateTime?
 
+  moderatedAt       DateTime?
+  moderationReason  String?   @db.Text
+  moderatedByUserId String?
+
   repository Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
   createdBy  User       @relation("ProjectCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  moderatedBy User?      @relation("ProjectModerator", fields: [moderatedByUserId], references: [id], onDelete: SetNull)
 
   members      ProjectMember[]
   invitations  ProjectInvitation[]
@@ -258,6 +295,28 @@ model Project {
 
   @@index([status])
   @@index([createdByUserId])
+  @@index([moderatedByUserId])
+  @@schema("public")
+}
+
+model AdminAuditLog {
+  id String @id @default(uuid())
+
+  actorUserId String?
+  action      AdminAuditAction
+  targetType  AdminAuditTargetType
+  targetId    String
+  reason      String?              @db.Text
+  metadata    Json?
+
+  createdAt DateTime @default(now())
+
+  actor User? @relation("AdminAuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([actorUserId, createdAt])
+  @@index([action, createdAt])
+  @@index([targetType, targetId, createdAt])
+  @@index([createdAt])
   @@schema("public")
 }
 
