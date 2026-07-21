@@ -12,3 +12,4 @@ export * from './books';
 export * from './book-copies';
 export * from './cart';
 export * from './purchases';
+export * from './chat';

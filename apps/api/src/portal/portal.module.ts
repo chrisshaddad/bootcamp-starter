@@ -3,6 +3,7 @@ import { LibraryMembersModule } from '../library-members/library-members.module'
 import { CatalogModule } from '../catalog/catalog.module';
 import { CirculationModule } from '../circulation/circulation.module';
 import { CommerceModule } from '../commerce/commerce.module';
+import { ChatModule } from '../chat/chat.module';
 import { PortalMembershipsController } from './portal-memberships.controller';
 import { PortalBooksController } from './portal-books.controller';
 import { PortalBookCopiesController } from './portal-book-copies.controller';
@@ -11,6 +12,7 @@ import { PortalReservationsController } from './portal-reservations.controller';
 import { PortalCartController } from './portal-cart.controller';
 import { PortalCategoriesController } from './portal-categories.controller';
 import { PortalAuthorsController } from './portal-authors.controller';
+import { PortalChatController } from './portal-chat.controller';
 
 @Module({
   imports: [
@@ -18,6 +20,7 @@ import { PortalAuthorsController } from './portal-authors.controller';
     CatalogModule,
     CirculationModule,
     CommerceModule,
+    ChatModule,
   ],
   controllers: [
     PortalMembershipsController,
@@ -28,6 +31,7 @@ import { PortalAuthorsController } from './portal-authors.controller';
     PortalCartController,
     PortalCategoriesController,
     PortalAuthorsController,
+    PortalChatController,
   ],
 })
 export class PortalModule {}
