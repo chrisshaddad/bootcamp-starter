@@ -16,6 +16,15 @@ enum AccountType {
   @@schema("public")
 }
 
+enum CandidateStatus {
+  SAVED
+  CONTACTED
+  REJECTED
+  ACCEPTED
+
+  @@schema("public")
+}
+
 enum AccountStatus {
   ACTIVE
   SUSPENDED
@@ -150,6 +159,9 @@ model User {
 
   sessions   Session[]
   magicLinks MagicLink[]
+  
+  savedCandidates       SavedCandidate[]    @relation("RecruiterSavedCandidates")
+  savedByRecruiters     SavedCandidate[]    @relation("CandidateSavedBy")
 
   createdProjects     Project[]           @relation("ProjectCreator")
   addedMembers        ProjectMember[]     @relation("MemberAddedBy")
@@ -511,3 +523,26 @@ model MagicLink {
   @@index([userId])
   @@schema("private")
 }
+
+model SavedCandidate {
+  id String @id @default(uuid())
+
+  savedByUserId String
+  candidateId   String
+
+  status CandidateStatus @default(SAVED)
+  note   String?         @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  savedBy   User @relation("RecruiterSavedCandidates", fields: [savedByUserId], references: [id], onDelete: Cascade)
+  candidate User @relation("CandidateSavedBy", fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@unique([savedByUserId, candidateId])
+  @@index([savedByUserId])
+  @@index([candidateId])
+  @@index([status])
+  @@schema("public")
+}
+
