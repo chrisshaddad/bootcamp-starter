@@ -14,6 +14,7 @@ import {
   BarChart3,
 } from 'lucide-react';
 import { useAuth, useUser } from '@/hooks/use-auth';
+import { CoordlyLogo } from '@/components/coordly-logo';
 import { cn } from '@/lib/utils';
 import {
   Sidebar,
@@ -189,12 +190,8 @@ export function AppSidebar() {
   return (
     <Sidebar className="border-r border-gray-200 bg-white">
       <SidebarHeader className="px-5 py-6">
-        {/* Logo */}
         <Link href="/dashboard" className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-base">
-            <span className="text-lg font-bold text-white">✦</span>
-          </div>
-          <span className="text-xl font-semibold text-gray-900">Coordly</span>
+          <CoordlyLogo />
         </Link>
       </SidebarHeader>
 

@@ -6,23 +6,35 @@ const SESSION_COOKIE_NAME = 'bootcamp_starter_session';
 // Auth entry pages — bounce authenticated users to the dashboard
 const authEntryRoutes = ['/login', '/auth/verify'];
 
-// Routes that do not require a session (includes auth entry + public browse)
-const publicRoutes = [...authEntryRoutes, '/browse'];
+// Routes that do not require a session.
+const publicRoutes = [...authEntryRoutes, '/browse', '/privacy', '/terms'];
 
 const DEFAULT_AUTHENTICATED_ROUTE = '/dashboard';
 
+/**
+ * Checks whether a pathname matches a route exactly or by nested segment.
+ */
 function matchesRoute(pathname: string, route: string): boolean {
   return pathname === route || pathname.startsWith(`${route}/`);
 }
 
+/**
+ * Checks whether a pathname is an authentication entry route.
+ */
 function isAuthEntryRoute(pathname: string): boolean {
   return authEntryRoutes.some((route) => matchesRoute(pathname, route));
 }
 
+/**
+ * Checks whether a pathname can be accessed without a session.
+ */
 function isPublicRoute(pathname: string): boolean {
   return publicRoutes.some((route) => matchesRoute(pathname, route));
 }
 
+/**
+ * Redirects unauthenticated users from protected pages and signed-in users from auth entry pages.
+ */
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const sessionCookie = request.cookies.get(SESSION_COOKIE_NAME);

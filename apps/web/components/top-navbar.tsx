@@ -11,6 +11,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -22,6 +23,16 @@ export function TopNavbar() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+  const workspaceName = isSuperAdmin
+    ? 'Coordly Platform'
+    : (user?.organizationName ?? 'Coordly Workspace');
+  const roleLabel = isSuperAdmin
+    ? 'Super admin'
+    : user?.role === 'ORG_ADMIN'
+      ? 'Organization admin'
+      : user?.memberRole === 'PRESENTER'
+        ? 'Presenter'
+        : 'Member';
 
   const getInitials = (name?: string | null, email?: string) => {
     if (name) {
@@ -81,7 +92,14 @@ export function TopNavbar() {
               <ChevronDown className="h-4 w-4 text-gray-500" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel className="px-3 py-2 font-normal">
+              <p className="truncate text-sm font-semibold text-gray-900">
+                {workspaceName}
+              </p>
+              <p className="mt-0.5 text-xs text-gray-500">{roleLabel}</p>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
               <Link href="/settings" className="flex items-center gap-2">
                 <Settings className="h-4 w-4" />

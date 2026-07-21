@@ -93,17 +93,24 @@ export class AuthController {
 
   @Get('me')
   async getCurrentUser(@CurrentUser() user: User): Promise<UserResponse> {
-    // Fetch member role if user is in an organization
     let memberRole: MemberRole | null = null;
+    let organizationName: string | null = null;
     if (user.organizationId) {
-      const member = await this.prisma.member.findFirst({
-        where: {
-          userId: user.id,
-          organizationId: user.organizationId,
-        },
-        select: { role: true },
-      });
+      const [member, organization] = await Promise.all([
+        this.prisma.member.findFirst({
+          where: {
+            userId: user.id,
+            organizationId: user.organizationId,
+          },
+          select: { role: true },
+        }),
+        this.prisma.organization.findFirst({
+          where: { id: user.organizationId },
+          select: { name: true },
+        }),
+      ]);
       memberRole = member?.role ?? null;
+      organizationName = organization?.name ?? null;
     }
 
     return {
@@ -112,6 +119,7 @@ export class AuthController {
       name: user.name,
       role: user.role,
       organizationId: user.organizationId,
+      organizationName,
       isConfirmed: user.isConfirmed,
       memberRole,
     };

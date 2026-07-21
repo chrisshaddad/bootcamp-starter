@@ -11,8 +11,16 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: 'Bootcamp Starter',
-  description: 'Full-stack bootcamp starter',
+  title: {
+    default: 'Coordly',
+    template: '%s | Coordly',
+  },
+  description:
+    'Member, event, attendance, and announcement management for organizations.',
+  icons: {
+    icon: '/coordly-mark.svg',
+    shortcut: '/coordly-mark.svg',
+  },
 };
 
 export default function RootLayout({

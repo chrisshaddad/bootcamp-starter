@@ -3,10 +3,14 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { ArrowLeft, Calendar, MapPin, User, Users } from 'lucide-react';
+import { CoordlyLogo } from '@/components/coordly-logo';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePublicEvent } from '@/hooks/use-public-events';
 
+/**
+ * Formats an event start date for the public event detail page.
+ */
 function formatDate(value: string | Date) {
   return new Date(value).toLocaleString(undefined, {
     weekday: 'long',
@@ -17,6 +21,9 @@ function formatDate(value: string | Date) {
   });
 }
 
+/**
+ * Renders the public Coordly event detail page.
+ */
 export default function BrowseEventDetailPage() {
   const params = useParams();
   const id = params.id as string;
@@ -26,8 +33,8 @@ export default function BrowseEventDetailPage() {
     <div className="min-h-screen bg-gradient-to-b from-primary-100/40 via-white to-white">
       <header className="border-b border-gray-200/80 bg-white/80 backdrop-blur">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-4">
-          <Link href="/browse" className="text-lg font-semibold text-gray-900">
-            Coordly
+          <Link href="/browse" aria-label="Go to Coordly events">
+            <CoordlyLogo markClassName="size-7" />
           </Link>
           <Button asChild variant="outline">
             <Link href={`/login?redirect=/events/${id}`}>Sign in</Link>
@@ -76,11 +83,14 @@ export default function BrowseEventDetailPage() {
           </div>
         ) : (
           <div className="mt-8">
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+            <p className="inline-flex rounded-full bg-primary-100 px-3 py-1 text-sm font-medium text-primary-base">
+              Coordly public event
+            </p>
+            <h1 className="mt-3 text-3xl font-bold tracking-tight text-gray-900">
               {event.eventName}
             </h1>
             <p className="mt-2 text-gray-600">
-              Sign in to register and join this event.
+              Sign in to register through Coordly and join this event.
             </p>
 
             <dl className="mt-8 space-y-4 rounded-xl border border-gray-200 bg-white p-6">

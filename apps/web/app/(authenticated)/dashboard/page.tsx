@@ -274,6 +274,11 @@ export default function DashboardPage() {
     );
   }
 
+  const dashboardDescription =
+    user?.role === 'ORG_ADMIN'
+      ? 'Manage your Coordly workspace: track members, plan events, and keep your organization in sync.'
+      : 'Stay connected with your organization’s upcoming events and announcements in Coordly.';
+
   // Default dashboard for other users
   return (
     <div className="space-y-6">
@@ -286,9 +291,7 @@ export default function DashboardPage() {
             'User'}
           !
         </h1>
-        <p className="mt-1 text-sm text-gray-500">
-          You&apos;re signed in. Start building your project.
-        </p>
+        <p className="mt-1 text-sm text-gray-500">{dashboardDescription}</p>
       </div>
 
       {user?.role === 'ORG_ADMIN' && <OrgAdminStats />}
