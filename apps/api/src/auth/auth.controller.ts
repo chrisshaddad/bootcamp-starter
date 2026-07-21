@@ -13,10 +13,10 @@ import {
   HttpStatus,
   UsePipes,
   UseInterceptors,
-  UploadedFile,
+  UploadedFiles,
   BadRequestException,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import {
   ApiBody,
   ApiConsumes,
@@ -63,6 +63,19 @@ import {
 
 const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const PROFILE_PICTURES_DIR = join(process.cwd(), 'uploads', 'profile-pictures');
+
+type ProfilePictureFiles = {
+  file?: Express.Multer.File[];
+  originalFile?: Express.Multer.File[];
+};
+
+function safeUnlink(path: string) {
+  try {
+    unlinkSync(path);
+  } catch {
+    return;
+  }
+}
 
 @ApiTags('auth')
 @Controller('auth')
@@ -191,6 +204,14 @@ export class AuthController {
             bio: user.developerProfile.bio ?? null,
             location: user.developerProfile.location ?? null,
             profilePictureUrl: user.developerProfile.profilePictureUrl ?? null,
+            profilePictureOriginalUrl:
+              user.developerProfile.profilePictureOriginalUrl ?? null,
+            profilePictureCropZoom:
+              user.developerProfile.profilePictureCropZoom ?? null,
+            profilePictureCropX:
+              user.developerProfile.profilePictureCropX ?? null,
+            profilePictureCropY:
+              user.developerProfile.profilePictureCropY ?? null,
             githubUsername: user.developerProfile.githubUsername ?? null,
             linkedinUrl: user.developerProfile.linkedinUrl ?? null,
             personalWebsiteUrl:
@@ -215,58 +236,84 @@ export class AuthController {
   @ApiOperation({ summary: 'Upload a profile picture' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({ schema: profilePictureUploadSchema })
-  @ApiResponse({ status: 200, description: 'Uploaded profile picture URL' })
+  @ApiResponse({
+    status: 200,
+    description: 'Uploaded display and original profile picture URLs',
+  })
   @ApiResponse({ status: 400, description: 'Invalid or missing image file' })
   @ApiResponse({ status: 401, description: 'Missing or invalid session' })
   @HttpCode(HttpStatus.OK)
   @UseInterceptors(
-    FileInterceptor('file', {
-      storage: diskStorage({
-        destination: PROFILE_PICTURES_DIR,
-        // No extension yet — the real type is only known once we've inspected
-        // the file's actual bytes below, since mimetype/originalname are
-        // client-supplied and can be spoofed.
-        filename: (_req, _file, callback) => callback(null, randomUUID()),
-      }),
-      limits: { fileSize: PROFILE_PICTURE_MAX_SIZE_BYTES },
-      fileFilter: (_req, file, callback) => {
-        // Cheap early rejection only — not trusted for the actual save below.
-        if (
-          !(PROFILE_PICTURE_ALLOWED_MIME_TYPES as readonly string[]).includes(
-            file.mimetype,
-          )
-        ) {
-          callback(
-            new BadRequestException(
-              'Only JPEG, PNG, WEBP, or GIF images are allowed',
-            ),
-            false,
-          );
-          return;
-        }
-        callback(null, true);
+    FileFieldsInterceptor(
+      [
+        { name: 'file', maxCount: 1 },
+        { name: 'originalFile', maxCount: 1 },
+      ],
+      {
+        storage: diskStorage({
+          destination: PROFILE_PICTURES_DIR,
+          // No extension yet — the real type is only known once we've inspected
+          // the file's actual bytes below, since mimetype/originalname are
+          // client-supplied and can be spoofed.
+          filename: (_req, _file, callback) => callback(null, randomUUID()),
+        }),
+        limits: { fileSize: PROFILE_PICTURE_MAX_SIZE_BYTES },
+        fileFilter: (_req, file, callback) => {
+          // Cheap early rejection only — not trusted for the actual save below.
+          if (
+            !(PROFILE_PICTURE_ALLOWED_MIME_TYPES as readonly string[]).includes(
+              file.mimetype,
+            )
+          ) {
+            callback(
+              new BadRequestException(
+                'Only JPEG, PNG, WEBP, or GIF images are allowed',
+              ),
+              false,
+            );
+            return;
+          }
+          callback(null, true);
+        },
       },
-    }),
+    ),
   )
   uploadProfilePicture(
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFiles() files: ProfilePictureFiles | undefined,
   ): ProfilePictureUploadResponse {
-    if (!file) {
-      throw new BadRequestException('No file uploaded');
+    const croppedFile = files?.file?.[0];
+    const originalFile = files?.originalFile?.[0];
+    const uploadedFiles = [croppedFile, originalFile].filter(
+      (file): file is Express.Multer.File => Boolean(file),
+    );
+
+    if (!croppedFile || !originalFile) {
+      uploadedFiles.forEach((file) => safeUnlink(file.path));
+      throw new BadRequestException(
+        'Both the cropped photo and original photo are required',
+      );
     }
 
-    const extension = detectImageExtension(readFileSync(file.path));
-    if (!extension) {
-      unlinkSync(file.path);
+    const croppedExtension = detectImageExtension(
+      readFileSync(croppedFile.path),
+    );
+    const originalExtension = detectImageExtension(
+      readFileSync(originalFile.path),
+    );
+    if (!croppedExtension || !originalExtension) {
+      uploadedFiles.forEach((file) => safeUnlink(file.path));
       throw new BadRequestException('The uploaded file is not a valid image');
     }
 
-    const finalFilename = `${file.filename}${extension}`;
-    renameSync(file.path, join(PROFILE_PICTURES_DIR, finalFilename));
+    const croppedFilename = `${croppedFile.filename}${croppedExtension}`;
+    const originalFilename = `${originalFile.filename}${originalExtension}`;
+    renameSync(croppedFile.path, join(PROFILE_PICTURES_DIR, croppedFilename));
+    renameSync(originalFile.path, join(PROFILE_PICTURES_DIR, originalFilename));
 
     const apiUrl = process.env.API_URL ?? 'http://localhost:3001';
     return {
-      profilePictureUrl: `${apiUrl}/uploads/profile-pictures/${finalFilename}`,
+      profilePictureUrl: `${apiUrl}/uploads/profile-pictures/${croppedFilename}`,
+      profilePictureOriginalUrl: `${apiUrl}/uploads/profile-pictures/${originalFilename}`,
     };
   }
 

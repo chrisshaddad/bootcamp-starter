@@ -11,15 +11,14 @@ async function bootstrap() {
   // Enable cookie parsing for session management
   app.use(cookieParser());
 
-  // Serve locally-uploaded files (e.g. profile pictures)
-  app.useStaticAssets(join(process.cwd(), 'uploads'), {
-    prefix: '/uploads/',
-  });
-
-  // Enable CORS for frontend
   app.enableCors({
     origin: process.env.APP_URL,
     credentials: true,
+  });
+
+  // Serve locally-uploaded files (e.g. profile pictures)
+  app.useStaticAssets(join(process.cwd(), 'uploads'), {
+    prefix: '/uploads/',
   });
 
   setupSwagger(app);

@@ -361,6 +361,10 @@ export class AuthService {
           bio?: string | null;
           location?: string | null;
           profilePictureUrl?: string | null;
+          profilePictureOriginalUrl?: string | null;
+          profilePictureCropZoom?: number | null;
+          profilePictureCropX?: number | null;
+          profilePictureCropY?: number | null;
           linkedinUrl?: string | null;
           personalWebsiteUrl?: string | null;
         };
@@ -388,6 +392,10 @@ export class AuthService {
           bio: data.bio,
           location: data.location,
           profilePictureUrl: data.profilePictureUrl,
+          profilePictureOriginalUrl: data.profilePictureOriginalUrl,
+          profilePictureCropZoom: data.profilePictureCropZoom,
+          profilePictureCropX: data.profilePictureCropX,
+          profilePictureCropY: data.profilePictureCropY,
           linkedinUrl: data.linkedinUrl,
           personalWebsiteUrl: data.personalWebsiteUrl,
         },
@@ -427,6 +435,14 @@ export class AuthService {
             location: updatedUser.developerProfile.location ?? null,
             profilePictureUrl:
               updatedUser.developerProfile.profilePictureUrl ?? null,
+            profilePictureOriginalUrl:
+              updatedUser.developerProfile.profilePictureOriginalUrl ?? null,
+            profilePictureCropZoom:
+              updatedUser.developerProfile.profilePictureCropZoom ?? null,
+            profilePictureCropX:
+              updatedUser.developerProfile.profilePictureCropX ?? null,
+            profilePictureCropY:
+              updatedUser.developerProfile.profilePictureCropY ?? null,
             githubUsername:
               (
                 updatedUser.developerProfile as {

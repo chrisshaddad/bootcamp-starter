@@ -178,6 +178,10 @@ model DeveloperProfile {
   location    String?
 
   profilePictureUrl  String?
+  profilePictureOriginalUrl String?
+  profilePictureCropZoom    Float?
+  profilePictureCropX       Float?
+  profilePictureCropY       Float?
   linkedinUrl        String?
   personalWebsiteUrl String?
 

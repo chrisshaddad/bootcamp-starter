@@ -20,6 +20,10 @@ export const updateProfileRequestSchema = z.object({
   bio: z.string().nullable().optional(),
   location: z.string().nullable().optional(),
   profilePictureUrl: optionalUrlSchema,
+  profilePictureOriginalUrl: optionalUrlSchema,
+  profilePictureCropZoom: z.number().min(1).max(3).nullable().optional(),
+  profilePictureCropX: z.number().finite().nullable().optional(),
+  profilePictureCropY: z.number().finite().nullable().optional(),
   linkedinUrl: optionalUrlSchema,
   personalWebsiteUrl: optionalUrlSchema,
 

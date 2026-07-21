@@ -8,7 +8,7 @@ import {
   type ChangeEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
-import { ImagePlus, Loader2, ZoomIn, ZoomOut } from 'lucide-react';
+import { Crosshair, ImagePlus, Loader2, ZoomIn, ZoomOut } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   PROFILE_PICTURE_ALLOWED_MIME_TYPES,
@@ -36,13 +36,25 @@ interface Position {
   y: number;
 }
 
+export interface ProfilePictureCrop {
+  zoom: number;
+  x: number;
+  y: number;
+}
+
 interface ProfilePictureEditorDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   currentImageUrl?: string;
+  currentOriginalImageUrl?: string;
+  currentCrop?: ProfilePictureCrop;
   fallback: string;
   isSaving: boolean;
-  onSave: (file: File) => Promise<boolean>;
+  onSave: (
+    file: File,
+    originalFile: File,
+    crop: ProfilePictureCrop,
+  ) => Promise<boolean>;
 }
 
 function getCoverScale(image: HTMLImageElement) {
@@ -71,6 +83,8 @@ export function ProfilePictureEditorDialog({
   open,
   onOpenChange,
   currentImageUrl,
+  currentOriginalImageUrl,
+  currentCrop,
   fallback,
   isSaving,
   onSave,
@@ -79,6 +93,8 @@ export function ProfilePictureEditorDialog({
   const [sourceImage, setSourceImage] = useState<HTMLImageElement | null>(null);
   const [zoom, setZoom] = useState(MIN_ZOOM);
   const [position, setPosition] = useState<Position>({ x: 0, y: 0 });
+  const [showAlignmentGuide, setShowAlignmentGuide] = useState(true);
+  const [isLoadingCurrentImage, setIsLoadingCurrentImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const dragStartRef = useRef<{
@@ -92,6 +108,8 @@ export function ProfilePictureEditorDialog({
     setSourceImage(null);
     setZoom(MIN_ZOOM);
     setPosition({ x: 0, y: 0 });
+    setShowAlignmentGuide(true);
+    setIsLoadingCurrentImage(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, []);
 
@@ -132,7 +150,8 @@ export function ProfilePictureEditorDialog({
   }, [position, sourceImage, zoom]);
 
   const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen && !isSaving) resetEditor();
+    if (!nextOpen && (isSaving || isLoadingCurrentImage)) return;
+    if (!nextOpen) resetEditor();
     onOpenChange(nextOpen);
   };
 
@@ -160,12 +179,48 @@ export function ProfilePictureEditorDialog({
     setSourceFile(file);
     setZoom(MIN_ZOOM);
     setPosition({ x: 0, y: 0 });
+    setShowAlignmentGuide(true);
   };
 
   const openFilePicker = () => {
     if (!fileInputRef.current) return;
     fileInputRef.current.value = '';
     fileInputRef.current.click();
+  };
+
+  const editCurrentImage = async () => {
+    if (!currentOriginalImageUrl) return;
+
+    setIsLoadingCurrentImage(true);
+    try {
+      const response = await fetch(currentOriginalImageUrl, {
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error('Unable to load current image');
+
+      const blob = await response.blob();
+      if (
+        !(PROFILE_PICTURE_ALLOWED_MIME_TYPES as readonly string[]).includes(
+          blob.type,
+        )
+      ) {
+        throw new Error('Unsupported current image type');
+      }
+
+      const filename =
+        new URL(currentOriginalImageUrl, window.location.href).pathname
+          .split('/')
+          .pop() || 'profile-photo.jpg';
+      setSourceFile(new File([blob], filename, { type: blob.type }));
+      setSourceImage(null);
+      setZoom(currentCrop?.zoom ?? MIN_ZOOM);
+      setPosition({ x: currentCrop?.x ?? 0, y: currentCrop?.y ?? 0 });
+      setShowAlignmentGuide(true);
+    } catch {
+      toast.error('Unable to load the current photo for editing');
+    } finally {
+      setIsLoadingCurrentImage(false);
+    }
   };
 
   const updateZoom = (nextZoom: number) => {
@@ -252,8 +307,12 @@ export function ProfilePictureEditorDialog({
   const handleSave = async () => {
     try {
       const croppedFile = await createCroppedFile();
-      if (!croppedFile) return;
-      const didSave = await onSave(croppedFile);
+      if (!croppedFile || !sourceFile) return;
+      const didSave = await onSave(croppedFile, sourceFile, {
+        zoom,
+        x: position.x,
+        y: position.y,
+      });
       if (!didSave) return;
       resetEditor();
       onOpenChange(false);
@@ -262,13 +321,15 @@ export function ProfilePictureEditorDialog({
     }
   };
 
+  const isBusy = isSaving || isLoadingCurrentImage;
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         className="sm:max-w-md"
-        showCloseButton={!isSaving}
-        onPointerDownOutside={(event) => isSaving && event.preventDefault()}
-        onEscapeKeyDown={(event) => isSaving && event.preventDefault()}
+        showCloseButton={!isBusy}
+        onPointerDownOutside={(event) => isBusy && event.preventDefault()}
+        onEscapeKeyDown={(event) => isBusy && event.preventDefault()}
       >
         <DialogHeader>
           <DialogTitle>Edit profile photo</DialogTitle>
@@ -283,18 +344,42 @@ export function ProfilePictureEditorDialog({
               <Loader2 className="size-8 animate-spin text-muted-foreground" />
             </div>
           ) : sourceImage ? (
-            <canvas
-              ref={canvasRef}
-              width={PREVIEW_SIZE}
-              height={PREVIEW_SIZE}
-              role="img"
-              aria-label="Profile photo crop preview"
-              className="aspect-square w-full max-w-80 touch-none cursor-grab rounded-full bg-muted shadow-inner ring-2 ring-border active:cursor-grabbing"
-              onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerUp={stopDragging}
-              onPointerCancel={stopDragging}
-            />
+            <div className="flex w-full flex-col items-end gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-pressed={showAlignmentGuide}
+                onClick={() => setShowAlignmentGuide((current) => !current)}
+                disabled={isBusy}
+              >
+                <Crosshair />
+                {showAlignmentGuide ? 'Hide guide' : 'Show guide'}
+              </Button>
+              <div className="relative mx-auto aspect-square w-full max-w-80">
+                <canvas
+                  ref={canvasRef}
+                  width={PREVIEW_SIZE}
+                  height={PREVIEW_SIZE}
+                  role="img"
+                  aria-label="Profile photo crop preview"
+                  className="aspect-square w-full touch-none cursor-grab rounded-full bg-muted shadow-inner ring-2 ring-border active:cursor-grabbing"
+                  onPointerDown={handlePointerDown}
+                  onPointerMove={handlePointerMove}
+                  onPointerUp={stopDragging}
+                  onPointerCancel={stopDragging}
+                />
+                {showAlignmentGuide && (
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0 overflow-hidden rounded-full"
+                  >
+                    <span className="absolute top-1/2 left-0 h-px w-full -translate-y-1/2 bg-white/70 shadow-[0_0_3px_rgba(0,0,0,0.8)]" />
+                    <span className="absolute top-0 left-1/2 h-full w-px -translate-x-1/2 bg-white/70 shadow-[0_0_3px_rgba(0,0,0,0.8)]" />
+                  </div>
+                )}
+              </div>
+            </div>
           ) : (
             <Avatar className="size-64 ring-2 ring-border sm:size-80">
               <AvatarImage src={currentImageUrl} />
@@ -328,15 +413,32 @@ export function ProfilePictureEditorDialog({
             onChange={handleFileChange}
             className="hidden"
           />
-          <Button
-            type="button"
-            variant="outline"
-            onClick={openFilePicker}
-            disabled={isSaving}
-          >
-            <ImagePlus />
-            {sourceFile ? 'Choose another photo' : 'Upload photo'}
-          </Button>
+          <div className="flex flex-wrap justify-center gap-2">
+            {!sourceFile && currentOriginalImageUrl && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={editCurrentImage}
+                disabled={isBusy}
+              >
+                {isLoadingCurrentImage ? (
+                  <Loader2 className="animate-spin" />
+                ) : (
+                  <Crosshair />
+                )}
+                Edit current photo
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={openFilePicker}
+              disabled={isBusy}
+            >
+              <ImagePlus />
+              {sourceFile ? 'Choose another photo' : 'Upload new photo'}
+            </Button>
+          </div>
         </div>
 
         <DialogFooter>
@@ -344,14 +446,14 @@ export function ProfilePictureEditorDialog({
             type="button"
             variant="outline"
             onClick={() => handleOpenChange(false)}
-            disabled={isSaving}
+            disabled={isBusy}
           >
             Cancel
           </Button>
           <Button
             type="button"
             onClick={handleSave}
-            disabled={!sourceImage || isSaving}
+            disabled={!sourceImage || isBusy}
           >
             {isSaving ? (
               <>
