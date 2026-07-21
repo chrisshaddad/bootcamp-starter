@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Building2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Building2, UserRoundCheck } from 'lucide-react';
 import type { TeacherOrganizationsResponse } from '@repo/contracts';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { fetcher } from '@/lib/api';
@@ -11,10 +12,15 @@ import { fetcher } from '@/lib/api';
 type TeacherOrganizationCard =
   TeacherOrganizationsResponse['organizations'][number];
 
+function formatNumber(value: number) {
+  return new Intl.NumberFormat('en-US').format(value);
+}
+
 export default function TeachersPage() {
   const [organizations, setOrganizations] = useState<TeacherOrganizationCard[]>(
     [],
   );
+
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,6 +37,7 @@ export default function TeachersPage() {
         setOrganizations(data.organizations);
       } catch (error) {
         console.error('Failed to load teacher organizations:', error);
+
         setError(
           error instanceof Error
             ? error.message
@@ -41,76 +48,88 @@ export default function TeachersPage() {
       }
     }
 
-    loadOrganizations();
+    void loadOrganizations();
   }, []);
 
   return (
-    <div className="space-y-6">
-      <div>
+    <div className="space-y-5">
+      <header>
         <Link
           href="/dashboard"
-          className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900"
+          className="inline-flex items-center gap-2 text-xs font-semibold text-[#59657c] transition-colors hover:text-[#0000FF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0000FF] focus-visible:ring-offset-2"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to Dashboard
         </Link>
 
-        <div className="mt-4">
-          <h1 className="text-2xl font-bold text-gray-900">
+        <div className="mt-5">
+          <h1 className="text-2xl font-bold tracking-tight text-[#17223b]">
             Teachers by Organization
           </h1>
-          <p className="mt-1 text-sm text-gray-500">
+
+          <p className="mt-1 text-sm text-[#7b8598]">
             Select an organization to view its teachers.
           </p>
         </div>
-      </div>
+      </header>
 
       {isLoading && (
-        <div className="grid gap-4 md:grid-cols-3">
-          <Skeleton className="h-48 rounded-xl" />
-          <Skeleton className="h-48 rounded-xl" />
-          <Skeleton className="h-48 rounded-xl" />
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <Skeleton className="h-[260px] rounded-lg" />
+          <Skeleton className="h-[260px] rounded-lg" />
+          <Skeleton className="h-[260px] rounded-lg" />
         </div>
       )}
 
       {!isLoading && error && (
-        <Card className="border-gray-200 bg-white shadow-sm">
-          <CardContent className="p-6">
-            <p className="text-sm text-red-600">{error}</p>
+        <Card className="gap-0 rounded-lg border-red-200 bg-red-50 py-0 shadow-none">
+          <CardContent className="p-5">
+            <p className="text-sm font-medium text-red-700">{error}</p>
           </CardContent>
         </Card>
       )}
 
       {!isLoading && !error && organizations.length === 0 && (
-        <Card className="border-gray-200 bg-white shadow-sm">
+        <Card className="gap-0 rounded-lg border-[#dfe3ed] bg-white py-0 shadow-sm">
           <CardContent className="p-6">
-            <p className="text-sm text-gray-500">
-              No organizations with teachers were found.
-            </p>
+            <div className="flex min-h-28 flex-col items-center justify-center text-center">
+              <div className="flex h-10 w-10 items-center justify-center rounded-md bg-[#eeeeff]">
+                <Building2 className="h-5 w-5 text-[#0000FF]" />
+              </div>
+
+              <p className="mt-3 text-sm font-semibold text-[#17223b]">
+                No organizations found
+              </p>
+
+              <p className="mt-1 text-xs text-[#7b8598]">
+                No organizations with teachers are currently available.
+              </p>
+            </div>
           </CardContent>
         </Card>
       )}
 
       {!isLoading && !error && organizations.length > 0 && (
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid items-stretch gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {organizations.map((organization) => (
             <Link
               key={organization.id}
               href={`/teachers/${organization.id}`}
-              className="block rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900 focus-visible:ring-offset-2"
+              className="group block h-full rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0000FF] focus-visible:ring-offset-2"
             >
-              <Card className="h-full cursor-pointer border-gray-200 bg-white shadow-sm transition hover:border-gray-300 hover:shadow-md">
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-100">
-                      <Building2 className="h-5 w-5 text-gray-700" />
+              <Card className="h-full min-h-[260px] gap-0 overflow-hidden rounded-lg border-[#dfe3ed] bg-white py-0 shadow-sm transition-all duration-200 group-hover:-translate-y-0.5 group-hover:border-[#bfc4ff] group-hover:shadow-md">
+                <CardHeader className="flex-1 p-5">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[#eeeeff]">
+                      <Building2 className="h-5 w-5 text-[#0000FF]" />
                     </div>
 
-                    <div>
-                      <CardTitle className="text-lg font-semibold text-gray-900">
+                    <div className="min-w-0">
+                      <CardTitle className="text-base font-bold leading-5 text-[#17223b]">
                         {organization.name}
                       </CardTitle>
-                      <p className="mt-1 text-sm text-gray-500">
+
+                      <p className="mt-2 line-clamp-3 text-xs leading-5 text-[#7b8598]">
                         {organization.description ||
                           'No description available.'}
                       </p>
@@ -118,14 +137,25 @@ export default function TeachersPage() {
                   </div>
                 </CardHeader>
 
-                <CardContent>
-                  <div className="rounded-lg bg-gray-50 p-4">
-                    <p className="text-sm font-medium text-gray-500">
-                      Total Teachers
-                    </p>
-                    <p className="mt-1 text-2xl font-bold text-gray-900">
-                      {organization.teacherCount}
-                    </p>
+                <CardContent className="mt-auto border-t border-[#e7e9f0] bg-[#f8f9fd] p-4">
+                  <div className="flex items-center justify-between rounded-md border border-[#e3e6ee] bg-white px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[#eeeeff]">
+                        <UserRoundCheck className="h-4 w-4 text-[#0000FF]" />
+                      </div>
+
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#8b94a7]">
+                          Total teachers
+                        </p>
+
+                        <p className="mt-0.5 text-xl font-bold text-[#17223b]">
+                          {formatNumber(organization.teacherCount)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <ArrowRight className="h-4 w-4 text-[#59657c] transition-transform group-hover:translate-x-1 group-hover:text-[#0000FF]" />
                   </div>
                 </CardContent>
               </Card>

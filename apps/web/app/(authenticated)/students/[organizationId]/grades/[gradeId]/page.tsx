@@ -1,17 +1,17 @@
 'use client';
 
-import { FormEvent, use, useEffect, useState } from 'react';
+import { use, useEffect, useState } from 'react';
+import type { FormEvent } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
+import { ArrowLeft, GraduationCap, Pencil, Trash2 } from 'lucide-react';
 import type {
   StudentActionResponse,
   StudentsByGradeResponse,
   UpdateStudentRequest,
   UpdateStudentResponse,
 } from '@repo/contracts';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { apiDelete, apiPatch, fetcher } from '@/lib/api';
 import {
   Dialog,
   DialogContent,
@@ -19,6 +19,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Skeleton } from '@/components/ui/skeleton';
+import { apiDelete, apiPatch, fetcher } from '@/lib/api';
+
 type StudentListItem = StudentsByGradeResponse['students'][number];
 
 interface GradeStudentsPageProps {
@@ -35,6 +38,29 @@ interface StudentFormState {
   dateOfBirth: string;
 }
 
+function formatStatus(status: string) {
+  return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+}
+
+function formatDate(value: string | null) {
+  if (!value) {
+    return '—';
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat('en-CA', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    timeZone: 'UTC',
+  }).format(date);
+}
+
 export default function GradeStudentsPage({ params }: GradeStudentsPageProps) {
   const { organizationId, gradeId } = use(params);
 
@@ -45,6 +71,7 @@ export default function GradeStudentsPage({ params }: GradeStudentsPageProps) {
   const [editingStudent, setEditingStudent] = useState<StudentListItem | null>(
     null,
   );
+
   const [form, setForm] = useState<StudentFormState>({
     name: '',
     email: '',
@@ -53,9 +80,11 @@ export default function GradeStudentsPage({ params }: GradeStudentsPageProps) {
   });
 
   const [isSaving, setIsSaving] = useState(false);
+
   const [confirmDeleteStudentId, setConfirmDeleteStudentId] = useState<
     string | null
   >(null);
+
   const [deletingStudentId, setDeletingStudentId] = useState<string | null>(
     null,
   );
@@ -73,6 +102,7 @@ export default function GradeStudentsPage({ params }: GradeStudentsPageProps) {
         setStudents(data.students);
       } catch (error) {
         console.error('Failed to load students:', error);
+
         setError(
           error instanceof Error ? error.message : 'Failed to load students.',
         );
@@ -81,11 +111,12 @@ export default function GradeStudentsPage({ params }: GradeStudentsPageProps) {
       }
     }
 
-    loadStudents();
+    void loadStudents();
   }, [organizationId, gradeId]);
 
   function openUpdateModal(student: StudentListItem) {
     setEditingStudent(student);
+
     setForm({
       name: student.name,
       email: student.email,
@@ -96,6 +127,7 @@ export default function GradeStudentsPage({ params }: GradeStudentsPageProps) {
 
   function closeUpdateModal() {
     setEditingStudent(null);
+
     setForm({
       name: '',
       email: '',
@@ -136,6 +168,7 @@ export default function GradeStudentsPage({ params }: GradeStudentsPageProps) {
       closeUpdateModal();
     } catch (error) {
       console.error('Failed to update student:', error);
+
       setError(
         error instanceof Error ? error.message : 'Failed to update student.',
       );
@@ -169,6 +202,7 @@ export default function GradeStudentsPage({ params }: GradeStudentsPageProps) {
       setConfirmDeleteStudentId(null);
     } catch (error) {
       console.error('Failed to delete student:', error);
+
       setError(
         error instanceof Error ? error.message : 'Failed to delete student.',
       );
@@ -178,131 +212,176 @@ export default function GradeStudentsPage({ params }: GradeStudentsPageProps) {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
+    <div className="space-y-5">
+      <header>
         <Link
           href={`/students/${organizationId}`}
-          className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900"
+          className="inline-flex items-center gap-2 text-xs font-semibold text-[#59657c] transition-colors hover:text-[#0000FF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0000FF] focus-visible:ring-offset-2"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to Grades
         </Link>
 
-        <div className="mt-4">
-          <h1 className="text-2xl font-bold text-gray-900">Students</h1>
-          <p className="mt-1 text-sm text-gray-500">
+        <div className="mt-5">
+          <h1 className="text-2xl font-bold tracking-tight text-[#17223b]">
+            Students
+          </h1>
+
+          <p className="mt-1 text-sm text-[#7b8598]">
             View, update, and delete students in this grade.
           </p>
         </div>
-      </div>
+      </header>
 
-      <Card className="border-gray-200 bg-white shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold text-gray-900">
-            Student List
-          </CardTitle>
-          <p className="mt-1 text-sm text-gray-500">
-            Students loaded from the backend API.
-          </p>
+      <Card className="gap-0 overflow-hidden rounded-lg border-[#dfe3ed] bg-white py-0 shadow-sm">
+        <CardHeader className="border-b border-[#e7e9f0] p-5">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[#eeeeff]">
+              <GraduationCap className="h-5 w-5 text-[#0000FF]" />
+            </div>
+
+            <div>
+              <CardTitle className="text-base font-bold text-[#17223b]">
+                Student List
+              </CardTitle>
+
+              <p className="mt-1 text-xs text-[#7b8598]">
+                Students loaded from the backend API.
+              </p>
+            </div>
+          </div>
         </CardHeader>
 
-        <CardContent>
+        <CardContent className="p-4">
           {isLoading && (
-            <div className="space-y-3">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
+            <div className="space-y-2">
+              <Skeleton className="h-11 w-full rounded-md" />
+              <Skeleton className="h-14 w-full rounded-md" />
+              <Skeleton className="h-14 w-full rounded-md" />
             </div>
           )}
 
           {!isLoading && error && (
-            <p className="mb-4 text-sm text-error">{error}</p>
+            <div
+              role="alert"
+              className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3"
+            >
+              <p className="text-xs font-medium text-red-700">{error}</p>
+            </div>
           )}
 
           {!isLoading && !error && students.length === 0 && (
-            <p className="text-sm text-gray-500">
-              No students were found for this grade.
-            </p>
+            <div className="flex min-h-32 flex-col items-center justify-center rounded-md border border-[#e3e6ee] bg-[#f8f9fd] px-5 text-center">
+              <div className="flex h-10 w-10 items-center justify-center rounded-md bg-[#eeeeff]">
+                <GraduationCap className="h-5 w-5 text-[#0000FF]" />
+              </div>
+
+              <p className="mt-3 text-sm font-semibold text-[#17223b]">
+                No students found
+              </p>
+
+              <p className="mt-1 text-xs text-[#7b8598]">
+                No students were found for this grade.
+              </p>
+            </div>
           )}
 
-          {!isLoading && students.length > 0 && (
-            <div className="overflow-hidden rounded-lg border border-gray-200">
+          {!isLoading && !error && students.length > 0 && (
+            <div className="overflow-hidden rounded-md border border-[#dfe3ed]">
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-gray-50 text-xs uppercase text-gray-500">
+                <table className="w-full min-w-[1100px] border-collapse text-left">
+                  <thead className="bg-[#f8f9fd]">
                     <tr>
-                      <th className="px-5 py-3">Student Code</th>
-                      <th className="px-5 py-3">Name</th>
-                      <th className="px-5 py-3">Email</th>
-                      <th className="px-5 py-3">Section</th>
-                      <th className="px-5 py-3">Date of Birth</th>
-                      <th className="px-5 py-3">Status</th>
-                      <th className="px-5 py-3">Update</th>
-                      <th className="px-5 py-3">Delete</th>
+                      {[
+                        'Student code',
+                        'Name',
+                        'Email',
+                        'Section',
+                        'Date of birth',
+                        'Status',
+                        'Actions',
+                      ].map((heading) => (
+                        <th
+                          key={heading}
+                          className="px-4 py-3 text-[10px] font-bold uppercase tracking-[0.08em] text-[#8b94a7]"
+                        >
+                          {heading}
+                        </th>
+                      ))}
                     </tr>
                   </thead>
 
-                  <tbody>
-                    {students.map((student) => (
-                      <tr
-                        key={student.id}
-                        className="border-t border-gray-100 hover:bg-gray-50"
-                      >
-                        <td className="px-5 py-4 font-medium text-gray-900">
-                          {student.studentCode}
-                        </td>
+                  <tbody className="divide-y divide-[#e7e9f0] bg-white">
+                    {students.map((student) => {
+                      const isDeleting = deletingStudentId === student.id;
 
-                        <td className="px-5 py-4 text-gray-600">
-                          {student.name}
-                        </td>
+                      const isConfirmingDelete =
+                        confirmDeleteStudentId === student.id;
 
-                        <td className="px-5 py-4 text-gray-600">
-                          {student.email}
-                        </td>
+                      return (
+                        <tr
+                          key={student.id}
+                          className="transition-colors hover:bg-[#fafaff]"
+                        >
+                          <td className="whitespace-nowrap px-4 py-4 text-xs font-semibold text-[#0000FF]">
+                            {student.studentCode}
+                          </td>
 
-                        <td className="px-5 py-4 text-gray-600">
-                          {student.sectionName || '-'}
-                        </td>
+                          <td className="whitespace-nowrap px-4 py-4 text-xs font-semibold text-[#17223b]">
+                            {student.name}
+                          </td>
 
-                        <td className="px-5 py-4 text-gray-600">
-                          {student.dateOfBirth || '-'}
-                        </td>
+                          <td className="px-4 py-4 text-xs text-[#68748a]">
+                            {student.email}
+                          </td>
 
-                        <td className="px-5 py-4">
-                          <span className="rounded-full bg-success/10 px-2.5 py-1 text-xs font-medium text-success">
-                            {student.status}
-                          </span>
-                        </td>
+                          <td className="whitespace-nowrap px-4 py-4 text-xs text-[#68748a]">
+                            {student.sectionName || '—'}
+                          </td>
 
-                        <td className="px-5 py-4">
-                          <button
-                            type="button"
-                            onClick={() => openUpdateModal(student)}
-                            disabled={deletingStudentId !== null}
-                            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                            Update
-                          </button>
-                        </td>
+                          <td className="whitespace-nowrap px-4 py-4 text-xs text-[#68748a]">
+                            {formatDate(student.dateOfBirth)}
+                          </td>
 
-                        <td className="px-5 py-4">
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteStudent(student.id)}
-                            disabled={deletingStudentId !== null}
-                            className="inline-flex items-center gap-2 rounded-lg border border-error/20 px-3 py-1.5 text-xs font-medium text-error hover:bg-error/10 disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                            {deletingStudentId === student.id
-                              ? 'Deleting...'
-                              : confirmDeleteStudentId === student.id
-                                ? 'Confirm delete'
-                                : 'Delete'}
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                          <td className="whitespace-nowrap px-4 py-4">
+                            <span className="inline-flex rounded-full bg-[#e8f8f0] px-2.5 py-1 text-[10px] font-bold text-[#0b9b57]">
+                              {formatStatus(student.status)}
+                            </span>
+                          </td>
+
+                          <td className="whitespace-nowrap px-4 py-4">
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => openUpdateModal(student)}
+                                disabled={deletingStudentId !== null}
+                                className="inline-flex h-8 items-center gap-2 rounded-md border border-[#dfe3ed] bg-white px-3 text-[11px] font-semibold text-[#354158] transition-colors hover:border-[#bfc4ff] hover:bg-[#f8f8ff] hover:text-[#0000FF] disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                                Update
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  void handleDeleteStudent(student.id)
+                                }
+                                disabled={deletingStudentId !== null}
+                                className="inline-flex h-8 items-center gap-2 rounded-md border border-red-200 bg-white px-3 text-[11px] font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+
+                                {isDeleting
+                                  ? 'Deleting...'
+                                  : isConfirmingDelete
+                                    ? 'Confirm delete'
+                                    : 'Delete'}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -323,11 +402,18 @@ export default function GradeStudentsPage({ params }: GradeStudentsPageProps) {
           }
         }}
       >
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md rounded-lg border-[#dfe3ed] bg-white">
           <DialogHeader>
-            <DialogTitle>Update Student</DialogTitle>
-            <DialogDescription>
-              Edit student information and save changes.
+            <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-md bg-[#eeeeff]">
+              <Pencil className="h-5 w-5 text-[#0000FF]" />
+            </div>
+
+            <DialogTitle className="text-lg font-bold text-[#17223b]">
+              Update Student
+            </DialogTitle>
+
+            <DialogDescription className="text-xs text-[#7b8598]">
+              Edit the student information and save your changes.
             </DialogDescription>
           </DialogHeader>
 
@@ -335,10 +421,11 @@ export default function GradeStudentsPage({ params }: GradeStudentsPageProps) {
             <div>
               <label
                 htmlFor="student-name"
-                className="text-sm font-medium text-gray-700"
+                className="text-xs font-semibold text-[#354158]"
               >
                 Name
               </label>
+
               <input
                 id="student-name"
                 value={form.name}
@@ -348,7 +435,7 @@ export default function GradeStudentsPage({ params }: GradeStudentsPageProps) {
                     name: event.target.value,
                   }))
                 }
-                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-900"
+                className="mt-1.5 h-10 w-full rounded-md border border-[#dfe3ed] bg-white px-3 text-sm text-[#17223b] outline-none transition focus:border-[#0000FF] focus:ring-2 focus:ring-[#0000FF]/10"
                 required
               />
             </div>
@@ -356,10 +443,11 @@ export default function GradeStudentsPage({ params }: GradeStudentsPageProps) {
             <div>
               <label
                 htmlFor="student-email"
-                className="text-sm font-medium text-gray-700"
+                className="text-xs font-semibold text-[#354158]"
               >
                 Email
               </label>
+
               <input
                 id="student-email"
                 type="email"
@@ -370,7 +458,7 @@ export default function GradeStudentsPage({ params }: GradeStudentsPageProps) {
                     email: event.target.value,
                   }))
                 }
-                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-900"
+                className="mt-1.5 h-10 w-full rounded-md border border-[#dfe3ed] bg-white px-3 text-sm text-[#17223b] outline-none transition focus:border-[#0000FF] focus:ring-2 focus:ring-[#0000FF]/10"
                 required
               />
             </div>
@@ -378,10 +466,11 @@ export default function GradeStudentsPage({ params }: GradeStudentsPageProps) {
             <div>
               <label
                 htmlFor="student-code"
-                className="text-sm font-medium text-gray-700"
+                className="text-xs font-semibold text-[#354158]"
               >
                 Student Code
               </label>
+
               <input
                 id="student-code"
                 value={form.studentCode}
@@ -391,7 +480,7 @@ export default function GradeStudentsPage({ params }: GradeStudentsPageProps) {
                     studentCode: event.target.value,
                   }))
                 }
-                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-900"
+                className="mt-1.5 h-10 w-full rounded-md border border-[#dfe3ed] bg-white px-3 text-sm text-[#17223b] outline-none transition focus:border-[#0000FF] focus:ring-2 focus:ring-[#0000FF]/10"
                 required
               />
             </div>
@@ -399,10 +488,11 @@ export default function GradeStudentsPage({ params }: GradeStudentsPageProps) {
             <div>
               <label
                 htmlFor="student-date-of-birth"
-                className="text-sm font-medium text-gray-700"
+                className="text-xs font-semibold text-[#354158]"
               >
                 Date of Birth
               </label>
+
               <input
                 id="student-date-of-birth"
                 type="date"
@@ -413,16 +503,16 @@ export default function GradeStudentsPage({ params }: GradeStudentsPageProps) {
                     dateOfBirth: event.target.value,
                   }))
                 }
-                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-900"
+                className="mt-1.5 h-10 w-full rounded-md border border-[#dfe3ed] bg-white px-3 text-sm text-[#17223b] outline-none transition focus:border-[#0000FF] focus:ring-2 focus:ring-[#0000FF]/10"
               />
             </div>
 
-            <div className="flex justify-end gap-3 pt-2">
+            <div className="flex justify-end gap-2 border-t border-[#e7e9f0] pt-4">
               <button
                 type="button"
                 onClick={closeUpdateModal}
                 disabled={isSaving}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                className="h-9 rounded-md border border-[#dfe3ed] bg-white px-4 text-xs font-semibold text-[#59657c] transition-colors hover:bg-[#f8f9fd] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -430,7 +520,7 @@ export default function GradeStudentsPage({ params }: GradeStudentsPageProps) {
               <button
                 type="submit"
                 disabled={isSaving}
-                className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+                className="h-9 rounded-md bg-[#0000FF] px-4 text-xs font-semibold text-white transition-colors hover:bg-[#0000cc] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isSaving ? 'Saving...' : 'Save changes'}
               </button>

@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import type {
   StudentActionResponse,
   StudentOrganizationGradesResponse,
@@ -7,7 +12,17 @@ import type {
   UpdateStudentRequest,
   UpdateStudentResponse,
 } from '@repo/contracts';
+
 import { PrismaService } from '../database/prisma.service';
+
+function isUniqueConstraintError(error: unknown): error is { code: 'P2002' } {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    error.code === 'P2002'
+  );
+}
 
 @Injectable()
 export class StudentsService {
@@ -47,6 +62,8 @@ export class StudentsService {
     const studentCountByOrganizationId = new Map(
       studentCounts.map((count) => [count.organizationId, count._count._all]),
     );
+
+    this.logger.log('Fetched student organization dashboard cards.');
 
     return {
       organizations: organizations.map((organization) => ({
@@ -132,6 +149,10 @@ export class StudentsService {
       }
     }
 
+    this.logger.log(
+      `Fetched student grades for organization ${organizationId}.`,
+    );
+
     return {
       organizationId,
       grades: Array.from(gradeMap.values()).map((grade) => ({
@@ -207,6 +228,10 @@ export class StudentsService {
       },
     });
 
+    this.logger.log(
+      `Fetched ${studentProfiles.length} students for organization ${organizationId} and grade ${gradeId}.`,
+    );
+
     return {
       organizationId,
       gradeId,
@@ -241,57 +266,73 @@ export class StudentsService {
         userId: true,
       },
     });
+
     if (!studentProfile) {
       throw new NotFoundException('Student not found');
     }
 
-    await this.prisma.$transaction(async (tx) => {
-      const userData: {
-        name?: string;
-        email?: string;
-      } = {};
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        const userData: {
+          name?: string;
+          email?: string;
+        } = {};
 
-      if (payload.name !== undefined) {
-        userData.name = payload.name;
+        if (payload.name !== undefined) {
+          userData.name = payload.name;
+        }
+
+        if (payload.email !== undefined) {
+          userData.email = payload.email;
+        }
+
+        if (Object.keys(userData).length > 0) {
+          await tx.user.update({
+            where: {
+              id: studentProfile.userId,
+            },
+            data: userData,
+          });
+        }
+
+        const studentProfileData: {
+          studentCode?: string;
+          dateOfBirth?: Date | null;
+        } = {};
+
+        if (payload.studentCode !== undefined) {
+          studentProfileData.studentCode = payload.studentCode;
+        }
+
+        if (payload.dateOfBirth !== undefined) {
+          studentProfileData.dateOfBirth = payload.dateOfBirth
+            ? new Date(payload.dateOfBirth)
+            : null;
+        }
+
+        if (Object.keys(studentProfileData).length > 0) {
+          await tx.studentProfile.update({
+            where: {
+              id: studentProfileId,
+            },
+            data: studentProfileData,
+          });
+        }
+      });
+    } catch (error) {
+      if (isUniqueConstraintError(error)) {
+        this.logger.warn(
+          `Unique-field conflict while updating student ${studentProfileId}.`,
+        );
+
+        throw new ConflictException(
+          'A user with this email or student code already exists.',
+        );
       }
 
-      if (payload.email !== undefined) {
-        userData.email = payload.email;
-      }
+      throw error;
+    }
 
-      if (Object.keys(userData).length > 0) {
-        await tx.user.update({
-          where: {
-            id: studentProfile.userId,
-          },
-          data: userData,
-        });
-      }
-
-      const studentProfileData: {
-        studentCode?: string;
-        dateOfBirth?: Date | null;
-      } = {};
-
-      if (payload.studentCode !== undefined) {
-        studentProfileData.studentCode = payload.studentCode;
-      }
-
-      if (payload.dateOfBirth !== undefined) {
-        studentProfileData.dateOfBirth = payload.dateOfBirth
-          ? new Date(payload.dateOfBirth)
-          : null;
-      }
-
-      if (Object.keys(studentProfileData).length > 0) {
-        await tx.studentProfile.update({
-          where: {
-            id: studentProfileId,
-          },
-          data: studentProfileData,
-        });
-      }
-    });
     const updatedStudentProfile = await this.prisma.studentProfile.findUnique({
       where: {
         id: studentProfileId,

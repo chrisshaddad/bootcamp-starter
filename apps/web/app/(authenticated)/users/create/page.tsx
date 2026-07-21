@@ -388,10 +388,15 @@ export default function CreateUserPage() {
         )}
 
         <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">
+          <label
+            htmlFor="user-full-name"
+            className="mb-2 block text-sm font-medium text-gray-700"
+          >
             Full Name
           </label>
+
           <input
+            id="user-full-name"
             type="text"
             {...register('name')}
             placeholder="Enter full name"
@@ -403,10 +408,15 @@ export default function CreateUserPage() {
         </div>
 
         <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">
+          <label
+            htmlFor="user-email"
+            className="mb-2 block text-sm font-medium text-gray-700"
+          >
             Email
           </label>
+
           <input
+            id="user-email"
             type="email"
             {...register('email')}
             placeholder="Enter email address"
@@ -418,10 +428,15 @@ export default function CreateUserPage() {
         </div>
 
         <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">
+          <label
+            htmlFor="user-organization"
+            className="mb-2 block text-sm font-medium text-gray-700"
+          >
             Organization ID
           </label>
+
           <input
+            id="user-organization"
             type="text"
             {...register('organizationId')}
             placeholder="Enter organization ID"
@@ -435,10 +450,15 @@ export default function CreateUserPage() {
         </div>
 
         <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">
+          <label
+            htmlFor="user-role"
+            className="mb-2 block text-sm font-medium text-gray-700"
+          >
             Role
           </label>
+
           <select
+            id="user-role"
             {...roleField}
             onChange={(event) => {
               roleField.onChange(event);
@@ -468,10 +488,15 @@ export default function CreateUserPage() {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="user-date-of-birth"
+                className="mb-2 block text-sm font-medium text-gray-700"
+              >
                 Date of Birth
               </label>
+
               <input
+                id="user-date-of-birth"
                 type="date"
                 {...register('dateOfBirth')}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-200"
@@ -484,10 +509,15 @@ export default function CreateUserPage() {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="user-class"
+                className="mb-2 block text-sm font-medium text-gray-700"
+              >
                 Class / Grade
               </label>
+
               <input
+                id="user-class"
                 type="text"
                 {...register('className')}
                 placeholder="Example: Grade 9"
@@ -501,10 +531,15 @@ export default function CreateUserPage() {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="user-section"
+                className="mb-2 block text-sm font-medium text-gray-700"
+              >
                 Section
               </label>
+
               <input
+                id="user-section"
                 type="text"
                 {...register('sectionName')}
                 placeholder="Example: A"

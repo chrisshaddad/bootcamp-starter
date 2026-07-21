@@ -1,6 +1,9 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
+@source "../components/**/*.{js,ts,jsx,tsx}";
+@source "../hooks/**/*.{js,ts,jsx,tsx}";
+
 @custom-variant dark (&:is(.dark *));
 
 html,
@@ -26,6 +29,7 @@ a {
   .imgLight {
     display: none;
   }
+
   .imgDark {
     display: unset;
   }
@@ -77,14 +81,19 @@ a {
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  /* Primary Colors (Green) */
-  --color-primary-base: #27a376;
-  --color-primary-400: #55c790;
-  --color-primary-300: #86d7b0;
-  --color-primary-200: #ceefdf;
-  --color-primary-100: #e7f7ef;
+  /* Main Dashboard Blue */
+  --color-dashboard-blue: #0000ff;
+  --color-dashboard-blue-dark: #0000cc;
+  --color-dashboard-blue-light: #eeeeff;
 
-  /* Secondary Colors (Yellow) */
+  /* Primary Colors */
+  --color-primary-base: #0000ff;
+  --color-primary-400: #3333ff;
+  --color-primary-300: #6666ff;
+  --color-primary-200: #ccccff;
+  --color-primary-100: #eeeeff;
+
+  /* Secondary Colors */
   --color-secondary-base: #ffd023;
   --color-secondary-400: #ffde65;
   --color-secondary-300: #ffeca7;
@@ -121,20 +130,20 @@ a {
   /* Additional Colors */
   --color-white: #ffffff;
   --color-orange: #fe964a;
-  --color-blue: #2f78ee;
+  --color-blue: #0000ff;
   --color-purple: #8c62ff;
 
-  /* Typography - Font Sizes */
-  --font-size-xs: 0.625rem; /* 10px */
-  --font-size-sm: 0.75rem; /* 12px */
-  --font-size-base: 0.875rem; /* 14px */
-  --font-size-lg: 1rem; /* 16px */
-  --font-size-xl: 1.125rem; /* 18px */
-  --font-size-2xl: 1.25rem; /* 20px */
-  --font-size-3xl: 1.5rem; /* 24px */
-  --font-size-4xl: 2rem; /* 32px */
-  --font-size-5xl: 2.5rem; /* 40px */
-  --font-size-6xl: 3rem; /* 48px */
+  /* Typography */
+  --font-size-xs: 0.625rem;
+  --font-size-sm: 0.75rem;
+  --font-size-base: 0.875rem;
+  --font-size-lg: 1rem;
+  --font-size-xl: 1.125rem;
+  --font-size-2xl: 1.25rem;
+  --font-size-3xl: 1.5rem;
+  --font-size-4xl: 2rem;
+  --font-size-5xl: 2.5rem;
+  --font-size-6xl: 3rem;
 
   /* Line Heights */
   --line-height-tight: 1.2;
@@ -147,38 +156,44 @@ a {
 :root {
   --radius: 0.625rem;
 
-  /* Light Theme - Updated with Humanline Design System */
   --background: #ffffff;
   --foreground: #111827;
   --card: #ffffff;
   --card-foreground: #111827;
   --popover: #ffffff;
   --popover-foreground: #111827;
-  --primary: #27a376;
+
+  --primary: #0000ff;
   --primary-foreground: #ffffff;
+
   --secondary: #ffd023;
   --secondary-foreground: #111827;
+
   --muted: #f1f2f4;
   --muted-foreground: #687588;
-  --accent: #e7f7ef;
-  --accent-foreground: #27a376;
+
+  --accent: #eeeeff;
+  --accent-foreground: #0000ff;
+
   --destructive: #e03137;
   --border: #e9eaec;
   --input: #e9eaec;
-  --ring: #27a376;
-  --chart-1: #27a376;
+  --ring: #0000ff;
+
+  --chart-1: #0000ff;
   --chart-2: #ffd023;
   --chart-3: #2f78ee;
   --chart-4: #8c62ff;
   --chart-5: #fe964a;
-  --sidebar: #fafafa;
+
+  --sidebar: #ffffff;
   --sidebar-foreground: #111827;
-  --sidebar-primary: #27a376;
+  --sidebar-primary: #0000ff;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #e7f7ef;
-  --sidebar-accent-foreground: #27a376;
+  --sidebar-accent: #eeeeff;
+  --sidebar-accent-foreground: #0000ff;
   --sidebar-border: #e9eaec;
-  --sidebar-ring: #27a376;
+  --sidebar-ring: #0000ff;
 }
 
 .dark {
@@ -188,156 +203,36 @@ a {
   --card-foreground: #fafafa;
   --popover: #1f2937;
   --popover-foreground: #fafafa;
-  --primary: #27a376;
+
+  --primary: #3333ff;
   --primary-foreground: #ffffff;
+
   --secondary: #ffd023;
   --secondary-foreground: #111827;
+
   --muted: #323b49;
   --muted-foreground: #a0aec0;
-  --accent: #0ba259;
+
+  --accent: #22225f;
   --accent-foreground: #ffffff;
+
   --destructive: #e03137;
   --border: #323b49;
   --input: #323b49;
-  --ring: #27a376;
-  --chart-1: #55c790;
+  --ring: #6666ff;
+
+  --chart-1: #6666ff;
   --chart-2: #ffde65;
   --chart-3: #2f78ee;
   --chart-4: #8c62ff;
   --chart-5: #fe964a;
+
   --sidebar: #1f2937;
   --sidebar-foreground: #fafafa;
-  --sidebar-primary: #27a376;
+  --sidebar-primary: #3333ff;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #323b49;
-  --sidebar-accent-foreground: #55c790;
+  --sidebar-accent-foreground: #6666ff;
   --sidebar-border: #323b49;
-  --sidebar-ring: #27a376;
-}
-
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-
-  /* Heading Styles - Manrope Bold */
-  h1 {
-    @apply text-6xl font-bold leading-tight tracking-tight;
-    letter-spacing: -0.5px;
-  }
-  h2 {
-    @apply text-5xl font-bold leading-tight;
-  }
-  h3 {
-    @apply text-4xl font-bold;
-    line-height: 1.25;
-  }
-  h4 {
-    @apply text-3xl font-bold;
-    line-height: 1.3;
-  }
-  h5 {
-    @apply text-2xl font-bold leading-normal;
-  }
-  h6 {
-    @apply text-xl font-bold leading-normal;
-  }
-}
-
-/* Utility Classes for Typography */
-@layer utilities {
-  /* Body XLarge */
-  .text-body-xl {
-    @apply text-xl leading-relaxed;
-  }
-  .text-body-xl-bold {
-    @apply text-xl font-bold leading-relaxed;
-  }
-  .text-body-xl-semibold {
-    @apply text-xl font-semibold leading-relaxed;
-  }
-  .text-body-xl-medium {
-    @apply text-xl font-medium leading-relaxed;
-  }
-  .text-body-xl-regular {
-    @apply text-xl font-normal leading-relaxed;
-  }
-
-  /* Body Large */
-  .text-body-lg {
-    @apply text-lg leading-relaxed tracking-wide;
-  }
-  .text-body-lg-bold {
-    @apply text-lg font-bold leading-relaxed;
-    letter-spacing: 0.3px;
-  }
-  .text-body-lg-semibold {
-    @apply text-lg font-semibold leading-relaxed;
-    letter-spacing: 0.3px;
-  }
-  .text-body-lg-medium {
-    @apply text-lg font-medium leading-relaxed;
-    letter-spacing: 0.2px;
-  }
-  .text-body-lg-regular {
-    @apply text-lg font-normal leading-relaxed;
-    letter-spacing: 0.2px;
-  }
-
-  /* Body Medium */
-  .text-body-md {
-    @apply text-base leading-loose;
-  }
-  .text-body-md-bold {
-    @apply text-base font-bold leading-loose;
-    letter-spacing: 0.2px;
-  }
-  .text-body-md-semibold {
-    @apply text-base font-semibold leading-loose;
-  }
-  .text-body-md-medium {
-    @apply text-base font-medium leading-loose;
-  }
-  .text-body-md-regular {
-    @apply text-base font-normal leading-loose;
-  }
-
-  /* Body Small */
-  .text-body-sm {
-    @apply text-sm leading-loose;
-  }
-  .text-body-sm-bold {
-    @apply text-sm font-bold leading-loose;
-    letter-spacing: 0.2px;
-  }
-  .text-body-sm-semibold {
-    @apply text-sm font-semibold leading-loose;
-  }
-  .text-body-sm-medium {
-    @apply text-sm font-medium leading-loose;
-  }
-  .text-body-sm-regular {
-    @apply text-sm font-normal leading-loose;
-  }
-
-  /* Body XSmall */
-  .text-body-xs {
-    @apply text-xs leading-loose;
-  }
-  .text-body-xs-bold {
-    @apply text-xs font-bold leading-loose;
-    letter-spacing: 0.2px;
-  }
-  .text-body-xs-semibold {
-    @apply text-xs font-semibold leading-loose;
-  }
-  .text-body-xs-medium {
-    @apply text-xs font-medium leading-loose;
-  }
-  .text-body-xs-regular {
-    @apply text-xs font-normal leading-loose;
-  }
+  --sidebar-ring: #6666ff;
 }

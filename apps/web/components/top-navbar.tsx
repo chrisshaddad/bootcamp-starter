@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Search, Settings, LogOut, ChevronDown, PanelLeft } from 'lucide-react';
+import { ChevronDown, LogOut, Menu, Search, Settings } from 'lucide-react';
+
 import { useAuth, useUser } from '@/hooks/use-auth';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,96 +18,138 @@ import {
 import { useSidebar } from '@/components/ui/sidebar';
 
 export function TopNavbar() {
-  const { user } = useUser({ redirectOnUnauthenticated: false });
+  const { user } = useUser({
+    redirectOnUnauthenticated: false,
+  });
+
   const { logout } = useAuth();
   const { toggleSidebar } = useSidebar();
+
   const [searchQuery, setSearchQuery] = useState('');
+  const [hasMounted, setHasMounted] = useState(false);
 
-  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
-  const getInitials = (name?: string | null, email?: string) => {
-    if (name) {
-      const parts = name.split(' ').filter(Boolean);
-      if (parts.length >= 2 && parts[0] && parts[1]) {
-        return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase();
-      }
-      return name.charAt(0).toUpperCase();
+  const isSuperAdmin = hasMounted && user?.role === 'SUPER_ADMIN';
+
+  const getInitials = () => {
+    if (!hasMounted) {
+      return 'U';
     }
-    return email?.charAt(0).toUpperCase() || 'U';
+
+    const name =
+      user?.profile?.firstName || user?.name || user?.email?.split('@')[0];
+
+    if (!name) {
+      return 'U';
+    }
+
+    const nameParts = name.trim().split(/\s+/).filter(Boolean);
+
+    if (nameParts.length >= 2) {
+      return `${nameParts[0]?.charAt(0) ?? ''}${
+        nameParts[1]?.charAt(0) ?? ''
+      }`.toUpperCase();
+    }
+
+    return name.charAt(0).toUpperCase();
   };
 
   const getDisplayName = () => {
-    if (user?.name) return user.name;
-    if (user?.email) return user.email.split('@')[0];
-    return 'User';
+    if (!hasMounted) {
+      return 'User';
+    }
+
+    if (isSuperAdmin) {
+      return 'Super Admin';
+    }
+
+    return (
+      user?.profile?.firstName ||
+      user?.name ||
+      user?.email?.split('@')[0] ||
+      'User'
+    );
   };
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-gray-200 bg-white px-6">
-      {/* Left Section - Sidebar Toggle & Search */}
-      <div className="flex items-center gap-4">
+    <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between border-b border-[#e2e5ed] bg-white px-4 sm:px-5">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
         <button
           type="button"
-          onClick={() => toggleSidebar()}
+          onClick={toggleSidebar}
           aria-label="Toggle sidebar"
           title="Toggle sidebar"
-          className="-ml-1 flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-base"
+          className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-[#657087] transition-colors hover:bg-[#f3f4f8] hover:text-[#0000FF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0000FF]"
         >
-          <PanelLeft className="h-5 w-5" />
+          <Menu className="h-4 w-4" />
         </button>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+
+        <div className="relative hidden w-full max-w-[280px] sm:block">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#9aa2b2]" />
+
           <Input
             type="search"
-            placeholder={isSuperAdmin ? 'Search organizations...' : 'Search...'}
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-10 w-64 rounded-lg border-gray-200 bg-gray-50 pl-10 text-sm placeholder:text-gray-400 focus-visible:border-primary-base focus-visible:ring-primary-base/20"
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder={isSuperAdmin ? 'Search organizations...' : 'Search...'}
+            aria-label={isSuperAdmin ? 'Search organizations' : 'Search'}
+            className="h-8 w-full rounded-md border-0 bg-transparent pl-9 pr-3 text-[12px] text-[#26334d] shadow-none placeholder:text-[#a3aaba] focus-visible:border-transparent focus-visible:ring-0"
           />
         </div>
       </div>
 
-      {/* Right Section - User */}
-      <div className="flex items-center gap-3">
-        {/* User Dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              className="flex h-10 items-center gap-2 rounded-lg px-2 hover:bg-gray-100"
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            className="flex h-9 items-center gap-2 rounded-md px-2 text-[#536078] hover:bg-[#f5f6fa] hover:text-[#26334d]"
+          >
+            <Avatar className="h-7 w-7">
+              <AvatarFallback className="bg-[#0000FF] text-[10px] font-bold text-white">
+                {getInitials()}
+              </AvatarFallback>
+            </Avatar>
+
+            <span className="hidden text-[11px] font-medium sm:inline">
+              {getDisplayName()}
+            </span>
+
+            <ChevronDown className="h-3.5 w-3.5 text-[#8790a2]" />
+          </Button>
+        </DropdownMenuTrigger>
+
+        <DropdownMenuContent
+          align="end"
+          sideOffset={6}
+          className="w-48 rounded-lg border-[#e0e3eb] bg-white p-1 shadow-lg"
+        >
+          <DropdownMenuItem asChild>
+            <Link
+              href="/settings"
+              className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-[12px]"
             >
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={undefined} />
-                <AvatarFallback className="bg-primary-base text-sm font-medium text-white">
-                  {getInitials(user?.name, user?.email)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="hidden text-left md:block">
-                <p className="text-sm font-medium text-gray-900">
-                  {getDisplayName()}
-                </p>
-              </div>
-              <ChevronDown className="h-4 w-4 text-gray-500" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem asChild>
-              <Link href="/settings" className="flex items-center gap-2">
-                <Settings className="h-4 w-4" />
-                <span>Settings</span>
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => logout()}
-              className="flex items-center gap-2 text-red-600 focus:bg-red-50 focus:text-red-600"
-            >
-              <LogOut className="h-4 w-4" />
-              <span>Logout</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+              <Settings className="h-4 w-4" />
+
+              <span>Settings</span>
+            </Link>
+          </DropdownMenuItem>
+
+          <DropdownMenuSeparator />
+
+          <DropdownMenuItem
+            onClick={() => logout()}
+            className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-[12px] text-red-600 focus:bg-red-50 focus:text-red-600"
+          >
+            <LogOut className="h-4 w-4" />
+
+            <span>Logout</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </header>
   );
 }
