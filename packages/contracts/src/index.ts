@@ -621,6 +621,27 @@ export function formatWorkOrderNumber(n: number): string {
   return `WO-${String(n).padStart(6, '0')}`;
 }
 
+/**
+ * F6.2 — a vacant apartment surfaced in the renter-facing "Available units"
+ * showcase (GET /available-units), enriched with building/floor names for
+ * display. Read-only; prospective tenants express interest via a support ticket.
+ */
+export type AvailableUnit = {
+  id: string;
+  buildingId: string;
+  buildingName: string;
+  floorId: string;
+  floorName: string;
+  unitNumber: string;
+  bedrooms: number;
+  bathrooms: string; // Decimal serialized as string
+  sqft?: number | null;
+};
+
+export type AvailableUnitListResponse = {
+  data: AvailableUnit[];
+};
+
 /** GET /maintenance-requests/:id response — MaintenanceRequestResponse plus its full Work Order history. */
 export type MaintenanceRequestDetailResponse = MaintenanceRequestResponse & {
   workOrders: WorkOrderResponse[];

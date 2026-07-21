@@ -1,7 +1,8 @@
 'use client';
 
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Sun, Moon } from 'lucide-react';
+import { Sun, Moon, UserIcon } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { federatedLogout } from '@/auth/federated-logout';
 
@@ -55,6 +56,7 @@ const PAGE_TITLE_MAP: Record<string, string> = {
   timeline: 'timeline',
   support: 'support',
   notifications: 'notifications',
+  profile: 'profile',
 };
 
 function usePageTitle(dict: Dictionary): string {
@@ -133,6 +135,11 @@ function UserDropdown({
             {userName || '—'}
           </p>
         </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem render={<Link href={`/${locale}/dashboard/profile`} />}>
+          <UserIcon />
+          {dict.nav.profile}
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           variant="destructive"

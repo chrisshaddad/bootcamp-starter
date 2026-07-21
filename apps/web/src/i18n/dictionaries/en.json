@@ -25,7 +25,9 @@
     "language": "Language",
     "role": "Role",
     "menu": "Open menu",
-    "close": "Close"
+    "close": "Close",
+    "profile": "Profile",
+    "availableUnits": "Available Units"
   },
   "auth": {
     "signIn": "Sign in",
@@ -1394,5 +1396,36 @@
   "timeline": {
     "system": "System",
     "by": "by"
+  },
+  "profile": {
+    "title": "Profile",
+    "subtitle": "Your account details and organization.",
+    "name": "Full name",
+    "email": "Email",
+    "role": "Role",
+    "organization": "Organization",
+    "status": "Status",
+    "manageAccount": "Manage account",
+    "manageAccountHint": "Update your password, enable two-factor authentication, and manage your account security."
+  },
+  "availableUnits": {
+    "title": "Available Units",
+    "subtitle": "Browse vacant units and let us know if you're interested — our team will follow up.",
+    "empty": "No units are available right now. Check back soon.",
+    "loadError": "Failed to load available units. Please try again.",
+    "table": {
+      "building": "Building",
+      "unit": "Unit",
+      "floor": "Floor",
+      "bedrooms": "Bedrooms",
+      "bathrooms": "Bathrooms",
+      "sqft": "Sqft"
+    },
+    "expressInterest": "Express interest",
+    "submitting": "Submitting…",
+    "interestSubmitted": "Interest submitted — our team will reach out soon.",
+    "interestError": "Couldn't submit your interest. Please try again.",
+    "interestSubjectTemplate": "Interest in {building} · Unit {unit}",
+    "interestDescriptionTemplate": "I'm interested in Unit {unit} ({bedrooms} bd / {bathrooms} ba) at {building}, {floor}. Please reach out with more details."
   }
 }
