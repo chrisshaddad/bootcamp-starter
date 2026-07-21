@@ -115,7 +115,7 @@ export default function AdminOverviewPage() {
           <CardHeader>
             <CardTitle>Platform health</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-4 text-sm">
+          <CardContent className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
             {[
               ['Active accounts', overview.accounts.active],
               ['Suspended accounts', overview.accounts.suspended],

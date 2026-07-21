@@ -601,24 +601,26 @@ function DeveloperSettingsTabs({ user }: SettingsTabsProps) {
 
   return (
     <Tabs value={initialTab} onValueChange={handleTabChange}>
-      <TabsList>
-        <TabsTrigger value="security">
-          <Shield />
-          Security
-        </TabsTrigger>
-        <TabsTrigger value="notifications">
-          <Bell />
-          Notifications
-        </TabsTrigger>
-        <TabsTrigger value="connected">
-          <Link2 />
-          Connected Accounts
-        </TabsTrigger>
-        <TabsTrigger value="danger">
-          <AlertTriangle />
-          Danger Zone
-        </TabsTrigger>
-      </TabsList>
+      <div className="overflow-x-auto">
+        <TabsList>
+          <TabsTrigger value="security">
+            <Shield />
+            Security
+          </TabsTrigger>
+          <TabsTrigger value="notifications">
+            <Bell />
+            Notifications
+          </TabsTrigger>
+          <TabsTrigger value="connected">
+            <Link2 />
+            Connected Accounts
+          </TabsTrigger>
+          <TabsTrigger value="danger">
+            <AlertTriangle />
+            Danger Zone
+          </TabsTrigger>
+        </TabsList>
+      </div>
 
       <TabsContent value="security" className="mt-6">
         <SecurityTab email={user.email} />
@@ -644,20 +646,22 @@ function RecruiterSettingsTabs({ user }: SettingsTabsProps) {
 
   return (
     <Tabs value={initialTab} onValueChange={handleTabChange}>
-      <TabsList>
-        <TabsTrigger value="security">
-          <Shield />
-          Security
-        </TabsTrigger>
-        <TabsTrigger value="notifications">
-          <Bell />
-          Notifications
-        </TabsTrigger>
-        <TabsTrigger value="danger">
-          <AlertTriangle />
-          Danger Zone
-        </TabsTrigger>
-      </TabsList>
+      <div className="overflow-x-auto">
+        <TabsList>
+          <TabsTrigger value="security">
+            <Shield />
+            Security
+          </TabsTrigger>
+          <TabsTrigger value="notifications">
+            <Bell />
+            Notifications
+          </TabsTrigger>
+          <TabsTrigger value="danger">
+            <AlertTriangle />
+            Danger Zone
+          </TabsTrigger>
+        </TabsList>
+      </div>
 
       <TabsContent value="security" className="mt-6">
         <SecurityTab email={user.email} />

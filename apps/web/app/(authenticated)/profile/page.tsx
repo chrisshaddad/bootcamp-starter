@@ -27,7 +27,7 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-foreground text-2xl font-bold">Profile</h1>
           <p className="text-muted-foreground mt-1 text-sm">
@@ -35,7 +35,7 @@ export default function ProfilePage() {
           </p>
         </div>
         {user?.developerProfile?.publicSlug && (
-          <Button asChild variant="outline" size="sm">
+          <Button asChild variant="outline" size="sm" className="sm:shrink-0">
             <Link href={`/developers/${user.developerProfile.publicSlug}`}>
               View public profile
               <ExternalLink className="h-3.5 w-3.5" />

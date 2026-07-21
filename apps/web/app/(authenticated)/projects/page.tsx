@@ -42,14 +42,14 @@ export default function ProjectsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-foreground text-2xl font-bold">Projects</h1>
           <p className="text-muted-foreground mt-1 text-sm">
             Repos you&apos;ve linked and published to your public profile
           </p>
         </div>
-        <Button asChild>
+        <Button asChild className="sm:shrink-0">
           <Link href="/projects/new">
             <Plus className="h-4 w-4" />
             Add project
