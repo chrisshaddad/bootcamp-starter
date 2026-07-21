@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '@/infrastructure/prisma/prisma.service';
 import { TimelineService } from '@/modules/timeline/timeline.service';
+import { NotificationsService } from '@/modules/notifications/notifications.service';
 import { BuildingAccessService } from '@/common/building-access/building-access.service';
 import { LeaseStatusService } from '@/common/lease-status/lease-status.service';
 import { Role } from '@/common/enums';
@@ -22,6 +23,7 @@ export class LeasesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly timeline: TimelineService,
+    private readonly notifications: NotificationsService,
     private readonly buildingAccess: BuildingAccessService,
     private readonly leaseStatus: LeaseStatusService,
   ) {}
@@ -49,12 +51,13 @@ export class LeasesService {
   private async assertRenterInOrg(
     orgId: string,
     renterId: string,
-  ): Promise<void> {
+  ): Promise<{ id: string; renterUserId: string | null }> {
     const renter = await this.prisma.renter.findFirst({
       where: { id: renterId, orgId },
-      select: { id: true },
+      select: { id: true, renterUserId: true },
     });
     if (!renter) throw new NotFoundException('Renter not found.');
+    return renter;
   }
 
   /**
@@ -254,7 +257,7 @@ export class LeasesService {
     dto: CreateLeaseDto,
   ): Promise<{ data: LeaseResponse }> {
     await this.assertApartmentInScope(orgId, buildingId, floorId, apartmentId);
-    await this.assertRenterInOrg(orgId, dto.renterId);
+    const renter = await this.assertRenterInOrg(orgId, dto.renterId);
 
     const startDate = new Date(dto.startDate);
     const endDate = new Date(dto.endDate);
@@ -319,6 +322,19 @@ export class LeasesService {
       targetId: lease.id,
       metadata: { apartmentId, renterId: dto.renterId },
     });
+
+    // F5.1: notify the tenant — skip silently if the renter has no linked
+    // portal user.
+    if (renter.renterUserId) {
+      await this.notifications.enqueue({
+        orgId,
+        userId: renter.renterUserId,
+        type: 'lease.created',
+        title: 'New lease created',
+        body: 'A new lease has been created for you.',
+        data: { leaseId: lease.id, apartmentId },
+      });
+    }
 
     return { data: this.formatLease(lease) };
   }

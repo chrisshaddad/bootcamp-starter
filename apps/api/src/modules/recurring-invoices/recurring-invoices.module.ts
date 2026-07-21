@@ -5,9 +5,13 @@ import { RecurringInvoicesService } from './recurring-invoices.service';
 import { RecurringInvoicesProcessor } from './recurring-invoices.processor';
 import { RecurringInvoicesSchedulerService } from './recurring-invoices-scheduler.service';
 import { RECURRING_INVOICES_QUEUE } from './recurring-invoices.constants';
+import { NotificationsModule } from '@/modules/notifications/notifications.module';
 
 @Module({
-  imports: [BullModule.registerQueue({ name: RECURRING_INVOICES_QUEUE })],
+  imports: [
+    BullModule.registerQueue({ name: RECURRING_INVOICES_QUEUE }),
+    NotificationsModule,
+  ],
   controllers: [RecurringInvoicesController],
   providers: [
     RecurringInvoicesService,

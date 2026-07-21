@@ -184,6 +184,9 @@ export type TimelineEvent = {
   id: string;
   orgId: string;
   actorId?: string | null;
+  /** F5.2: the actor's resolved display name (Keycloak), or null for
+   * system-generated events / unresolvable actors. Rendered as the "who". */
+  actorName?: string | null;
   action: string;
   targetType?: string | null;
   targetId?: string | null;

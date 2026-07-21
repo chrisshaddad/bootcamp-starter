@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@repo/db';
 import { PrismaService } from '@/infrastructure/prisma/prisma.service';
 import { TimelineService } from '@/modules/timeline/timeline.service';
+import { NotificationsService } from '@/modules/notifications/notifications.service';
 import { LeaseStatusService } from '@/common/lease-status/lease-status.service';
 import { LeaseStatus, RecurringInvoiceRunResponse } from '@repo/contracts';
 
@@ -27,6 +28,8 @@ export type RecurringLeaseInput = {
   /** Raw DB status ('draft' | 'active' | 'terminated' — 'expired' is derived, never stored). */
   status: string;
   rentAmount: Prisma.Decimal | number;
+  /** Keycloak sub of the tenant to notify when an invoice is auto-generated (F5.1); null if the renter has no linked portal user. */
+  renterUserId: string | null;
 };
 
 /**
@@ -43,6 +46,7 @@ export class RecurringInvoicesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly timeline: TimelineService,
+    private readonly notifications: NotificationsService,
     private readonly leaseStatus: LeaseStatusService,
   ) {}
 
@@ -161,6 +165,19 @@ export class RecurringInvoicesService {
         metadata: { leaseId: lease.id, billingPeriod },
       });
 
+      // F5.1: notify the tenant — system-generated, no actor. Skip silently
+      // when the renter has no linked portal user.
+      if (lease.renterUserId) {
+        await this.notifications.enqueue({
+          orgId: lease.orgId,
+          userId: lease.renterUserId,
+          type: 'invoice.issued',
+          title: 'New invoice issued',
+          body: `Your rent invoice for ${billingPeriod} has been issued, due ${candidate.toISOString().slice(0, 10)}.`,
+          data: { invoiceId: invoice.id, leaseId: lease.id, billingPeriod },
+        });
+      }
+
       return 'created';
     } catch (err) {
       if (
@@ -181,7 +198,7 @@ export class RecurringInvoicesService {
     orgId: string,
     asOf: Date = new Date(),
   ): Promise<RecurringInvoiceRunResponse> {
-    const leases = await this.prisma.lease.findMany({
+    const rawLeases = await this.prisma.lease.findMany({
       where: { orgId, status: 'active' },
       select: {
         id: true,
@@ -191,8 +208,23 @@ export class RecurringInvoicesService {
         endDate: true,
         status: true,
         rentAmount: true,
+        renter: { select: { renterUserId: true } },
       },
     });
+
+    // Flatten Renter.renterUserId onto the lease — RecurringLeaseInput stays
+    // DB-shape-agnostic (see its doc comment) so generateForLease's unit
+    // tests can keep hand-building plain fixtures.
+    const leases: RecurringLeaseInput[] = rawLeases.map((l) => ({
+      id: l.id,
+      orgId: l.orgId,
+      buildingId: l.buildingId,
+      startDate: l.startDate,
+      endDate: l.endDate,
+      status: l.status,
+      rentAmount: l.rentAmount,
+      renterUserId: l.renter?.renterUserId ?? null,
+    }));
 
     let generated = 0;
     let skippedExisting = 0;

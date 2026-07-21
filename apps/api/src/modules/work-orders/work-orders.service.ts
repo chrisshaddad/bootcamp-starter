@@ -10,6 +10,7 @@ import { Prisma } from '@repo/db';
 import { PrismaService } from '@/infrastructure/prisma/prisma.service';
 import { BuildingAccessService } from '@/common/building-access/building-access.service';
 import { TimelineService } from '@/modules/timeline/timeline.service';
+import { NotificationsService } from '@/modules/notifications/notifications.service';
 import { LeaseStatusService } from '@/common/lease-status/lease-status.service';
 import { WorkOrderApartmentStatusService } from './work-order-apartment-status.service';
 import { Role } from '@/common/enums';
@@ -46,6 +47,7 @@ export class WorkOrdersService {
     private readonly prisma: PrismaService,
     private readonly buildingAccess: BuildingAccessService,
     private readonly timeline: TimelineService,
+    private readonly notifications: NotificationsService,
     private readonly leaseStatus: LeaseStatusService,
     private readonly workOrderApartmentStatus: WorkOrderApartmentStatusService,
   ) {}
@@ -312,6 +314,26 @@ export class WorkOrdersService {
       },
     });
 
+    // F5.1: notify the assignee — skip silently if there is none (vendor-
+    // assigned work orders have no in-app user to notify) or if the actor
+    // assigned it to themself.
+    if (workOrder.assignedUserId && workOrder.assignedUserId !== actorId) {
+      await this.notifications.enqueue({
+        orgId,
+        userId: workOrder.assignedUserId,
+        type: 'work_order.assigned',
+        title: 'You were assigned a work order',
+        body: `You've been assigned to work order ${formatWorkOrderNumber(workOrder.number)}: ${request.title}`,
+        data: {
+          workOrderId: workOrder.id,
+          maintenanceRequestId,
+          numberLabel: formatWorkOrderNumber(workOrder.number),
+        },
+      });
+    }
+    // TODO F5.1 follow-up: role-fanout notifications (e.g. maintenance-created
+    // -> supervisors) need a shared org-members-by-role helper — out of scope here.
+
     if (workOrder.status === 'completed') {
       await this.chargeTenantIfDue(
         orgId,
@@ -409,6 +431,17 @@ export class WorkOrdersService {
     const completingNow =
       dto.status === 'completed' && existing.status !== 'completed';
 
+    // F5.1: only notify when this update is a genuine reassignment TO a new
+    // user (not just re-affirming the existing assignee), and never notify
+    // the actor about assigning it to themself.
+    const newAssignee =
+      assigneeProvided &&
+      assignedUserId &&
+      assignedUserId !== existing.assignedUserId &&
+      assignedUserId !== actorId
+        ? assignedUserId
+        : null;
+
     const workOrder = await this.prisma.workOrder.update({
       where: { id: workOrderId },
       data: {
@@ -446,6 +479,21 @@ export class WorkOrdersService {
       targetId: workOrderId,
       metadata: { changes: Object.keys(dto) },
     });
+
+    if (newAssignee) {
+      await this.notifications.enqueue({
+        orgId,
+        userId: newAssignee,
+        type: 'work_order.assigned',
+        title: 'You were assigned a work order',
+        body: `You've been assigned to work order ${formatWorkOrderNumber(workOrder.number)}: ${existing.maintenanceRequest.title}`,
+        data: {
+          workOrderId: workOrder.id,
+          maintenanceRequestId,
+          numberLabel: formatWorkOrderNumber(workOrder.number),
+        },
+      });
+    }
 
     if (completingNow) {
       await this.chargeTenantIfDue(

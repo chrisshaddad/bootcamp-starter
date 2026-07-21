@@ -6,6 +6,7 @@ import { ar } from 'date-fns/locale';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { useListTimelineQuery } from '@/store/api/endpoints/timeline.api';
+import type { Dictionary } from '@/i18n/get-dictionary';
 
 function humanizeAction(action: string): string {
   return action
@@ -17,9 +18,15 @@ function humanizeAction(action: string): string {
 interface TimelineFeedProps {
   locale: string;
   limit?: number;
+  /**
+   * Optional: callers that already hold the page dict should pass it so the
+   * "by {actor}" / "System" strings are localized. Falls back to English
+   * literals when omitted so existing callers keep compiling untouched.
+   */
+  dict?: Dictionary;
 }
 
-export function TimelineFeed({ locale, limit = 10 }: TimelineFeedProps) {
+export function TimelineFeed({ locale, limit = 10, dict }: TimelineFeedProps) {
   const { data, isLoading } = useListTimelineQuery({ limit });
 
   if (isLoading) {
@@ -59,6 +66,13 @@ export function TimelineFeed({ locale, limit = 10 }: TimelineFeedProps) {
         const metaEmail = typeof meta?.email === 'string' ? meta.email : null;
         const metaRole = typeof meta?.role === 'string' ? meta.role : null;
 
+        // Who did this: resolved KC display name, else the legacy metadata
+        // email some events still carry, else a neutral "System" label for
+        // system-generated events (e.g. auto-generated invoices).
+        const actorName = event.actorName ?? metaEmail;
+        const actorLabel = actorName ?? dict?.timeline?.system ?? 'System';
+        const byLabel = dict?.timeline?.by ?? 'by';
+
         return (
           <div key={event.id} className="flex gap-3">
             {/* Timeline spine */}
@@ -82,14 +96,20 @@ export function TimelineFeed({ locale, limit = 10 }: TimelineFeedProps) {
                 )}
               </div>
 
-              {(metaEmail || metaRole) && (
+              <p className="text-xs text-muted-foreground">
+                {byLabel}{' '}
+                <span
+                  className={actorName ? 'font-medium text-foreground' : undefined}
+                >
+                  {actorLabel}
+                </span>
+              </p>
+
+              {metaRole && (
                 <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                  {metaEmail && <span>{metaEmail}</span>}
-                  {metaRole && (
-                    <span className="capitalize">
-                      {String(metaRole).toLowerCase()}
-                    </span>
-                  )}
+                  <span className="capitalize">
+                    {String(metaRole).toLowerCase()}
+                  </span>
                 </div>
               )}
 

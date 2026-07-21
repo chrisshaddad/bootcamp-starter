@@ -11,6 +11,7 @@ describe('RecurringInvoicesService', () => {
     overrides: {
       invoice?: Partial<Record<string, jest.Mock>>;
       lease?: Partial<Record<string, jest.Mock>>;
+      notifications?: Partial<Record<string, jest.Mock>>;
     } = {},
   ) {
     const prisma: any = {
@@ -29,13 +30,18 @@ describe('RecurringInvoicesService', () => {
       },
     };
     const timeline = { emit: jest.fn().mockResolvedValue(undefined) };
+    const notifications = {
+      enqueue: jest.fn().mockResolvedValue(undefined),
+      ...overrides.notifications,
+    };
     const leaseStatus = new LeaseStatusService();
     const service = new RecurringInvoicesService(
       prisma,
       timeline as any,
+      notifications as any,
       leaseStatus,
     );
-    return { service, prisma, timeline, leaseStatus };
+    return { service, prisma, timeline, notifications, leaseStatus };
   }
 
   const lease = (overrides: Partial<Record<string, unknown>> = {}) => ({
@@ -46,8 +52,18 @@ describe('RecurringInvoicesService', () => {
     endDate: new Date('2027-01-15T00:00:00.000Z'),
     status: 'active',
     rentAmount: new Prisma.Decimal('1000.00'),
+    renterUserId: null,
     ...overrides,
   });
+
+  // runForOrg/runAll query the DB with `renter: { select: { renterUserId } }`
+  // nested (RecurringLeaseInput itself stays flat for generateForLease's
+  // hand-built fixtures — see its doc comment). This wraps a flat `lease()`
+  // fixture into the raw Prisma-shaped row runForOrg's mapping expects.
+  const rawLeaseRow = (l: ReturnType<typeof lease>) => {
+    const { renterUserId, ...rest } = l;
+    return { ...rest, renter: { renterUserId: renterUserId ?? null } };
+  };
 
   describe('generateForLease', () => {
     it('creates an invoice when the next due date is within the 7-day lead window', async () => {
@@ -217,6 +233,51 @@ describe('RecurringInvoicesService', () => {
       expect(result).toBe('inactive');
       expect(prisma.invoice.create).not.toHaveBeenCalled();
     });
+
+    describe('tenant notification (F5.1)', () => {
+      it('notifies the tenant when the lease has a linked portal user', async () => {
+        const { service, notifications } = makeService();
+        const asOf = new Date('2026-06-15T00:00:00.000Z');
+
+        const result = await service.generateForLease(
+          lease({ renterUserId: 'tenant-user-1' }),
+          asOf,
+        );
+
+        expect(result).toBe('created');
+        expect(notifications.enqueue).toHaveBeenCalledTimes(1);
+        expect(notifications.enqueue).toHaveBeenCalledWith(
+          expect.objectContaining({
+            orgId,
+            userId: 'tenant-user-1',
+            type: 'invoice.issued',
+          }),
+        );
+      });
+
+      it('does not notify when the lease has no linked portal user', async () => {
+        const { service, notifications } = makeService();
+        const asOf = new Date('2026-06-15T00:00:00.000Z');
+
+        const result = await service.generateForLease(lease(), asOf);
+
+        expect(result).toBe('created');
+        expect(notifications.enqueue).not.toHaveBeenCalled();
+      });
+
+      it('does not notify when no invoice is generated (not-due)', async () => {
+        const { service, notifications } = makeService();
+        const asOf = new Date('2026-06-01T00:00:00.000Z'); // 14 days away
+
+        const result = await service.generateForLease(
+          lease({ renterUserId: 'tenant-user-1' }),
+          asOf,
+        );
+
+        expect(result).toBe('not-due');
+        expect(notifications.enqueue).not.toHaveBeenCalled();
+      });
+    });
   });
 
   describe('runForOrg', () => {
@@ -228,7 +289,12 @@ describe('RecurringInvoicesService', () => {
       });
       const { service, prisma } = makeService({
         lease: {
-          findMany: jest.fn().mockResolvedValue([dueLease, notDueLease]),
+          findMany: jest
+            .fn()
+            .mockResolvedValue([
+              rawLeaseRow(dueLease),
+              rawLeaseRow(notDueLease),
+            ]),
         },
       });
       const asOf = new Date('2026-06-15T00:00:00.000Z');
@@ -251,8 +317,10 @@ describe('RecurringInvoicesService', () => {
           findMany: jest
             .fn()
             .mockResolvedValueOnce([{ orgId: 'org-a' }, { orgId: 'org-b' }]) // distinct orgId query
-            .mockResolvedValueOnce([lease({ orgId: 'org-a' })]) // org-a leases
-            .mockResolvedValueOnce([lease({ orgId: 'org-b', id: 'lease-2' })]), // org-b leases
+            .mockResolvedValueOnce([rawLeaseRow(lease({ orgId: 'org-a' }))]) // org-a leases
+            .mockResolvedValueOnce([
+              rawLeaseRow(lease({ orgId: 'org-b', id: 'lease-2' })),
+            ]), // org-b leases
         },
       });
       const asOf = new Date('2026-06-15T00:00:00.000Z');

@@ -26,6 +26,7 @@ describe('WorkOrdersService', () => {
       buildingAccess?: Partial<Record<string, jest.Mock>>;
       leaseStatus?: Partial<Record<string, jest.Mock>>;
       workOrderApartmentStatus?: Partial<Record<string, jest.Mock>>;
+      notifications?: Partial<Record<string, jest.Mock>>;
     } = {},
   ) {
     const prisma: any = {
@@ -74,6 +75,10 @@ describe('WorkOrdersService', () => {
       ...overrides.buildingAccess,
     };
     const timeline = { emit: jest.fn().mockResolvedValue(undefined) };
+    const notifications = {
+      enqueue: jest.fn().mockResolvedValue(undefined),
+      ...overrides.notifications,
+    };
     const leaseStatus = {
       isEffectivelyActive: jest.fn().mockReturnValue(true),
       ...overrides.leaseStatus,
@@ -87,6 +92,7 @@ describe('WorkOrdersService', () => {
       prisma,
       buildingAccess as any,
       timeline as any,
+      notifications as any,
       leaseStatus as any,
       workOrderApartmentStatus as any,
     );
@@ -95,6 +101,7 @@ describe('WorkOrdersService', () => {
       prisma,
       buildingAccess,
       timeline,
+      notifications,
       leaseStatus,
       workOrderApartmentStatus,
     };
@@ -644,6 +651,58 @@ describe('WorkOrdersService', () => {
     });
   });
 
+  describe('create — assignment notification (F5.1)', () => {
+    it('notifies the assignee when a work order is created with assignedUserId set', async () => {
+      const { service, prisma, notifications } = makeService();
+      prisma.workOrder.create.mockResolvedValue(
+        workOrderRow({ vendorId: null, assignedUserId: 'user-1', number: 7 }),
+      );
+
+      await service.create(
+        orgId,
+        actorId,
+        Role.ORG_ADMIN,
+        maintenanceRequestId,
+        { assignedUserId: 'user-1' },
+      );
+
+      expect(notifications.enqueue).toHaveBeenCalledTimes(1);
+      expect(notifications.enqueue).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orgId,
+          userId: 'user-1',
+          type: 'work_order.assigned',
+        }),
+      );
+    });
+
+    it('does not notify when the work order is created with a vendor instead of an assignee', async () => {
+      const { service, prisma, notifications } = makeService();
+      prisma.workOrder.create.mockResolvedValue(
+        workOrderRow({ vendorId: 'vendor-1', assignedUserId: null }),
+      );
+
+      await service.create(orgId, actorId, Role.ORG_ADMIN, maintenanceRequestId, {
+        vendorId: 'vendor-1',
+      });
+
+      expect(notifications.enqueue).not.toHaveBeenCalled();
+    });
+
+    it('does not notify when the actor assigns the work order to themself', async () => {
+      const { service, prisma, notifications } = makeService();
+      prisma.workOrder.create.mockResolvedValue(
+        workOrderRow({ vendorId: null, assignedUserId: actorId }),
+      );
+
+      await service.create(orgId, actorId, Role.ORG_ADMIN, maintenanceRequestId, {
+        assignedUserId: actorId,
+      });
+
+      expect(notifications.enqueue).not.toHaveBeenCalled();
+    });
+  });
+
   describe('update', () => {
     const existingRow = () => ({
       ...workOrderRow(),
@@ -841,6 +900,83 @@ describe('WorkOrdersService', () => {
           { status: 'in_progress' },
         ),
       ).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe('update — reassignment notification (F5.1)', () => {
+    const existingRow = () => ({
+      ...workOrderRow({ assignedUserId: 'user-old' }),
+      maintenanceRequest: { apartmentId, title: 'Leaking faucet' },
+    });
+
+    it('notifies the newly-assigned user on reassignment', async () => {
+      const { service, prisma, notifications } = makeService({
+        workOrder: { findFirst: jest.fn().mockResolvedValue(existingRow()) },
+      });
+      prisma.workOrder.update.mockResolvedValue(
+        workOrderRow({ vendorId: null, assignedUserId: 'user-new' }),
+      );
+
+      await service.update(
+        orgId,
+        actorId,
+        callerId,
+        Role.ORG_ADMIN,
+        maintenanceRequestId,
+        'wo-1',
+        { assignedUserId: 'user-new' },
+      );
+
+      expect(notifications.enqueue).toHaveBeenCalledTimes(1);
+      expect(notifications.enqueue).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orgId,
+          userId: 'user-new',
+          type: 'work_order.assigned',
+        }),
+      );
+    });
+
+    it('does not notify when the assignee is unchanged', async () => {
+      const { service, prisma, notifications } = makeService({
+        workOrder: { findFirst: jest.fn().mockResolvedValue(existingRow()) },
+      });
+      prisma.workOrder.update.mockResolvedValue(
+        workOrderRow({ assignedUserId: 'user-old', status: 'in_progress' }),
+      );
+
+      await service.update(
+        orgId,
+        actorId,
+        callerId,
+        Role.ORG_ADMIN,
+        maintenanceRequestId,
+        'wo-1',
+        { status: 'in_progress' },
+      );
+
+      expect(notifications.enqueue).not.toHaveBeenCalled();
+    });
+
+    it('does not notify when the actor reassigns the work order to themself', async () => {
+      const { service, prisma, notifications } = makeService({
+        workOrder: { findFirst: jest.fn().mockResolvedValue(existingRow()) },
+      });
+      prisma.workOrder.update.mockResolvedValue(
+        workOrderRow({ vendorId: null, assignedUserId: actorId }),
+      );
+
+      await service.update(
+        orgId,
+        actorId,
+        callerId,
+        Role.ORG_ADMIN,
+        maintenanceRequestId,
+        'wo-1',
+        { assignedUserId: actorId },
+      );
+
+      expect(notifications.enqueue).not.toHaveBeenCalled();
     });
   });
 

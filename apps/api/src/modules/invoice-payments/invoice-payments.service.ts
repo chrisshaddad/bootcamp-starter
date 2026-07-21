@@ -8,6 +8,7 @@ import { Prisma } from '@repo/db';
 import { PrismaService } from '@/infrastructure/prisma/prisma.service';
 import { BuildingAccessService } from '@/common/building-access/building-access.service';
 import { TimelineService } from '@/modules/timeline/timeline.service';
+import { NotificationsService } from '@/modules/notifications/notifications.service';
 import { Role } from '@/common/enums';
 import {
   InvoicePaymentMethod,
@@ -35,6 +36,7 @@ export class InvoicePaymentsService {
     private readonly prisma: PrismaService,
     private readonly buildingAccess: BuildingAccessService,
     private readonly timeline: TimelineService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   private assertWriteAccess(callerRole: Role): void {
@@ -159,7 +161,10 @@ export class InvoicePaymentsService {
 
     const invoice = await this.prisma.invoice.findFirst({
       where: { id: dto.invoiceId, orgId },
-      select: { id: true },
+      select: {
+        id: true,
+        lease: { select: { renter: { select: { renterUserId: true } } } },
+      },
     });
     if (!invoice) throw new NotFoundException('Invoice not found.');
 
@@ -182,6 +187,19 @@ export class InvoicePaymentsService {
       targetId: payment.id,
       metadata: { invoiceId: invoice.id, amount: payment.amount.toString() },
     });
+
+    // F5.1: notify the tenant a payment was recorded — skip silently if the
+    // renter has no linked portal user.
+    if (invoice.lease.renter.renterUserId) {
+      await this.notifications.enqueue({
+        orgId,
+        userId: invoice.lease.renter.renterUserId,
+        type: 'invoice.payment_recorded',
+        title: 'Payment recorded',
+        body: `A payment of ${payment.amount.toString()} was recorded on your invoice.`,
+        data: { invoiceId: invoice.id, paymentId: payment.id },
+      });
+    }
 
     const summary = await this.summarizeInvoice(orgId, invoice.id);
 

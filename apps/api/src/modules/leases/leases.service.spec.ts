@@ -29,6 +29,7 @@ describe('LeasesService', () => {
       building?: Partial<Record<string, jest.Mock>>;
       floor?: Partial<Record<string, jest.Mock>>;
       buildingAccess?: Partial<Record<string, jest.Mock>>;
+      notifications?: Partial<Record<string, jest.Mock>>;
     } = {},
   ) {
     const prisma: any = {
@@ -75,6 +76,10 @@ describe('LeasesService', () => {
     );
 
     const timeline = { emit: jest.fn().mockResolvedValue(undefined) };
+    const notifications = {
+      enqueue: jest.fn().mockResolvedValue(undefined),
+      ...overrides.notifications,
+    };
     const buildingAccess = {
       assertBuildingAccess: jest.fn().mockResolvedValue(undefined),
       getAllowedBuildingIds: jest.fn(),
@@ -84,10 +89,18 @@ describe('LeasesService', () => {
     const service = new LeasesService(
       prisma,
       timeline as any,
+      notifications as any,
       buildingAccess as any,
       leaseStatus,
     );
-    return { service, prisma, timeline, buildingAccess, leaseStatus };
+    return {
+      service,
+      prisma,
+      timeline,
+      notifications,
+      buildingAccess,
+      leaseStatus,
+    };
   }
 
   const leaseRow = (overrides: Partial<Record<string, unknown>> = {}) => ({
@@ -422,6 +435,59 @@ describe('LeasesService', () => {
       await expect(
         service.create(orgId, actorId, buildingId, floorId, apartmentId, dto),
       ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    describe('tenant notification (F5.1)', () => {
+      it('notifies the tenant when the renter has a linked portal user', async () => {
+        const { service, prisma, notifications } = makeService({
+          renter: {
+            findFirst: jest
+              .fn()
+              .mockResolvedValue({ id: renterId, renterUserId: 'tenant-user-1' }),
+          },
+        });
+        prisma.lease.create.mockResolvedValue(leaseRow());
+
+        await service.create(
+          orgId,
+          actorId,
+          buildingId,
+          floorId,
+          apartmentId,
+          dto,
+        );
+
+        expect(notifications.enqueue).toHaveBeenCalledTimes(1);
+        expect(notifications.enqueue).toHaveBeenCalledWith(
+          expect.objectContaining({
+            orgId,
+            userId: 'tenant-user-1',
+            type: 'lease.created',
+          }),
+        );
+      });
+
+      it('does not notify when the renter has no linked portal user', async () => {
+        const { service, prisma, notifications } = makeService({
+          renter: {
+            findFirst: jest
+              .fn()
+              .mockResolvedValue({ id: renterId, renterUserId: null }),
+          },
+        });
+        prisma.lease.create.mockResolvedValue(leaseRow());
+
+        await service.create(
+          orgId,
+          actorId,
+          buildingId,
+          floorId,
+          apartmentId,
+          dto,
+        );
+
+        expect(notifications.enqueue).not.toHaveBeenCalled();
+      });
     });
   });
 

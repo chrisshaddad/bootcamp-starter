@@ -1390,5 +1390,9 @@
       "error": "Failed to delete expense. It may be referenced elsewhere."
     },
     "notBilledToTenantsNote": "Expenses are your organization's own costs (repairs, vendor payments, utilities) — they are not bills sent to tenants. Tenant charges are billed through invoices."
+  },
+  "timeline": {
+    "system": "System",
+    "by": "by"
   }
 }

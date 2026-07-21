@@ -9,6 +9,7 @@ import { Prisma } from '@repo/db';
 import { PrismaService } from '@/infrastructure/prisma/prisma.service';
 import { BuildingAccessService } from '@/common/building-access/building-access.service';
 import { TimelineService } from '@/modules/timeline/timeline.service';
+import { NotificationsService } from '@/modules/notifications/notifications.service';
 import { Role } from '@/common/enums';
 import { InvoiceLineItemCategory, InvoiceResponse } from '@repo/contracts';
 import { computeInvoiceSummary } from '@/common/invoice-summary/compute-invoice-summary';
@@ -58,6 +59,7 @@ export class InvoicesService {
     private readonly prisma: PrismaService,
     private readonly buildingAccess: BuildingAccessService,
     private readonly timeline: TimelineService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   private assertWriteAccess(callerRole: Role): void {
@@ -180,7 +182,11 @@ export class InvoicesService {
 
     const lease = await this.prisma.lease.findFirst({
       where: { id: dto.leaseId, orgId },
-      select: { id: true, buildingId: true },
+      select: {
+        id: true,
+        buildingId: true,
+        renter: { select: { renterUserId: true } },
+      },
     });
     if (!lease) throw new NotFoundException('Lease not found.');
 
@@ -213,6 +219,19 @@ export class InvoicesService {
         lineItemCount: dto.lineItems.length,
       },
     });
+
+    // F5.1: notify the tenant an invoice was issued — skip silently if the
+    // renter has no linked portal user (renterUserId is nullable).
+    if (lease.renter.renterUserId) {
+      await this.notifications.enqueue({
+        orgId,
+        userId: lease.renter.renterUserId,
+        type: 'invoice.issued',
+        title: 'New invoice issued',
+        body: `An invoice due ${invoice.dueDate.toISOString().slice(0, 10)} has been issued to your lease.`,
+        data: { invoiceId: invoice.id, leaseId: invoice.leaseId },
+      });
+    }
 
     return { data: this.formatInvoice(invoice) };
   }

@@ -19,6 +19,7 @@ describe('InvoicesService', () => {
       invoiceLineItem?: Partial<Record<string, jest.Mock>>;
       invoicePayment?: Partial<Record<string, jest.Mock>>;
       buildingAccess?: Partial<Record<string, jest.Mock>>;
+      notifications?: Partial<Record<string, jest.Mock>>;
     } = {},
   ) {
     const prisma: any = {
@@ -52,12 +53,17 @@ describe('InvoicesService', () => {
       ...overrides.buildingAccess,
     };
     const timeline = { emit: jest.fn().mockResolvedValue(undefined) };
+    const notifications = {
+      enqueue: jest.fn().mockResolvedValue(undefined),
+      ...overrides.notifications,
+    };
     const service = new InvoicesService(
       prisma,
       buildingAccess as any,
       timeline as any,
+      notifications as any,
     );
-    return { service, prisma, buildingAccess, timeline };
+    return { service, prisma, buildingAccess, timeline, notifications };
   }
 
   const decimal = (value: string) => ({
@@ -210,7 +216,11 @@ describe('InvoicesService', () => {
     it('creates an invoice with the denormalized buildingId from the lease', async () => {
       const { service, prisma, timeline } = makeService({
         lease: {
-          findFirst: jest.fn().mockResolvedValue({ id: 'lease-1', buildingId }),
+          findFirst: jest.fn().mockResolvedValue({
+            id: 'lease-1',
+            buildingId,
+            renter: { renterUserId: null },
+          }),
         },
         invoice: { create: jest.fn().mockResolvedValue(invoiceRow()) },
       });
@@ -274,6 +284,49 @@ describe('InvoicesService', () => {
       await expect(
         service.create(orgId, callerId, Role.SUPERVISOR, dto),
       ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    describe('tenant notification (F5.1)', () => {
+      it('notifies the tenant when the lease renter has a linked portal user', async () => {
+        const { service, notifications } = makeService({
+          lease: {
+            findFirst: jest.fn().mockResolvedValue({
+              id: 'lease-1',
+              buildingId,
+              renter: { renterUserId: 'tenant-user-1' },
+            }),
+          },
+          invoice: { create: jest.fn().mockResolvedValue(invoiceRow()) },
+        });
+
+        await service.create(orgId, callerId, Role.ORG_ADMIN, dto);
+
+        expect(notifications.enqueue).toHaveBeenCalledTimes(1);
+        expect(notifications.enqueue).toHaveBeenCalledWith(
+          expect.objectContaining({
+            orgId,
+            userId: 'tenant-user-1',
+            type: 'invoice.issued',
+          }),
+        );
+      });
+
+      it('does not notify when the renter has no linked portal user', async () => {
+        const { service, notifications } = makeService({
+          lease: {
+            findFirst: jest.fn().mockResolvedValue({
+              id: 'lease-1',
+              buildingId,
+              renter: { renterUserId: null },
+            }),
+          },
+          invoice: { create: jest.fn().mockResolvedValue(invoiceRow()) },
+        });
+
+        await service.create(orgId, callerId, Role.ORG_ADMIN, dto);
+
+        expect(notifications.enqueue).not.toHaveBeenCalled();
+      });
     });
   });
 
