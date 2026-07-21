@@ -6,3 +6,5 @@ export * from './auth.response';
 export * from './profile-picture-upload.response';
 export * from './change-password.request';
 export * from './deactivate-account.request';
+export * from './forgot-password.request';
+export * from './reset-password.request';

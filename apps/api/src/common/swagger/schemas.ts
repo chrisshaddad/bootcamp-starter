@@ -5,6 +5,7 @@ import {
   loginRequestSchema as loginRequestContractSchema,
   magicLinkRequestSchema,
   magicLinkVerifyRequestSchema as magicLinkVerifyRequestContractSchema,
+  resetPasswordRequestSchema as resetPasswordRequestContractSchema,
   signupRequestSchema as signupRequestContractSchema,
   updateProfileRequestSchema as updateProfileRequestContractSchema,
   createProjectInvitationRequestSchema as createProjectInvitationRequestContractSchema,
@@ -66,6 +67,13 @@ export const loginRequestSchema: ApiBodySchema = withExample(
   {
     email: 'dev.sarah@example.com',
     password: 'Password123!',
+  },
+);
+export const resetPasswordRequestSchema: ApiBodySchema = withExample(
+  toOpenApiSchema(resetPasswordRequestContractSchema),
+  {
+    token: 'password-reset-token',
+    newPassword: 'NewPassword123!',
   },
 );
 export const signupRequestSchema: ApiBodySchema = withExample(

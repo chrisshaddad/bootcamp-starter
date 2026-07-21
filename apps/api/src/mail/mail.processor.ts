@@ -24,10 +24,17 @@ interface SendProjectInvitationJobData {
   invitationLink: string;
 }
 
+interface SendPasswordResetJobData {
+  email: string;
+  resetLink: string;
+  userName?: string;
+}
+
 type MailJobData =
   | SendMagicLinkJobData
   | SendInvitationJobData
-  | SendProjectInvitationJobData;
+  | SendProjectInvitationJobData
+  | SendPasswordResetJobData;
 
 @Processor(MAIL_QUEUE)
 export class MailProcessor extends WorkerHost {
@@ -51,6 +58,11 @@ export class MailProcessor extends WorkerHost {
         await this.handleSendProjectInvitation(
           job.data as SendProjectInvitationJobData,
           job.id,
+        );
+        break;
+      case MAIL_JOBS.SEND_PASSWORD_RESET:
+        await this.handleSendPasswordReset(
+          job.data as SendPasswordResetJobData,
         );
         break;
       default:
@@ -121,5 +133,28 @@ export class MailProcessor extends WorkerHost {
     this.logger.log(
       `Project invitation email sent successfully for job ${jobId ?? 'unknown'}`,
     );
+  }
+
+  private async handleSendPasswordReset(
+    data: SendPasswordResetJobData,
+  ): Promise<void> {
+    const { email, resetLink, userName } = data;
+
+    const greeting = userName ? `Hello ${userName},` : 'Hello,';
+    const text = `${greeting}\n\nWe received a request to reset your password. Click the link below to choose a new one:\n\n${resetLink}\n\nThis link will expire in 30 minutes.\n\nIf you didn't request this, you can safely ignore this email — your password won't change.`;
+
+    const success = await this.mailService.sendEmail({
+      to: email,
+      from: 'no-reply@bootcamp-starter.local',
+      subject: 'Reset your password',
+      text,
+    });
+
+    if (success) {
+      this.logger.log(`Password reset email sent successfully to ${email}`);
+    } else {
+      this.logger.error(`Failed to send password reset email to ${email}`);
+      throw new Error(`Failed to send email to ${email}`);
+    }
   }
 }
