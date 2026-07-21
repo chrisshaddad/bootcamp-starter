@@ -82,6 +82,9 @@ export function useAuth() {
     [mutate],
   );
 
+  /**
+   * Accepts a member invitation and refreshes the authenticated user.
+   */
   const acceptMemberInvitation = useCallback(
     async (data: MemberInvitationAcceptRequest) => {
       const result = await apiPost<MemberInvitationAcceptResponse>(

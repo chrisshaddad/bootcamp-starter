@@ -9,6 +9,9 @@ import { ApiError } from '@/lib/api';
 
 type AcceptStatus = 'loading' | 'success' | 'error';
 
+/**
+ * Accepts a member invitation token from the URL and shows the result state.
+ */
 function AcceptInvitationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -32,6 +35,9 @@ function AcceptInvitationContent() {
 
     hasAttemptedAccept.current = true;
 
+    /**
+     * Sends the invitation token to the API and redirects after success.
+     */
     const accept = async () => {
       try {
         await acceptMemberInvitation({ token });
@@ -102,6 +108,9 @@ function AcceptInvitationContent() {
   );
 }
 
+/**
+ * Renders the public invitation acceptance page with suspense for URL params.
+ */
 export default function AcceptInvitationPage() {
   return (
     <Suspense

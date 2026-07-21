@@ -41,10 +41,16 @@ export class MembersService {
     @InjectQueue(MAIL_QUEUE) private readonly mailQueue: Queue,
   ) {}
 
+  /**
+   * Hashes a raw invitation token for safe database storage.
+   */
   private hashToken(token: string): string {
     return createHash('sha256').update(token).digest('hex');
   }
 
+  /**
+   * Maps a Prisma member record into the shared contract response shape.
+   */
   private mapMember(member: {
     id: string;
     username: string;
@@ -63,6 +69,9 @@ export class MembersService {
     };
   }
 
+  /**
+   * Maps a Prisma invitation record into the shared contract response shape.
+   */
   private mapInvitation(invitation: {
     id: string;
     email: string;
@@ -89,6 +98,9 @@ export class MembersService {
     };
   }
 
+  /**
+   * Maps an auth user and optional Coordly member role into a user response.
+   */
   private mapUserResponse(
     user: Pick<
       User,
@@ -107,6 +119,9 @@ export class MembersService {
     };
   }
 
+  /**
+   * Resolves an organization scope and rejects requests without one.
+   */
   private resolveRequiredOrganizationScope(
     user: User,
     requestedOrganizationId?: string,
@@ -123,6 +138,9 @@ export class MembersService {
     return organizationId;
   }
 
+  /**
+   * Loads a member constrained to the caller's organization scope.
+   */
   private async getScopedMember(id: string, user: User) {
     const organizationId = resolveOrganizationScope(user);
     const member = await this.prisma.member.findFirst({
@@ -146,6 +164,9 @@ export class MembersService {
     return member;
   }
 
+  /**
+   * Ensures a username is unused within an organization.
+   */
   private async assertUsernameAvailable(
     organizationId: string,
     username: string,
@@ -165,6 +186,9 @@ export class MembersService {
     }
   }
 
+  /**
+   * Loads an organization or raises the shared not-found response.
+   */
   private async getOrganization(organizationId: string) {
     const organization = await this.prisma.organization.findFirst({
       where: { id: organizationId },
@@ -178,6 +202,9 @@ export class MembersService {
     return organization;
   }
 
+  /**
+   * Rotates an invitation token, extends expiry, and queues the email.
+   */
   private async issueInvitationToken(
     invitation: {
       id: string;
@@ -244,11 +271,17 @@ export class MembersService {
     return { members: members.map((member) => this.mapMember(member)), total };
   }
 
+  /**
+   * Finds a single Coordly member after scope validation.
+   */
   async findOne(id: string, user: User): Promise<MemberActionResponse> {
     const member = await this.getScopedMember(id, user);
     return { member: this.mapMember(member) };
   }
 
+  /**
+   * Creates an unlinked Coordly member in the resolved organization scope.
+   */
   async create(
     body: MemberCreateRequest,
     user: User,
@@ -280,6 +313,9 @@ export class MembersService {
     return { member: this.mapMember(member) };
   }
 
+  /**
+   * Updates an existing Coordly member after scope and username checks.
+   */
   async update(
     id: string,
     body: MemberUpdateRequest,
@@ -314,6 +350,9 @@ export class MembersService {
     return { member: this.mapMember(member) };
   }
 
+  /**
+   * Deletes an existing Coordly member after scope validation.
+   */
   async remove(id: string, user: User): Promise<MemberActionResponse> {
     const existing = await this.getScopedMember(id, user);
     const member = await this.prisma.member.delete({
@@ -331,6 +370,9 @@ export class MembersService {
     return { member: this.mapMember(member) };
   }
 
+  /**
+   * Lists active pending invitations visible to the current admin.
+   */
   async findInvitations(
     query: MemberListQuery,
     user: User,
@@ -362,6 +404,9 @@ export class MembersService {
     };
   }
 
+  /**
+   * Creates and emails a pending member invitation.
+   */
   async invite(
     body: MemberInviteRequest,
     user: User,
@@ -451,6 +496,9 @@ export class MembersService {
     return { invitation: this.mapInvitation(issuedInvitation) };
   }
 
+  /**
+   * Reissues a pending invitation with a fresh token and expiry.
+   */
   async resendInvitation(
     id: string,
     user: User,
@@ -480,6 +528,9 @@ export class MembersService {
     return { invitation: this.mapInvitation(updated) };
   }
 
+  /**
+   * Marks a pending invitation as revoked.
+   */
   async revokeInvitation(
     id: string,
     user: User,
@@ -507,6 +558,9 @@ export class MembersService {
     return { invitation: this.mapInvitation(updated) };
   }
 
+  /**
+   * Accepts an invitation by creating the user, member, and session atomically.
+   */
   async acceptInvitation(
     token: string,
   ): Promise<{ sessionId: string } & MemberInvitationAcceptResponse> {

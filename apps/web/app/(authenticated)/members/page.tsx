@@ -101,6 +101,9 @@ function truncateId(id: string) {
   return id.slice(0, 8);
 }
 
+/**
+ * Formats an invitation expiration date for the members table.
+ */
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('en', {
     month: 'short',
@@ -113,10 +116,16 @@ function canAccessMembers(role: string | undefined) {
   return role === 'SUPER_ADMIN' || role === 'ORG_ADMIN';
 }
 
+/**
+ * Converts unknown mutation errors into user-facing messages.
+ */
 function errorMessage(error: unknown, fallback: string) {
   return error instanceof ApiError ? error.message : fallback;
 }
 
+/**
+ * Renders the organization selector used by super admin member forms.
+ */
 function OrganizationField({
   value,
   onChange,
@@ -231,6 +240,9 @@ export default function MembersPage() {
     return <ForbiddenPage />;
   }
 
+  /**
+   * Submits a new unlinked Coordly member.
+   */
   const onCreate = async (body: MemberCreateRequest) => {
     try {
       await createMember(body);
@@ -242,6 +254,9 @@ export default function MembersPage() {
     }
   };
 
+  /**
+   * Submits a new member invitation.
+   */
   const onInvite = async (body: MemberInviteRequest) => {
     try {
       await inviteMember(body);
@@ -253,6 +268,9 @@ export default function MembersPage() {
     }
   };
 
+  /**
+   * Submits updates for the selected member.
+   */
   const onEdit = async (body: MemberUpdateRequest) => {
     if (!editingMember) return;
 
@@ -265,6 +283,9 @@ export default function MembersPage() {
     }
   };
 
+  /**
+   * Confirms and deletes a member.
+   */
   const onDelete = async (member: Member) => {
     if (!window.confirm(`Delete ${member.username}?`)) return;
 
@@ -276,6 +297,9 @@ export default function MembersPage() {
     }
   };
 
+  /**
+   * Resends a pending invitation.
+   */
   const onResend = async (invitation: MemberInvitation) => {
     try {
       await resendInvitation(invitation.id);
@@ -285,6 +309,9 @@ export default function MembersPage() {
     }
   };
 
+  /**
+   * Confirms and revokes a pending invitation.
+   */
   const onRevoke = async (invitation: MemberInvitation) => {
     if (!window.confirm(`Cancel invitation to ${invitation.email}?`)) return;
 

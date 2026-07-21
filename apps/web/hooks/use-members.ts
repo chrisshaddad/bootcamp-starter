@@ -32,6 +32,9 @@ interface UseMembersReturn {
   mutate: () => void;
 }
 
+/**
+ * Builds a members API endpoint with an optional organization filter.
+ */
 function buildMembersEndpoint(base: string, organizationId?: string): string {
   if (!organizationId) {
     return base;
@@ -49,10 +52,16 @@ export function useMembers(options: UseMembersOptions = {}): UseMembersReturn {
     enabled ? endpoint : null,
   );
 
+  /**
+   * Revalidates all cached member and invitation lists.
+   */
   const invalidateMembers = useCallback(() => {
     mutate((key) => typeof key === 'string' && key.startsWith('/members'));
   }, []);
 
+  /**
+   * Creates a member and refreshes member-related caches.
+   */
   const createMember = useCallback(
     async (body: MemberCreateRequest) => {
       const result = await apiPost<MemberActionResponse>('/members', body);
@@ -62,6 +71,9 @@ export function useMembers(options: UseMembersOptions = {}): UseMembersReturn {
     [invalidateMembers],
   );
 
+  /**
+   * Updates a member and refreshes member-related caches.
+   */
   const updateMember = useCallback(
     async (id: string, body: MemberUpdateRequest) => {
       const result = await apiPatch<MemberActionResponse>(
@@ -74,6 +86,9 @@ export function useMembers(options: UseMembersOptions = {}): UseMembersReturn {
     [invalidateMembers],
   );
 
+  /**
+   * Deletes a member and refreshes member-related caches.
+   */
   const deleteMember = useCallback(
     async (id: string) => {
       const result = await apiDelete<MemberActionResponse>(`/members/${id}`);
@@ -108,6 +123,9 @@ interface UseMemberInvitationsReturn {
   mutate: () => void;
 }
 
+/**
+ * Fetches pending invitations and exposes invitation mutation helpers.
+ */
 export function useMemberInvitations(
   options: UseMembersOptions = {},
 ): UseMemberInvitationsReturn {
@@ -118,10 +136,16 @@ export function useMemberInvitations(
     enabled ? endpoint : null,
   );
 
+  /**
+   * Revalidates all cached member and invitation lists.
+   */
   const invalidateInvitations = useCallback(() => {
     mutate((key) => typeof key === 'string' && key.startsWith('/members'));
   }, []);
 
+  /**
+   * Sends an invitation and refreshes member-related caches.
+   */
   const inviteMember = useCallback(
     async (body: MemberInviteRequest) => {
       const result = await apiPost<MemberInvitationActionResponse>(
@@ -134,6 +158,9 @@ export function useMemberInvitations(
     [invalidateInvitations],
   );
 
+  /**
+   * Resends an invitation and refreshes member-related caches.
+   */
   const resendInvitation = useCallback(
     async (id: string) => {
       const result = await apiPost<MemberInvitationActionResponse>(
@@ -145,6 +172,9 @@ export function useMemberInvitations(
     [invalidateInvitations],
   );
 
+  /**
+   * Revokes an invitation and refreshes member-related caches.
+   */
   const revokeInvitation = useCallback(
     async (id: string) => {
       const result = await apiDelete<MemberInvitationActionResponse>(

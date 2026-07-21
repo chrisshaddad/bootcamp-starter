@@ -42,6 +42,9 @@ const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 export class MembersController {
   constructor(private readonly membersService: MembersService) {}
 
+  /**
+   * Lists pending member invitations visible to the current admin.
+   */
   @Get('invitations')
   @Roles('SUPER_ADMIN', 'ORG_ADMIN')
   async findInvitations(
@@ -52,6 +55,9 @@ export class MembersController {
     return this.membersService.findInvitations(query, user);
   }
 
+  /**
+   * Accepts a public member invitation and sets the session cookie.
+   */
   @Post('invitations/accept')
   @Public()
   @HttpCode(HttpStatus.OK)
@@ -79,6 +85,9 @@ export class MembersController {
     return { user };
   }
 
+  /**
+   * Sends a new member invitation for the current organization scope.
+   */
   @Post('invitations')
   @Roles('SUPER_ADMIN', 'ORG_ADMIN')
   async invite(
@@ -89,6 +98,9 @@ export class MembersController {
     return this.membersService.invite(body, user);
   }
 
+  /**
+   * Issues a fresh token and email for an existing pending invitation.
+   */
   @Post('invitations/:id/resend')
   @Roles('SUPER_ADMIN', 'ORG_ADMIN')
   async resendInvitation(
@@ -98,6 +110,9 @@ export class MembersController {
     return this.membersService.resendInvitation(id, user);
   }
 
+  /**
+   * Revokes a pending member invitation in the current organization scope.
+   */
   @Delete('invitations/:id')
   @Roles('SUPER_ADMIN', 'ORG_ADMIN')
   async revokeInvitation(
@@ -117,6 +132,9 @@ export class MembersController {
     return this.membersService.findAll(query, user);
   }
 
+  /**
+   * Creates a Coordly member without creating an auth user.
+   */
   @Post()
   @Roles('SUPER_ADMIN', 'ORG_ADMIN')
   async create(
@@ -127,6 +145,9 @@ export class MembersController {
     return this.membersService.create(body, user);
   }
 
+  /**
+   * Finds one Coordly member in the current organization scope.
+   */
   @Get(':id')
   @Roles('SUPER_ADMIN', 'ORG_ADMIN')
   async findOne(
@@ -136,6 +157,9 @@ export class MembersController {
     return this.membersService.findOne(id, user);
   }
 
+  /**
+   * Updates a Coordly member in the current organization scope.
+   */
   @Patch(':id')
   @Roles('SUPER_ADMIN', 'ORG_ADMIN')
   async update(
@@ -147,6 +171,9 @@ export class MembersController {
     return this.membersService.update(id, body, user);
   }
 
+  /**
+   * Deletes a Coordly member in the current organization scope.
+   */
   @Delete(':id')
   @Roles('SUPER_ADMIN', 'ORG_ADMIN')
   async remove(
