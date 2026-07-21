@@ -12,6 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useUser } from '@/hooks/use-auth';
 import { fetcher, ApiError } from '@/lib/api';
 import { SaveCandidateButton } from '@/components/save-candidate-button';
+import { BackLink } from '@/components/back-link';
 import type {
   ExploreUsersResponse,
   ExploreProjectsResponse,
@@ -107,6 +108,10 @@ export default function UserPortfolioPage() {
 
   return (
     <div className="container mx-auto py-12 max-w-6xl space-y-16">
+      <div className="px-4">
+        <BackLink fallbackHref="/users" fallbackLabel="Developers" />
+      </div>
+
       {/* HEADER SECTION */}
       <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 px-4">
         <Avatar className="h-32 w-32 sm:h-40 sm:w-40 border-4 border-background shadow-md flex-shrink-0">

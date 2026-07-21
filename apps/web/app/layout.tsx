@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Manrope } from 'next/font/google';
 import { Toaster } from '@/components/ui/sonner';
 import { SWRProvider } from '@/lib/swr-provider';
+import { NavigationHistoryTracker } from '@/components/navigation-history-tracker';
 import './globals.css';
 
 const manrope = Manrope({
@@ -24,6 +25,7 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className={`${manrope.variable} font-sans antialiased`}>
         <SWRProvider>
+          <NavigationHistoryTracker />
           {children}
           <Toaster richColors position="top-right" />
         </SWRProvider>

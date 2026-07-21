@@ -10,6 +10,7 @@ import { useUser } from '@/hooks/use-auth';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ExternalLink } from 'lucide-react';
+import { BackLink } from '@/components/back-link';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -27,6 +28,8 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-6">
+      <BackLink fallbackHref="/dashboard" fallbackLabel="Dashboard" />
+
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-foreground text-2xl font-bold">Profile</h1>

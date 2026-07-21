@@ -12,6 +12,7 @@ import {
 import { developerPublicProfileResponseSchema } from '@repo/contracts';
 import { SiteHeader } from '@/components/site-header';
 import { SiteFooter } from '@/components/site-footer';
+import { BackLink } from '@/components/back-link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -68,6 +69,8 @@ export default async function DeveloperPublicProfilePage({
       <main className="relative flex-1 overflow-hidden px-6 py-10 sm:px-10">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_0%,rgba(47,120,238,0.2),transparent_55%)]" />
         <div className="relative mx-auto max-w-5xl space-y-10">
+          <BackLink fallbackHref="/dashboard" fallbackLabel="Dashboard" requireAuth />
+
           <section className="relative grid gap-8 md:grid-cols-[220px_minmax(0,1fr)]">
             <div className="flex justify-end md:absolute md:top-0 md:right-0">
               <DeveloperSaveCandidate userId={profile.userId} />

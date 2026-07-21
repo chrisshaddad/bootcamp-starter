@@ -3,6 +3,7 @@
 import { Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SettingsTabs } from '@/components/settings-tabs';
+import { BackLink } from '@/components/back-link';
 import { useUser } from '@/hooks/use-auth';
 
 function SettingsContent() {
@@ -31,6 +32,8 @@ function SettingsContent() {
 export default function SettingsPage() {
   return (
     <div className="space-y-6">
+      <BackLink fallbackHref="/dashboard" fallbackLabel="Dashboard" />
+
       <div>
         <h1 className="text-foreground text-2xl font-bold">Settings</h1>
         <p className="text-muted-foreground mt-1 text-sm">
