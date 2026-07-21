@@ -1,8 +1,7 @@
 import { z } from 'zod';
-import { adminAccountStatusSchema } from './admin-account-status.schema';
 
 export const adminAccountStatusUpdateSchema = z.strictObject({
-  status: adminAccountStatusSchema,
+  status: z.enum(['ACTIVE', 'SUSPENDED']),
   reason: z.string().trim().min(10).max(1000),
 });
 
