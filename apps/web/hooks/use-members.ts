@@ -45,21 +45,13 @@ export function useMembers(options: UseMembersOptions = {}): UseMembersReturn {
   const { enabled = true, organizationId } = options;
   const endpoint = buildMembersEndpoint('/members', organizationId);
 
-  const {
-    data,
-    error,
-    isLoading,
-    mutate: swrMutate,
-  } = useSWR<MemberListResponse>(enabled ? endpoint : null);
+  const { data, error, isLoading } = useSWR<MemberListResponse>(
+    enabled ? endpoint : null,
+  );
 
   const invalidateMembers = useCallback(() => {
-    swrMutate();
-    mutate(
-      (key) => typeof key === 'string' && key.startsWith('/members'),
-      undefined,
-      { revalidate: true },
-    );
-  }, [swrMutate]);
+    mutate((key) => typeof key === 'string' && key.startsWith('/members'));
+  }, []);
 
   const createMember = useCallback(
     async (body: MemberCreateRequest) => {
@@ -122,21 +114,13 @@ export function useMemberInvitations(
   const { enabled = true, organizationId } = options;
   const endpoint = buildMembersEndpoint('/members/invitations', organizationId);
 
-  const {
-    data,
-    error,
-    isLoading,
-    mutate: swrMutate,
-  } = useSWR<MemberInvitationListResponse>(enabled ? endpoint : null);
+  const { data, error, isLoading } = useSWR<MemberInvitationListResponse>(
+    enabled ? endpoint : null,
+  );
 
   const invalidateInvitations = useCallback(() => {
-    swrMutate();
-    mutate(
-      (key) => typeof key === 'string' && key.startsWith('/members'),
-      undefined,
-      { revalidate: true },
-    );
-  }, [swrMutate]);
+    mutate((key) => typeof key === 'string' && key.startsWith('/members'));
+  }, []);
 
   const inviteMember = useCallback(
     async (body: MemberInviteRequest) => {

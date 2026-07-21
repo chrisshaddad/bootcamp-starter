@@ -2,7 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { randomBytes } from 'crypto';
 import Redis from 'ioredis';
 import { PrismaService } from '../database/prisma.service';
-import { User } from '@repo/db';
+import type { Prisma, User } from '@repo/db';
 
 const SESSION_PREFIX = 'session:';
 const SESSION_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days
@@ -24,12 +24,16 @@ export class SessionService {
   /**
    * Creates a new session in both DB and Redis
    */
-  async createSession(userId: string): Promise<string> {
+  async createSession(
+    userId: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<string> {
     const sessionId = this.generateSessionId();
     const expiresAt = new Date(Date.now() + SESSION_TTL_SECONDS * 1000);
+    const prisma = tx ?? this.prisma;
 
     // Store in database (source of truth)
-    await this.prisma.session.create({
+    await prisma.session.create({
       data: {
         id: sessionId,
         userId,

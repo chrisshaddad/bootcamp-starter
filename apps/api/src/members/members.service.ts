@@ -165,6 +165,53 @@ export class MembersService {
     }
   }
 
+  private async getOrganization(organizationId: string) {
+    const organization = await this.prisma.organization.findFirst({
+      where: { id: organizationId },
+      select: { id: true, name: true },
+    });
+
+    if (!organization) {
+      throw new NotFoundException('Organization not found');
+    }
+
+    return organization;
+  }
+
+  private async issueInvitationToken(
+    invitation: {
+      id: string;
+      email: string;
+      organization: { name: string };
+    },
+    inviterName: string | null,
+  ) {
+    const token = randomBytes(32).toString('hex');
+    const expiresAt = new Date(
+      Date.now() + INVITATION_EXPIRY_DAYS * 24 * 60 * 60 * 1000,
+    );
+
+    const updated = await this.prisma.memberInvitation.update({
+      where: { id: invitation.id },
+      data: {
+        tokenHash: this.hashToken(token),
+        expiresAt,
+      },
+    });
+
+    const appUrl = process.env.APP_URL ?? 'http://localhost:3000';
+    const invitationLink = `${appUrl}/invite/accept?token=${token}`;
+
+    await this.mailQueue.add(MAIL_JOBS.SEND_INVITATION, {
+      email: invitation.email,
+      inviterName,
+      organizationName: invitation.organization.name,
+      invitationLink,
+    });
+
+    return updated;
+  }
+
   async findAll(
     query: MemberListQuery,
     user: User,
@@ -210,6 +257,7 @@ export class MembersService {
       user,
       body.organizationId,
     );
+    await this.getOrganization(organizationId);
 
     await this.assertUsernameAvailable(organizationId, body.username);
 
@@ -323,14 +371,7 @@ export class MembersService {
       body.organizationId,
     );
 
-    const organization = await this.prisma.organization.findFirst({
-      where: { id: organizationId },
-      select: { id: true, name: true },
-    });
-
-    if (!organization) {
-      throw new NotFoundException('Organization not found');
-    }
+    const organization = await this.getOrganization(organizationId);
 
     await this.assertUsernameAvailable(organizationId, body.username);
 
@@ -384,7 +425,6 @@ export class MembersService {
       );
     }
 
-    const token = randomBytes(32).toString('hex');
     const invitation = await this.prisma.memberInvitation.create({
       data: {
         email: body.email,
@@ -392,25 +432,23 @@ export class MembersService {
         role: body.role,
         organizationId,
         invitedById: user.id,
-        tokenHash: this.hashToken(token),
-        expiresAt: new Date(
-          Date.now() + INVITATION_EXPIRY_DAYS * 24 * 60 * 60 * 1000,
-        ),
+        tokenHash: this.hashToken(randomBytes(32).toString('hex')),
+        expiresAt: new Date(),
+      },
+      include: {
+        organization: {
+          select: { name: true },
+        },
       },
     });
 
-    const appUrl = process.env.APP_URL ?? 'http://localhost:3000';
-    const invitationLink = `${appUrl}/invite/accept?token=${token}`;
-
-    await this.mailQueue.add(MAIL_JOBS.SEND_INVITATION, {
-      email: invitation.email,
-      inviterName: user.name,
-      organizationName: organization.name,
-      invitationLink,
-    });
+    const issuedInvitation = await this.issueInvitationToken(
+      { ...invitation, organization },
+      user.name,
+    );
 
     this.logger.log(`Queued member invitation ${invitation.id}`);
-    return { invitation: this.mapInvitation(invitation) };
+    return { invitation: this.mapInvitation(issuedInvitation) };
   }
 
   async resendInvitation(
@@ -436,26 +474,7 @@ export class MembersService {
       throw new NotFoundException('Invitation not found');
     }
 
-    const token = randomBytes(32).toString('hex');
-    const updated = await this.prisma.memberInvitation.update({
-      where: { id: invitation.id },
-      data: {
-        tokenHash: this.hashToken(token),
-        expiresAt: new Date(
-          Date.now() + INVITATION_EXPIRY_DAYS * 24 * 60 * 60 * 1000,
-        ),
-      },
-    });
-
-    const appUrl = process.env.APP_URL ?? 'http://localhost:3000';
-    const invitationLink = `${appUrl}/invite/accept?token=${token}`;
-
-    await this.mailQueue.add(MAIL_JOBS.SEND_INVITATION, {
-      email: invitation.email,
-      inviterName: user.name,
-      organizationName: invitation.organization.name,
-      invitationLink,
-    });
+    const updated = await this.issueInvitationToken(invitation, user.name);
 
     this.logger.log(`Resent member invitation ${invitation.id}`);
     return { invitation: this.mapInvitation(updated) };
@@ -588,17 +607,18 @@ export class MembersService {
         data: { acceptedAt: new Date() },
       });
 
-      return { userRecord, memberRole: member.role };
-    });
+      const sessionId = await this.sessionService.createSession(
+        userRecord.id,
+        tx,
+      );
 
-    const sessionId = await this.sessionService.createSession(
-      result.userRecord.id,
-    );
+      return { sessionId, userRecord, memberRole: member.role };
+    });
 
     this.logger.log(`Accepted member invitation ${invitation.id}`);
 
     return {
-      sessionId,
+      sessionId: result.sessionId,
       user: this.mapUserResponse(result.userRecord, result.memberRole),
     };
   }

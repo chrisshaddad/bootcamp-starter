@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { CheckCircle2, Loader2, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
@@ -15,8 +15,13 @@ function AcceptInvitationContent() {
   const { acceptMemberInvitation } = useAuth();
   const [status, setStatus] = useState<AcceptStatus>('loading');
   const [errorMessage, setErrorMessage] = useState('');
+  const hasAttemptedAccept = useRef(false);
 
   useEffect(() => {
+    if (hasAttemptedAccept.current) {
+      return;
+    }
+
     const token = searchParams.get('token');
 
     if (!token) {
@@ -24,6 +29,8 @@ function AcceptInvitationContent() {
       setErrorMessage('Invalid or missing invitation token');
       return;
     }
+
+    hasAttemptedAccept.current = true;
 
     const accept = async () => {
       try {

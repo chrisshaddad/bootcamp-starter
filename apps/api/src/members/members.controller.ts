@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -91,7 +92,7 @@ export class MembersController {
   @Post('invitations/:id/resend')
   @Roles('SUPER_ADMIN', 'ORG_ADMIN')
   async resendInvitation(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: User,
   ): Promise<MemberInvitationActionResponse> {
     return this.membersService.resendInvitation(id, user);
@@ -100,7 +101,7 @@ export class MembersController {
   @Delete('invitations/:id')
   @Roles('SUPER_ADMIN', 'ORG_ADMIN')
   async revokeInvitation(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: User,
   ): Promise<MemberInvitationActionResponse> {
     return this.membersService.revokeInvitation(id, user);
@@ -129,7 +130,7 @@ export class MembersController {
   @Get(':id')
   @Roles('SUPER_ADMIN', 'ORG_ADMIN')
   async findOne(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: User,
   ): Promise<MemberActionResponse> {
     return this.membersService.findOne(id, user);
@@ -138,7 +139,7 @@ export class MembersController {
   @Patch(':id')
   @Roles('SUPER_ADMIN', 'ORG_ADMIN')
   async update(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body(new ZodValidationPipe<MemberUpdateRequest>(memberUpdateRequestSchema))
     body: MemberUpdateRequest,
     @CurrentUser() user: User,
@@ -149,7 +150,7 @@ export class MembersController {
   @Delete(':id')
   @Roles('SUPER_ADMIN', 'ORG_ADMIN')
   async remove(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: User,
   ): Promise<MemberActionResponse> {
     return this.membersService.remove(id, user);

@@ -61,8 +61,8 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 
 const ROLE_COLORS: Record<MemberRole, string> = {
-  ADMIN: 'bg-blue-100 text-blue-800',
-  PRESENTER: 'bg-purple-100 text-purple-800',
+  ADMIN: 'bg-primary-100 text-primary-base',
+  PRESENTER: 'bg-warning-light text-gray-900',
 };
 
 function RoleBadge({ role }: { role: MemberRole }) {
