@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import {
   Shield,
@@ -51,12 +51,14 @@ function PasswordField({
   placeholder,
   value,
   onChange,
+  autoComplete,
 }: {
   id: string;
   label: string;
   placeholder?: string;
   value: string;
   onChange: (value: string) => void;
+  autoComplete: 'current-password' | 'new-password';
 }) {
   const [visible, setVisible] = useState(false);
 
@@ -70,6 +72,7 @@ function PasswordField({
           placeholder={placeholder}
           value={value}
           onChange={(event) => onChange(event.target.value)}
+          autoComplete={autoComplete}
           className="pr-10"
         />
         <button
@@ -148,6 +151,7 @@ function SecurityTab({ email }: { email: string }) {
             label="Current password"
             value={currentPassword}
             onChange={setCurrentPassword}
+            autoComplete="current-password"
           />
           <PasswordField
             id="new-password"
@@ -155,6 +159,7 @@ function SecurityTab({ email }: { email: string }) {
             placeholder="At least 8 characters"
             value={newPassword}
             onChange={setNewPassword}
+            autoComplete="new-password"
           />
           <PasswordField
             id="confirm-password"
@@ -162,6 +167,7 @@ function SecurityTab({ email }: { email: string }) {
             placeholder="Re-enter new password"
             value={confirmPassword}
             onChange={setConfirmPassword}
+            autoComplete="new-password"
           />
         </CardContent>
         <CardFooter className="justify-end border-t">
@@ -479,6 +485,7 @@ function DangerZoneTab() {
               type="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
+              autoComplete="current-password"
             />
           </div>
           <DialogFooter>
@@ -503,11 +510,34 @@ function DangerZoneTab() {
   );
 }
 
+const SETTINGS_TABS = [
+  'security',
+  'notifications',
+  'connected',
+  'danger',
+] as const;
+type SettingsTab = (typeof SETTINGS_TABS)[number];
+
+function isSettingsTab(value: string | null): value is SettingsTab {
+  return (SETTINGS_TABS as readonly string[]).includes(value ?? '');
+}
+
 export function SettingsTabs({ user }: SettingsTabsProps) {
   const githubUsername = user.developerProfile?.githubUsername ?? null;
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialTab: SettingsTab = isSettingsTab(searchParams.get('tab'))
+    ? (searchParams.get('tab') as SettingsTab)
+    : 'security';
+
+  const handleTabChange = (value: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('tab', value);
+    router.replace(`/settings?${params.toString()}`, { scroll: false });
+  };
 
   return (
-    <Tabs defaultValue="security">
+    <Tabs defaultValue={initialTab} onValueChange={handleTabChange}>
       <TabsList>
         <TabsTrigger value="security">
           <Shield />
