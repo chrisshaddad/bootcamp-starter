@@ -310,6 +310,7 @@ function ConnectedAccountsTab({
       await apiPost('/github/disconnect');
       mutate();
       toast.success('GitHub account disconnected');
+      setConfirmOpen(false);
     } catch (error) {
       toast.error(
         error instanceof ApiError
@@ -318,7 +319,6 @@ function ConnectedAccountsTab({
       );
     } finally {
       setIsDisconnecting(false);
-      setConfirmOpen(false);
     }
   };
 
@@ -423,6 +423,8 @@ function DangerZoneTab() {
     try {
       await deactivateAccount({ password });
       toast.success('Your account has been deactivated');
+      setConfirmOpen(false);
+      setPassword('');
       router.replace('/login');
     } catch (error) {
       toast.error(
@@ -432,8 +434,6 @@ function DangerZoneTab() {
       );
     } finally {
       setIsDeactivating(false);
-      setConfirmOpen(false);
-      setPassword('');
     }
   };
 
@@ -537,7 +537,7 @@ export function SettingsTabs({ user }: SettingsTabsProps) {
   };
 
   return (
-    <Tabs defaultValue={initialTab} onValueChange={handleTabChange}>
+    <Tabs value={initialTab} onValueChange={handleTabChange}>
       <TabsList>
         <TabsTrigger value="security">
           <Shield />
