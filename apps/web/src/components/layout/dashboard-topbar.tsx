@@ -14,7 +14,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import { LocaleSwitcher } from '@/components/layout/locale-switcher';
 import { MobileSidebarTrigger } from '@/components/layout/dashboard-sidebar';
@@ -130,11 +129,15 @@ function UserDropdown({
         </Avatar>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" side="bottom">
-        <DropdownMenuLabel className="font-normal">
+        {/* Plain header, NOT DropdownMenuLabel: base-ui's Menu.GroupLabel must
+            live inside a Menu.Group — rendering it bare here threw Base UI
+            error #31 and crashed the whole menu on open (the real cause of the
+            partner's "profile couldn't load" Q33). */}
+        <div className="px-2 py-1.5">
           <p className="text-sm font-medium text-foreground">
             {userName || '—'}
           </p>
-        </DropdownMenuLabel>
+        </div>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={() => router.push(`/${locale}/dashboard/profile`)}
