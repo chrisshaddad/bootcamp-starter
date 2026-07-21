@@ -384,8 +384,11 @@
         "startDate": "Start date is required",
         "endDate": "End date is required",
         "endAfterStart": "End date must be on or after the start date",
-        "invalidAmount": "Enter a valid, non-negative amount"
-      }
+        "invalidAmount": "Enter a valid, non-negative amount",
+        "pastStartDate": "Start date can't be in the past for a new active lease. Check \"Record an existing lease\" to back-date it."
+      },
+      "recordExisting": "Record an existing lease",
+      "recordExistingHelp": "Allow a start date in the past for a lease that already began before today."
     }
   },
   "support": {
@@ -688,7 +691,9 @@
         "depositAmount": "Deposit amount",
         "renewalTerms": "Renewal terms",
         "notes": "Notes",
-        "optional": "(optional)"
+        "optional": "(optional)",
+        "recordExisting": "Record an existing lease",
+        "recordExistingHelp": "Allow a start date in the past for a lease that already began before today."
       },
       "errors": {
         "renter": "Renter is required",
@@ -696,7 +701,8 @@
         "endDate": "End date is required",
         "endAfterStart": "End date must be on or after the start date",
         "mustBeNumber": "{label} must be a number",
-        "cannotBeNegative": "{label} cannot be negative"
+        "cannotBeNegative": "{label} cannot be negative",
+        "pastStartDate": "Start date can't be in the past for a new active lease. Check \"Record an existing lease\" to back-date it."
       },
       "create": {
         "title": "New lease",

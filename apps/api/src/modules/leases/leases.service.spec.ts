@@ -109,9 +109,13 @@ describe('LeasesService', () => {
     ...overrides,
   });
 
+  // Comfortably in the future (well past "today" for the foreseeable life of
+  // this suite) so the F4.3 past-start guard never trips on the happy path.
+  const FAR_ENOUGH_FUTURE_START = '2050-01-01T00:00:00.000Z';
+
   const dto = {
     renterId,
-    startDate: '2026-01-01T00:00:00.000Z',
+    startDate: FAR_ENOUGH_FUTURE_START,
     endDate: FAR_FUTURE,
     rentAmount: 1500,
     depositAmount: 1500,
@@ -173,7 +177,7 @@ describe('LeasesService', () => {
       expect(prisma.apartment.update).not.toHaveBeenCalled();
     });
 
-    it('rejects creating a second active lease on an apartment that already has one', async () => {
+    it('rejects creating a second active lease whose dates fully overlap an existing one', async () => {
       const { service, prisma } = makeService({
         lease: {
           findMany: jest.fn().mockResolvedValue([leaseRow()]),
@@ -184,22 +188,6 @@ describe('LeasesService', () => {
         service.create(orgId, actorId, buildingId, floorId, apartmentId, dto),
       ).rejects.toBeInstanceOf(ConflictException);
       expect(prisma.lease.create).not.toHaveBeenCalled();
-    });
-
-    it('allows creating a draft lease alongside an existing active lease', async () => {
-      const { service, prisma } = makeService({
-        lease: {
-          findMany: jest.fn().mockResolvedValue([leaseRow()]),
-        },
-      });
-      prisma.lease.create.mockResolvedValue(leaseRow({ status: 'draft' }));
-
-      await service.create(orgId, actorId, buildingId, floorId, apartmentId, {
-        ...dto,
-        status: 'draft',
-      });
-
-      expect(prisma.lease.create).toHaveBeenCalled();
     });
 
     it('allows a new active lease when the existing one has already expired', async () => {
@@ -222,6 +210,198 @@ describe('LeasesService', () => {
       );
 
       expect(prisma.lease.create).toHaveBeenCalled();
+    });
+
+    describe('date-overlap check (F4.1)', () => {
+      // A bounded existing lease (not FAR_FUTURE-ended) so there's real room
+      // to construct disjoint/adjacent/partial ranges around it.
+      const boundedExisting = () =>
+        leaseRow({
+          id: 'lease-existing',
+          startDate: new Date('2030-01-01T00:00:00.000Z'),
+          endDate: new Date('2031-01-01T00:00:00.000Z'),
+        });
+
+      it('rejects a partial overlap at the head (new lease starts before, ends inside)', async () => {
+        const { service, prisma } = makeService({
+          lease: { findMany: jest.fn().mockResolvedValue([boundedExisting()]) },
+        });
+
+        await expect(
+          service.create(orgId, actorId, buildingId, floorId, apartmentId, {
+            ...dto,
+            startDate: '2029-06-01T00:00:00.000Z',
+            endDate: '2030-06-01T00:00:00.000Z',
+          }),
+        ).rejects.toBeInstanceOf(ConflictException);
+        expect(prisma.lease.create).not.toHaveBeenCalled();
+      });
+
+      it('rejects a partial overlap at the tail (new lease starts inside, ends after)', async () => {
+        const { service, prisma } = makeService({
+          lease: { findMany: jest.fn().mockResolvedValue([boundedExisting()]) },
+        });
+
+        await expect(
+          service.create(orgId, actorId, buildingId, floorId, apartmentId, {
+            ...dto,
+            startDate: '2030-06-01T00:00:00.000Z',
+            endDate: '2031-06-01T00:00:00.000Z',
+          }),
+        ).rejects.toBeInstanceOf(ConflictException);
+        expect(prisma.lease.create).not.toHaveBeenCalled();
+      });
+
+      it('allows a back-to-back lease starting exactly when the existing one ends', async () => {
+        const { service, prisma } = makeService({
+          lease: { findMany: jest.fn().mockResolvedValue([boundedExisting()]) },
+        });
+        prisma.lease.create.mockResolvedValue(leaseRow());
+
+        await service.create(orgId, actorId, buildingId, floorId, apartmentId, {
+          ...dto,
+          startDate: '2031-01-01T00:00:00.000Z', // === existing.endDate
+          endDate: '2032-01-01T00:00:00.000Z',
+        });
+
+        expect(prisma.lease.create).toHaveBeenCalled();
+      });
+
+      it('allows a disjoint future lease (starts well after the existing one ends)', async () => {
+        const { service, prisma } = makeService({
+          lease: { findMany: jest.fn().mockResolvedValue([boundedExisting()]) },
+        });
+        prisma.lease.create.mockResolvedValue(leaseRow());
+
+        await service.create(orgId, actorId, buildingId, floorId, apartmentId, {
+          ...dto,
+          startDate: '2035-01-01T00:00:00.000Z',
+          endDate: '2036-01-01T00:00:00.000Z',
+        });
+
+        expect(prisma.lease.create).toHaveBeenCalled();
+      });
+
+      it('allows a disjoint past lease (ends before the existing one starts)', async () => {
+        const { service, prisma } = makeService({
+          lease: { findMany: jest.fn().mockResolvedValue([boundedExisting()]) },
+        });
+        prisma.lease.create.mockResolvedValue(leaseRow({ status: 'draft' }));
+
+        // Use a draft here (start-date policy F4.3 only guards 'active').
+        await service.create(orgId, actorId, buildingId, floorId, apartmentId, {
+          ...dto,
+          status: 'draft',
+          startDate: '2020-01-01T00:00:00.000Z',
+          endDate: '2021-01-01T00:00:00.000Z',
+        });
+
+        expect(prisma.lease.create).toHaveBeenCalled();
+      });
+
+      it('ignores a terminated existing lease even if its dates fully overlap', async () => {
+        const { service, prisma } = makeService({
+          lease: {
+            findMany: jest
+              .fn()
+              .mockResolvedValue([
+                { ...boundedExisting(), status: 'terminated' },
+              ]),
+          },
+        });
+        prisma.lease.create.mockResolvedValue(leaseRow());
+
+        await service.create(orgId, actorId, buildingId, floorId, apartmentId, {
+          ...dto,
+          startDate: '2030-01-01T00:00:00.000Z',
+          endDate: '2031-01-01T00:00:00.000Z',
+        });
+
+        expect(prisma.lease.create).toHaveBeenCalled();
+      });
+
+      it('applies the overlap check to draft leases too (not exempt)', async () => {
+        const { service, prisma } = makeService({
+          lease: { findMany: jest.fn().mockResolvedValue([boundedExisting()]) },
+        });
+
+        await expect(
+          service.create(orgId, actorId, buildingId, floorId, apartmentId, {
+            ...dto,
+            status: 'draft',
+            startDate: '2030-06-01T00:00:00.000Z',
+            endDate: '2030-09-01T00:00:00.000Z',
+          }),
+        ).rejects.toBeInstanceOf(ConflictException);
+        expect(prisma.lease.create).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('start-date policy (F4.3)', () => {
+      it('rejects a new active lease starting in the past without recordExisting', async () => {
+        const { service, prisma } = makeService();
+
+        await expect(
+          service.create(orgId, actorId, buildingId, floorId, apartmentId, {
+            ...dto,
+            startDate: '2020-01-01T00:00:00.000Z',
+          }),
+        ).rejects.toBeInstanceOf(BadRequestException);
+        expect(prisma.lease.create).not.toHaveBeenCalled();
+      });
+
+      it('allows a past-start active lease when recordExisting is true', async () => {
+        const { service, prisma } = makeService();
+        prisma.lease.create.mockResolvedValue(
+          leaseRow({ startDate: new Date('2020-01-01T00:00:00.000Z') }),
+        );
+
+        await service.create(orgId, actorId, buildingId, floorId, apartmentId, {
+          ...dto,
+          startDate: '2020-01-01T00:00:00.000Z',
+          recordExisting: true,
+        });
+
+        expect(prisma.lease.create).toHaveBeenCalled();
+      });
+
+      it('allows an active lease starting today', async () => {
+        const { service, prisma } = makeService();
+        const today = new Date();
+        const todayUtcMidnight = new Date(
+          Date.UTC(
+            today.getUTCFullYear(),
+            today.getUTCMonth(),
+            today.getUTCDate(),
+          ),
+        ).toISOString();
+        prisma.lease.create.mockResolvedValue(leaseRow());
+
+        await service.create(orgId, actorId, buildingId, floorId, apartmentId, {
+          ...dto,
+          startDate: todayUtcMidnight,
+        });
+
+        expect(prisma.lease.create).toHaveBeenCalled();
+      });
+
+      it('allows a past-start draft lease without recordExisting (guard only applies to active)', async () => {
+        const { service, prisma } = makeService();
+        prisma.lease.create.mockResolvedValue(
+          leaseRow({
+            status: 'draft',
+            startDate: new Date('2020-01-01T00:00:00.000Z'),
+          }),
+        );
+
+        await service.create(orgId, actorId, buildingId, floorId, apartmentId, {
+          ...dto,
+          status: 'draft',
+          startDate: '2020-01-01T00:00:00.000Z',
+        });
+
+        expect(prisma.lease.create).toHaveBeenCalled();
+      });
     });
 
     it('throws NotFoundException when the apartment does not belong to the floor/building/org', async () => {
@@ -327,6 +507,91 @@ describe('LeasesService', () => {
           {},
         ),
       ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    describe('date-overlap check (F4.1)', () => {
+      it('excludes the lease being updated from the overlap check (self-exclusion)', async () => {
+        const { service, prisma } = makeService({
+          lease: {
+            findFirst: jest.fn().mockResolvedValue(leaseRow()),
+            findMany: jest.fn().mockResolvedValue([]),
+          },
+        });
+        prisma.lease.update.mockResolvedValue(
+          leaseRow({ endDate: new Date('2099-06-01T00:00:00.000Z') }),
+        );
+
+        await service.update(
+          orgId,
+          actorId,
+          buildingId,
+          floorId,
+          apartmentId,
+          'lease-1',
+          { endDate: '2099-06-01T00:00:00.000Z' },
+        );
+
+        expect(prisma.lease.findMany).toHaveBeenCalledWith({
+          where: { apartmentId, id: { not: 'lease-1' } },
+          select: { status: true, startDate: true, endDate: true },
+        });
+        expect(prisma.lease.update).toHaveBeenCalled();
+      });
+
+      it('rejects updating a lease when the new dates overlap another non-terminated lease on the same apartment', async () => {
+        const { service, prisma } = makeService({
+          lease: {
+            findFirst: jest.fn().mockResolvedValue(leaseRow()),
+            findMany: jest.fn().mockResolvedValue([
+              leaseRow({
+                id: 'lease-2',
+                startDate: new Date('2027-06-01T00:00:00.000Z'),
+                endDate: new Date('2028-06-01T00:00:00.000Z'),
+              }),
+            ]),
+          },
+        });
+
+        await expect(
+          service.update(
+            orgId,
+            actorId,
+            buildingId,
+            floorId,
+            apartmentId,
+            'lease-1',
+            {
+              startDate: '2027-01-01T00:00:00.000Z',
+              endDate: '2027-12-01T00:00:00.000Z',
+            },
+          ),
+        ).rejects.toBeInstanceOf(ConflictException);
+        expect(prisma.lease.update).not.toHaveBeenCalled();
+      });
+
+      it('does not re-run the overlap check when neither dates nor status change', async () => {
+        const { service, prisma } = makeService({
+          lease: {
+            findFirst: jest.fn().mockResolvedValue(leaseRow()),
+          },
+        });
+        prisma.lease.update.mockResolvedValue(
+          leaseRow({ rentAmount: new Prisma.Decimal('1600.00') }),
+        );
+
+        await service.update(
+          orgId,
+          actorId,
+          buildingId,
+          floorId,
+          apartmentId,
+          'lease-1',
+          { rentAmount: 1600 },
+        );
+
+        expect(prisma.lease.findMany).not.toHaveBeenCalled();
+        expect(prisma.lease.update).toHaveBeenCalled();
+      });
     });
   });
 

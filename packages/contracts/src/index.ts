@@ -432,6 +432,12 @@ export type CreateLeaseBody = {
   status?: LeaseStatus;
   renewalTerms?: string;
   notes?: string;
+  /**
+   * F4.3 (decision D3): a NEW active lease may not silently start in the past.
+   * Set this to explicitly record an already-existing lease with a back-dated
+   * start; without it, a past start on an active lease is rejected (400).
+   */
+  recordExisting?: boolean;
 };
 
 export type PatchLeaseBody = {
@@ -670,6 +676,16 @@ export type RecurringInvoiceRunResponse = {
   generated: number; // invoices created this run
   leasesConsidered: number; // active leases inspected
   skippedExisting: number; // periods that already had an invoice (idempotent no-op)
+};
+
+/**
+ * Result of an apartment-status expiry sweep (F4.2): reverts `occupied`
+ * apartments that no longer have an effectively-active lease (and no open work
+ * order) back to `vacant`. Runs daily via the scheduler and on-demand.
+ */
+export type ApartmentStatusSweepResponse = {
+  reverted: number; // apartments flipped occupied -> vacant
+  considered: number; // occupied apartments inspected
 };
 
 // ── Expenses ─────────────────────────────────────────────────────────────────

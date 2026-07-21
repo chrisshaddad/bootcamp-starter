@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -141,6 +142,18 @@ function LeaseStatusBadge({
 
 type DialogDict = Dictionary['apartments']['dialog'];
 
+/**
+ * Today as a local `YYYY-MM-DD` string — matches the value shape of a native
+ * `<input type="date">` so it can be used directly as `min` and compared
+ * lexically against form date strings.
+ */
+function todayDateInputValue(): string {
+  const d = new Date();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
 function buildLeaseSchema(t: DialogDict) {
   const numericField = (label: string) =>
     z
@@ -161,10 +174,17 @@ function buildLeaseSchema(t: DialogDict) {
       depositAmount: numericField(t.fields.depositAmount),
       renewalTerms: z.string().optional(),
       notes: z.string().optional(),
+      // F4.3 (decision D3): a new active lease may not silently start in the
+      // past unless the creator explicitly flags it as an existing lease.
+      recordExisting: z.boolean(),
     })
     .refine((v) => v.endDate >= v.startDate, {
       message: t.errors.endAfterStart,
       path: ['endDate'],
+    })
+    .refine((v) => v.recordExisting || v.startDate >= todayDateInputValue(), {
+      message: t.errors.pastStartDate,
+      path: ['startDate'],
     });
 }
 type LeaseFormValues = z.infer<ReturnType<typeof buildLeaseSchema>>;
@@ -177,6 +197,7 @@ const DEFAULT_VALUES: LeaseFormValues = {
   depositAmount: '',
   renewalTerms: '',
   notes: '',
+  recordExisting: false,
 };
 
 function buildRenewSchema(t: DialogDict) {
@@ -255,11 +276,15 @@ export function ApartmentDetailPage({
     handleSubmit,
     reset,
     control,
+    watch,
     formState: { errors },
   } = useForm<LeaseFormValues>({
     resolver: zodResolver(leaseSchema),
     defaultValues: DEFAULT_VALUES,
   });
+
+  const recordExisting = watch('recordExisting');
+  const todayStr = todayDateInputValue();
 
   const {
     register: regRenew,
@@ -284,6 +309,7 @@ export function ApartmentDetailPage({
           depositAmount: Number(values.depositAmount),
           renewalTerms: values.renewalTerms || undefined,
           notes: values.notes || undefined,
+          ...(values.recordExisting ? { recordExisting: true } : {}),
         },
       }).unwrap();
       toast.success(t.dialog.create.success);
@@ -583,6 +609,29 @@ export function ApartmentDetailPage({
                 </p>
               )}
             </div>
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center gap-2">
+                <Controller
+                  control={control}
+                  name="recordExisting"
+                  render={({ field }) => (
+                    <Checkbox
+                      id="l-record-existing"
+                      checked={field.value}
+                      onCheckedChange={(checked) =>
+                        field.onChange(checked === true)
+                      }
+                    />
+                  )}
+                />
+                <Label htmlFor="l-record-existing" className="font-normal">
+                  {t.dialog.fields.recordExisting}
+                </Label>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {t.dialog.fields.recordExistingHelp}
+              </p>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="l-start">
@@ -592,6 +641,7 @@ export function ApartmentDetailPage({
                 <Input
                   id="l-start"
                   type="date"
+                  min={recordExisting ? undefined : todayStr}
                   aria-invalid={!!errors.startDate}
                   {...register('startDate')}
                 />

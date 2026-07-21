@@ -79,6 +79,52 @@ export class LeasesService {
     }
   }
 
+  /** UTC midnight for `date` — the F4.3 start-date policy compares at day granularity. */
+  private startOfUtcDay(date: Date): Date {
+    return new Date(
+      Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
+    );
+  }
+
+  /**
+   * F4.1: true date-range overlap check, replacing the old "any effectively-
+   * active lease on the apartment" rule (which ignored the new lease's own
+   * dates and made back-to-back/future leases impossible). Rejects only if
+   * `[startDate, endDate)` overlaps an existing NON-terminated lease's own
+   * `[startDate, endDate)` on the same apartment — end-exclusive, so
+   * back-to-back leases (newStart === existingEnd) are allowed. Terminated
+   * leases are filtered out in application code (matching the sibling
+   * WorkOrderApartmentStatusService convention of querying broadly and
+   * filtering status in JS) so a stale mock/row can't silently bypass this in
+   * tests. `excludeLeaseId` lets update() exclude its own row.
+   */
+  private async assertNoOverlappingLease(
+    apartmentId: string,
+    startDate: Date,
+    endDate: Date,
+    excludeLeaseId?: string,
+  ): Promise<void> {
+    const existingLeases = await this.prisma.lease.findMany({
+      where: {
+        apartmentId,
+        ...(excludeLeaseId && { id: { not: excludeLeaseId } }),
+      },
+      select: { status: true, startDate: true, endDate: true },
+    });
+
+    const overlaps = existingLeases.some(
+      (l) =>
+        l.status !== 'terminated' &&
+        startDate < l.endDate &&
+        l.startDate < endDate,
+    );
+    if (overlaps) {
+      throw new ConflictException(
+        'This apartment already has a lease that overlaps these dates.',
+      );
+    }
+  }
+
   // ── CRUD ──────────────────────────────────────────────────────────────────
 
   async findAll(
@@ -209,26 +255,32 @@ export class LeasesService {
   ): Promise<{ data: LeaseResponse }> {
     await this.assertApartmentInScope(orgId, buildingId, floorId, apartmentId);
     await this.assertRenterInOrg(orgId, dto.renterId);
-    this.assertValidDateRange(dto.startDate, dto.endDate);
+
+    const startDate = new Date(dto.startDate);
+    const endDate = new Date(dto.endDate);
+    this.assertValidDateRange(startDate, endDate);
 
     const resolvedStatus = dto.status ?? 'active';
     const now = new Date();
 
-    if (resolvedStatus === 'active') {
-      const existingLeases = await this.prisma.lease.findMany({
-        where: { apartmentId },
-      });
-      const hasActiveLease = existingLeases.some((l) =>
-        this.leaseStatus.isEffectivelyActive(
-          { status: l.status, endDate: l.endDate },
-          now,
-        ),
+    // F4.3 (decision D3): a new ACTIVE lease can't silently start in the
+    // past — that almost always means the caller meant to back-date an
+    // already-existing lease, which must be explicit via recordExisting.
+    if (
+      resolvedStatus === 'active' &&
+      this.startOfUtcDay(startDate) < this.startOfUtcDay(now) &&
+      !dto.recordExisting
+    ) {
+      throw new BadRequestException(
+        "A new active lease can't start in the past; use 'record an existing lease' to back-date.",
       );
-      if (hasActiveLease) {
-        throw new ConflictException(
-          'This apartment already has an active lease.',
-        );
-      }
+    }
+
+    // F4.1: reject only on a genuine date-range overlap with another
+    // non-terminated lease on this apartment — not simply "an active lease
+    // exists" (that made future/back-to-back leases impossible).
+    if (resolvedStatus !== 'terminated') {
+      await this.assertNoOverlappingLease(apartmentId, startDate, endDate);
     }
 
     const lease = await this.prisma.$transaction(async (tx) => {
@@ -239,8 +291,8 @@ export class LeasesService {
           floorId,
           apartmentId,
           renterId: dto.renterId,
-          startDate: new Date(dto.startDate),
-          endDate: new Date(dto.endDate),
+          startDate,
+          endDate,
           rentAmount: dto.rentAmount,
           depositAmount: dto.depositAmount,
           status: resolvedStatus,
@@ -287,10 +339,28 @@ export class LeasesService {
 
     // Validate the resulting date range against whichever dates are being
     // changed, falling back to the stored values for the untouched one.
-    this.assertValidDateRange(
-      dto.startDate ?? existing.startDate,
-      dto.endDate ?? existing.endDate,
-    );
+    const resolvedStartDate =
+      dto.startDate !== undefined ? new Date(dto.startDate) : existing.startDate;
+    const resolvedEndDate =
+      dto.endDate !== undefined ? new Date(dto.endDate) : existing.endDate;
+    this.assertValidDateRange(resolvedStartDate, resolvedEndDate);
+
+    // F4.1: re-run the overlap check when the update touches the dates
+    // and/or (re)activates the lease — excluding the lease's own row so it
+    // doesn't conflict with itself.
+    const resolvedStatus = dto.status ?? existing.status;
+    const datesOrStatusChanging =
+      dto.startDate !== undefined ||
+      dto.endDate !== undefined ||
+      dto.status !== undefined;
+    if (datesOrStatusChanging && resolvedStatus !== 'terminated') {
+      await this.assertNoOverlappingLease(
+        apartmentId,
+        resolvedStartDate,
+        resolvedEndDate,
+        leaseId,
+      );
+    }
 
     const isTerminating =
       dto.status === 'terminated' && existing.status !== 'terminated';

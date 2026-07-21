@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsDateString,
   IsEnum,
   IsNotEmpty,
@@ -51,4 +52,14 @@ export class CreateLeaseDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @ApiPropertyOptional({
+    description:
+      "F4.3 (decision D3): a NEW active lease may not silently start in the past. " +
+      'Set this to explicitly record an already-existing lease with a back-dated ' +
+      'start; without it, a past start on an active lease is rejected (400).',
+  })
+  @IsOptional()
+  @IsBoolean()
+  recordExisting?: boolean;
 }
