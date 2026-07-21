@@ -19,6 +19,7 @@ enum AccountType {
 enum AccountStatus {
   ACTIVE
   SUSPENDED
+  DEACTIVATED
 
   @@schema("public")
 }
@@ -140,13 +141,15 @@ model User {
 
   suspendedAt      DateTime?
   suspensionReason String?   @db.Text
+  deactivatedAt    DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  developerProfile DeveloperProfile?
-  hiringProfile    HiringProfile?
-  connectedAccount ConnectedAccount?
+  developerProfile        DeveloperProfile?
+  hiringProfile           HiringProfile?
+  connectedAccount        ConnectedAccount?
+  notificationPreference  NotificationPreference?
 
   sessions   Session[]
   magicLinks MagicLink[]
@@ -184,6 +187,20 @@ model DeveloperProfile {
   githubUserId      BigInt?   @unique
   githubUsername    String?   @unique
   githubConnectedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@schema("public")
+}
+
+model NotificationPreference {
+  id     String @id @default(uuid())
+  userId String @unique
+
+  projectInvitationEmails Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

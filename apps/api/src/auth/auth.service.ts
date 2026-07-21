@@ -19,6 +19,8 @@ import {
   LoginRequest,
   UpdateProfileRequest,
   UserResponse,
+  ChangePasswordRequest,
+  DeactivateAccountRequest,
 } from '@repo/contracts';
 
 const MAGIC_LINK_EXPIRY_MINUTES = 15;
@@ -171,6 +173,11 @@ export class AuthService {
     if (user.status === 'SUSPENDED') {
       throw new ForbiddenException('This account has been suspended');
     }
+    if (user.status === 'DEACTIVATED') {
+      throw new ForbiddenException(
+        'This account has been deactivated. Contact support to reactivate it.',
+      );
+    }
 
     const sessionId = await this.sessionService.createSession(user.id);
 
@@ -199,8 +206,10 @@ export class AuthService {
       return { success: true };
     }
 
-    if (user.status === 'SUSPENDED') {
-      this.logger.warn(`Magic link requested for suspended user ${user.id}`);
+    if (user.status === 'SUSPENDED' || user.status === 'DEACTIVATED') {
+      this.logger.warn(
+        `Magic link requested for ${user.status.toLowerCase()} user ${user.id}`,
+      );
       return { success: true };
     }
 
@@ -277,6 +286,11 @@ export class AuthService {
 
     if (magicLink.user.status === 'SUSPENDED') {
       throw new ForbiddenException('This account has been suspended');
+    }
+    if (magicLink.user.status === 'DEACTIVATED') {
+      throw new ForbiddenException(
+        'This account has been deactivated. Contact support to reactivate it.',
+      );
     }
 
     await this.prisma.magicLink.update({
@@ -459,5 +473,53 @@ export class AuthService {
           }
         : null,
     };
+  }
+
+  async changePassword(
+    userId: string,
+    data: ChangePasswordRequest,
+  ): Promise<{ success: true }> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const isValid = verifyPassword(data.currentPassword, user.passwordHash);
+    if (!isValid) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: hashPassword(data.newPassword) },
+    });
+
+    return { success: true };
+  }
+
+  async deactivateAccount(
+    userId: string,
+    data: DeactivateAccountRequest,
+  ): Promise<{ success: true }> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const isValid = verifyPassword(data.password, user.passwordHash);
+    if (!isValid) {
+      throw new UnauthorizedException('Password is incorrect');
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { status: 'DEACTIVATED', deactivatedAt: new Date() },
+    });
+    await this.sessionService.deleteAllUserSessions(userId);
+
+    this.logger.log(`User ${userId} deactivated their account`);
+    return { success: true };
   }
 }

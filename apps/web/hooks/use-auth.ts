@@ -12,6 +12,9 @@ import type {
   AuthResponse,
   UpdateProfileRequest,
   UserResponse,
+  ChangePasswordRequest,
+  DeactivateAccountRequest,
+  SuccessResponse,
 } from '@repo/contracts';
 
 interface UseUserOptions {
@@ -116,6 +119,19 @@ export function useAuth() {
     [mutate],
   );
 
+  const changePassword = useCallback(async (data: ChangePasswordRequest) => {
+    return apiPatch<SuccessResponse>('/auth/password', data);
+  }, []);
+
+  const deactivateAccount = useCallback(
+    async (data: DeactivateAccountRequest) => {
+      const result = await apiPost<SuccessResponse>('/auth/deactivate', data);
+      mutate();
+      return result;
+    },
+    [mutate],
+  );
+
   return {
     requestMagicLink,
     verifyMagicLink,
@@ -123,5 +139,7 @@ export function useAuth() {
     signup,
     logout,
     updateProfile,
+    changePassword,
+    deactivateAccount,
   };
 }

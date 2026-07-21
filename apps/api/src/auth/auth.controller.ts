@@ -40,6 +40,8 @@ import {
   loginRequestSchema,
   signupRequestSchema,
   updateProfileRequestSchema,
+  changePasswordRequestSchema,
+  deactivateAccountRequestSchema,
   PROFILE_PICTURE_MAX_SIZE_BYTES,
   PROFILE_PICTURE_ALLOWED_MIME_TYPES,
   type MagicLinkRequest,
@@ -50,6 +52,9 @@ import {
   type UserResponse,
   type UpdateProfileRequest,
   type ProfilePictureUploadResponse,
+  type ChangePasswordRequest,
+  type DeactivateAccountRequest,
+  type SuccessResponse,
 } from '@repo/contracts';
 import { ZodValidationPipe } from '../common/pipes';
 import {
@@ -283,5 +288,43 @@ export class AuthController {
     body: UpdateProfileRequest,
   ) {
     return this.authService.updateProfile(user.id, body);
+  }
+
+  @Patch('password')
+  @ApiCookieAuth('session')
+  @ApiOperation({ summary: "Change the current user's password" })
+  @ApiResponse({ status: 200, description: 'Password updated' })
+  @ApiResponse({ status: 401, description: 'Current password is incorrect' })
+  @HttpCode(HttpStatus.OK)
+  async changePassword(
+    @CurrentUser() user: UserResponse,
+    @Body(new ZodValidationPipe(changePasswordRequestSchema))
+    body: ChangePasswordRequest,
+  ): Promise<SuccessResponse> {
+    return this.authService.changePassword(user.id, body);
+  }
+
+  @Post('deactivate')
+  @ApiCookieAuth('session')
+  @ApiOperation({ summary: "Deactivate the current user's account" })
+  @ApiResponse({ status: 200, description: 'Account deactivated' })
+  @ApiResponse({ status: 401, description: 'Password is incorrect' })
+  @HttpCode(HttpStatus.OK)
+  async deactivateAccount(
+    @CurrentUser() user: UserResponse,
+    @Body(new ZodValidationPipe(deactivateAccountRequestSchema))
+    body: DeactivateAccountRequest,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<SuccessResponse> {
+    const result = await this.authService.deactivateAccount(user.id, body);
+
+    response.clearCookie(SESSION_COOKIE_NAME, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+    });
+
+    return result;
   }
 }

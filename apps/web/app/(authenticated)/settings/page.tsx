@@ -1,35 +1,33 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Settings } from 'lucide-react';
+'use client';
+
+import { Skeleton } from '@/components/ui/skeleton';
+import { SettingsTabs } from '@/components/settings-tabs';
+import { useUser } from '@/hooks/use-auth';
 
 export default function SettingsPage() {
+  const { user, isLoading, error } = useUser();
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-foreground text-2xl font-bold">Settings</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          Manage your account and organization settings
+          Manage your account security, notifications, and connected services.
         </p>
       </div>
 
-      <Card className="shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-foreground flex items-center gap-2 text-lg font-semibold">
-            <Settings className="text-muted-foreground h-5 w-5" />
-            Account Settings
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex min-h-75 flex-col items-center justify-center">
-          <div className="text-center">
-            <div className="bg-muted mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full">
-              <Settings className="text-muted-foreground h-8 w-8" />
-            </div>
-            <h3 className="text-foreground text-lg font-medium">Coming Soon</h3>
-            <p className="text-muted-foreground mt-1 text-sm">
-              Settings features are being developed.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      {error ? (
+        <p className="text-destructive text-sm">
+          Unable to load your settings. Please refresh the page.
+        </p>
+      ) : isLoading || !user ? (
+        <div className="space-y-4">
+          <Skeleton className="h-9 w-full max-w-md" />
+          <Skeleton className="h-64 w-full" />
+        </div>
+      ) : (
+        <SettingsTabs user={user} />
+      )}
     </div>
   );
 }

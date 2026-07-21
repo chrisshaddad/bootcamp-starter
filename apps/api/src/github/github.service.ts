@@ -270,6 +270,27 @@ export class GithubService {
     }
   }
 
+  async disconnectGithub(userId: string): Promise<void> {
+    await this.db.$transaction([
+      this.db.developerProfile.update({
+        where: { userId },
+        data: {
+          githubUserId: null,
+          githubUsername: null,
+          githubConnectedAt: null,
+        },
+      }),
+      this.db.connectedAccount.updateMany({
+        where: { userId },
+        data: {
+          githubAccessToken: null,
+          oauthState: null,
+          oauthStateExpiresAt: null,
+        },
+      }),
+    ]);
+  }
+
   async getUserRepositories(userId: string): Promise<GithubRepository[]> {
     const githubContext = await this.getGithubContext(userId);
     const accumulatedRepos: GithubRepoResponse[] = [];

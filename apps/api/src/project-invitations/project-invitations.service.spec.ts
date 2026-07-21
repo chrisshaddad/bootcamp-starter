@@ -161,6 +161,52 @@ describe('ProjectInvitationsService', () => {
     );
   });
 
+  it('skips queuing the email when the invitee opted out of invitation emails, but still creates the invitation', async () => {
+    db.user.findFirst.mockResolvedValue({
+      id: INVITEE_ID,
+      email: 'invitee@example.com',
+      developerProfile: {
+        displayName: 'Invitee User',
+        publicSlug: 'invitee-user',
+        profilePictureUrl: null,
+      },
+      notificationPreference: { projectInvitationEmails: false },
+    });
+
+    const result = await service.createInvitation(ownerUser(), PROJECT_ID, {
+      githubUsername: 'invitee',
+      role: 'CONTRIBUTOR',
+    });
+
+    expect(result).toMatchObject({ status: 'PENDING' });
+    expect(db.projectInvitation.create).toHaveBeenCalledTimes(1);
+    expect(mailQueue.add).not.toHaveBeenCalled();
+  });
+
+  it('queues the email when the invitee has not set a preference (defaults to on)', async () => {
+    db.user.findFirst.mockResolvedValue({
+      id: INVITEE_ID,
+      email: 'invitee@example.com',
+      developerProfile: {
+        displayName: 'Invitee User',
+        publicSlug: 'invitee-user',
+        profilePictureUrl: null,
+      },
+      notificationPreference: null,
+    });
+
+    await service.createInvitation(ownerUser(), PROJECT_ID, {
+      githubUsername: 'invitee',
+      role: 'CONTRIBUTOR',
+    });
+
+    expect(mailQueue.add).toHaveBeenCalledWith(
+      'send-project-invitation',
+      expect.objectContaining({ email: 'invitee@example.com' }),
+      expect.objectContaining({ attempts: 3 }),
+    );
+  });
+
   it('removes a created invitation when email enqueueing fails', async () => {
     mailQueue.add.mockRejectedValue(new Error('Redis unavailable'));
     await expect(
