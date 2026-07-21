@@ -77,9 +77,9 @@ function SentConfirmation({ email }: { email: string }) {
     <div className="space-y-4 text-center">
       <CheckCircle2 className="mx-auto h-10 w-10 text-success" />
       <p className="text-sm text-muted-foreground">
-        If an account exists for <span className="font-medium text-foreground">{email}</span>,
-        we&apos;ve sent a link to reset your password. It expires in 30
-        minutes.
+        If an account exists for{' '}
+        <span className="font-medium text-foreground">{email}</span>, we&apos;ve
+        sent a link to reset your password. It expires in 30 minutes.
       </p>
     </div>
   );

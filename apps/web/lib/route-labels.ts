@@ -29,5 +29,8 @@ const ROUTE_LABEL_RULES: RouteLabelRule[] = [
 ];
 
 export function getRouteLabel(pathname: string): string {
-  return ROUTE_LABEL_RULES.find((rule) => rule.test.test(pathname))?.label ?? 'Previous Page';
+  return (
+    ROUTE_LABEL_RULES.find((rule) => rule.test.test(pathname))?.label ??
+    'Previous Page'
+  );
 }

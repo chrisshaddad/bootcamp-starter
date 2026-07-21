@@ -20,7 +20,10 @@ function isPubliclyAccessibleRoute(pathname: string): boolean {
   // 2. Reset-password isn't gated on auth state either direction — the
   // emailed token is the actual proof of identity, and a still-logged-in
   // user should be able to complete a reset without being bounced away.
-  if (pathname === '/reset-password' || pathname.startsWith('/reset-password/')) {
+  if (
+    pathname === '/reset-password' ||
+    pathname.startsWith('/reset-password/')
+  ) {
     return true;
   }
 
