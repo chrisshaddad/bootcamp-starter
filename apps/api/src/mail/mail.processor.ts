@@ -151,10 +151,10 @@ export class MailProcessor extends WorkerHost {
     });
 
     if (success) {
-      this.logger.log(`Password reset email sent successfully to ${email}`);
+      this.logger.log('Password reset email sent successfully');
     } else {
-      this.logger.error(`Failed to send password reset email to ${email}`);
-      throw new Error(`Failed to send email to ${email}`);
+      this.logger.error('Failed to send password reset email');
+      throw new Error('Failed to send password reset email');
     }
   }
 }

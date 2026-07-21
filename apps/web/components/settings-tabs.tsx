@@ -289,10 +289,15 @@ function NotificationsTab() {
   );
 }
 
-function RecruiterNotificationsTab() {
-  const [weeklyDigest, setWeeklyDigest] = useState(true);
-  const [productUpdates, setProductUpdates] = useState(false);
+function ComingSoonBadge() {
+  return (
+    <span className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase">
+      Coming soon
+    </span>
+  );
+}
 
+function RecruiterNotificationsTab() {
   return (
     <Card className="shadow-sm">
       <CardHeader>
@@ -305,36 +310,37 @@ function RecruiterNotificationsTab() {
       <CardContent className="divide-border divide-y">
         <div className="flex items-start justify-between gap-6 py-4 first:pt-0">
           <div className="space-y-1">
-            <p className="text-sm font-medium">Weekly digest</p>
+            <p className="flex items-center gap-2 text-sm font-medium">
+              Weekly digest
+              <ComingSoonBadge />
+            </p>
             <p className="text-muted-foreground max-w-md text-xs">
               A weekly summary of activity on your projects and saved profiles.
             </p>
           </div>
           <Switch
-            checked={weeklyDigest}
-            onCheckedChange={setWeeklyDigest}
-            aria-label="Toggle weekly digest emails"
+            checked={false}
+            disabled
+            aria-label="Weekly digest emails (coming soon)"
           />
         </div>
         <div className="flex items-start justify-between gap-6 py-4 last:pb-0">
           <div className="space-y-1">
-            <p className="text-sm font-medium">Product updates</p>
+            <p className="flex items-center gap-2 text-sm font-medium">
+              Product updates
+              <ComingSoonBadge />
+            </p>
             <p className="text-muted-foreground max-w-md text-xs">
               Occasional news about new features and improvements.
             </p>
           </div>
           <Switch
-            checked={productUpdates}
-            onCheckedChange={setProductUpdates}
-            aria-label="Toggle product update emails"
+            checked={false}
+            disabled
+            aria-label="Product update emails (coming soon)"
           />
         </div>
       </CardContent>
-      <CardFooter className="border-t">
-        <p className="text-muted-foreground text-xs">
-          Changes save automatically.
-        </p>
-      </CardFooter>
     </Card>
   );
 }

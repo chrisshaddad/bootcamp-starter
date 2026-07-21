@@ -28,20 +28,15 @@ export function BackLink({
   const router = useRouter();
   const pathname = usePathname();
   const { user, isLoading } = useUser({ redirectOnUnauthenticated: false });
-  const [target, setTarget] = useState<{
-    href: string;
-    label: string;
-    useHistory: boolean;
-  }>({ href: fallbackHref, label: fallbackLabel, useHistory: false });
+  const [target, setTarget] = useState<{ href: string; label: string }>({
+    href: fallbackHref,
+    label: fallbackLabel,
+  });
 
   useEffect(() => {
     const previous = window.sessionStorage.getItem(PREVIOUS_PATH_KEY);
     if (previous && previous !== pathname) {
-      setTarget({
-        href: previous,
-        label: getRouteLabel(previous),
-        useHistory: true,
-      });
+      setTarget({ href: previous, label: getRouteLabel(previous) });
     }
   }, [pathname]);
 
@@ -50,9 +45,12 @@ export function BackLink({
   return (
     <button
       type="button"
-      onClick={() =>
-        target.useHistory ? router.back() : router.push(target.href)
-      }
+      // Always push the stored path rather than router.back(): sessionStorage
+      // only remembers one previous path, not a full stack, so after
+      // A -> B -> C -> B (e.g. via the browser's own back button) the label
+      // here would say "Back to C" while router.back() would actually land
+      // on A. Pushing the path we display keeps the destination honest.
+      onClick={() => router.push(target.href)}
       className={cn(
         'text-muted-foreground inline-flex items-center gap-1.5 text-sm hover:text-foreground',
         className,

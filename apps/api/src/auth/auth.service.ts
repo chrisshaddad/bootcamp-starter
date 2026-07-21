@@ -333,9 +333,7 @@ export class AuthService {
     });
 
     if (!user) {
-      this.logger.warn(
-        `Password reset requested for non-existent email: ${email}`,
-      );
+      this.logger.warn('Password reset requested for a non-existent email');
       return { success: true };
     }
 
@@ -438,9 +436,16 @@ export class AuthService {
 
     await this.prisma.user.update({
       where: { id: magicLink.userId },
-      data: { passwordHash: hashPassword(newPassword) },
+      data: {
+        passwordHash: hashPassword(newPassword),
+        ...(magicLink.user.isConfirmed ? {} : { isConfirmed: true }),
+      },
     });
 
+    // Resetting the password is the primary account-recovery path, so any
+    // session from before the reset (including one held by an attacker who
+    // triggered the compromise) must not survive it.
+    await this.sessionService.deleteAllUserSessions(magicLink.userId);
     const sessionId = await this.sessionService.createSession(magicLink.userId);
 
     this.logger.log(`User ${magicLink.userId} reset their password`);
