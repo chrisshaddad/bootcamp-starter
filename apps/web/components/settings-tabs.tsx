@@ -607,7 +607,7 @@ function DeveloperSettingsTabs({ user }: SettingsTabsProps) {
 
   return (
     <Tabs value={initialTab} onValueChange={handleTabChange}>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto overflow-y-hidden">
         <TabsList>
           <TabsTrigger value="security">
             <Shield />
@@ -652,7 +652,7 @@ function RecruiterSettingsTabs({ user }: SettingsTabsProps) {
 
   return (
     <Tabs value={initialTab} onValueChange={handleTabChange}>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto overflow-y-hidden">
         <TabsList>
           <TabsTrigger value="security">
             <Shield />
