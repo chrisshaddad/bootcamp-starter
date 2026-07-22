@@ -4,16 +4,20 @@ export function normalizeMediaUrl(
   const normalized = value?.trim();
   if (!normalized) return null;
 
-  if (normalized.startsWith('/')) {
+  let candidate = normalized;
+  if (candidate.startsWith('/')) {
     const apiUrl = (process.env.API_URL ?? 'http://localhost:3001').replace(
       /\/+$/,
       '',
     );
-    return `${apiUrl}${normalized}`;
+    candidate = `${apiUrl}${candidate}`;
   }
 
   try {
-    return new URL(normalized).toString();
+    const url = new URL(candidate);
+    return url.protocol === 'http:' || url.protocol === 'https:'
+      ? url.toString()
+      : null;
   } catch {
     return null;
   }
