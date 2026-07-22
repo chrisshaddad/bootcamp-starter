@@ -14,6 +14,7 @@ import type { RecordAnalyticsVisitJobData } from './analytics.types';
 const OWNER_ID = '00000000-0000-4000-8000-000000000001';
 const VISITOR_ID = '00000000-0000-4000-8000-000000000002';
 const PROJECT_ID = '00000000-0000-4000-8000-000000000003';
+const EVENT_ID = '00000000-0000-4000-8000-000000000004';
 const HASH_SECRET = 'a'.repeat(32);
 
 type AnalyticsProjectRow = {
@@ -64,7 +65,11 @@ describe('AnalyticsService', () => {
   it('does not track visitors who enable Do Not Track', async () => {
     await expect(
       service.queueVisit(
-        { eventType: 'PROJECT_VIEW', projectSlug: 'portfolio-api' },
+        {
+          eventId: EVENT_ID,
+          eventType: 'PROJECT_VIEW',
+          projectSlug: 'portfolio-api',
+        },
         { visitorId: 'visitor-cookie', doNotTrack: '1' },
       ),
     ).resolves.toBe(false);
@@ -87,7 +92,11 @@ describe('AnalyticsService', () => {
 
     await expect(
       service.queueVisit(
-        { eventType: 'PROJECT_VIEW', projectSlug: 'portfolio-api' },
+        {
+          eventId: EVENT_ID,
+          eventType: 'PROJECT_VIEW',
+          projectSlug: 'portfolio-api',
+        },
         {
           visitorId: 'visitor-cookie',
           sessionId: 'session-id',
@@ -130,7 +139,11 @@ describe('AnalyticsService', () => {
 
     await expect(
       service.queueVisit(
-        { eventType: 'PROJECT_VIEW', projectSlug: 'portfolio-api' },
+        {
+          eventId: EVENT_ID,
+          eventType: 'PROJECT_VIEW',
+          projectSlug: 'portfolio-api',
+        },
         { visitorId: 'visitor-cookie', sessionId: 'session-id' },
       ),
     ).resolves.toBe(false);
@@ -152,7 +165,13 @@ describe('AnalyticsService', () => {
     });
     visitFindMany
       .mockResolvedValueOnce([
-        visit(AnalyticsEventType.PORTFOLIO_VIEW, null, 'visitor-a', occurredAt),
+        visit(
+          AnalyticsEventType.PORTFOLIO_VIEW,
+          null,
+          'visitor-b',
+          occurredAt,
+          AccountType.HIRING,
+        ),
         visit(
           AnalyticsEventType.PROJECT_VIEW,
           PROJECT_ID,
@@ -168,7 +187,7 @@ describe('AnalyticsService', () => {
 
     expect(result.totals).toEqual({
       totalViews: 2,
-      uniqueVisitors: 2,
+      uniqueVisitors: 1,
       recruiterViews: 1,
       portfolioViews: 1,
       projectViews: 1,

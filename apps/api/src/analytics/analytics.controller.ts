@@ -1,4 +1,3 @@
-import { randomUUID } from 'crypto';
 import {
   Body,
   Controller,
@@ -70,7 +69,7 @@ export class AnalyticsController {
     const existingVisitorId = request.cookies?.[ANALYTICS_VISITOR_COOKIE] as
       | string
       | undefined;
-    const visitorId = existingVisitorId ?? randomUUID();
+    const visitorId = existingVisitorId ?? body.eventId;
     const accepted = await this.analyticsService.queueVisit(body, {
       visitorId,
       sessionId: request.cookies?.[SESSION_COOKIE_NAME] as string | undefined,

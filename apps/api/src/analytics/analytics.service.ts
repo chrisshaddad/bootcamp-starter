@@ -213,9 +213,10 @@ export class AnalyticsService {
             ...project,
             totalViews: events.length,
             uniqueVisitors: this.uniqueVisitors(events),
-            recruiterViews: events.filter(
-              (event) => event.visitorAccountType === AccountType.HIRING,
-            ).length,
+            recruiterViews: this.uniqueVisitorsByAccountType(
+              events,
+              AccountType.HIRING,
+            ),
             lastViewedAt,
           };
         })
@@ -275,16 +276,19 @@ export class AnalyticsService {
       daily: this.getDaily(visits, period.from, RANGE_DAYS[range]),
       referrers: this.getReferrers(visits),
       audience: {
-        anonymous: visits.filter((visit) => !visit.visitorAccountType).length,
-        recruiters: visits.filter(
-          (visit) => visit.visitorAccountType === AccountType.HIRING,
-        ).length,
-        developers: visits.filter(
-          (visit) => visit.visitorAccountType === AccountType.DEVELOPER,
-        ).length,
-        other: visits.filter(
-          (visit) => visit.visitorAccountType === AccountType.SUPER_ADMIN,
-        ).length,
+        anonymous: this.uniqueVisitorsByAccountType(visits, null),
+        recruiters: this.uniqueVisitorsByAccountType(
+          visits,
+          AccountType.HIRING,
+        ),
+        developers: this.uniqueVisitorsByAccountType(
+          visits,
+          AccountType.DEVELOPER,
+        ),
+        other: this.uniqueVisitorsByAccountType(
+          visits,
+          AccountType.SUPER_ADMIN,
+        ),
       },
     };
   }
@@ -360,9 +364,10 @@ export class AnalyticsService {
     return {
       totalViews: visits.length,
       uniqueVisitors: this.uniqueVisitors(visits),
-      recruiterViews: visits.filter(
-        (visit) => visit.visitorAccountType === AccountType.HIRING,
-      ).length,
+      recruiterViews: this.uniqueVisitorsByAccountType(
+        visits,
+        AccountType.HIRING,
+      ),
       portfolioViews: visits.filter(
         (visit) => visit.eventType === AnalyticsEventType.PORTFOLIO_VIEW,
       ).length,
@@ -379,19 +384,23 @@ export class AnalyticsService {
   ): AnalyticsDailyPoint[] {
     const grouped = new Map<
       string,
-      { views: number; visitors: Set<string>; recruiterViews: number }
+      {
+        views: number;
+        visitors: Set<string>;
+        recruiterVisitors: Set<string>;
+      }
     >();
     visits.forEach((visit) => {
       const key = visit.occurredAt.toISOString().slice(0, 10);
       const day = grouped.get(key) ?? {
         views: 0,
         visitors: new Set<string>(),
-        recruiterViews: 0,
+        recruiterVisitors: new Set<string>(),
       };
       day.views += 1;
       day.visitors.add(visit.visitorHash);
       if (visit.visitorAccountType === AccountType.HIRING) {
-        day.recruiterViews += 1;
+        day.recruiterVisitors.add(visit.visitorHash);
       }
       grouped.set(key, day);
     });
@@ -405,7 +414,7 @@ export class AnalyticsService {
         date: key,
         totalViews: day?.views ?? 0,
         uniqueVisitors: day?.visitors.size ?? 0,
-        recruiterViews: day?.recruiterViews ?? 0,
+        recruiterViews: day?.recruiterVisitors.size ?? 0,
       };
     });
   }
@@ -425,6 +434,17 @@ export class AnalyticsService {
 
   private uniqueVisitors(visits: AnalyticsVisitRecord[]): number {
     return new Set(visits.map((visit) => visit.visitorHash)).size;
+  }
+
+  private uniqueVisitorsByAccountType(
+    visits: AnalyticsVisitRecord[],
+    accountType: AccountType | null,
+  ): number {
+    return new Set(
+      visits
+        .filter((visit) => visit.visitorAccountType === accountType)
+        .map((visit) => visit.visitorHash),
+    ).size;
   }
 
   private getPeriod(range: AnalyticsRange) {

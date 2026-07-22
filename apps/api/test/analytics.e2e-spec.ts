@@ -124,15 +124,29 @@ describe('AnalyticsController (e2e)', () => {
   });
 
   it('records a public project view and exposes it only to the owner', async () => {
+    const event = {
+      eventId: '00000000-0000-4000-8000-000000000001',
+      eventType: 'PROJECT_VIEW',
+      projectSlug,
+    };
     const trackResponse = await request(app.getHttpServer() as Server)
       .post('/analytics/events')
       .set('User-Agent', 'Mozilla/5.0 analytics-e2e')
-      .send({ eventType: 'PROJECT_VIEW', projectSlug })
+      .send(event)
       .expect(202);
 
     expect(trackResponse.body).toEqual({ accepted: true });
 
+    await request(app.getHttpServer() as Server)
+      .post('/analytics/events')
+      .set('User-Agent', 'Mozilla/5.0 analytics-e2e')
+      .send(event)
+      .expect(202);
+
     await waitForVisit();
+    await expect(
+      prisma.analyticsVisit.count({ where: { projectId } }),
+    ).resolves.toBe(1);
 
     const ownerResponse = await request(app.getHttpServer() as Server)
       .get(`/analytics/projects/${projectId}?range=7D`)

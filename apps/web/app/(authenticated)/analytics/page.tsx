@@ -83,9 +83,9 @@ function AnalyticsOverviewContent() {
             />
             <AnalyticsMetricCard
               icon={BriefcaseBusiness}
-              label="Recruiter views"
+              label="Recruiter visitors"
               value={analytics.totals.recruiterViews}
-              detail="Signed-in recruiter traffic"
+              detail="Unique signed-in recruiter visitors"
             />
             <AnalyticsMetricCard
               icon={FolderGit2}
@@ -136,7 +136,7 @@ function AnalyticsOverviewContent() {
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {project.uniqueVisitors} unique ·{' '}
-                          {project.recruiterViews} recruiter
+                          {project.recruiterViews} recruiter visitors
                         </p>
                       </div>
                       <div className="flex items-center gap-2">

@@ -93,9 +93,9 @@ function ProjectAnalyticsContent() {
         />
         <AnalyticsMetricCard
           icon={BriefcaseBusiness}
-          label="Recruiter views"
+          label="Recruiter visitors"
           value={analytics.totals.recruiterViews}
-          detail="Signed-in recruiter traffic"
+          detail="Unique signed-in recruiter visitors"
         />
       </div>
 
