@@ -5,14 +5,24 @@ export function readNavigationStack(): string[] {
   try {
     const raw = window.sessionStorage.getItem(STACK_KEY);
     const parsed: unknown = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? (parsed as string[]) : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (entry): entry is string =>
+        typeof entry === 'string' && entry.startsWith('/'),
+    );
   } catch {
     return [];
   }
 }
 
 export function writeNavigationStack(stack: string[]): void {
-  window.sessionStorage.setItem(STACK_KEY, JSON.stringify(stack));
+  try {
+    window.sessionStorage.setItem(STACK_KEY, JSON.stringify(stack));
+  } catch {
+    // Session storage is optional (quota exceeded, blocked, private mode) —
+    // this runs during render via NavigationHistoryTracker, so a thrown
+    // error here would take the whole render down with it.
+  }
 }
 
 /**
