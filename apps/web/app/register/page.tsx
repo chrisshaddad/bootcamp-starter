@@ -83,7 +83,7 @@ export default function RegisterPage() {
           <div className="mb-4 flex items-center justify-center gap-2">
             <LogoMark />
             <span className="text-xl font-semibold text-foreground">
-              Fieldhouse
+              GymCloud
             </span>
           </div>
           <h1 className="text-2xl font-bold text-foreground">

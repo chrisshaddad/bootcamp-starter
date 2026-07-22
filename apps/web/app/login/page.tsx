@@ -65,7 +65,7 @@ export default function LoginPage() {
           {/* Logo */}
           <div className="flex items-center gap-2.5">
             <LogoMark />
-            <span className="text-xl font-semibold text-white">Fieldhouse</span>
+            <span className="text-xl font-semibold text-white">GymCloud</span>
           </div>
 
           {/* Headline */}
@@ -154,7 +154,7 @@ export default function LoginPage() {
         <footer className="px-6 py-6">
           <div className="flex flex-wrap items-center justify-center gap-2.5 text-sm font-medium leading-[1.6]">
             <span className="text-muted-foreground">
-              © {new Date().getFullYear()} Fieldhouse. All rights reserved.
+              © {new Date().getFullYear()} GymCloud. All rights reserved.
             </span>
             <a
               href="/terms"

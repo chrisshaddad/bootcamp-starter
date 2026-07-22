@@ -17,8 +17,8 @@ const SUBSCRIPTIONS: SubscriptionSeed[] = [
     memberEmail: 'alex.johnson@example.com',
     planName: 'Monthly',
     price: 4999,
-    startDate: new Date('2026-06-01'),
-    endDate: new Date('2026-06-30'),
+    startDate: new Date('2026-07-01'),
+    endDate: new Date('2026-12-31'),
     status: 'ACTIVE',
   },
   {

@@ -156,7 +156,7 @@ export function AppSidebar() {
         <Link href={homeUrl} className="flex items-center gap-2.5">
           <LogoMark />
           <span className="text-xl font-semibold text-foreground">
-            Fieldhouse
+            GymCloud
           </span>
         </Link>
       </SidebarHeader>

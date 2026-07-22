@@ -22,7 +22,7 @@ export interface UseChatReturn {
 const WELCOME_MESSAGE: ChatMessage = {
   id: 'welcome',
   role: 'assistant',
-  content: 'Hello! I am the Fieldhouse Assistant. How can I help you today?',
+  content: 'Hello! I am the GymCloud Assistant. How can I help you today?',
   timestamp: new Date(),
 };
 

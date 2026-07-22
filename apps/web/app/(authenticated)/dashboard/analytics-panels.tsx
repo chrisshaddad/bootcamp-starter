@@ -123,7 +123,7 @@ function CheckInTrendChart({ data }: { data: CheckInTrendPoint[] }) {
             />
             <Tooltip
               cursor={{ stroke: 'var(--color-border)', strokeWidth: 1 }}
-              content={({ active, payload, label }) => (
+              content={({ active, payload, label }: { active?: boolean; payload?: readonly any[]; label?: any }) => (
                 <ChartTooltip
                   active={active}
                   label={
@@ -205,7 +205,7 @@ function PlanBreakdownChart({ data }: { data: PlanBreakdownItem[] }) {
                     ))}
                   </Pie>
                   <Tooltip
-                    content={({ active, payload }) => {
+                    content={({ active, payload }: { active?: boolean; payload?: readonly any[] }) => {
                       const item = payload?.[0]?.payload as
                         | (PlanBreakdownItem & { color: string })
                         | undefined;
