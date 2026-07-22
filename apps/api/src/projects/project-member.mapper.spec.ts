@@ -34,11 +34,13 @@ describe('mapProjectMember', () => {
         developerProfile: {
           displayName: 'Developer',
           publicSlug: 'developer',
-          profilePictureUrl: '   ',
+          profilePictureUrl: '/uploads/profile-pictures/member.png',
         },
       },
     } as Parameters<typeof mapProjectMember>[0];
 
-    expect(mapProjectMember(member).user?.profilePictureUrl).toBeNull();
+    expect(mapProjectMember(member).user?.profilePictureUrl).toBe(
+      'http://localhost:3001/uploads/profile-pictures/member.png',
+    );
   });
 });

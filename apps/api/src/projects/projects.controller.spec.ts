@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { AccountType } from '@repo/db';
+import { AccountType, type User } from '@repo/db';
 import { ROLES_KEY } from '../auth/decorators/roles.decorator';
 import { ProjectsController } from './projects.controller';
 import { ProjectsService } from './projects.service';
@@ -9,6 +9,7 @@ describe('ProjectsController', () => {
 
   const projectsService = {
     importGithubProject: jest.fn(),
+    removeProjectMember: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -54,6 +55,23 @@ describe('ProjectsController', () => {
     expect(projectsService.importGithubProject).toHaveBeenCalledWith(
       'user-id',
       request,
+    );
+  });
+
+  it('delegates project member removal to ProjectsService', async () => {
+    projectsService.removeProjectMember.mockResolvedValue(undefined);
+    const user = {
+      id: 'owner-id',
+      accountType: AccountType.DEVELOPER,
+    };
+
+    await expect(
+      controller.removeProjectMember(user as User, 'project-id', 'member-id'),
+    ).resolves.toEqual({ success: true });
+    expect(projectsService.removeProjectMember).toHaveBeenCalledWith(
+      user,
+      'project-id',
+      'member-id',
     );
   });
 });

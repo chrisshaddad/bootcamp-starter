@@ -31,7 +31,7 @@ describe('mapProjectInvitation', () => {
         developerProfile: {
           displayName: 'Owner',
           publicSlug: 'owner',
-          profilePictureUrl: null,
+          profilePictureUrl: '/uploads/profile-pictures/owner.png',
         },
       },
       invitee: {
@@ -51,6 +51,10 @@ describe('mapProjectInvitation', () => {
     expect(response).toMatchObject({
       inviteeGithubUsername: 'collaborator',
       project: { repositoryFullName: 'owner/project' },
+      inviter: {
+        profilePictureUrl:
+          'http://localhost:3001/uploads/profile-pictures/owner.png',
+      },
     });
   });
 });

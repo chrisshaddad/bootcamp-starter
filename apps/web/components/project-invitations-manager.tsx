@@ -8,6 +8,7 @@ import {
   Loader2,
   Search,
   Send,
+  Trash2,
   UserPlus,
   UserRound,
   XCircle,
@@ -27,6 +28,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Pagination } from '@/components/pagination';
+import { useProject, useRemoveProjectMember } from '@/hooks/use-projects';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -77,12 +79,18 @@ export function ProjectInvitationsManager({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [invitationPage, setInvitationPage] = useState(1);
-  const { invitations, meta, isLoading, error } = useProjectInvitations(
-    projectId,
-    { page: invitationPage, limit: 20 },
-  );
+  const {
+    invitations,
+    meta,
+    isLoading,
+    error,
+    mutate: refreshInvitations,
+  } = useProjectInvitations(projectId, { page: invitationPage, limit: 20 });
+  const { project, mutate: refreshProject } = useProject(projectId);
+  const members = project?.members ?? [];
   const { searchCollaborator, createInvitation, cancelInvitation } =
     useProjectInvitationActions();
+  const removeProjectMember = useRemoveProjectMember();
   const [validatedUsername, setValidatedUsername] = useState<string | null>(
     null,
   );
@@ -90,6 +98,7 @@ export function ProjectInvitationsManager({
   const [isValidating, setIsValidating] = useState(false);
   const [isInviting, setIsInviting] = useState(false);
   const [cancelingId, setCancelingId] = useState<string | null>(null);
+  const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
 
   const {
     register,
@@ -120,6 +129,7 @@ export function ProjectInvitationsManager({
   const handleOpenChange = (open: boolean) => {
     if (!open && (isInviting || isValidating)) return;
     setIsOpen(open);
+    if (open) void Promise.all([refreshProject(), refreshInvitations()]);
     if (!open) resetInvitationForm();
   };
 
@@ -199,19 +209,34 @@ export function ProjectInvitationsManager({
     }
   };
 
+  const handleRemoveMember = async (memberId: string) => {
+    if (removingMemberId) return;
+    setRemovingMemberId(memberId);
+    try {
+      await removeProjectMember(projectId, memberId);
+      toast.success('Project member removed');
+    } catch (error) {
+      toast.error(
+        error instanceof ApiError
+          ? error.message
+          : 'Unable to remove project member',
+      );
+    } finally {
+      setRemovingMemberId(null);
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <div className="flex justify-end">
-        <DialogTrigger asChild>
-          <Button type="button" variant="outline">
-            <UserPlus className="h-4 w-4" />
-            Add collaborators/editors
-          </Button>
-        </DialogTrigger>
-      </div>
+      <DialogTrigger asChild>
+        <Button type="button" variant="outline" size="sm">
+          <UserPlus className="h-4 w-4" />
+          Manage collaborators
+        </Button>
+      </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Add collaborators or editors</DialogTitle>
+          <DialogTitle>Manage project collaborators</DialogTitle>
           <DialogDescription>
             Invite an existing platform developer who already has access to this
             GitHub repository. They become a project member after accepting.
@@ -310,6 +335,74 @@ export function ProjectInvitationsManager({
               </DialogFooter>
             </div>
           </form>
+
+          <div className="space-y-3">
+            <h3 className="font-medium">Current members</h3>
+            <div className="divide-y rounded-lg border">
+              {members.map((member) => (
+                <div
+                  key={member.id}
+                  className="flex items-center justify-between gap-3 p-4"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">
+                      {member.user?.displayName ??
+                        member.githubUsername ??
+                        'Deleted account'}
+                    </p>
+                    <p className="text-muted-foreground truncate text-sm">
+                      {member.githubUsername
+                        ? `@${member.githubUsername} · `
+                        : ''}
+                      {member.role.toLowerCase()}
+                      {member.contributionRoleLabel
+                        ? ` · ${member.contributionRoleLabel}`
+                        : ''}
+                    </p>
+                  </div>
+                  {member.role !== 'OWNER' && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={removingMemberId !== null}
+                        >
+                          {removingMemberId === member.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                          Remove
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>
+                            Remove project member?
+                          </AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This person will lose their collaborator access to
+                            the project on this platform.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Keep member</AlertDialogCancel>
+                          <AlertDialogAction
+                            variant="destructive"
+                            onClick={() => handleRemoveMember(member.id)}
+                          >
+                            Remove member
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
 
           <div className="space-y-3">
             <h3 className="font-medium">Invitation history</h3>

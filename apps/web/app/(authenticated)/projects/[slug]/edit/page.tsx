@@ -309,16 +309,21 @@ export default function EditProjectPage() {
 
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-foreground text-2xl font-bold">Edit project</h1>
-        <Button asChild variant="outline" size="sm">
-          <Link
-            href={`/projects/preview/${project.id}`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            <ExternalLink className="h-3.5 w-3.5" />
-            Preview
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          {project.access.capabilities.canManageInvitations && (
+            <ProjectInvitationsManager projectId={project.id} />
+          )}
+          <Button asChild variant="outline" size="sm">
+            <Link
+              href={`/projects/preview/${project.id}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              Preview
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <form
@@ -606,10 +611,6 @@ export default function EditProjectPage() {
           )}
         </div>
       </form>
-
-      {project.access.capabilities.canManageInvitations && (
-        <ProjectInvitationsManager projectId={project.id} />
-      )}
     </div>
   );
 }

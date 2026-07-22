@@ -534,6 +534,24 @@ export class ProjectsController {
     return successResponseSchema.parse({ success: true });
   }
 
+  @Delete(':id/members/:memberId')
+  @Roles(AccountType.DEVELOPER)
+  @ApiOperation({ summary: 'Remove a verified member from a project' })
+  @ApiResponse({ status: 200, description: 'Project member removed.' })
+  @ApiResponse({
+    status: 403,
+    description: 'Only the project owner may remove members.',
+  })
+  @ApiResponse({ status: 404, description: 'Project member not found.' })
+  async removeProjectMember(
+    @CurrentUser() user: User,
+    @Param('id') projectId: string,
+    @Param('memberId') memberId: string,
+  ): Promise<SuccessResponse> {
+    await this.projectsService.removeProjectMember(user, projectId, memberId);
+    return successResponseSchema.parse({ success: true });
+  }
+
   @Get('slug/:slug')
   @Public()
   @ApiOperation({ summary: 'Retrieve a public published project by its slug' })

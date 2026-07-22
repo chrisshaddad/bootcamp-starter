@@ -1028,6 +1028,23 @@ export class ProjectsService {
     return { storageKey: media.storageKey };
   }
 
+  async removeProjectMember(user: User, projectId: string, memberId: string) {
+    await this.projectAccess.assertCanManageInvitations(user, projectId);
+
+    const result = await this.prisma.projectMember.deleteMany({
+      where: {
+        id: memberId,
+        projectId,
+        role: { not: ProjectRoleKey.OWNER },
+        verificationStatus: VerificationStatus.VERIFIED,
+      },
+    });
+
+    if (result.count === 0) {
+      throw new NotFoundException('Project member not found');
+    }
+  }
+
   async deleteProject(user: User, projectId: string) {
     await this.projectAccess.assertCanDelete(user, projectId);
     const project = await this.prisma.project.findUnique({
