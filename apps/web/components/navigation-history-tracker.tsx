@@ -1,28 +1,34 @@
 'use client';
 
-import { useRef } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
-
-const PREVIOUS_PATH_KEY = 'nav:previous';
+import {
+  readNavigationStack,
+  writeNavigationStack,
+  reduceNavigationStack,
+} from '@/lib/navigation-stack';
 
 /**
- * Mounted once in the root layout. Records the pathname we're navigating
- * away from into sessionStorage so BackLink can show a real "Back to X"
+ * Mounted once in the root layout. Maintains a per-tab stack of visited
+ * pathnames in sessionStorage so BackLink can show a real "Back to X"
  * destination even though Next's router doesn't expose history itself.
  *
- * Writes during render (not an effect) so the value is already up to date
- * by the time the newly-rendered page's own effects run.
+ * Runs in a layout effect rather than during render — React guarantees every
+ * layout effect in the tree runs before any passive effect fires, so this is
+ * still done before BackLink's own (passive) effect on the newly-rendered
+ * page, without mutating state during render.
  */
 export function NavigationHistoryTracker() {
   const pathname = usePathname();
   const lastPathname = useRef<string | null>(null);
 
-  if (lastPathname.current !== pathname) {
-    if (lastPathname.current !== null) {
-      window.sessionStorage.setItem(PREVIOUS_PATH_KEY, lastPathname.current);
-    }
+  useLayoutEffect(() => {
+    if (lastPathname.current === pathname) return;
+    writeNavigationStack(
+      reduceNavigationStack(readNavigationStack(), pathname),
+    );
     lastPathname.current = pathname;
-  }
+  }, [pathname]);
 
   return null;
 }

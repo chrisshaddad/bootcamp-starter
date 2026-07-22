@@ -6,8 +6,7 @@ import { ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUser } from '@/hooks/use-auth';
 import { getRouteLabel } from '@/lib/route-labels';
-
-const PREVIOUS_PATH_KEY = 'nav:previous';
+import { readNavigationStack, getPreviousPath } from '@/lib/navigation-stack';
 
 interface BackLinkProps {
   /** Destination used when there's no known previous page (direct link, refresh, new tab). */
@@ -34,7 +33,7 @@ export function BackLink({
   });
 
   useEffect(() => {
-    const previous = window.sessionStorage.getItem(PREVIOUS_PATH_KEY);
+    const previous = getPreviousPath(readNavigationStack());
     if (previous && previous !== pathname) {
       setTarget({ href: previous, label: getRouteLabel(previous) });
     }
@@ -45,11 +44,9 @@ export function BackLink({
   return (
     <button
       type="button"
-      // Always push the stored path rather than router.back(): sessionStorage
-      // only remembers one previous path, not a full stack, so after
-      // A -> B -> C -> B (e.g. via the browser's own back button) the label
-      // here would say "Back to C" while router.back() would actually land
-      // on A. Pushing the path we display keeps the destination honest.
+      // Always push rather than router.back(): the stack lives in
+      // sessionStorage, not the real browser history, so pushing the path we
+      // display is what keeps the destination and the label in sync.
       onClick={() => router.push(target.href)}
       className={cn(
         'text-muted-foreground inline-flex items-center gap-1.5 text-sm hover:text-foreground',
