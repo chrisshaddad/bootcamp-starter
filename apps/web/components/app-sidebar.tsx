@@ -90,19 +90,16 @@ const staffNavGroups: NavGroup[] = [
         title: 'Check-out',
         url: '/circulation/check-out',
         icon: BookUp,
-        disabled: true,
       },
       {
         title: 'Check-in',
         url: '/circulation/check-in',
         icon: BookDown,
-        disabled: true,
       },
       {
         title: 'Overdue',
         url: '/circulation/overdue',
         icon: CalendarClock,
-        disabled: true,
       },
     ],
   },
@@ -112,12 +109,11 @@ const staffNavGroups: NavGroup[] = [
 const orgAdminNavGroup: NavGroup = {
   label: 'Administration',
   items: [
-    { title: 'Staff', url: '/staff', icon: UserCog, disabled: true },
+    { title: 'Staff', url: '/staff', icon: UserCog },
     {
       title: 'Library Settings',
       url: '/library-settings',
       icon: SlidersHorizontal,
-      disabled: true,
     },
   ],
 };

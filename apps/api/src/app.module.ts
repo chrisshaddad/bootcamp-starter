@@ -9,6 +9,8 @@ import { OrganizationsModule } from './organizations/organizations.module';
 import { LibraryMembersModule } from './library-members/library-members.module';
 import { CirculationModule } from './circulation/circulation.module';
 import { CatalogModule } from './catalog/catalog.module';
+import { OverdueModule } from './overdue/overdue.module';
+import { StaffModule } from './staff/staff.module';
 import { DatabaseModule } from './database/database.module';
 
 @Module({
@@ -26,6 +28,8 @@ import { DatabaseModule } from './database/database.module';
     LibraryMembersModule,
     CirculationModule,
     CatalogModule,
+    OverdueModule,
+    StaffModule,
   ],
   controllers: [AppController],
   providers: [AppService],
