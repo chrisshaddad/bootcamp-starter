@@ -57,7 +57,7 @@ function ProjectAnalyticsContent() {
   return (
     <div className="space-y-6">
       <Link
-        href="/analytics"
+        href={`/analytics?range=${range}`}
         className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" />
@@ -101,8 +101,14 @@ function ProjectAnalyticsContent() {
 
       <AnalyticsDailyChart data={analytics.daily} />
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <AnalyticsReferrers referrers={analytics.referrers} />
+      <div
+        className={`grid gap-6 ${
+          analytics.referrers.length > 0 ? 'lg:grid-cols-2' : ''
+        }`}
+      >
+        {analytics.referrers.length > 0 && (
+          <AnalyticsReferrers referrers={analytics.referrers} />
+        )}
         <Card className="p-5 shadow-sm">
           <h2 className="text-base font-semibold">Audience</h2>
           <p className="text-xs text-muted-foreground">
@@ -123,14 +129,8 @@ function ProjectAnalyticsContent() {
             />
             <AudienceRow
               icon={Users}
-              label="Anonymous"
-              value={analytics.audience.anonymous}
-              total={audienceTotal}
-            />
-            <AudienceRow
-              icon={Users}
-              label="Other"
-              value={analytics.audience.other}
+              label="Other visitors"
+              value={analytics.audience.anonymous + analytics.audience.other}
               total={audienceTotal}
             />
           </div>

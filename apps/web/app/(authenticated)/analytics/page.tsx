@@ -97,7 +97,13 @@ function AnalyticsOverviewContent() {
 
           <AnalyticsDailyChart data={analytics.daily} />
 
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.6fr)]">
+          <div
+            className={`grid gap-6 ${
+              analytics.referrers.length > 0
+                ? 'lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.6fr)]'
+                : ''
+            }`}
+          >
             <Card className="gap-5 p-5 shadow-sm">
               <div className="flex items-center gap-3">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-primary-base">
@@ -121,7 +127,7 @@ function AnalyticsOverviewContent() {
                   analytics.projects.map((project) => (
                     <Link
                       key={project.id}
-                      href={`/analytics/projects/${project.id}`}
+                      href={`/analytics/projects/${project.id}?range=${range}`}
                       className="group -mx-2 flex items-center justify-between gap-4 rounded-lg px-2 py-3 transition-colors hover:bg-muted/50"
                     >
                       <div className="min-w-0">
@@ -144,7 +150,9 @@ function AnalyticsOverviewContent() {
                 )}
               </div>
             </Card>
-            <AnalyticsReferrers referrers={analytics.referrers} />
+            {analytics.referrers.length > 0 && (
+              <AnalyticsReferrers referrers={analytics.referrers} />
+            )}
           </div>
         </>
       )}

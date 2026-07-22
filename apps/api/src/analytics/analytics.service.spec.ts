@@ -1,5 +1,10 @@
 import { NotFoundException } from '@nestjs/common';
-import { AccountType, AnalyticsEventType, ProjectStatus } from '@repo/db';
+import {
+  AccountType,
+  AnalyticsEventType,
+  ProjectStatus,
+  type Prisma,
+} from '@repo/db';
 import type { Queue } from 'bullmq';
 import type { SessionService } from '../auth/session.service';
 import type { DatabaseService } from '../database/prisma.service';
@@ -11,9 +16,19 @@ const VISITOR_ID = '00000000-0000-4000-8000-000000000002';
 const PROJECT_ID = '00000000-0000-4000-8000-000000000003';
 const HASH_SECRET = 'a'.repeat(32);
 
+type AnalyticsProjectRow = {
+  id: string;
+  title: string;
+  slug: string;
+  status: ProjectStatus;
+};
+
 describe('AnalyticsService', () => {
   const projectFindFirst = jest.fn();
-  const projectFindMany = jest.fn();
+  const projectFindMany =
+    jest.fn<
+      (args: Prisma.ProjectFindManyArgs) => Promise<AnalyticsProjectRow[]>
+    >();
   const profileFindUnique = jest.fn();
   const visitFindMany = jest.fn();
   const validateSession = jest.fn();
@@ -124,14 +139,17 @@ describe('AnalyticsService', () => {
 
   it('summarizes portfolio and accessible-project views', async () => {
     const occurredAt = new Date();
-    projectFindMany.mockResolvedValue([
-      {
-        id: PROJECT_ID,
-        title: 'Portfolio API',
-        slug: 'portfolio-api',
-        status: ProjectStatus.PUBLISHED,
-      },
-    ]);
+    projectFindMany.mockImplementation((query: Prisma.ProjectFindManyArgs) => {
+      expect(query.where?.status).toBe(ProjectStatus.PUBLISHED);
+      return Promise.resolve([
+        {
+          id: PROJECT_ID,
+          title: 'Portfolio API',
+          slug: 'portfolio-api',
+          status: ProjectStatus.PUBLISHED,
+        },
+      ]);
+    });
     visitFindMany
       .mockResolvedValueOnce([
         visit(AnalyticsEventType.PORTFOLIO_VIEW, null, 'visitor-a', occurredAt),
@@ -141,6 +159,7 @@ describe('AnalyticsService', () => {
           'visitor-b',
           occurredAt,
           AccountType.HIRING,
+          'linkedin.com',
         ),
       ])
       .mockResolvedValueOnce([{ visitorHash: 'visitor-c' }]);
@@ -160,6 +179,7 @@ describe('AnalyticsService', () => {
       uniqueVisitors: 1,
       recruiterViews: 1,
     });
+    expect(result.referrers).toEqual([{ source: 'linkedin.com', views: 1 }]);
     expect(result.daily).toHaveLength(7);
   });
 
@@ -178,13 +198,14 @@ function visit(
   visitorHash: string,
   occurredAt: Date,
   visitorAccountType: AccountType | null = null,
+  referrerDomain: string | null = null,
 ) {
   return {
     eventType,
     projectId,
     visitorHash,
     visitorAccountType,
-    referrerDomain: null,
+    referrerDomain,
     occurredAt,
   };
 }

@@ -5,6 +5,7 @@ import {
   AccountType,
   AnalyticsEventType,
   Prisma,
+  ProjectStatus,
   VerificationStatus,
 } from '@repo/db';
 import type {
@@ -143,7 +144,10 @@ export class AnalyticsService {
   ): Promise<AnalyticsOverviewResponse> {
     const period = this.getPeriod(range);
     const projects = await this.database.project.findMany({
-      where: this.accessibleProjectWhere(userId),
+      where: {
+        ...this.accessibleProjectWhere(userId),
+        status: ProjectStatus.PUBLISHED,
+      },
       select: { id: true, title: true, slug: true, status: true },
       orderBy: { updatedAt: 'desc' },
     });
@@ -409,7 +413,8 @@ export class AnalyticsService {
   private getReferrers(visits: AnalyticsVisitRecord[]): AnalyticsReferrer[] {
     const counts = new Map<string, number>();
     visits.forEach((visit) => {
-      const source = visit.referrerDomain ?? 'Direct / unknown';
+      const source = visit.referrerDomain;
+      if (!source) return;
       counts.set(source, (counts.get(source) ?? 0) + 1);
     });
     return [...counts.entries()]
