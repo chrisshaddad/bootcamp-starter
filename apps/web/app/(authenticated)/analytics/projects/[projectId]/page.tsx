@@ -63,9 +63,14 @@ function ProjectAnalyticsContent() {
         <ArrowLeft className="h-4 w-4" />
         Portfolio analytics
       </Link>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-5 rounded-2xl border bg-gradient-to-br from-primary-100/70 to-background p-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">{analytics.project.title}</h1>
+          <p className="mb-2 text-xs font-semibold tracking-wider text-primary-base uppercase">
+            Project insights
+          </p>
+          <h1 className="text-2xl font-bold tracking-tight">
+            {analytics.project.title}
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Traffic for this published project
           </p>
@@ -99,7 +104,7 @@ function ProjectAnalyticsContent() {
       <div className="grid gap-6 lg:grid-cols-2">
         <AnalyticsReferrers referrers={analytics.referrers} />
         <Card className="p-5 shadow-sm">
-          <h2 className="font-semibold">Audience</h2>
+          <h2 className="text-base font-semibold">Audience</h2>
           <p className="text-xs text-muted-foreground">
             Account category at the time of the visit
           </p>

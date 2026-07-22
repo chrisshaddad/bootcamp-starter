@@ -1,6 +1,7 @@
 'use client';
 
 import type { ElementType } from 'react';
+import { Activity, Globe2 } from 'lucide-react';
 import type {
   AnalyticsDailyPoint,
   AnalyticsRange,
@@ -48,15 +49,20 @@ export function AnalyticsMetricCard({
   detail: string;
 }) {
   return (
-    <Card className="gap-3 p-5 shadow-sm">
+    <Card className="relative gap-4 overflow-hidden p-5 shadow-sm">
+      <div className="absolute inset-x-0 top-0 h-1 bg-primary-base" />
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium text-muted-foreground">{label}</p>
-        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-100 text-primary-base">
+        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-100 text-primary-base">
           <Icon className="h-4 w-4" />
         </span>
       </div>
-      <p className="text-3xl font-bold tabular-nums">{value}</p>
-      <p className="text-xs text-muted-foreground">{detail}</p>
+      <p className="text-3xl font-bold tracking-tight tabular-nums">
+        {value.toLocaleString()}
+      </p>
+      <p className="w-fit rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
+        {detail}
+      </p>
     </Card>
   );
 }
@@ -65,14 +71,19 @@ export function AnalyticsDailyChart({ data }: { data: AnalyticsDailyPoint[] }) {
   const maximum = Math.max(...data.map((point) => point.totalViews), 1);
 
   return (
-    <Card className="p-5 shadow-sm">
-      <div>
-        <h2 className="font-semibold">Views over time</h2>
-        <p className="text-xs text-muted-foreground">
-          Total views per calendar day
-        </p>
+    <Card className="gap-5 p-5 shadow-sm">
+      <div className="flex items-center gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-primary-base">
+          <Activity className="h-4 w-4" />
+        </span>
+        <div>
+          <h2 className="text-base font-semibold">Views over time</h2>
+          <p className="text-xs text-muted-foreground">
+            Daily portfolio activity
+          </p>
+        </div>
       </div>
-      <div className="mt-5 overflow-x-auto pb-2">
+      <div className="overflow-x-auto rounded-xl border bg-muted/20 px-3 pt-4 pb-2">
         <div className="flex h-48 min-w-[560px] items-end gap-1.5">
           {data.map((point) => (
             <div
@@ -84,7 +95,7 @@ export function AnalyticsDailyChart({ data }: { data: AnalyticsDailyPoint[] }) {
                 {point.totalViews}
               </span>
               <div
-                className="w-full min-w-1 rounded-t bg-primary-base transition-opacity group-hover:opacity-75"
+                className="w-full min-w-1 rounded-t bg-gradient-to-t from-primary-base to-chart-4 transition-opacity group-hover:opacity-75"
                 style={{
                   height: `${Math.max((point.totalViews / maximum) * 140, point.totalViews ? 4 : 1)}px`,
                   opacity: point.totalViews ? 1 : 0.15,
@@ -110,17 +121,29 @@ export function AnalyticsReferrers({
 }) {
   const maximum = Math.max(...referrers.map((item) => item.views), 1);
   return (
-    <Card className="p-5 shadow-sm">
-      <h2 className="font-semibold">Top traffic sources</h2>
-      <p className="text-xs text-muted-foreground">
-        Referrer domains only; no visitor identity is stored
-      </p>
-      <div className="mt-5 space-y-4">
+    <Card className="gap-5 p-5 shadow-sm">
+      <div className="flex items-center gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-primary-base">
+          <Globe2 className="h-4 w-4" />
+        </span>
+        <div>
+          <h2 className="text-base font-semibold">Top traffic sources</h2>
+          <p className="text-xs text-muted-foreground">
+            Where your visitors come from
+          </p>
+        </div>
+      </div>
+      <div className="space-y-3">
         {referrers.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No traffic yet.</p>
+          <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+            Traffic sources will appear after your first visits.
+          </div>
         ) : (
           referrers.map((item) => (
-            <div key={item.source} className="space-y-1.5">
+            <div
+              key={item.source}
+              className="space-y-2 rounded-xl bg-muted/30 p-3"
+            >
               <div className="flex justify-between gap-4 text-sm">
                 <span className="truncate">{item.source}</span>
                 <span className="font-semibold tabular-nums">{item.views}</span>
