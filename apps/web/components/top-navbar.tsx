@@ -1,11 +1,9 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
-import { Search, Settings, LogOut, ChevronDown, UserCog } from 'lucide-react';
+import { Settings, LogOut, ChevronDown, UserCog } from 'lucide-react';
 import { useAuth, useUser } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -19,7 +17,6 @@ import { SidebarTrigger } from '@/components/ui/sidebar';
 export function TopNavbar() {
   const { user } = useUser({ redirectOnUnauthenticated: false });
   const { logout } = useAuth();
-  const [searchQuery, setSearchQuery] = useState('');
 
   const isSuperAdmin = user?.accountType === 'SUPER_ADMIN';
 
@@ -45,22 +42,8 @@ export function TopNavbar() {
 
   return (
     <header className="border-border bg-card flex h-16 shrink-0 items-center justify-between border-b px-6">
-      {/* Left Section - Sidebar Toggle & Search */}
       <div className="flex items-center gap-4">
         <SidebarTrigger className="text-muted-foreground hover:bg-accent hover:text-accent-foreground -ml-1 h-9 w-9" />
-
-        {!isSuperAdmin && (
-          <div className="relative">
-            <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
-            <Input
-              type="search"
-              placeholder="Search..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="border-border bg-input/30 placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-primary/20 h-10 w-64 rounded-lg pl-10 text-sm"
-            />
-          </div>
-        )}
       </div>
 
       {/* Right Section - User */}
