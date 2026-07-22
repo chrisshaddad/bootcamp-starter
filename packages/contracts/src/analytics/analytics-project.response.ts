@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { dateSchema } from '../common';
+import { projectStatusSchema } from '../projects';
 import { analyticsRangeSchema } from './analytics-range.schema';
 import { analyticsTotalsSchema } from './analytics-totals.response';
 import { analyticsDailyPointSchema } from './analytics-daily-point.response';
@@ -12,7 +13,7 @@ export const analyticsProjectResponseSchema = z.strictObject({
     id: z.string().uuid(),
     title: z.string(),
     slug: z.string(),
-    status: z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']),
+    status: projectStatusSchema,
   }),
   totals: analyticsTotalsSchema,
   comparison: z.strictObject({

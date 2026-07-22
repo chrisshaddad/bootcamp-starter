@@ -1,11 +1,12 @@
 import { z } from 'zod';
 import { dateSchema } from '../common';
+import { projectStatusSchema } from '../projects';
 
 export const analyticsProjectSummarySchema = z.strictObject({
   id: z.string().uuid(),
   title: z.string(),
   slug: z.string(),
-  status: z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']),
+  status: projectStatusSchema,
   totalViews: z.number().int().nonnegative(),
   uniqueVisitors: z.number().int().nonnegative(),
   recruiterViews: z.number().int().nonnegative(),
