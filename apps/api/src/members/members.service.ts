@@ -1,14 +1,243 @@
-import { Injectable, Logger } from '@nestjs/common';
-import type { User } from '@repo/db';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import type { Queue } from 'bullmq';
+import { createHash, randomBytes } from 'crypto';
+import type { MemberRole, User } from '@repo/db';
 import { PrismaService } from '../database/prisma.service';
 import { resolveOrganizationScope } from '../common/organization-scope';
-import type { MemberListQuery, MemberListResponse } from '@repo/contracts';
+import { SessionService } from '../auth/session.service';
+import { MAIL_JOBS, MAIL_QUEUE } from '../mail/mail.constants';
+import type {
+  Member,
+  MemberActionResponse,
+  MemberCreateRequest,
+  MemberInvitation,
+  MemberInvitationAcceptResponse,
+  MemberInvitationActionResponse,
+  MemberInviteRequest,
+  MemberListQuery,
+  MemberInvitationListResponse,
+  MemberListResponse,
+  MemberUpdateRequest,
+  UserResponse,
+} from '@repo/contracts';
+
+const INVITATION_EXPIRY_DAYS = 7;
 
 @Injectable()
 export class MembersService {
   private readonly logger = new Logger(MembersService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly sessionService: SessionService,
+    @InjectQueue(MAIL_QUEUE) private readonly mailQueue: Queue,
+  ) {}
+
+  /**
+   * Hashes a raw invitation token for safe database storage.
+   */
+  private hashToken(token: string): string {
+    return createHash('sha256').update(token).digest('hex');
+  }
+
+  /**
+   * Maps a Prisma member record into the shared contract response shape.
+   */
+  private mapMember(member: {
+    id: string;
+    username: string;
+    role: MemberRole;
+    organizationId: string;
+    userId?: string | null;
+    user?: { email: string } | null;
+  }): Member {
+    return {
+      id: member.id,
+      username: member.username,
+      role: member.role,
+      organizationId: member.organizationId,
+      userId: member.userId ?? null,
+      userEmail: member.user?.email ?? null,
+    };
+  }
+
+  /**
+   * Maps a Prisma invitation record into the shared contract response shape.
+   */
+  private mapInvitation(invitation: {
+    id: string;
+    email: string;
+    username: string;
+    role: MemberRole;
+    organizationId: string;
+    invitedById: string;
+    expiresAt: Date;
+    acceptedAt: Date | null;
+    revokedAt: Date | null;
+    createdAt: Date;
+  }): MemberInvitation {
+    return {
+      id: invitation.id,
+      email: invitation.email,
+      username: invitation.username,
+      role: invitation.role,
+      organizationId: invitation.organizationId,
+      invitedById: invitation.invitedById,
+      expiresAt: invitation.expiresAt.toISOString(),
+      acceptedAt: invitation.acceptedAt?.toISOString() ?? null,
+      revokedAt: invitation.revokedAt?.toISOString() ?? null,
+      createdAt: invitation.createdAt.toISOString(),
+    };
+  }
+
+  /**
+   * Maps an auth user and optional Coordly member role into a user response.
+   */
+  private mapUserResponse(
+    user: Pick<
+      User,
+      'id' | 'email' | 'name' | 'role' | 'organizationId' | 'isConfirmed'
+    >,
+    memberRole: MemberRole | null,
+  ): UserResponse {
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      organizationId: user.organizationId,
+      isConfirmed: user.isConfirmed,
+      memberRole,
+    };
+  }
+
+  /**
+   * Resolves an organization scope and rejects requests without one.
+   */
+  private resolveRequiredOrganizationScope(
+    user: User,
+    requestedOrganizationId?: string,
+  ): string {
+    const organizationId = resolveOrganizationScope(
+      user,
+      requestedOrganizationId,
+    );
+
+    if (!organizationId) {
+      throw new BadRequestException('organizationId is required');
+    }
+
+    return organizationId;
+  }
+
+  /**
+   * Loads a member constrained to the caller's organization scope.
+   */
+  private async getScopedMember(id: string, user: User) {
+    const organizationId = resolveOrganizationScope(user);
+    const member = await this.prisma.member.findFirst({
+      where: {
+        id,
+        ...(organizationId ? { organizationId } : {}),
+      },
+      include: {
+        user: {
+          select: {
+            email: true,
+          },
+        },
+      },
+    });
+
+    if (!member) {
+      throw new NotFoundException('Member not found');
+    }
+
+    return member;
+  }
+
+  /**
+   * Ensures a username is unused within an organization.
+   */
+  private async assertUsernameAvailable(
+    organizationId: string,
+    username: string,
+    excludingMemberId?: string,
+  ): Promise<void> {
+    const existing = await this.prisma.member.findFirst({
+      where: {
+        organizationId,
+        username,
+        ...(excludingMemberId ? { id: { not: excludingMemberId } } : {}),
+      },
+      select: { id: true },
+    });
+
+    if (existing) {
+      throw new ConflictException('A member with this username already exists');
+    }
+  }
+
+  /**
+   * Loads an organization or raises the shared not-found response.
+   */
+  private async getOrganization(organizationId: string) {
+    const organization = await this.prisma.organization.findFirst({
+      where: { id: organizationId },
+      select: { id: true, name: true },
+    });
+
+    if (!organization) {
+      throw new NotFoundException('Organization not found');
+    }
+
+    return organization;
+  }
+
+  /**
+   * Rotates an invitation token, extends expiry, and queues the email.
+   */
+  private async issueInvitationToken(
+    invitation: {
+      id: string;
+      email: string;
+      organization: { name: string };
+    },
+    inviterName: string | null,
+  ) {
+    const token = randomBytes(32).toString('hex');
+    const expiresAt = new Date(
+      Date.now() + INVITATION_EXPIRY_DAYS * 24 * 60 * 60 * 1000,
+    );
+
+    const updated = await this.prisma.memberInvitation.update({
+      where: { id: invitation.id },
+      data: {
+        tokenHash: this.hashToken(token),
+        expiresAt,
+      },
+    });
+
+    const appUrl = process.env.APP_URL ?? 'http://localhost:3000';
+    const invitationLink = `${appUrl}/invite/accept?token=${token}`;
+
+    await this.mailQueue.add(MAIL_JOBS.SEND_INVITATION, {
+      email: invitation.email,
+      inviterName,
+      organizationName: invitation.organization.name,
+      invitationLink,
+    });
+
+    return updated;
+  }
 
   async findAll(
     query: MemberListQuery,
@@ -26,11 +255,12 @@ export class MembersService {
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
-        select: {
-          id: true,
-          username: true,
-          role: true,
-          organizationId: true,
+        include: {
+          user: {
+            select: {
+              email: true,
+            },
+          },
         },
       }),
       this.prisma.member.count({ where }),
@@ -38,6 +268,420 @@ export class MembersService {
 
     this.logger.log(`Listed ${members.length} members (total: ${total})`);
 
-    return { members, total };
+    return { members: members.map((member) => this.mapMember(member)), total };
+  }
+
+  /**
+   * Finds a single Coordly member after scope validation.
+   */
+  async findOne(id: string, user: User): Promise<MemberActionResponse> {
+    const member = await this.getScopedMember(id, user);
+    return { member: this.mapMember(member) };
+  }
+
+  /**
+   * Creates an unlinked Coordly member in the resolved organization scope.
+   */
+  async create(
+    body: MemberCreateRequest,
+    user: User,
+  ): Promise<MemberActionResponse> {
+    const organizationId = this.resolveRequiredOrganizationScope(
+      user,
+      body.organizationId,
+    );
+    await this.getOrganization(organizationId);
+
+    await this.assertUsernameAvailable(organizationId, body.username);
+
+    const member = await this.prisma.member.create({
+      data: {
+        username: body.username,
+        role: body.role,
+        organizationId,
+      },
+      include: {
+        user: {
+          select: {
+            email: true,
+          },
+        },
+      },
+    });
+
+    this.logger.log(`Created member ${member.id} in org ${organizationId}`);
+    return { member: this.mapMember(member) };
+  }
+
+  /**
+   * Updates an existing Coordly member after scope and username checks.
+   */
+  async update(
+    id: string,
+    body: MemberUpdateRequest,
+    user: User,
+  ): Promise<MemberActionResponse> {
+    const existing = await this.getScopedMember(id, user);
+
+    if (body.username && body.username !== existing.username) {
+      await this.assertUsernameAvailable(
+        existing.organizationId,
+        body.username,
+        existing.id,
+      );
+    }
+
+    const member = await this.prisma.member.update({
+      where: { id: existing.id },
+      data: {
+        ...(body.username ? { username: body.username } : {}),
+        ...(body.role ? { role: body.role } : {}),
+      },
+      include: {
+        user: {
+          select: {
+            email: true,
+          },
+        },
+      },
+    });
+
+    this.logger.log(`Updated member ${member.id}`);
+    return { member: this.mapMember(member) };
+  }
+
+  /**
+   * Deletes an existing Coordly member after scope validation.
+   */
+  async remove(id: string, user: User): Promise<MemberActionResponse> {
+    const existing = await this.getScopedMember(id, user);
+    const member = await this.prisma.member.delete({
+      where: { id: existing.id },
+      include: {
+        user: {
+          select: {
+            email: true,
+          },
+        },
+      },
+    });
+
+    this.logger.log(`Deleted member ${member.id}`);
+    return { member: this.mapMember(member) };
+  }
+
+  /**
+   * Lists active pending invitations visible to the current admin.
+   */
+  async findInvitations(
+    query: MemberListQuery,
+    user: User,
+  ): Promise<MemberInvitationListResponse> {
+    const { page = 1, limit = 20, organizationId: requestedOrgId } = query;
+    const skip = (page - 1) * limit;
+    const organizationId = resolveOrganizationScope(user, requestedOrgId);
+    const where = {
+      ...(organizationId ? { organizationId } : {}),
+      acceptedAt: null,
+      revokedAt: null,
+    };
+
+    const [invitations, total] = await Promise.all([
+      this.prisma.memberInvitation.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.memberInvitation.count({ where }),
+    ]);
+
+    return {
+      invitations: invitations.map((invitation) =>
+        this.mapInvitation(invitation),
+      ),
+      total,
+    };
+  }
+
+  /**
+   * Creates and emails a pending member invitation.
+   */
+  async invite(
+    body: MemberInviteRequest,
+    user: User,
+  ): Promise<MemberInvitationActionResponse> {
+    const organizationId = this.resolveRequiredOrganizationScope(
+      user,
+      body.organizationId,
+    );
+
+    const organization = await this.getOrganization(organizationId);
+
+    await this.assertUsernameAvailable(organizationId, body.username);
+
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email: body.email },
+      select: {
+        id: true,
+        role: true,
+        organizationId: true,
+      },
+    });
+
+    if (existingUser?.role === 'SUPER_ADMIN') {
+      throw new ConflictException('Super admins cannot be invited as members');
+    }
+
+    if (
+      existingUser?.organizationId &&
+      existingUser.organizationId !== organizationId
+    ) {
+      throw new ConflictException(
+        'This user already belongs to another organization',
+      );
+    }
+
+    if (existingUser) {
+      const existingMembership = await this.prisma.member.findFirst({
+        where: { userId: existingUser.id },
+        select: { id: true },
+      });
+
+      if (existingMembership) {
+        throw new ConflictException('This user is already linked to a member');
+      }
+    }
+
+    const existingInvitation = await this.prisma.memberInvitation.findFirst({
+      where: {
+        organizationId,
+        acceptedAt: null,
+        revokedAt: null,
+        expiresAt: { gt: new Date() },
+        OR: [{ email: body.email }, { username: body.username }],
+      },
+      select: { id: true },
+    });
+
+    if (existingInvitation) {
+      throw new ConflictException(
+        'An active invitation already exists for this email or username',
+      );
+    }
+
+    const invitation = await this.prisma.memberInvitation.create({
+      data: {
+        email: body.email,
+        username: body.username,
+        role: body.role,
+        organizationId,
+        invitedById: user.id,
+        tokenHash: this.hashToken(randomBytes(32).toString('hex')),
+        expiresAt: new Date(),
+      },
+      include: {
+        organization: {
+          select: { name: true },
+        },
+      },
+    });
+
+    const issuedInvitation = await this.issueInvitationToken(
+      { ...invitation, organization },
+      user.name,
+    );
+
+    this.logger.log(`Queued member invitation ${invitation.id}`);
+    return { invitation: this.mapInvitation(issuedInvitation) };
+  }
+
+  /**
+   * Reissues a pending invitation with a fresh token and expiry.
+   */
+  async resendInvitation(
+    id: string,
+    user: User,
+  ): Promise<MemberInvitationActionResponse> {
+    const organizationId = resolveOrganizationScope(user);
+    const invitation = await this.prisma.memberInvitation.findFirst({
+      where: {
+        id,
+        ...(organizationId ? { organizationId } : {}),
+        acceptedAt: null,
+        revokedAt: null,
+      },
+      include: {
+        organization: {
+          select: { name: true },
+        },
+      },
+    });
+
+    if (!invitation) {
+      throw new NotFoundException('Invitation not found');
+    }
+
+    const updated = await this.issueInvitationToken(invitation, user.name);
+
+    this.logger.log(`Resent member invitation ${invitation.id}`);
+    return { invitation: this.mapInvitation(updated) };
+  }
+
+  /**
+   * Marks a pending invitation as revoked.
+   */
+  async revokeInvitation(
+    id: string,
+    user: User,
+  ): Promise<MemberInvitationActionResponse> {
+    const organizationId = resolveOrganizationScope(user);
+    const invitation = await this.prisma.memberInvitation.findFirst({
+      where: {
+        id,
+        ...(organizationId ? { organizationId } : {}),
+        acceptedAt: null,
+        revokedAt: null,
+      },
+    });
+
+    if (!invitation) {
+      throw new NotFoundException('Invitation not found');
+    }
+
+    const updated = await this.prisma.memberInvitation.update({
+      where: { id: invitation.id },
+      data: { revokedAt: new Date() },
+    });
+
+    this.logger.log(`Revoked member invitation ${invitation.id}`);
+    return { invitation: this.mapInvitation(updated) };
+  }
+
+  /**
+   * Accepts an invitation by creating the user, member, and session atomically.
+   */
+  async acceptInvitation(
+    token: string,
+  ): Promise<{ sessionId: string } & MemberInvitationAcceptResponse> {
+    const invitation = await this.prisma.memberInvitation.findUnique({
+      where: { tokenHash: this.hashToken(token) },
+    });
+
+    if (!invitation) {
+      throw new NotFoundException('Invalid or expired invitation');
+    }
+
+    if (invitation.acceptedAt) {
+      throw new BadRequestException(
+        'This invitation has already been accepted',
+      );
+    }
+
+    if (invitation.revokedAt || invitation.expiresAt < new Date()) {
+      throw new NotFoundException('Invalid or expired invitation');
+    }
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const existingUser = await tx.user.findUnique({
+        where: { email: invitation.email },
+      });
+
+      if (existingUser?.role === 'SUPER_ADMIN') {
+        throw new ForbiddenException(
+          'Super admins cannot accept member invitations',
+        );
+      }
+
+      if (
+        existingUser?.organizationId &&
+        existingUser.organizationId !== invitation.organizationId
+      ) {
+        throw new ConflictException(
+          'This user already belongs to another organization',
+        );
+      }
+
+      if (existingUser) {
+        const existingMembership = await tx.member.findFirst({
+          where: { userId: existingUser.id },
+          select: { id: true },
+        });
+
+        if (existingMembership) {
+          throw new ConflictException(
+            'This user is already linked to a member',
+          );
+        }
+      }
+
+      const existingUsername = await tx.member.findFirst({
+        where: {
+          organizationId: invitation.organizationId,
+          username: invitation.username,
+        },
+        select: { id: true },
+      });
+
+      if (existingUsername) {
+        throw new ConflictException(
+          'A member with this username already exists',
+        );
+      }
+
+      const userRecord = existingUser
+        ? await tx.user.update({
+            where: { id: existingUser.id },
+            data: {
+              organizationId: invitation.organizationId,
+              isConfirmed: true,
+            },
+          })
+        : await tx.user.create({
+            data: {
+              email: invitation.email,
+              name: invitation.username,
+              role: 'MEMBER',
+              organizationId: invitation.organizationId,
+              isConfirmed: true,
+            },
+          });
+
+      const member = await tx.member.create({
+        data: {
+          username: invitation.username,
+          role: invitation.role,
+          organizationId: invitation.organizationId,
+          userId: userRecord.id,
+        },
+      });
+
+      await tx.memberInvitation.update({
+        where: { id: invitation.id },
+        data: { acceptedAt: new Date() },
+      });
+
+      const sessionId = await this.sessionService.createSession(
+        userRecord.id,
+        tx,
+      );
+
+      return { sessionId, userRecord, memberRole: member.role };
+    });
+
+    await this.sessionService.cacheSession(result.sessionId).catch((error) => {
+      this.logger.warn(
+        `Failed to cache accepted invitation session ${result.sessionId}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    });
+
+    this.logger.log(`Accepted member invitation ${invitation.id}`);
+
+    return {
+      sessionId: result.sessionId,
+      user: this.mapUserResponse(result.userRecord, result.memberRole),
+    };
   }
 }

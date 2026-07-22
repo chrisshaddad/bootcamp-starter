@@ -2,7 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { randomBytes } from 'crypto';
 import Redis from 'ioredis';
 import { PrismaService } from '../database/prisma.service';
-import { User } from '@repo/db';
+import type { Prisma, User } from '@repo/db';
 
 const SESSION_PREFIX = 'session:';
 const SESSION_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days
@@ -24,12 +24,16 @@ export class SessionService {
   /**
    * Creates a new session in both DB and Redis
    */
-  async createSession(userId: string): Promise<string> {
+  async createSession(
+    userId: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<string> {
     const sessionId = this.generateSessionId();
     const expiresAt = new Date(Date.now() + SESSION_TTL_SECONDS * 1000);
+    const prisma = tx ?? this.prisma;
 
     // Store in database (source of truth)
-    await this.prisma.session.create({
+    await prisma.session.create({
       data: {
         id: sessionId,
         userId,
@@ -37,16 +41,53 @@ export class SessionService {
       },
     });
 
+    if (tx) {
+      return sessionId;
+    }
+
     // Cache in Redis with TTL
-    const sessionData: SessionData = { userId, expiresAt };
-    await this.redis.setex(
-      `${SESSION_PREFIX}${sessionId}`,
-      SESSION_TTL_SECONDS,
-      JSON.stringify(sessionData),
-    );
+    await this.cacheSessionData(sessionId, { userId, expiresAt });
 
     this.logger.log(`Session created for user ${userId}`);
     return sessionId;
+  }
+
+  /**
+   * Caches a committed database session in Redis.
+   */
+  async cacheSession(sessionId: string): Promise<void> {
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+      select: { userId: true, expiresAt: true },
+    });
+
+    if (!session || session.expiresAt < new Date()) {
+      return;
+    }
+
+    await this.cacheSessionData(sessionId, session);
+  }
+
+  /**
+   * Writes session data to Redis using the remaining database TTL.
+   */
+  private async cacheSessionData(
+    sessionId: string,
+    sessionData: SessionData,
+  ): Promise<void> {
+    const ttlSeconds = Math.floor(
+      (sessionData.expiresAt.getTime() - Date.now()) / 1000,
+    );
+
+    if (ttlSeconds <= 0) {
+      return;
+    }
+
+    await this.redis.setex(
+      `${SESSION_PREFIX}${sessionId}`,
+      ttlSeconds,
+      JSON.stringify(sessionData),
+    );
   }
 
   /**

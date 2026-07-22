@@ -79,12 +79,13 @@ model User {
   sessions              Session[]
   magicLinks            MagicLink[]
   profile               UserProfile?
-  organization          Organization?   @relation("OrganizationMembers", fields: [organizationId], references: [id], onDelete: SetNull)
-  createdOrganization   Organization?   @relation("OrganizationCreator")
-  approvedOrganizations Organization[]  @relation("OrganizationApprover")
+  organization          Organization?      @relation("OrganizationMembers", fields: [organizationId], references: [id], onDelete: SetNull)
+  createdOrganization   Organization?      @relation("OrganizationCreator")
+  approvedOrganizations Organization[]     @relation("OrganizationApprover")
   eventAttendees        EventAttendee[]
   orgMemberships        Member[]
   announcements         Announcement[]
+  sentMemberInvitations MemberInvitation[]
 
   @@index([organizationId])
   @@schema("public")
@@ -153,13 +154,14 @@ model Organization {
   updatedAt    DateTime           @updatedAt
   approvedAt   DateTime? // When super admin approved
 
-  createdBy      User            @relation("OrganizationCreator", fields: [createdById], references: [id])
-  approvedBy     User?           @relation("OrganizationApprover", fields: [approvedById], references: [id])
-  users          User[]          @relation("OrganizationMembers")
-  members        Member[]
-  events         Event[]
-  eventAttendees EventAttendee[]
-  announcements  Announcement[]
+  createdBy         User               @relation("OrganizationCreator", fields: [createdById], references: [id])
+  approvedBy        User?              @relation("OrganizationApprover", fields: [approvedById], references: [id])
+  users             User[]             @relation("OrganizationMembers")
+  members           Member[]
+  events            Event[]
+  eventAttendees    EventAttendee[]
+  announcements     Announcement[]
+  memberInvitations MemberInvitation[]
 
   @@index([approvedById])
   @@index([status])
@@ -183,6 +185,30 @@ model Member {
   @@index([organizationId])
   @@index([userId])
   @@schema("public")
+}
+
+model MemberInvitation {
+  id             String     @id @default(uuid())
+  email          String
+  username       String
+  role           MemberRole @default(PRESENTER)
+  organizationId String
+  invitedById    String
+  tokenHash      String     @unique
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invitedBy    User         @relation(fields: [invitedById], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([invitedById])
+  @@index([email])
+  @@index([expiresAt])
+  @@schema("private")
 }
 
 model Event {

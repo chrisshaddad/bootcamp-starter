@@ -7,7 +7,13 @@ const SESSION_COOKIE_NAME = 'bootcamp_starter_session';
 const authEntryRoutes = ['/login', '/auth/verify'];
 
 // Routes that do not require a session.
-const publicRoutes = [...authEntryRoutes, '/browse', '/privacy', '/terms'];
+const publicRoutes = [
+  ...authEntryRoutes,
+  '/browse',
+  '/privacy',
+  '/terms',
+  '/invite/accept',
+];
 
 const DEFAULT_AUTHENTICATED_ROUTE = '/dashboard';
 

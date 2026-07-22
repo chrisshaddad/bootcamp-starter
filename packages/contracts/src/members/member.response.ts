@@ -6,5 +6,7 @@ export const memberSchema = z.object({
   username: z.string(),
   role: memberRoleSchema,
   organizationId: z.uuid(),
+  userId: z.uuid().nullable().optional(),
+  userEmail: z.email().nullable().optional(),
 });
 export type Member = z.infer<typeof memberSchema>;
