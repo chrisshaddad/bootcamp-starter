@@ -10,12 +10,14 @@ import {
   Query,
 } from '@nestjs/common';
 import { OrganizationsService } from './organizations.service';
-import { Roles, CurrentUser, Public } from '../auth/decorators';
+import { Roles, CurrentUser, Public, OrganizationId } from '../auth/decorators';
 import { ZodValidationPipe } from '../common/pipes';
 import type { User, OrganizationStatus } from '@repo/db';
 import {
   createOrganizationRequestSchema,
+  organizationUpdateRequestSchema,
   type CreateOrganizationRequest,
+  type OrganizationUpdateRequest,
   type OrganizationListResponse,
   type OrganizationDetailResponse,
   type OrganizationActionResponse,
@@ -50,6 +52,35 @@ export class OrganizationsController {
       page: page ? parseInt(page, 10) : 1,
       limit: limit ? parseInt(limit, 10) : 20,
     });
+  }
+
+  // ORG_ADMIN self-service for their own library. Declared BEFORE `:id` so the
+  // literal `current` segment isn't captured by the param route (which is
+  // SUPER_ADMIN-only). Target org resolves via @OrganizationId(), so an admin
+  // can only read/edit their own.
+  @Get('current')
+  @Roles('ORG_ADMIN')
+  async findCurrent(
+    @OrganizationId() organizationId: string,
+  ): Promise<OrganizationDetailResponse> {
+    return this.organizationsService.findOne(organizationId);
+  }
+
+  @Patch('current')
+  @Roles('ORG_ADMIN')
+  async updateCurrent(
+    @OrganizationId() organizationId: string,
+    @Body(new ZodValidationPipe(organizationUpdateRequestSchema))
+    body: OrganizationUpdateRequest,
+  ): Promise<OrganizationActionResponse> {
+    const organization = await this.organizationsService.updateProfile(
+      organizationId,
+      body,
+    );
+    return {
+      message: 'Library settings updated successfully',
+      organization,
+    };
   }
 
   @Get(':id')

@@ -9,6 +9,7 @@ import { AuthService } from '../auth/auth.service';
 import type { OrganizationStatus, Prisma } from '@repo/db';
 import type {
   CreateOrganizationRequest,
+  OrganizationUpdateRequest,
   OrganizationListResponse,
   OrganizationDetailResponse,
   OrganizationRegisterResponse,
@@ -191,6 +192,51 @@ export class OrganizationsService {
     }
 
     return organization;
+  }
+
+  /**
+   * ORG_ADMIN self-service update of their own library's branding/profile.
+   * Never touches `status` (that stays a SUPER_ADMIN action). A changed slug is
+   * re-checked for global uniqueness, same as registration.
+   */
+  async updateProfile(
+    id: string,
+    dto: OrganizationUpdateRequest,
+  ): Promise<OrganizationDetailResponse> {
+    const existing = await this.prisma.organization.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      throw new NotFoundException(`Organization with ID ${id} not found`);
+    }
+
+    if (dto.slug) {
+      const clash = await this.prisma.organization.findFirst({
+        where: { slug: dto.slug, id: { not: id } },
+        select: { id: true },
+      });
+      if (clash) {
+        throw new ConflictException(
+          `The slug "${dto.slug}" is already taken. Please choose another.`,
+        );
+      }
+    }
+
+    // Undefined fields are left untouched by Prisma; only branding is editable.
+    await this.prisma.organization.update({
+      where: { id },
+      data: {
+        name: dto.name,
+        slug: dto.slug,
+        description: dto.description,
+        website: dto.website,
+        logoUrl: dto.logoUrl,
+      },
+    });
+
+    return this.findOne(id);
   }
 
   /**

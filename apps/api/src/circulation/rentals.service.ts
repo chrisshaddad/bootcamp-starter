@@ -17,7 +17,7 @@ import type {
 
 export const DEFAULT_LOAN_DAYS = 14;
 export const MS_PER_DAY = 24 * 60 * 60 * 1000;
-const LATE_FEE_PER_DAY = 0.5;
+export const LATE_FEE_PER_DAY = 0.5;
 const FLAT_LOST_FEE = 25;
 
 const rentalInclude = {
@@ -47,11 +47,34 @@ export class RentalsService {
       memberId?: string;
       bookCopyId?: string;
       status?: RentalStatus;
+      overdue?: boolean;
     },
   ): Promise<RentalListResponse> {
-    const { page = 1, limit = 20, memberId, bookCopyId, status } = options;
+    const {
+      page = 1,
+      limit = 20,
+      memberId,
+      bookCopyId,
+      status,
+      overdue,
+    } = options;
     const skip = (page - 1) * limit;
-    const where = { organizationId, memberId, bookCopyId, status };
+    const where: Prisma.RentalWhereInput = {
+      organizationId,
+      memberId,
+      bookCopyId,
+      status,
+      // Overdue = still out (not returned) and past due. Nothing ages
+      // ACTIVE→OVERDUE synchronously, so match both statuses by dueDate rather
+      // than trusting the stored status.
+      ...(overdue
+        ? {
+            returnedAt: null,
+            dueDate: { lt: new Date() },
+            status: { in: ['ACTIVE', 'OVERDUE'] },
+          }
+        : {}),
+    };
 
     const [rentals, total] = await Promise.all([
       this.prisma.rental.findMany({
@@ -101,12 +124,6 @@ export class RentalsService {
       );
     }
 
-    if (bookCopy.status !== 'AVAILABLE') {
-      throw new ConflictException(
-        `Book copy is not available (status: ${bookCopy.status})`,
-      );
-    }
-
     const member = await this.prisma.libraryMember.findFirst({
       where: { id: data.memberId, organizationId },
     });
@@ -123,10 +140,45 @@ export class RentalsService {
       );
     }
 
+    // A matching open hold this member has on the copy's title. When present,
+    // it is fulfilled by this checkout and also lets us claim a copy that a
+    // `ready` step left RESERVED (scoped to this member's own hold, so we never
+    // consume another member's reserved copy).
+    const reservation = await this.prisma.reservation.findFirst({
+      where: {
+        organizationId,
+        memberId: data.memberId,
+        bookId: bookCopy.bookId,
+        status: { in: ['ACTIVE', 'READY_FOR_PICKUP'] },
+      },
+      orderBy: { reservedAt: 'asc' },
+    });
+
     const dueDate =
       data.dueDate ?? new Date(Date.now() + DEFAULT_LOAN_DAYS * MS_PER_DAY);
 
     const rentalId = await this.prisma.$transaction(async (tx) => {
+      // Atomically claim the copy: Postgres row-locks the UPDATE, so two
+      // concurrent checkouts can't both flip the same AVAILABLE copy to ON_LOAN
+      // (there is no DB-level "one open rental per copy" index — this is the
+      // enforcement point). Fall back to claiming a RESERVED copy only when this
+      // member holds a matching reservation.
+      let claimed = await tx.bookCopy.updateMany({
+        where: { id: data.bookCopyId, organizationId, status: 'AVAILABLE' },
+        data: { status: 'ON_LOAN' },
+      });
+
+      if (claimed.count === 0 && reservation) {
+        claimed = await tx.bookCopy.updateMany({
+          where: { id: data.bookCopyId, organizationId, status: 'RESERVED' },
+          data: { status: 'ON_LOAN' },
+        });
+      }
+
+      if (claimed.count === 0) {
+        throw new ConflictException('Book copy is not available for checkout');
+      }
+
       const rental = await tx.rental.create({
         data: {
           organizationId,
@@ -137,10 +189,13 @@ export class RentalsService {
         },
       });
 
-      await tx.bookCopy.update({
-        where: { id: data.bookCopyId },
-        data: { status: 'ON_LOAN' },
-      });
+      // Consume the member's hold, if any, in the same transaction.
+      if (reservation) {
+        await tx.reservation.update({
+          where: { id: reservation.id },
+          data: { status: 'FULFILLED', fulfilledAt: new Date() },
+        });
+      }
 
       return rental.id;
     });

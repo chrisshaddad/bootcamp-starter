@@ -39,6 +39,7 @@ export class RentalsController {
     @Query('memberId') memberId?: string,
     @Query('bookCopyId') bookCopyId?: string,
     @Query('status') status?: string,
+    @Query('overdue') overdue?: string,
   ): Promise<RentalListResponse> {
     return this.rentalsService.findAll(organizationId, {
       page: page ? parseInt(page, 10) : 1,
@@ -46,6 +47,7 @@ export class RentalsController {
       memberId,
       bookCopyId,
       status: status ? this.parseStatus(status) : undefined,
+      overdue: overdue === 'true',
     });
   }
 
