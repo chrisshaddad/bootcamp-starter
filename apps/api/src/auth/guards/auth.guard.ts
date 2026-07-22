@@ -5,7 +5,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import type { User } from '@repo/db';
 import { SessionService } from '../session.service';
 import { IS_PUBLIC_KEY } from '../decorators';
@@ -45,11 +45,13 @@ export class AuthGuard implements CanActivate {
     const user = await this.sessionService.validateSession(sessionId);
 
     if (!user) {
+      this.clearSessionCookie(context);
       throw new UnauthorizedException('Invalid or expired session');
     }
 
     if (user.status === 'SUSPENDED') {
       await this.sessionService.deleteSession(sessionId);
+      this.clearSessionCookie(context);
       throw new UnauthorizedException('This account has been suspended');
     }
 
@@ -70,6 +72,16 @@ export class AuthGuard implements CanActivate {
     }
 
     return undefined;
+  }
+
+  private clearSessionCookie(context: ExecutionContext): void {
+    const response = context.switchToHttp().getResponse<Response>();
+    response.clearCookie(SESSION_COOKIE_NAME, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+    });
   }
 }
 
