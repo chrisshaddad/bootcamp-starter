@@ -1,11 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { BriefcaseBusiness, Eye, FolderGit2, Users } from 'lucide-react';
-import type { AnalyticsRange } from '@repo/contracts';
 import { ApiError } from '@/lib/api';
-import { useAnalyticsOverview } from '@/hooks/use-analytics';
+import { useAnalyticsOverview, useAnalyticsRange } from '@/hooks/use-analytics';
 import {
   AnalyticsDailyChart,
   AnalyticsMetricCard,
@@ -16,7 +15,15 @@ import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function AnalyticsOverviewPage() {
-  const [range, setRange] = useState<AnalyticsRange>('30D');
+  return (
+    <Suspense fallback={<AnalyticsSkeleton />}>
+      <AnalyticsOverviewContent />
+    </Suspense>
+  );
+}
+
+function AnalyticsOverviewContent() {
+  const { range, setRange } = useAnalyticsRange();
   const { analytics, error, isLoading } = useAnalyticsOverview(range);
 
   return (
@@ -73,7 +80,7 @@ export default function AnalyticsOverviewPage() {
               icon={FolderGit2}
               label="Project views"
               value={analytics.totals.projectViews}
-              detail={`${analytics.totals.portfolioViews} profile views`}
+              detail={`Profile views: ${analytics.totals.portfolioViews}`}
             />
           </div>
 

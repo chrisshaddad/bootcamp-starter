@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import {
@@ -11,9 +11,8 @@ import {
   Users,
   type LucideIcon,
 } from 'lucide-react';
-import type { AnalyticsRange } from '@repo/contracts';
 import { ApiError } from '@/lib/api';
-import { useProjectAnalytics } from '@/hooks/use-analytics';
+import { useAnalyticsRange, useProjectAnalytics } from '@/hooks/use-analytics';
 import {
   AnalyticsDailyChart,
   AnalyticsMetricCard,
@@ -24,8 +23,16 @@ import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function ProjectAnalyticsPage() {
+  return (
+    <Suspense fallback={<Skeleton className="h-[520px] rounded-xl" />}>
+      <ProjectAnalyticsContent />
+    </Suspense>
+  );
+}
+
+function ProjectAnalyticsContent() {
   const { projectId } = useParams<{ projectId: string }>();
-  const [range, setRange] = useState<AnalyticsRange>('30D');
+  const { range, setRange } = useAnalyticsRange();
   const { analytics, error, isLoading } = useProjectAnalytics(projectId, range);
 
   if (isLoading) return <Skeleton className="h-[520px] rounded-xl" />;

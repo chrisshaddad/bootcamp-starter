@@ -1,14 +1,34 @@
 'use client';
 
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import useSWR from 'swr';
 import {
   analyticsOverviewResponseSchema,
   analyticsProjectResponseSchema,
+  analyticsRangeSchema,
   analyticsTrackResponseSchema,
   type AnalyticsRange,
   type AnalyticsTrackRequest,
 } from '@repo/contracts';
 import { apiPost, fetcher } from '@/lib/api';
+
+export function useAnalyticsRange() {
+  const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const parsedRange = analyticsRangeSchema.safeParse(searchParams.get('range'));
+  const range: AnalyticsRange = parsedRange.success ? parsedRange.data : '30D';
+
+  const setRange = (nextRange: AnalyticsRange) => {
+    const nextSearchParams = new URLSearchParams(searchParams.toString());
+    nextSearchParams.set('range', nextRange);
+    router.replace(`${pathname}?${nextSearchParams.toString()}`, {
+      scroll: false,
+    });
+  };
+
+  return { range, setRange };
+}
 
 export function useAnalyticsOverview(range: AnalyticsRange) {
   const { data, error, isLoading } = useSWR(
