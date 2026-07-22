@@ -259,9 +259,14 @@ export class AnnouncementsService {
     query: AnnouncementListQuery,
     user: User,
   ): Promise<AnnouncementListResponse> {
-    const { page = 1, limit = 20 } = query;
+    const { page = 1, limit = 20, eventId } = query;
     const skip = (page - 1) * limit;
-    const where = this.visibleWhere(user);
+    const where: Prisma.AnnouncementWhereInput = {
+      AND: [
+        this.visibleWhere(user),
+        ...(eventId ? [{ scope: 'EVENT' as const, eventId }] : []),
+      ],
+    };
 
     const [rows, total] = await Promise.all([
       this.prisma.announcement.findMany({

@@ -2,8 +2,10 @@
 
 import { useState } from 'react';
 import { useUser } from '@/hooks/use-auth';
+import { useAnnouncements } from '@/hooks/use-announcements';
 import { useEvent, useEventAttendees } from '@/hooks/use-events';
 import { useStatsEvent } from '@/hooks/use-stats';
+import { AnnouncementList } from '@/components/announcement-list';
 import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -123,6 +125,15 @@ export default function EventDetailPage() {
 
   const { stats } = useStatsEvent(id, {
     enabled: canAccess && !!id && !!event?.canManageAttendance,
+  });
+
+  const {
+    announcements,
+    isLoading: announcementsLoading,
+    error: announcementsError,
+  } = useAnnouncements({
+    enabled: canAccess && !!id && !!event,
+    eventId: id,
   });
 
   const handleRegister = async () => {
@@ -549,6 +560,12 @@ export default function EventDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      <AnnouncementList
+        announcements={announcements}
+        isLoading={announcementsLoading}
+        error={announcementsError}
+      />
 
       <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
         <DialogContent>

@@ -13,6 +13,7 @@ import type {
 interface UseAnnouncementsOptions {
   enabled?: boolean;
   limit?: number;
+  eventId?: string;
 }
 
 interface UseAnnouncementsReturn {
@@ -32,8 +33,12 @@ interface UseAnnouncementsReturn {
 export function useAnnouncements(
   options: UseAnnouncementsOptions = {},
 ): UseAnnouncementsReturn {
-  const { enabled = true, limit } = options;
-  const endpoint = limit ? `/announcements?limit=${limit}` : '/announcements';
+  const { enabled = true, limit, eventId } = options;
+  const params = new URLSearchParams();
+  if (limit) params.set('limit', String(limit));
+  if (eventId) params.set('eventId', eventId);
+  const query = params.toString();
+  const endpoint = query ? `/announcements?${query}` : '/announcements';
 
   const {
     data,
