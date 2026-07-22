@@ -669,6 +669,14 @@ export class MembersService {
       return { sessionId, userRecord, memberRole: member.role };
     });
 
+    await this.sessionService.cacheSession(result.sessionId).catch((error) => {
+      this.logger.warn(
+        `Failed to cache accepted invitation session ${result.sessionId}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    });
+
     this.logger.log(`Accepted member invitation ${invitation.id}`);
 
     return {
