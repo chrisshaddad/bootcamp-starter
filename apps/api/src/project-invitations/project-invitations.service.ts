@@ -40,6 +40,7 @@ import {
 } from './project-invitation.mapper';
 import { ProjectInvitationRateLimiter } from './project-invitation-rate-limiter.service';
 import { ProjectAccessService } from '../projects/project-access.service';
+import { normalizeMediaUrl } from '../common/utils/normalize-media-url';
 import {
   PROJECT_INVITATION_EXPIRY_MS,
   PROJECT_INVITATION_JOBS,
@@ -107,8 +108,9 @@ export class ProjectInvitationsService implements OnModuleInit {
       platformUser: {
         displayName: candidate.platformUser.developerProfile!.displayName,
         publicSlug: candidate.platformUser.developerProfile!.publicSlug,
-        profilePictureUrl:
+        profilePictureUrl: normalizeMediaUrl(
           candidate.platformUser.developerProfile!.profilePictureUrl,
+        ),
       },
     });
   }

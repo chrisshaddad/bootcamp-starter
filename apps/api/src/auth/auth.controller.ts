@@ -42,6 +42,8 @@ import {
   updateProfileRequestSchema,
   changePasswordRequestSchema,
   deactivateAccountRequestSchema,
+  forgotPasswordRequestSchema,
+  resetPasswordRequestSchema,
   PROFILE_PICTURE_MAX_SIZE_BYTES,
   PROFILE_PICTURE_ALLOWED_MIME_TYPES,
   type MagicLinkRequest,
@@ -54,6 +56,8 @@ import {
   type ProfilePictureUploadResponse,
   type ChangePasswordRequest,
   type DeactivateAccountRequest,
+  type ForgotPasswordRequest,
+  type ResetPasswordRequest,
   type SuccessResponse,
 } from '@repo/contracts';
 import { ZodValidationPipe } from '../common/pipes';
@@ -62,6 +66,7 @@ import {
   loginRequestSchema as loginRequestOpenApiSchema,
   magicLinkVerifyRequestSchema as magicLinkVerifyRequestOpenApiSchema,
   profilePictureUploadSchema,
+  resetPasswordRequestSchema as resetPasswordRequestOpenApiSchema,
   signupRequestSchema as signupRequestOpenApiSchema,
   updateProfileRequestSchema as updateProfileRequestOpenApiSchema,
 } from '../common/swagger/schemas';
@@ -151,6 +156,48 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<AuthResponse> {
     const { sessionId, user } = await this.authService.login(body);
+
+    response.cookie(SESSION_COOKIE_NAME, sessionId, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: SESSION_MAX_AGE_MS,
+      path: '/',
+    });
+
+    return { user };
+  }
+
+  @Public()
+  @Post('forgot-password')
+  @ApiOperation({ summary: 'Request a password reset link' })
+  @ApiBody({ schema: emailRequestOpenApiSchema })
+  @ApiResponse({
+    status: 200,
+    description: 'Password reset email queued if the account exists',
+  })
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ZodValidationPipe(forgotPasswordRequestSchema))
+  async forgotPassword(@Body() body: ForgotPasswordRequest) {
+    return this.authService.requestPasswordReset(body.email);
+  }
+
+  @Public()
+  @Post('reset-password')
+  @ApiOperation({ summary: 'Reset password using an emailed token' })
+  @ApiBody({ schema: resetPasswordRequestOpenApiSchema })
+  @ApiResponse({ status: 200, description: 'Password reset and authenticated' })
+  @ApiResponse({ status: 404, description: 'Invalid or expired reset link' })
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ZodValidationPipe(resetPasswordRequestSchema))
+  async resetPassword(
+    @Body() body: ResetPasswordRequest,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<AuthResponse> {
+    const { sessionId, user } = await this.authService.resetPassword(
+      body.token,
+      body.newPassword,
+    );
 
     response.cookie(SESSION_COOKIE_NAME, sessionId, {
       httpOnly: true,

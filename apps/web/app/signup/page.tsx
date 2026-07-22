@@ -42,7 +42,6 @@ export default function SignupPage() {
     register,
     handleSubmit,
     watch,
-    setValue,
     control,
     formState: { errors },
   } = useForm<SignupRequest>({
@@ -51,7 +50,7 @@ export default function SignupPage() {
     shouldUnregister: true,
   });
 
-  const accountType = watch('accountType');
+  const accountType = watch('accountType', 'DEVELOPER');
 
   const onSubmit = async (data: SignupRequest) => {
     setIsSubmitting(true);
@@ -94,19 +93,28 @@ export default function SignupPage() {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         <div className="space-y-2">
           <Label>I am a...</Label>
-          <div className="grid grid-cols-2 gap-2">
-            {ACCOUNT_TYPE_OPTIONS.map((option) => (
-              <Button
-                key={option.value}
-                type="button"
-                variant={accountType === option.value ? 'default' : 'outline'}
-                className="h-10"
-                onClick={() => setValue('accountType', option.value)}
-              >
-                {option.label}
-              </Button>
-            ))}
-          </div>
+          <Controller
+            name="accountType"
+            control={control}
+            render={({ field }) => (
+              <div className="grid grid-cols-2 gap-2">
+                {ACCOUNT_TYPE_OPTIONS.map((option) => (
+                  <Button
+                    key={option.value}
+                    type="button"
+                    variant={
+                      field.value === option.value ? 'default' : 'outline'
+                    }
+                    className="h-10"
+                    aria-pressed={field.value === option.value}
+                    onClick={() => field.onChange(option.value)}
+                  >
+                    {option.label}
+                  </Button>
+                ))}
+              </div>
+            )}
+          />
         </div>
 
         <div className="space-y-2">

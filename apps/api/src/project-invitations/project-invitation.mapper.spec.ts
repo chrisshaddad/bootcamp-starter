@@ -1,6 +1,17 @@
 import { mapProjectInvitation } from './project-invitation.mapper';
 
 describe('mapProjectInvitation', () => {
+  const originalApiUrl = process.env.API_URL;
+
+  beforeAll(() => {
+    process.env.API_URL = 'http://localhost:3001';
+  });
+
+  afterAll(() => {
+    if (originalApiUrl === undefined) delete process.env.API_URL;
+    else process.env.API_URL = originalApiUrl;
+  });
+
   it('returns only the shared public response contract', () => {
     const response = mapProjectInvitation({
       id: '00000000-0000-4000-8000-000000000001',
@@ -31,7 +42,7 @@ describe('mapProjectInvitation', () => {
         developerProfile: {
           displayName: 'Owner',
           publicSlug: 'owner',
-          profilePictureUrl: null,
+          profilePictureUrl: '/uploads/profile-pictures/owner.png',
         },
       },
       invitee: {
@@ -51,6 +62,10 @@ describe('mapProjectInvitation', () => {
     expect(response).toMatchObject({
       inviteeGithubUsername: 'collaborator',
       project: { repositoryFullName: 'owner/project' },
+      inviter: {
+        profilePictureUrl:
+          'http://localhost:3001/uploads/profile-pictures/owner.png',
+      },
     });
   });
 });

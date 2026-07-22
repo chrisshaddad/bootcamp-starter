@@ -18,6 +18,7 @@ const REPOSITORY_ID = '00000000-0000-4000-8000-000000000002';
 const PROJECT_ID = '00000000-0000-4000-8000-000000000003';
 const REACT_ID = '00000000-0000-4000-8000-000000000004';
 const TYPESCRIPT_ID = '00000000-0000-4000-8000-000000000005';
+const MEMBER_ID = '00000000-0000-4000-8000-000000000006';
 const CREATED_AT = new Date('2026-07-10T10:00:00.000Z');
 
 describe('ProjectsService GitHub import', () => {
@@ -454,6 +455,57 @@ describe('ProjectsService collaboration access', () => {
       service.updateProject(memberUser, PROJECT_ID, { status: 'PUBLISHED' }),
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(project.findUnique).not.toHaveBeenCalled();
+  });
+});
+
+describe('ProjectsService member removal', () => {
+  const projectMember = {
+    deleteMany: jest.fn(),
+  };
+  const projectAccess = {
+    assertCanManageInvitations: jest.fn(),
+  };
+  const service = new ProjectsService(
+    { projectMember } as unknown as PrismaService,
+    {} as GithubRepositorySnapshotService,
+    {} as GithubService,
+    projectAccess as unknown as ProjectAccessService,
+  );
+  const owner = {
+    id: USER_ID,
+    accountType: AccountType.DEVELOPER,
+  } as User;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    projectAccess.assertCanManageInvitations.mockResolvedValue({});
+  });
+
+  it('removes a verified non-owner member scoped to the project', async () => {
+    projectMember.deleteMany.mockResolvedValue({ count: 1 });
+
+    await service.removeProjectMember(owner, PROJECT_ID, MEMBER_ID);
+
+    expect(projectAccess.assertCanManageInvitations).toHaveBeenCalledWith(
+      owner,
+      PROJECT_ID,
+    );
+    expect(projectMember.deleteMany).toHaveBeenCalledWith({
+      where: {
+        id: MEMBER_ID,
+        projectId: PROJECT_ID,
+        role: { not: 'OWNER' },
+        verificationStatus: 'VERIFIED',
+      },
+    });
+  });
+
+  it('does not remove owners or unknown project members', async () => {
+    projectMember.deleteMany.mockResolvedValue({ count: 0 });
+
+    await expect(
+      service.removeProjectMember(owner, PROJECT_ID, MEMBER_ID),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 });
 

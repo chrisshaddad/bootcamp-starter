@@ -35,6 +35,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { BackLink } from '@/components/back-link';
 import {
   Select,
   SelectContent,
@@ -262,13 +263,7 @@ export default function EditProjectPage() {
     const isNotFound = error instanceof ApiError && error.status === 404;
     return (
       <div className="space-y-4">
-        <Link
-          href="/projects"
-          className="text-muted-foreground inline-flex items-center gap-1.5 text-sm hover:text-foreground"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Projects
-        </Link>
+        <BackLink fallbackHref="/projects" fallbackLabel="Projects" />
         <p className="text-muted-foreground text-sm">
           {isNotFound
             ? 'Project not found.'
@@ -310,26 +305,25 @@ export default function EditProjectPage() {
 
   return (
     <div className="space-y-6">
-      <Link
-        href="/projects"
-        className="text-muted-foreground inline-flex items-center gap-1.5 text-sm hover:text-foreground"
-      >
-        <ArrowLeft className="h-3.5 w-3.5" />
-        Projects
-      </Link>
+      <BackLink fallbackHref="/projects" fallbackLabel="Projects" />
 
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-foreground text-2xl font-bold">Edit project</h1>
-        <Button asChild variant="outline" size="sm">
-          <Link
-            href={`/projects/preview/${project.id}`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            <ExternalLink className="h-3.5 w-3.5" />
-            Preview
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          {project.access.capabilities.canManageInvitations && (
+            <ProjectInvitationsManager projectId={project.id} />
+          )}
+          <Button asChild variant="outline" size="sm">
+            <Link
+              href={`/projects/preview/${project.id}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              Preview
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <form
@@ -617,10 +611,6 @@ export default function EditProjectPage() {
           )}
         </div>
       </form>
-
-      {project.access.capabilities.canManageInvitations && (
-        <ProjectInvitationsManager projectId={project.id} />
-      )}
     </div>
   );
 }

@@ -14,6 +14,8 @@ import type {
   UserResponse,
   ChangePasswordRequest,
   DeactivateAccountRequest,
+  ForgotPasswordRequest,
+  ResetPasswordRequest,
   SuccessResponse,
 } from '@repo/contracts';
 
@@ -30,7 +32,13 @@ interface UseUserReturn {
 }
 
 // Routes where we should NOT redirect on 401
-const AUTH_ROUTES = ['/login', '/signup', '/auth'];
+const AUTH_ROUTES = [
+  '/login',
+  '/signup',
+  '/auth',
+  '/forgot-password',
+  '/reset-password',
+];
 
 function isAuthRoute(pathname: string): boolean {
   return AUTH_ROUTES.some(
@@ -123,6 +131,22 @@ export function useAuth() {
     return apiPatch<SuccessResponse>('/auth/password', data);
   }, []);
 
+  const requestPasswordReset = useCallback(
+    async (data: ForgotPasswordRequest) => {
+      return apiPost<{ success: boolean }>('/auth/forgot-password', data);
+    },
+    [],
+  );
+
+  const resetPassword = useCallback(
+    async (data: ResetPasswordRequest) => {
+      const result = await apiPost<AuthResponse>('/auth/reset-password', data);
+      mutate();
+      return result;
+    },
+    [mutate],
+  );
+
   const deactivateAccount = useCallback(
     async (data: DeactivateAccountRequest) => {
       const result = await apiPost<SuccessResponse>('/auth/deactivate', data);
@@ -140,6 +164,8 @@ export function useAuth() {
     logout,
     updateProfile,
     changePassword,
+    requestPasswordReset,
+    resetPassword,
     deactivateAccount,
   };
 }

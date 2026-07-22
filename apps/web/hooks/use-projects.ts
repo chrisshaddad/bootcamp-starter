@@ -52,11 +52,11 @@ export function useProjects(
 
 // real: GET /projects/id/:id, for prefilling edit forms. Includes media.
 export function useProject(id: string | undefined) {
-  const { data, error, isLoading } = useSWR<ProjectByIdResponse>(
+  const { data, error, isLoading, mutate } = useSWR<ProjectByIdResponse>(
     id ? projectKey(id) : null,
     async (key: string) => projectByIdResponseSchema.parse(await fetcher(key)),
   );
-  return { project: data, error, isLoading };
+  return { project: data, error, isLoading, mutate };
 }
 
 export function useCreateProject() {
@@ -89,6 +89,16 @@ export function useDeleteProject() {
       await apiDelete<unknown>(`/projects/${id}`),
     );
     await refreshProjectLists();
+    return response;
+  }, []);
+}
+
+export function useRemoveProjectMember() {
+  return useCallback(async (projectId: string, memberId: string) => {
+    const response = successResponseSchema.parse(
+      await apiDelete<unknown>(`/projects/${projectId}/members/${memberId}`),
+    );
+    await globalMutate(projectKey(projectId));
     return response;
   }, []);
 }

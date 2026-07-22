@@ -7,7 +7,7 @@ const SESSION_COOKIE_NAME = 'bootcamp_starter_session';
 const DEFAULT_AUTHENTICATED_ROUTE = '/dashboard';
 
 function isAuthRoute(pathname: string): boolean {
-  const authRoutes = ['/login', '/signup', '/auth/verify'];
+  const authRoutes = ['/login', '/signup', '/auth/verify', '/forgot-password'];
   return authRoutes.some(
     (route) => pathname === route || pathname.startsWith(`${route}/`),
   );
@@ -17,7 +17,17 @@ function isPubliclyAccessibleRoute(pathname: string): boolean {
   // 1. Auth routes are publicly accessible
   if (isAuthRoute(pathname)) return true;
 
-  // 2. Allow public access to showcase pages (e.g., /projects/my-project-slug)
+  // 2. Reset-password isn't gated on auth state either direction — the
+  // emailed token is the actual proof of identity, and a still-logged-in
+  // user should be able to complete a reset without being bounced away.
+  if (
+    pathname === '/reset-password' ||
+    pathname.startsWith('/reset-password/')
+  ) {
+    return true;
+  }
+
+  // 3. Allow public access to showcase pages (e.g., /projects/my-project-slug)
   // This matches alphanumeric characters and dashes (-) but EXCLUDES 'new' or sub-paths like '/edit'
   const showcaseMatch = pathname.match(/^\/projects\/([^/]+)$/);
   if (showcaseMatch) {

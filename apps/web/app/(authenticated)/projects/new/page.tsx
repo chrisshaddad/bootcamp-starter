@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Pagination } from '@/components/pagination';
+import { BackLink } from '@/components/back-link';
 
 const PAGE_SIZE = 9;
 
@@ -94,6 +95,8 @@ export default function NewProjectPage() {
 
   return (
     <div className="space-y-6">
+      <BackLink fallbackHref="/projects" fallbackLabel="Projects" />
+
       <div>
         <h1 className="text-foreground text-2xl font-bold">Import a project</h1>
         <p className="mt-1 text-muted-foreground text-sm">

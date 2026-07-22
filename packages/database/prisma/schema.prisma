@@ -565,13 +565,21 @@ model Session {
   @@schema("private")
 }
 
+enum MagicLinkPurpose {
+  LOGIN
+  PASSWORD_RESET
+
+  @@schema("private")
+}
+
 model MagicLink {
-  id        String    @id @default(uuid())
+  id        String           @id @default(uuid())
   userId    String
-  token     String    @unique
+  token     String           @unique
+  purpose   MagicLinkPurpose @default(LOGIN)
   expiresAt DateTime
   usedAt    DateTime?
-  createdAt DateTime  @default(now())
+  createdAt DateTime         @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

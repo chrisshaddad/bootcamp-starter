@@ -289,6 +289,62 @@ function NotificationsTab() {
   );
 }
 
+function ComingSoonBadge() {
+  return (
+    <span className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase">
+      Coming soon
+    </span>
+  );
+}
+
+function RecruiterNotificationsTab() {
+  return (
+    <Card className="shadow-sm">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base font-semibold">
+          <Bell className="text-muted-foreground h-4.5 w-4.5" />
+          Email notifications
+        </CardTitle>
+        <CardDescription>Choose what we email you about.</CardDescription>
+      </CardHeader>
+      <CardContent className="divide-border divide-y">
+        <div className="flex items-start justify-between gap-6 py-4 first:pt-0">
+          <div className="space-y-1">
+            <p className="flex items-center gap-2 text-sm font-medium">
+              Weekly digest
+              <ComingSoonBadge />
+            </p>
+            <p className="text-muted-foreground max-w-md text-xs">
+              A weekly summary of activity on your projects and saved profiles.
+            </p>
+          </div>
+          <Switch
+            checked={false}
+            disabled
+            aria-label="Weekly digest emails (coming soon)"
+          />
+        </div>
+        <div className="flex items-start justify-between gap-6 py-4 last:pb-0">
+          <div className="space-y-1">
+            <p className="flex items-center gap-2 text-sm font-medium">
+              Product updates
+              <ComingSoonBadge />
+            </p>
+            <p className="text-muted-foreground max-w-md text-xs">
+              Occasional news about new features and improvements.
+            </p>
+          </div>
+          <Switch
+            checked={false}
+            disabled
+            aria-label="Product update emails (coming soon)"
+          />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function ConnectedAccountsTab({
   githubUsername,
 }: {
@@ -510,25 +566,28 @@ function DangerZoneTab() {
   );
 }
 
-const SETTINGS_TABS = [
+const DEVELOPER_SETTINGS_TABS = [
   'security',
   'notifications',
   'connected',
   'danger',
 ] as const;
-type SettingsTab = (typeof SETTINGS_TABS)[number];
+const RECRUITER_SETTINGS_TABS = [
+  'security',
+  'notifications',
+  'danger',
+] as const;
 
-function isSettingsTab(value: string | null): value is SettingsTab {
-  return (SETTINGS_TABS as readonly string[]).includes(value ?? '');
-}
+type DeveloperSettingsTab = (typeof DEVELOPER_SETTINGS_TABS)[number];
+type RecruiterSettingsTab = (typeof RECRUITER_SETTINGS_TABS)[number];
 
-export function SettingsTabs({ user }: SettingsTabsProps) {
-  const githubUsername = user.developerProfile?.githubUsername ?? null;
+function useInitialTab<T extends string>(tabs: readonly T[], fallback: T) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const initialTab: SettingsTab = isSettingsTab(searchParams.get('tab'))
-    ? (searchParams.get('tab') as SettingsTab)
-    : 'security';
+  const requested = searchParams.get('tab');
+  const initialTab: T = (tabs as readonly string[]).includes(requested ?? '')
+    ? (requested as T)
+    : fallback;
 
   const handleTabChange = (value: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -536,26 +595,38 @@ export function SettingsTabs({ user }: SettingsTabsProps) {
     router.replace(`/settings?${params.toString()}`, { scroll: false });
   };
 
+  return { initialTab, handleTabChange };
+}
+
+function DeveloperSettingsTabs({ user }: SettingsTabsProps) {
+  const githubUsername = user.developerProfile?.githubUsername ?? null;
+  const { initialTab, handleTabChange } = useInitialTab<DeveloperSettingsTab>(
+    DEVELOPER_SETTINGS_TABS,
+    'security',
+  );
+
   return (
     <Tabs value={initialTab} onValueChange={handleTabChange}>
-      <TabsList>
-        <TabsTrigger value="security">
-          <Shield />
-          Security
-        </TabsTrigger>
-        <TabsTrigger value="notifications">
-          <Bell />
-          Notifications
-        </TabsTrigger>
-        <TabsTrigger value="connected">
-          <Link2 />
-          Connected Accounts
-        </TabsTrigger>
-        <TabsTrigger value="danger">
-          <AlertTriangle />
-          Danger Zone
-        </TabsTrigger>
-      </TabsList>
+      <div className="overflow-x-auto overflow-y-hidden">
+        <TabsList>
+          <TabsTrigger value="security">
+            <Shield />
+            Security
+          </TabsTrigger>
+          <TabsTrigger value="notifications">
+            <Bell />
+            Notifications
+          </TabsTrigger>
+          <TabsTrigger value="connected">
+            <Link2 />
+            Connected Accounts
+          </TabsTrigger>
+          <TabsTrigger value="danger">
+            <AlertTriangle />
+            Danger Zone
+          </TabsTrigger>
+        </TabsList>
+      </div>
 
       <TabsContent value="security" className="mt-6">
         <SecurityTab email={user.email} />
@@ -571,4 +642,50 @@ export function SettingsTabs({ user }: SettingsTabsProps) {
       </TabsContent>
     </Tabs>
   );
+}
+
+function RecruiterSettingsTabs({ user }: SettingsTabsProps) {
+  const { initialTab, handleTabChange } = useInitialTab<RecruiterSettingsTab>(
+    RECRUITER_SETTINGS_TABS,
+    'security',
+  );
+
+  return (
+    <Tabs value={initialTab} onValueChange={handleTabChange}>
+      <div className="overflow-x-auto overflow-y-hidden">
+        <TabsList>
+          <TabsTrigger value="security">
+            <Shield />
+            Security
+          </TabsTrigger>
+          <TabsTrigger value="notifications">
+            <Bell />
+            Notifications
+          </TabsTrigger>
+          <TabsTrigger value="danger">
+            <AlertTriangle />
+            Danger Zone
+          </TabsTrigger>
+        </TabsList>
+      </div>
+
+      <TabsContent value="security" className="mt-6">
+        <SecurityTab email={user.email} />
+      </TabsContent>
+      <TabsContent value="notifications" className="mt-6">
+        <RecruiterNotificationsTab />
+      </TabsContent>
+      <TabsContent value="danger" className="mt-6">
+        <DangerZoneTab />
+      </TabsContent>
+    </Tabs>
+  );
+}
+
+export function SettingsTabs({ user }: SettingsTabsProps) {
+  if (user.accountType === 'HIRING') {
+    return <RecruiterSettingsTabs user={user} />;
+  }
+
+  return <DeveloperSettingsTabs user={user} />;
 }

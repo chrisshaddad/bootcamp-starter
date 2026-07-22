@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { AccountType } from '@repo/db';
+import { AccountType, type User } from '@repo/db';
 import { ROLES_KEY } from '../auth/decorators/roles.decorator';
 import { ProjectsController } from './projects.controller';
 import { ProjectsService } from './projects.service';
@@ -9,6 +9,8 @@ describe('ProjectsController', () => {
 
   const projectsService = {
     importGithubProject: jest.fn(),
+    exploreProjects: jest.fn(),
+    removeProjectMember: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -54,6 +56,89 @@ describe('ProjectsController', () => {
     expect(projectsService.importGithubProject).toHaveBeenCalledWith(
       'user-id',
       request,
+    );
+  });
+
+  it('delegates project member removal to ProjectsService', async () => {
+    projectsService.removeProjectMember.mockResolvedValue(undefined);
+    const user = {
+      id: 'owner-id',
+      accountType: AccountType.DEVELOPER,
+    };
+
+    await expect(
+      controller.removeProjectMember(user as User, 'project-id', 'member-id'),
+    ).resolves.toEqual({ success: true });
+    expect(projectsService.removeProjectMember).toHaveBeenCalledWith(
+      user,
+      'project-id',
+      'member-id',
+    );
+  });
+
+  it('normalizes profile pictures in explore responses', async () => {
+    const timestamp = new Date('2026-07-22T00:00:00.000Z');
+    projectsService.exploreProjects.mockResolvedValue({
+      data: [
+        {
+          id: 'project-id',
+          title: 'Project',
+          slug: 'project',
+          logoUrl: null,
+          shortDescription: null,
+          fullDescription: null,
+          deploymentUrl: null,
+          status: 'PUBLISHED',
+          publishedAt: timestamp,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+          repository: { htmlUrl: 'https://github.com/owner/project' },
+          media: [],
+          technologies: [],
+          createdBy: {
+            id: 'owner-id',
+            developerProfile: {
+              displayName: 'Owner',
+              headline: null,
+              profilePictureUrl: '/uploads/profile-pictures/owner.png',
+              githubUsername: 'owner',
+            },
+          },
+          members: [
+            {
+              user: {
+                id: 'member-id',
+                developerProfile: {
+                  displayName: 'Member',
+                  profilePictureUrl: '/uploads/profile-pictures/member.png',
+                },
+              },
+            },
+          ],
+          _count: { members: 1 },
+        },
+      ],
+      meta: {
+        totalItems: 1,
+        currentPage: 1,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPreviousPage: false,
+      },
+    });
+
+    const response = await controller.exploreProjects({
+      page: 1,
+      limit: 20,
+      sort: 'latest',
+      technology: [],
+    });
+
+    expect(response.data[0]?.createdBy?.profilePictureUrl).toBe(
+      'http://localhost:3001/uploads/profile-pictures/owner.png',
+    );
+    expect(response.data[0]?.contributors[0]?.profilePictureUrl).toBe(
+      'http://localhost:3001/uploads/profile-pictures/member.png',
     );
   });
 });
