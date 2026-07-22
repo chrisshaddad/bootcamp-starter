@@ -15,6 +15,7 @@ const OWNER_ID = '00000000-0000-4000-8000-000000000001';
 const VISITOR_ID = '00000000-0000-4000-8000-000000000002';
 const PROJECT_ID = '00000000-0000-4000-8000-000000000003';
 const EVENT_ID = '00000000-0000-4000-8000-000000000004';
+const SECOND_VISITOR_ID = '00000000-0000-4000-8000-000000000005';
 const HASH_SECRET = 'a'.repeat(32);
 
 type AnalyticsProjectRow = {
@@ -148,6 +149,60 @@ describe('AnalyticsService', () => {
       ),
     ).resolves.toBe(false);
     expect(queueAdd).not.toHaveBeenCalled();
+  });
+
+  it('identifies signed-in visitors by account instead of browser', async () => {
+    projectFindFirst.mockResolvedValue({
+      id: PROJECT_ID,
+      createdByUserId: OWNER_ID,
+      members: [],
+    });
+    queueAdd.mockResolvedValue({ id: 'job-id' });
+    validateSession
+      .mockResolvedValueOnce({
+        id: VISITOR_ID,
+        accountType: AccountType.DEVELOPER,
+      })
+      .mockResolvedValueOnce({
+        id: SECOND_VISITOR_ID,
+        accountType: AccountType.DEVELOPER,
+      })
+      .mockResolvedValueOnce({
+        id: VISITOR_ID,
+        accountType: AccountType.DEVELOPER,
+      });
+
+    await service.queueVisit(
+      {
+        eventId: EVENT_ID,
+        eventType: 'PROJECT_VIEW',
+        projectSlug: 'portfolio-api',
+      },
+      { visitorId: 'shared-browser', sessionId: 'first-session' },
+    );
+    await service.queueVisit(
+      {
+        eventId: EVENT_ID,
+        eventType: 'PROJECT_VIEW',
+        projectSlug: 'portfolio-api',
+      },
+      { visitorId: 'shared-browser', sessionId: 'second-session' },
+    );
+    await service.queueVisit(
+      {
+        eventId: EVENT_ID,
+        eventType: 'PROJECT_VIEW',
+        projectSlug: 'portfolio-api',
+      },
+      { visitorId: 'different-browser', sessionId: 'third-session' },
+    );
+
+    const calls = queueAdd.mock.calls as unknown as Array<
+      [string, RecordAnalyticsVisitJobData]
+    >;
+    const hashes = calls.map(([, jobData]) => jobData.visitorHash);
+    expect(hashes[0]).not.toBe(hashes[1]);
+    expect(hashes[0]).toBe(hashes[2]);
   });
 
   it('summarizes portfolio and accessible-project views', async () => {

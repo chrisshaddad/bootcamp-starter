@@ -98,7 +98,10 @@ export class AnalyticsService {
     }
 
     const occurredAt = new Date();
-    const visitorHash = this.hmac(secret, context.visitorId);
+    const visitorHash = this.hmac(
+      secret,
+      visitor ? `account:${visitor.id}` : `browser:${context.visitorId}`,
+    );
     const bucket = Math.floor(
       occurredAt.getTime() / ANALYTICS_DEDUPE_WINDOW_MS,
     );
