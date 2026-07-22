@@ -69,6 +69,9 @@ export function AnalyticsMetricCard({
 
 export function AnalyticsDailyChart({ data }: { data: AnalyticsDailyPoint[] }) {
   const maximum = Math.max(...data.map((point) => point.totalViews), 1);
+  const dateLabels = data.length
+    ? [data[0], data[Math.floor((data.length - 1) / 2)], data.at(-1)]
+    : [];
 
   return (
     <Card className="gap-5 p-5 shadow-sm">
@@ -83,31 +86,47 @@ export function AnalyticsDailyChart({ data }: { data: AnalyticsDailyPoint[] }) {
           </p>
         </div>
       </div>
-      <div className="overflow-x-auto rounded-xl border bg-muted/20 px-3 pt-4 pb-2">
-        <div className="flex h-48 min-w-[560px] items-end gap-1.5">
-          {data.map((point) => (
-            <div
-              key={point.date}
-              className="group flex min-w-1 flex-1 flex-col items-center justify-end gap-2"
-              title={`${point.date}: ${point.totalViews} views, ${point.uniqueVisitors} unique`}
-            >
-              <span className="text-[10px] font-medium opacity-0 transition-opacity group-hover:opacity-100">
-                {point.totalViews}
-              </span>
-              <div
-                className="w-full min-w-1 rounded-t bg-gradient-to-t from-primary-base to-chart-4 transition-opacity group-hover:opacity-75"
-                style={{
-                  height: `${Math.max((point.totalViews / maximum) * 140, point.totalViews ? 4 : 1)}px`,
-                  opacity: point.totalViews ? 1 : 0.15,
-                }}
-              />
-              {(data.length <= 7 || point.date.endsWith('-01')) && (
-                <span className="whitespace-nowrap text-[9px] text-muted-foreground">
-                  {formatShortDate(point.date)}
-                </span>
-              )}
+      <div className="overflow-x-auto rounded-xl border bg-muted/20 px-4 pt-5 pb-3">
+        <div className="min-w-[560px]">
+          <div className="relative h-40 border-b">
+            <div className="pointer-events-none absolute inset-0 flex flex-col justify-between">
+              {[0, 1, 2].map((line) => (
+                <div key={line} className="border-t border-border/60" />
+              ))}
             </div>
-          ))}
+            <div className="absolute inset-0 flex items-end gap-1.5">
+              {data.map((point) => (
+                <div
+                  key={point.date}
+                  className="group relative flex h-full min-w-1 flex-1 items-end"
+                  title={`${point.date}: ${point.totalViews} views, ${point.uniqueVisitors} unique`}
+                >
+                  <span className="pointer-events-none absolute -top-1 left-1/2 z-10 -translate-x-1/2 rounded bg-foreground px-1.5 py-0.5 text-[10px] font-medium text-background opacity-0 shadow-sm transition-opacity group-hover:opacity-100">
+                    {point.totalViews}
+                  </span>
+                  <div
+                    className="w-full min-w-1 rounded-t bg-gradient-to-t from-primary-base to-chart-4 transition-opacity group-hover:opacity-75"
+                    style={{
+                      height: `${Math.max((point.totalViews / maximum) * 136, point.totalViews ? 6 : 2)}px`,
+                      opacity: point.totalViews ? 1 : 0.18,
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="mt-2 grid grid-cols-3 text-[10px] text-muted-foreground">
+            {dateLabels.map((point, index) => (
+              <span
+                key={`${point?.date}-${index}`}
+                className={
+                  index === 1 ? 'text-center' : index === 2 ? 'text-right' : ''
+                }
+              >
+                {point ? formatShortDate(point.date) : ''}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
     </Card>
