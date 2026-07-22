@@ -1,2 +1,2 @@
 -- CreateIndex
-CREATE INDEX "MemberInvitation_invitedById_idx" ON "private"."MemberInvitation"("invitedById");
+CREATE INDEX CONCURRENTLY "MemberInvitation_invitedById_idx" ON "private"."MemberInvitation"("invitedById");
