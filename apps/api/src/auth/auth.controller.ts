@@ -11,10 +11,10 @@ import {
   HttpStatus,
   UsePipes,
   UseInterceptors,
-  UploadedFile,
+  UploadedFiles,
   BadRequestException,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import {
   ApiBody,
   ApiConsumes,
@@ -38,6 +38,10 @@ import {
   loginRequestSchema,
   signupRequestSchema,
   updateProfileRequestSchema,
+  changePasswordRequestSchema,
+  deactivateAccountRequestSchema,
+  forgotPasswordRequestSchema,
+  resetPasswordRequestSchema,
   PROFILE_PICTURE_MAX_SIZE_BYTES,
   PROFILE_PICTURE_ALLOWED_MIME_TYPES,
   type MagicLinkRequest,
@@ -48,6 +52,11 @@ import {
   type UserResponse,
   type UpdateProfileRequest,
   type ProfilePictureUploadResponse,
+  type ChangePasswordRequest,
+  type DeactivateAccountRequest,
+  type ForgotPasswordRequest,
+  type ResetPasswordRequest,
+  type SuccessResponse,
 } from '@repo/contracts';
 import { ZodValidationPipe } from '../common/pipes';
 import { ObjectStorageService } from '../storage/storage.service';
@@ -57,11 +66,16 @@ import {
   loginRequestSchema as loginRequestOpenApiSchema,
   magicLinkVerifyRequestSchema as magicLinkVerifyRequestOpenApiSchema,
   profilePictureUploadSchema,
+  resetPasswordRequestSchema as resetPasswordRequestOpenApiSchema,
   signupRequestSchema as signupRequestOpenApiSchema,
   updateProfileRequestSchema as updateProfileRequestOpenApiSchema,
 } from '../common/swagger/schemas';
 
 const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+type ProfilePictureFiles = {
+  file?: Express.Multer.File[];
+  originalFile?: Express.Multer.File[];
+};
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
@@ -146,6 +160,48 @@ export class AuthController {
     return { user };
   }
 
+  @Public()
+  @Post('forgot-password')
+  @ApiOperation({ summary: 'Request a password reset link' })
+  @ApiBody({ schema: emailRequestOpenApiSchema })
+  @ApiResponse({
+    status: 200,
+    description: 'Password reset email queued if the account exists',
+  })
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ZodValidationPipe(forgotPasswordRequestSchema))
+  async forgotPassword(@Body() body: ForgotPasswordRequest) {
+    return this.authService.requestPasswordReset(body.email);
+  }
+
+  @Public()
+  @Post('reset-password')
+  @ApiOperation({ summary: 'Reset password using an emailed token' })
+  @ApiBody({ schema: resetPasswordRequestOpenApiSchema })
+  @ApiResponse({ status: 200, description: 'Password reset and authenticated' })
+  @ApiResponse({ status: 404, description: 'Invalid or expired reset link' })
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ZodValidationPipe(resetPasswordRequestSchema))
+  async resetPassword(
+    @Body() body: ResetPasswordRequest,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<AuthResponse> {
+    const { sessionId, user } = await this.authService.resetPassword(
+      body.token,
+      body.newPassword,
+    );
+
+    response.cookie(SESSION_COOKIE_NAME, sessionId, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: SESSION_MAX_AGE_MS,
+      path: '/',
+    });
+
+    return { user };
+  }
+
   @Post('logout')
   @ApiCookieAuth('session')
   @ApiOperation({ summary: 'Log out the current session' })
@@ -192,6 +248,14 @@ export class AuthController {
             bio: user.developerProfile.bio ?? null,
             location: user.developerProfile.location ?? null,
             profilePictureUrl: user.developerProfile.profilePictureUrl ?? null,
+            profilePictureOriginalUrl:
+              user.developerProfile.profilePictureOriginalUrl ?? null,
+            profilePictureCropZoom:
+              user.developerProfile.profilePictureCropZoom ?? null,
+            profilePictureCropX:
+              user.developerProfile.profilePictureCropX ?? null,
+            profilePictureCropY:
+              user.developerProfile.profilePictureCropY ?? null,
             githubUsername: user.developerProfile.githubUsername ?? null,
             linkedinUrl: user.developerProfile.linkedinUrl ?? null,
             personalWebsiteUrl:
@@ -216,53 +280,77 @@ export class AuthController {
   @ApiOperation({ summary: 'Upload a profile picture' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({ schema: profilePictureUploadSchema })
-  @ApiResponse({ status: 200, description: 'Uploaded profile picture URL' })
+  @ApiResponse({
+    status: 200,
+    description: 'Uploaded display and original profile picture URLs',
+  })
   @ApiResponse({ status: 400, description: 'Invalid or missing image file' })
   @ApiResponse({ status: 401, description: 'Missing or invalid session' })
   @HttpCode(HttpStatus.OK)
   @UseInterceptors(
-    FileInterceptor('file', {
-      storage: memoryStorage(),
-      limits: { fileSize: PROFILE_PICTURE_MAX_SIZE_BYTES },
-      fileFilter: (_req, file, callback) => {
-        // Cheap early rejection only — not trusted for the actual save below.
-        if (
-          !(PROFILE_PICTURE_ALLOWED_MIME_TYPES as readonly string[]).includes(
-            file.mimetype,
-          )
-        ) {
-          callback(
-            new BadRequestException(
-              'Only JPEG, PNG, WEBP, or GIF images are allowed',
-            ),
-            false,
-          );
-          return;
-        }
-        callback(null, true);
+    FileFieldsInterceptor(
+      [
+        { name: 'file', maxCount: 1 },
+        { name: 'originalFile', maxCount: 1 },
+      ],
+      {
+        storage: memoryStorage(),
+        limits: { fileSize: PROFILE_PICTURE_MAX_SIZE_BYTES },
+        fileFilter: (_req, file, callback) => {
+          if (
+            !(PROFILE_PICTURE_ALLOWED_MIME_TYPES as readonly string[]).includes(
+              file.mimetype,
+            )
+          ) {
+            callback(
+              new BadRequestException(
+                'Only JPEG, PNG, WEBP, or GIF images are allowed',
+              ),
+              false,
+            );
+            return;
+          }
+          callback(null, true);
+        },
       },
-    }),
+    ),
   )
   async uploadProfilePicture(
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFiles() files: ProfilePictureFiles | undefined,
   ): Promise<ProfilePictureUploadResponse> {
-    if (!file) {
-      throw new BadRequestException('No file uploaded');
+    const croppedFile = files?.file?.[0];
+    const originalFile = files?.originalFile?.[0];
+    if (!croppedFile || !originalFile) {
+      throw new BadRequestException(
+        'Both the cropped photo and original photo are required',
+      );
     }
 
-    const extension = detectImageExtension(file.buffer);
-    if (!extension) {
+    const croppedExtension = detectImageExtension(croppedFile.buffer);
+    const originalExtension = detectImageExtension(originalFile.buffer);
+    if (!croppedExtension || !originalExtension) {
       throw new BadRequestException('The uploaded file is not a valid image');
     }
 
-    const stored = await this.objectStorage.upload(
-      `profile-pictures/${randomUUID()}${extension}`,
-      file.buffer,
-      imageContentType(extension),
+    const cropped = await this.objectStorage.upload(
+      `profile-pictures/${randomUUID()}${croppedExtension}`,
+      croppedFile.buffer,
+      imageContentType(croppedExtension),
     );
-    return {
-      profilePictureUrl: stored.publicUrl,
-    };
+    try {
+      const original = await this.objectStorage.upload(
+        `profile-pictures/${randomUUID()}${originalExtension}`,
+        originalFile.buffer,
+        imageContentType(originalExtension),
+      );
+      return {
+        profilePictureUrl: cropped.publicUrl,
+        profilePictureOriginalUrl: original.publicUrl,
+      };
+    } catch (error) {
+      await this.objectStorage.deleteMany([cropped.key]);
+      throw error;
+    }
   }
 
   @Patch('profile')
@@ -278,5 +366,43 @@ export class AuthController {
     body: UpdateProfileRequest,
   ) {
     return this.authService.updateProfile(user.id, body);
+  }
+
+  @Patch('password')
+  @ApiCookieAuth('session')
+  @ApiOperation({ summary: "Change the current user's password" })
+  @ApiResponse({ status: 200, description: 'Password updated' })
+  @ApiResponse({ status: 401, description: 'Current password is incorrect' })
+  @HttpCode(HttpStatus.OK)
+  async changePassword(
+    @CurrentUser() user: UserResponse,
+    @Body(new ZodValidationPipe(changePasswordRequestSchema))
+    body: ChangePasswordRequest,
+  ): Promise<SuccessResponse> {
+    return this.authService.changePassword(user.id, body);
+  }
+
+  @Post('deactivate')
+  @ApiCookieAuth('session')
+  @ApiOperation({ summary: "Deactivate the current user's account" })
+  @ApiResponse({ status: 200, description: 'Account deactivated' })
+  @ApiResponse({ status: 401, description: 'Password is incorrect' })
+  @HttpCode(HttpStatus.OK)
+  async deactivateAccount(
+    @CurrentUser() user: UserResponse,
+    @Body(new ZodValidationPipe(deactivateAccountRequestSchema))
+    body: DeactivateAccountRequest,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<SuccessResponse> {
+    const result = await this.authService.deactivateAccount(user.id, body);
+
+    response.clearCookie(SESSION_COOKIE_NAME, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+    });
+
+    return result;
   }
 }

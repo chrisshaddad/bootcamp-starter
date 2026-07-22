@@ -102,16 +102,18 @@ export function useProjectInvitations(
   projectId?: string,
   query: Partial<ProjectInvitationListQuery> = {},
 ) {
-  const { data, error, isLoading } = useSWR<ProjectInvitationListResponse>(
-    projectId ? ownerInvitationsKey(projectId, query) : null,
-    async (key: string) =>
-      projectInvitationListResponseSchema.parse(await fetcher(key)),
-  );
+  const { data, error, isLoading, mutate } =
+    useSWR<ProjectInvitationListResponse>(
+      projectId ? ownerInvitationsKey(projectId, query) : null,
+      async (key: string) =>
+        projectInvitationListResponseSchema.parse(await fetcher(key)),
+    );
   return {
     invitations: data?.data ?? [],
     meta: data?.meta,
     error,
     isLoading,
+    mutate,
   };
 }
 

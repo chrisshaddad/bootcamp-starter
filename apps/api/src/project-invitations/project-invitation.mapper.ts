@@ -3,6 +3,7 @@ import {
   type ProjectInvitationResponse,
 } from '@repo/contracts';
 import type { Prisma } from '@repo/db';
+import { normalizeMediaUrl } from '../common/utils/normalize-media-url';
 
 export const projectInvitationInclude = {
   project: {
@@ -49,7 +50,9 @@ function mapInvitationUser(user: ProjectInvitationWithDetails['invitedBy']) {
     id: user.id,
     displayName: user.developerProfile.displayName,
     publicSlug: user.developerProfile.publicSlug,
-    profilePictureUrl: user.developerProfile.profilePictureUrl,
+    profilePictureUrl: normalizeMediaUrl(
+      user.developerProfile.profilePictureUrl,
+    ),
   };
 }
 

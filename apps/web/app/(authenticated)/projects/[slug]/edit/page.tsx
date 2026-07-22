@@ -1,13 +1,20 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import { ArrowLeft, ImageIcon, Loader2, Star, X } from 'lucide-react';
+import {
+  ArrowLeft,
+  ExternalLink,
+  ImageIcon,
+  Loader2,
+  Star,
+  X,
+} from 'lucide-react';
 import {
   updateProjectRequestSchema,
   type UpdateProjectRequest,
@@ -28,6 +35,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { BackLink } from '@/components/back-link';
 import {
   Select,
   SelectContent,
@@ -47,6 +55,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { ProjectInvitationsManager } from '@/components/project-invitations-manager';
+import { PROJECT_STATUS_LABELS } from '@/lib/project-status';
 
 export default function EditProjectPage() {
   const params = useParams<{ slug: string }>();
@@ -82,9 +91,11 @@ export default function EditProjectPage() {
             shortDescription: project.shortDescription,
             fullDescription: project.fullDescription,
             deploymentUrl: project.deploymentUrl,
-            status: project.access.capabilities.canPublish
-              ? project.status
-              : undefined,
+            status:
+              project.access.capabilities.canPublish &&
+              project.status !== 'SUSPENDED'
+                ? project.status
+                : undefined,
           }
         : undefined,
     // Deliberately depending on the scalar fields, not `project` itself —
@@ -105,18 +116,18 @@ export default function EditProjectPage() {
     register,
     handleSubmit,
     control,
+    reset,
     formState: { errors },
   } = useForm<UpdateProjectRequest>({
     resolver: zodResolver(updateProjectRequestSchema),
     defaultValues: {
       status: 'DRAFT',
     },
-    // `values` (not a one-time `reset()` in an effect) keeps the form in
-    // sync with `project` from the very first render — using `reset()`
-    // here left the Radix Select mounting one tick with an undefined
-    // value, which made it get stuck displaying blank.
-    values: formValues,
   });
+
+  useEffect(() => {
+    if (formValues) reset(formValues);
+  }, [formValues, reset]);
 
   const onSubmit = async (data: UpdateProjectRequest) => {
     if (!project) return;
@@ -252,13 +263,7 @@ export default function EditProjectPage() {
     const isNotFound = error instanceof ApiError && error.status === 404;
     return (
       <div className="space-y-4">
-        <Link
-          href="/projects"
-          className="text-muted-foreground inline-flex items-center gap-1.5 text-sm hover:text-foreground"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Projects
-        </Link>
+        <BackLink fallbackHref="/projects" fallbackLabel="Projects" />
         <p className="text-muted-foreground text-sm">
           {isNotFound
             ? 'Project not found.'
@@ -272,7 +277,9 @@ export default function EditProjectPage() {
     return (
       <div className="space-y-4">
         <Link
-          href={`/projects/${project.id}/preview`}
+          href={`/projects/preview/${project.id}`}
+          target="_blank"
+          rel="noreferrer"
           className="text-muted-foreground inline-flex items-center gap-1.5 text-sm hover:text-foreground"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
@@ -280,9 +287,15 @@ export default function EditProjectPage() {
         </Link>
         <Card className="border-dashed py-12 text-center">
           <CardContent>
-            <p className="font-medium">This project is read-only for you.</p>
+            <p className="font-medium">
+              {project.status === 'SUSPENDED'
+                ? 'This project has been suspended by an administrator.'
+                : 'This project is read-only for you.'}
+            </p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Contributors can view the project but cannot edit it.
+              {project.status === 'SUSPENDED'
+                ? 'It cannot be edited or republished until an administrator restores it.'
+                : 'Contributors can view the project but cannot edit it.'}
             </p>
           </CardContent>
         </Card>
@@ -292,16 +305,25 @@ export default function EditProjectPage() {
 
   return (
     <div className="space-y-6">
-      <Link
-        href="/projects"
-        className="text-muted-foreground inline-flex items-center gap-1.5 text-sm hover:text-foreground"
-      >
-        <ArrowLeft className="h-3.5 w-3.5" />
-        Projects
-      </Link>
+      <BackLink fallbackHref="/projects" fallbackLabel="Projects" />
 
-      <div>
+      <div className="flex items-center justify-between gap-4">
         <h1 className="text-foreground text-2xl font-bold">Edit project</h1>
+        <div className="flex items-center gap-2">
+          {project.access.capabilities.canManageInvitations && (
+            <ProjectInvitationsManager projectId={project.id} />
+          )}
+          <Button asChild variant="outline" size="sm">
+            <Link
+              href={`/projects/preview/${project.id}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              Preview
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <form
@@ -486,11 +508,15 @@ export default function EditProjectPage() {
                     control={control}
                     render={({ field }) => (
                       <Select
-                        value={field.value}
+                        value={field.value || project.status}
                         onValueChange={field.onChange}
                       >
                         <SelectTrigger id="status" className="w-full">
-                          <SelectValue />
+                          <SelectValue placeholder="Select status">
+                            {PROJECT_STATUS_LABELS[
+                              field.value || project.status
+                            ] ?? 'Select status'}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="DRAFT">Draft</SelectItem>
@@ -585,10 +611,6 @@ export default function EditProjectPage() {
           )}
         </div>
       </form>
-
-      {project.access.capabilities.canManageInvitations && (
-        <ProjectInvitationsManager projectId={project.id} />
-      )}
     </div>
   );
 }

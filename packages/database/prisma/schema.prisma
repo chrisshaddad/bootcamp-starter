@@ -16,6 +16,40 @@ enum AccountType {
   @@schema("public")
 }
 
+enum CandidateStatus {
+  SAVED
+  CONTACTED
+  REJECTED
+  ACCEPTED
+
+  @@schema("public")
+}
+
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+
+  @@schema("public")
+}
+
+enum AdminAuditAction {
+  ACCOUNT_SUSPENDED
+  ACCOUNT_REACTIVATED
+  PROJECT_ARCHIVED
+  PROJECT_SUSPENDED
+  PROJECT_RESTORED
+
+  @@schema("public")
+}
+
+enum AdminAuditTargetType {
+  USER
+  PROJECT
+
+  @@schema("public")
+}
+
 enum OrganizationType {
   COMPANY
   AGENCY
@@ -29,6 +63,7 @@ enum ProjectStatus {
   DRAFT
   PUBLISHED
   ARCHIVED
+  SUSPENDED
 
   @@schema("public")
 }
@@ -110,17 +145,26 @@ model User {
   email        String      @unique
   passwordHash String
   accountType  AccountType
+  status       AccountStatus @default(ACTIVE)
   isConfirmed  Boolean     @default(false)
+
+  suspendedAt      DateTime?
+  suspensionReason String?   @db.Text
+  deactivatedAt    DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  developerProfile DeveloperProfile?
-  hiringProfile    HiringProfile?
-  connectedAccount ConnectedAccount?
+  developerProfile        DeveloperProfile?
+  hiringProfile           HiringProfile?
+  connectedAccount        ConnectedAccount?
+  notificationPreference  NotificationPreference?
 
   sessions   Session[]
   magicLinks MagicLink[]
+  
+  savedCandidates       SavedCandidate[]    @relation("RecruiterSavedCandidates")
+  savedByRecruiters     SavedCandidate[]    @relation("CandidateSavedBy")
 
   createdProjects     Project[]           @relation("ProjectCreator")
   addedMembers        ProjectMember[]     @relation("MemberAddedBy")
@@ -130,8 +174,11 @@ model User {
   uploadedMedia       ProjectMedia[]
   savedProjects       SavedProject[]
   addedTechnologies   ProjectTechnology[] @relation("ProjectTechAddedBy")
+  adminAuditLogs      AdminAuditLog[]     @relation("AdminAuditActor")
+  moderatedProjects   Project[]           @relation("ProjectModerator")
 
   @@index([accountType])
+  @@index([status])
   @@schema("public")
 }
 
@@ -146,12 +193,30 @@ model DeveloperProfile {
   location    String?
 
   profilePictureUrl  String?
+  profilePictureOriginalUrl String?
+  profilePictureCropZoom    Float?
+  profilePictureCropX       Float?
+  profilePictureCropY       Float?
   linkedinUrl        String?
   personalWebsiteUrl String?
 
   githubUserId      BigInt?   @unique
   githubUsername    String?   @unique
   githubConnectedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@schema("public")
+}
+
+model NotificationPreference {
+  id     String @id @default(uuid())
+  userId String @unique
+
+  projectInvitationEmails Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -247,8 +312,13 @@ model Project {
   updatedAt   DateTime  @updatedAt
   publishedAt DateTime?
 
+  moderatedAt       DateTime?
+  moderationReason  String?   @db.Text
+  moderatedByUserId String?
+
   repository Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
   createdBy  User       @relation("ProjectCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  moderatedBy User?      @relation("ProjectModerator", fields: [moderatedByUserId], references: [id], onDelete: SetNull)
 
   members      ProjectMember[]
   invitations  ProjectInvitation[]
@@ -258,6 +328,28 @@ model Project {
 
   @@index([status])
   @@index([createdByUserId])
+  @@index([moderatedByUserId])
+  @@schema("public")
+}
+
+model AdminAuditLog {
+  id String @id @default(uuid())
+
+  actorUserId String?
+  action      AdminAuditAction
+  targetType  AdminAuditTargetType
+  targetId    String
+  reason      String?              @db.Text
+  metadata    Json?
+
+  createdAt DateTime @default(now())
+
+  actor User? @relation("AdminAuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([actorUserId, createdAt])
+  @@index([action, createdAt])
+  @@index([targetType, targetId, createdAt])
+  @@index([createdAt])
   @@schema("public")
 }
 
@@ -438,13 +530,21 @@ model Session {
   @@schema("private")
 }
 
+enum MagicLinkPurpose {
+  LOGIN
+  PASSWORD_RESET
+
+  @@schema("private")
+}
+
 model MagicLink {
-  id        String    @id @default(uuid())
+  id        String           @id @default(uuid())
   userId    String
-  token     String    @unique
+  token     String           @unique
+  purpose   MagicLinkPurpose @default(LOGIN)
   expiresAt DateTime
   usedAt    DateTime?
-  createdAt DateTime  @default(now())
+  createdAt DateTime         @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -452,3 +552,26 @@ model MagicLink {
   @@index([userId])
   @@schema("private")
 }
+
+model SavedCandidate {
+  id String @id @default(uuid())
+
+  savedByUserId String
+  candidateId   String
+
+  status CandidateStatus @default(SAVED)
+  note   String?         @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  savedBy   User @relation("RecruiterSavedCandidates", fields: [savedByUserId], references: [id], onDelete: Cascade)
+  candidate User @relation("CandidateSavedBy", fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@unique([savedByUserId, candidateId])
+  @@index([savedByUserId])
+  @@index([candidateId])
+  @@index([status])
+  @@schema("public")
+}
+

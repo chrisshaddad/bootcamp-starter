@@ -1,5 +1,10 @@
 import { ForbiddenException } from '@nestjs/common';
-import { AccountType, ProjectRoleKey, type User } from '@repo/db';
+import {
+  AccountType,
+  ProjectRoleKey,
+  ProjectStatus,
+  type User,
+} from '@repo/db';
 import type { DatabaseService } from '../database/prisma.service';
 import { ProjectAccessService } from './project-access.service';
 
@@ -74,7 +79,7 @@ describe('ProjectAccessService', () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
-  it('does not let a super admin publish through the repository owner identity', async () => {
+  it('keeps super admins read-only outside audited moderation actions', async () => {
     findUnique.mockResolvedValue(project(OWNER_ID, []));
 
     const access = await service.getAccess(
@@ -82,17 +87,43 @@ describe('ProjectAccessService', () => {
       PROJECT_ID,
     );
     expect(access.capabilities.canView).toBe(true);
-    expect(access.capabilities.canEditContent).toBe(true);
+    expect(access.capabilities.canEditContent).toBe(false);
     expect(access.capabilities.canPublish).toBe(false);
     expect(access.capabilities.canManageInvitations).toBe(false);
+    expect(access.capabilities.canDelete).toBe(false);
+    await expect(
+      service.assertCanEditContent(
+        user(MEMBER_ID, AccountType.SUPER_ADMIN),
+        PROJECT_ID,
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('locks a suspended project against owner mutations', async () => {
+    findUnique.mockResolvedValue(
+      project(OWNER_ID, [], ProjectStatus.SUSPENDED),
+    );
+
+    const access = await service.getAccess(user(OWNER_ID), PROJECT_ID);
+    expect(access.capabilities).toEqual({
+      canView: true,
+      canEditContent: false,
+      canPublish: false,
+      canManageInvitations: false,
+      canDelete: false,
+    });
+    await expect(
+      service.assertCanEditContent(user(OWNER_ID), PROJECT_ID),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 });
 
 function project(
   createdByUserId: string,
   members: Array<{ userId: string; role: ProjectRoleKey }>,
+  status: ProjectStatus = ProjectStatus.DRAFT,
 ) {
-  return { id: PROJECT_ID, createdByUserId, members };
+  return { id: PROJECT_ID, createdByUserId, status, members };
 }
 
 function user(

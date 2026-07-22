@@ -10,6 +10,7 @@ export const PROFILE_PICTURE_ALLOWED_MIME_TYPES = [
 
 export const profilePictureUploadResponseSchema = z.object({
   profilePictureUrl: z.string().url(),
+  profilePictureOriginalUrl: z.string().url(),
 });
 
 export type ProfilePictureUploadResponse = z.infer<

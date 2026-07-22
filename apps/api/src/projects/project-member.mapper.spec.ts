@@ -10,7 +10,18 @@ const PROJECT_ID = '00000000-0000-4000-8000-000000000002';
 const USER_ID = '00000000-0000-4000-8000-000000000003';
 
 describe('mapProjectMember', () => {
-  it('normalizes a blank profile-picture value to null', () => {
+  const originalApiUrl = process.env.API_URL;
+
+  beforeAll(() => {
+    process.env.API_URL = 'http://localhost:3001';
+  });
+
+  afterAll(() => {
+    if (originalApiUrl === undefined) delete process.env.API_URL;
+    else process.env.API_URL = originalApiUrl;
+  });
+
+  it('normalizes a relative profile-picture URL', () => {
     const timestamp = new Date('2026-07-18T00:00:00.000Z');
     const member = {
       id: MEMBER_ID,
@@ -34,11 +45,13 @@ describe('mapProjectMember', () => {
         developerProfile: {
           displayName: 'Developer',
           publicSlug: 'developer',
-          profilePictureUrl: '   ',
+          profilePictureUrl: '/uploads/profile-pictures/member.png',
         },
       },
     } as Parameters<typeof mapProjectMember>[0];
 
-    expect(mapProjectMember(member).user?.profilePictureUrl).toBeNull();
+    expect(mapProjectMember(member).user?.profilePictureUrl).toBe(
+      'http://localhost:3001/uploads/profile-pictures/member.png',
+    );
   });
 });

@@ -8,12 +8,14 @@ import {
   LayoutDashboard,
   Users,
   Settings,
-  Building2,
   UserCog,
   FolderGit2,
   Compass,
   Bookmark,
   Mail,
+  Activity,
+  ScrollText,
+  UserCheck,
 } from 'lucide-react';
 import { useUser } from '@/hooks/use-auth';
 import { useInvitationPendingCount } from '@/hooks/use-project-invitations';
@@ -80,9 +82,14 @@ const recruiterNavItems: NavItem[] = [
     icon: Compass,
   },
   {
-    title: 'Browse Profiles', // Replaced Projects with Browse Profiles
+    title: 'Browse Profiles',
     url: '/users',
     icon: Users,
+  },
+  {
+    title: 'Saved Candidates',
+    url: '/saved-candidates',
+    icon: UserCheck,
   },
   {
     title: 'Saved Projects',
@@ -99,25 +106,24 @@ const recruiterNavItems: NavItem[] = [
 // Navigation items for SUPER_ADMIN role
 const superAdminNavItems: NavItem[] = [
   {
-    title: 'Organizations',
-    url: '/organizations',
-    icon: Building2,
+    title: 'Overview',
+    url: '/admin',
+    icon: Activity,
   },
   {
-    title: 'Explore',
-    url: '/explore',
-    icon: Compass,
+    title: 'Accounts',
+    url: '/admin/accounts',
+    icon: Users,
   },
   {
     title: 'Projects',
-    url: '/projects',
+    url: '/admin/projects',
     icon: FolderGit2,
   },
   {
-    title: 'Users',
-    url: '/users',
-    icon: Users,
-    // Enabled now that we've built the users list!
+    title: 'Audit logs',
+    url: '/admin/logs',
+    icon: ScrollText,
   },
 ];
 
@@ -160,8 +166,8 @@ export function AppSidebar() {
     : orgSecondaryNavItems;
 
   const isActive = (url: string) => {
-    if (url === '/dashboard') {
-      return pathname === '/dashboard';
+    if (url === '/dashboard' || url === '/admin') {
+      return pathname === url;
     }
     return pathname.startsWith(url);
   };
@@ -170,7 +176,10 @@ export function AppSidebar() {
     <Sidebar className="border-sidebar-border border-r">
       <SidebarHeader className="px-5 py-6">
         {/* Logo */}
-        <Link href="/dashboard" className="flex items-center gap-2.5">
+        <Link
+          href={isSuperAdmin ? '/admin' : '/dashboard'}
+          className="flex items-center gap-2.5"
+        >
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-base">
             <span className="text-lg font-bold text-white">✦</span>
           </div>

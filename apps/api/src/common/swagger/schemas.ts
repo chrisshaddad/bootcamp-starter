@@ -5,6 +5,7 @@ import {
   loginRequestSchema as loginRequestContractSchema,
   magicLinkRequestSchema,
   magicLinkVerifyRequestSchema as magicLinkVerifyRequestContractSchema,
+  resetPasswordRequestSchema as resetPasswordRequestContractSchema,
   signupRequestSchema as signupRequestContractSchema,
   updateProfileRequestSchema as updateProfileRequestContractSchema,
   createProjectInvitationRequestSchema as createProjectInvitationRequestContractSchema,
@@ -68,6 +69,13 @@ export const loginRequestSchema: ApiBodySchema = withExample(
     password: 'Password123!',
   },
 );
+export const resetPasswordRequestSchema: ApiBodySchema = withExample(
+  toOpenApiSchema(resetPasswordRequestContractSchema),
+  {
+    token: 'password-reset-token',
+    newPassword: 'NewPassword123!',
+  },
+);
 export const signupRequestSchema: ApiBodySchema = withExample(
   toOpenApiSchema(signupRequestContractSchema),
   {
@@ -88,6 +96,11 @@ export const updateProfileRequestSchema: ApiBodySchema = withExample(
     location: 'Beirut, Lebanon',
     profilePictureUrl:
       'http://localhost:9000/bootcamp-media/profile-pictures/example.png',
+    profilePictureOriginalUrl:
+      'http://localhost:9000/bootcamp-media/profile-pictures/example-original.png',
+    profilePictureCropZoom: 1.35,
+    profilePictureCropX: 12,
+    profilePictureCropY: -8,
     linkedinUrl: 'https://www.linkedin.com/in/sarahchen',
     personalWebsiteUrl: 'https://sarahchen.dev',
   },
@@ -97,9 +110,13 @@ export const updateProfileRequestSchema: ApiBodySchema = withExample(
 // request bodies represented by the shared Zod contracts.
 export const profilePictureUploadSchema: ApiBodySchema = {
   type: 'object',
-  required: ['file'],
+  required: ['file', 'originalFile'],
   properties: {
     file: {
+      type: 'string',
+      format: 'binary',
+    },
+    originalFile: {
       type: 'string',
       format: 'binary',
     },

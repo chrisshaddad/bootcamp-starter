@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { BackLink } from '@/components/back-link';
 import {
   Dialog,
   DialogContent,
@@ -17,7 +18,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
-  ArrowLeft,
   Building2,
   Users,
   Globe,
@@ -186,16 +186,7 @@ export default function OrganizationDetailPage() {
 
   return (
     <div className="space-y-6">
-      {/* Back Button */}
-      <Button
-        variant="ghost"
-        size="sm"
-        className="gap-2"
-        onClick={() => router.push('/organizations')}
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to Organizations
-      </Button>
+      <BackLink fallbackHref="/organizations" fallbackLabel="Organizations" />
 
       {/* Header */}
       <div className="flex items-start justify-between">

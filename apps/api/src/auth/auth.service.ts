@@ -3,6 +3,7 @@ import {
   Logger,
   NotFoundException,
   ConflictException,
+  ForbiddenException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
@@ -18,9 +19,12 @@ import {
   LoginRequest,
   UpdateProfileRequest,
   UserResponse,
+  ChangePasswordRequest,
+  DeactivateAccountRequest,
 } from '@repo/contracts';
 
 const MAGIC_LINK_EXPIRY_MINUTES = 15;
+const PASSWORD_RESET_EXPIRY_MINUTES = 30;
 type AuthRole = AuthResponse['user']['role'];
 type UserNameSource = {
   developerProfile?: { displayName: string | null } | null;
@@ -167,6 +171,15 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
+    if (user.status === 'SUSPENDED') {
+      throw new ForbiddenException('This account has been suspended');
+    }
+    if (user.status === 'DEACTIVATED') {
+      throw new ForbiddenException(
+        'This account has been deactivated. Contact support to reactivate it.',
+      );
+    }
+
     const sessionId = await this.sessionService.createSession(user.id);
 
     return {
@@ -194,6 +207,13 @@ export class AuthService {
       return { success: true };
     }
 
+    if (user.status === 'SUSPENDED' || user.status === 'DEACTIVATED') {
+      this.logger.warn(
+        `Magic link requested for ${user.status.toLowerCase()} user ${user.id}`,
+      );
+      return { success: true };
+    }
+
     const token = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(
       Date.now() + MAGIC_LINK_EXPIRY_MINUTES * 60 * 1000,
@@ -202,6 +222,7 @@ export class AuthService {
     await this.prisma.magicLink.updateMany({
       where: {
         userId: user.id,
+        purpose: 'LOGIN',
         usedAt: null,
         expiresAt: { gt: new Date() },
       },
@@ -212,6 +233,7 @@ export class AuthService {
       data: {
         userId: user.id,
         token,
+        purpose: 'LOGIN',
         expiresAt,
       },
     });
@@ -253,7 +275,7 @@ export class AuthService {
       },
     });
 
-    if (!magicLink) {
+    if (!magicLink || magicLink.purpose !== 'LOGIN') {
       throw new NotFoundException('Invalid or expired magic link');
     }
 
@@ -263,6 +285,15 @@ export class AuthService {
 
     if (magicLink.expiresAt < new Date()) {
       throw new NotFoundException('This magic link has expired');
+    }
+
+    if (magicLink.user.status === 'SUSPENDED') {
+      throw new ForbiddenException('This account has been suspended');
+    }
+    if (magicLink.user.status === 'DEACTIVATED') {
+      throw new ForbiddenException(
+        'This account has been deactivated. Contact support to reactivate it.',
+      );
     }
 
     await this.prisma.magicLink.update({
@@ -280,6 +311,144 @@ export class AuthService {
     const sessionId = await this.sessionService.createSession(magicLink.userId);
 
     this.logger.log(`User ${magicLink.userId} authenticated via magic link`);
+
+    return {
+      sessionId,
+      user: {
+        id: magicLink.user.id,
+        email: magicLink.user.email,
+        name: this.resolveDisplayName(magicLink.user),
+        role: this.resolveRole(magicLink.user.accountType),
+      },
+    };
+  }
+
+  async requestPasswordReset(email: string): Promise<{ success: boolean }> {
+    const user = await this.prisma.user.findUnique({
+      where: { email: email.toLowerCase() },
+      include: {
+        developerProfile: true,
+        hiringProfile: true,
+      },
+    });
+
+    if (!user) {
+      this.logger.warn('Password reset requested for a non-existent email');
+      return { success: true };
+    }
+
+    if (user.status === 'SUSPENDED' || user.status === 'DEACTIVATED') {
+      this.logger.warn(
+        `Password reset requested for ${user.status.toLowerCase()} user ${user.id}`,
+      );
+      return { success: true };
+    }
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(
+      Date.now() + PASSWORD_RESET_EXPIRY_MINUTES * 60 * 1000,
+    );
+
+    await this.prisma.magicLink.updateMany({
+      where: {
+        userId: user.id,
+        purpose: 'PASSWORD_RESET',
+        usedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+      data: { usedAt: new Date() },
+    });
+
+    await this.prisma.magicLink.create({
+      data: {
+        userId: user.id,
+        token,
+        purpose: 'PASSWORD_RESET',
+        expiresAt,
+      },
+    });
+
+    const appUrl = process.env.APP_URL;
+    if (!appUrl) {
+      throw new Error('APP_URL environment variable is not configured');
+    }
+    const resetLink = `${appUrl}/reset-password?token=${token}`;
+
+    await this.mailQueue.add(MAIL_JOBS.SEND_PASSWORD_RESET, {
+      email: user.email,
+      resetLink,
+      userName: this.resolveDisplayName(user),
+    });
+
+    this.logger.log(`Password reset email queued for user ${user.id}`);
+    return { success: true };
+  }
+
+  async resetPassword(
+    token: string,
+    newPassword: string,
+  ): Promise<{
+    sessionId: string;
+    user: {
+      id: string;
+      email: string;
+      name: string;
+      role: 'SUPER_ADMIN' | 'MEMBER' | 'ORG_ADMIN';
+    };
+  }> {
+    const magicLink = await this.prisma.magicLink.findUnique({
+      where: { token },
+      include: {
+        user: {
+          include: {
+            developerProfile: true,
+            hiringProfile: true,
+          },
+        },
+      },
+    });
+
+    if (!magicLink || magicLink.purpose !== 'PASSWORD_RESET') {
+      throw new NotFoundException('Invalid or expired reset link');
+    }
+
+    if (magicLink.usedAt) {
+      throw new NotFoundException('This reset link has already been used');
+    }
+
+    if (magicLink.expiresAt < new Date()) {
+      throw new NotFoundException('This reset link has expired');
+    }
+
+    if (magicLink.user.status === 'SUSPENDED') {
+      throw new ForbiddenException('This account has been suspended');
+    }
+    if (magicLink.user.status === 'DEACTIVATED') {
+      throw new ForbiddenException(
+        'This account has been deactivated. Contact support to reactivate it.',
+      );
+    }
+
+    await this.prisma.magicLink.update({
+      where: { id: magicLink.id },
+      data: { usedAt: new Date() },
+    });
+
+    await this.prisma.user.update({
+      where: { id: magicLink.userId },
+      data: {
+        passwordHash: hashPassword(newPassword),
+        ...(magicLink.user.isConfirmed ? {} : { isConfirmed: true }),
+      },
+    });
+
+    // Resetting the password is the primary account-recovery path, so any
+    // session from before the reset (including one held by an attacker who
+    // triggered the compromise) must not survive it.
+    await this.sessionService.deleteAllUserSessions(magicLink.userId);
+    const sessionId = await this.sessionService.createSession(magicLink.userId);
+
+    this.logger.log(`User ${magicLink.userId} reset their password`);
 
     return {
       sessionId,
@@ -347,6 +516,10 @@ export class AuthService {
           bio?: string | null;
           location?: string | null;
           profilePictureUrl?: string | null;
+          profilePictureOriginalUrl?: string | null;
+          profilePictureCropZoom?: number | null;
+          profilePictureCropX?: number | null;
+          profilePictureCropY?: number | null;
           linkedinUrl?: string | null;
           personalWebsiteUrl?: string | null;
         };
@@ -374,6 +547,10 @@ export class AuthService {
           bio: data.bio,
           location: data.location,
           profilePictureUrl: data.profilePictureUrl,
+          profilePictureOriginalUrl: data.profilePictureOriginalUrl,
+          profilePictureCropZoom: data.profilePictureCropZoom,
+          profilePictureCropX: data.profilePictureCropX,
+          profilePictureCropY: data.profilePictureCropY,
           linkedinUrl: data.linkedinUrl,
           personalWebsiteUrl: data.personalWebsiteUrl,
         },
@@ -413,6 +590,14 @@ export class AuthService {
             location: updatedUser.developerProfile.location ?? null,
             profilePictureUrl:
               updatedUser.developerProfile.profilePictureUrl ?? null,
+            profilePictureOriginalUrl:
+              updatedUser.developerProfile.profilePictureOriginalUrl ?? null,
+            profilePictureCropZoom:
+              updatedUser.developerProfile.profilePictureCropZoom ?? null,
+            profilePictureCropX:
+              updatedUser.developerProfile.profilePictureCropX ?? null,
+            profilePictureCropY:
+              updatedUser.developerProfile.profilePictureCropY ?? null,
             githubUsername:
               (
                 updatedUser.developerProfile as {
@@ -445,5 +630,53 @@ export class AuthService {
           }
         : null,
     };
+  }
+
+  async changePassword(
+    userId: string,
+    data: ChangePasswordRequest,
+  ): Promise<{ success: true }> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const isValid = verifyPassword(data.currentPassword, user.passwordHash);
+    if (!isValid) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: hashPassword(data.newPassword) },
+    });
+
+    return { success: true };
+  }
+
+  async deactivateAccount(
+    userId: string,
+    data: DeactivateAccountRequest,
+  ): Promise<{ success: true }> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const isValid = verifyPassword(data.password, user.passwordHash);
+    if (!isValid) {
+      throw new UnauthorizedException('Password is incorrect');
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { status: 'DEACTIVATED', deactivatedAt: new Date() },
+    });
+    await this.sessionService.deleteAllUserSessions(userId);
+
+    this.logger.log(`User ${userId} deactivated their account`);
+    return { success: true };
   }
 }

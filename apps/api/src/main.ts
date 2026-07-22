@@ -9,7 +9,6 @@ async function bootstrap() {
   // Enable cookie parsing for session management
   app.use(cookieParser());
 
-  // Enable CORS for frontend
   app.enableCors({
     origin: process.env.APP_URL,
     credentials: true,

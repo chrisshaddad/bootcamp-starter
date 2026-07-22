@@ -40,6 +40,7 @@ import {
 } from './project-invitation.mapper';
 import { ProjectInvitationRateLimiter } from './project-invitation-rate-limiter.service';
 import { ProjectAccessService } from '../projects/project-access.service';
+import { normalizeMediaUrl } from '../common/utils/normalize-media-url';
 import {
   PROJECT_INVITATION_EXPIRY_MS,
   PROJECT_INVITATION_JOBS,
@@ -107,8 +108,9 @@ export class ProjectInvitationsService implements OnModuleInit {
       platformUser: {
         displayName: candidate.platformUser.developerProfile!.displayName,
         publicSlug: candidate.platformUser.developerProfile!.publicSlug,
-        profilePictureUrl:
+        profilePictureUrl: normalizeMediaUrl(
           candidate.platformUser.developerProfile!.profilePictureUrl,
+        ),
       },
     });
   }
@@ -165,32 +167,40 @@ export class ProjectInvitationsService implements OnModuleInit {
       throw error;
     }
 
-    try {
-      await this.mailQueue.add(
-        MAIL_JOBS.SEND_PROJECT_INVITATION,
-        {
-          email: candidate.platformUser.email,
-          inviterName: candidate.inviterDisplayName,
-          projectTitle: candidate.project.title,
-          invitationLink: `${process.env.APP_URL ?? 'http://localhost:3000'}/invitations`,
-        },
-        {
-          jobId: `project-invitation-${invitation.id}`,
-          attempts: 3,
-          backoff: { type: 'exponential', delay: 5_000 },
-          removeOnComplete: 100,
-          removeOnFail: 100,
-        },
-      );
-    } catch (error) {
-      this.logger.error(
-        `Project invitation ${invitation.id} email could not be queued; compensating the saved invitation.`,
-        error instanceof Error ? error.stack : undefined,
-      );
-      await this.db.projectInvitation.delete({ where: { id: invitation.id } });
-      throw new ServiceUnavailableException(
-        'The invitation could not be sent. Please try again.',
-      );
+    const wantsInvitationEmail =
+      candidate.platformUser.notificationPreference?.projectInvitationEmails !==
+      false;
+
+    if (wantsInvitationEmail) {
+      try {
+        await this.mailQueue.add(
+          MAIL_JOBS.SEND_PROJECT_INVITATION,
+          {
+            email: candidate.platformUser.email,
+            inviterName: candidate.inviterDisplayName,
+            projectTitle: candidate.project.title,
+            invitationLink: `${process.env.APP_URL ?? 'http://localhost:3000'}/invitations`,
+          },
+          {
+            jobId: `project-invitation-${invitation.id}`,
+            attempts: 3,
+            backoff: { type: 'exponential', delay: 5_000 },
+            removeOnComplete: 100,
+            removeOnFail: 100,
+          },
+        );
+      } catch (error) {
+        this.logger.error(
+          `Project invitation ${invitation.id} email could not be queued; compensating the saved invitation.`,
+          error instanceof Error ? error.stack : undefined,
+        );
+        await this.db.projectInvitation.delete({
+          where: { id: invitation.id },
+        });
+        throw new ServiceUnavailableException(
+          'The invitation could not be sent. Please try again.',
+        );
+      }
     }
 
     return mapProjectInvitation(invitation);
@@ -458,6 +468,9 @@ export class ProjectInvitationsService implements OnModuleInit {
             publicSlug: true,
             profilePictureUrl: true,
           },
+        },
+        notificationPreference: {
+          select: { projectInvitationEmails: true },
         },
       },
     });

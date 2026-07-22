@@ -69,6 +69,7 @@ import {
 import { mapProjectMember } from './project-member.mapper';
 import { ObjectStorageService } from '../storage/storage.service';
 import { imageContentType } from '../auth/utils/image-content-type';
+import { normalizeMediaUrl } from '../common/utils/normalize-media-url';
 
 const PROJECT_MEDIA_MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
 const PROJECT_MEDIA_ALLOWED_MIME_TYPES = [
@@ -235,8 +236,9 @@ export class ProjectsController {
                 project.createdBy.developerProfile?.displayName ??
                 ANONYMOUS_CONTRIBUTOR_NAME,
               headline: project.createdBy.developerProfile?.headline ?? null,
-              profilePictureUrl:
-                project.createdBy.developerProfile?.profilePictureUrl ?? null,
+              profilePictureUrl: normalizeMediaUrl(
+                project.createdBy.developerProfile?.profilePictureUrl,
+              ),
               githubUsername:
                 project.createdBy.developerProfile?.githubUsername ?? null,
             }
@@ -249,8 +251,9 @@ export class ProjectsController {
             displayName:
               member.user!.developerProfile?.displayName ??
               ANONYMOUS_CONTRIBUTOR_NAME,
-            profilePictureUrl:
-              member.user!.developerProfile?.profilePictureUrl ?? null,
+            profilePictureUrl: normalizeMediaUrl(
+              member.user!.developerProfile?.profilePictureUrl,
+            ),
           })),
         contributorCount: project._count.members,
       })),
@@ -479,6 +482,24 @@ export class ProjectsController {
       `removed project ${projectId}`,
     );
 
+    return successResponseSchema.parse({ success: true });
+  }
+
+  @Delete(':id/members/:memberId')
+  @Roles(AccountType.DEVELOPER)
+  @ApiOperation({ summary: 'Remove a verified member from a project' })
+  @ApiResponse({ status: 200, description: 'Project member removed.' })
+  @ApiResponse({
+    status: 403,
+    description: 'Only the project owner may remove members.',
+  })
+  @ApiResponse({ status: 404, description: 'Project member not found.' })
+  async removeProjectMember(
+    @CurrentUser() user: User,
+    @Param('id') projectId: string,
+    @Param('memberId') memberId: string,
+  ): Promise<SuccessResponse> {
+    await this.projectsService.removeProjectMember(user, projectId, memberId);
     return successResponseSchema.parse({ success: true });
   }
 

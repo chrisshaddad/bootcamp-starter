@@ -21,6 +21,7 @@ import {
   type GithubRepositoryAnalysisPreviewResponse,
   type GithubRepositoryPreviewRequest,
   type GithubRepositoryPreviewResponse,
+  type SuccessResponse,
 } from '@repo/contracts';
 import { CurrentUser, Roles } from '../auth/decorators';
 import { ZodValidationPipe } from '../common/pipes';
@@ -62,6 +63,18 @@ export class GithubController {
     const appUrl = process.env.APP_URL || 'http://localhost:3000';
     return res.redirect(`${appUrl}/projects/new`);
   }
+  @Post('disconnect')
+  @Roles('DEVELOPER', 'SUPER_ADMIN')
+  @ApiOperation({ summary: 'Disconnects the linked GitHub account' })
+  @ApiResponse({ status: 200, description: 'GitHub account disconnected' })
+  @HttpCode(HttpStatus.OK)
+  async disconnectGithub(
+    @CurrentUser('id') userId: string,
+  ): Promise<SuccessResponse> {
+    await this.githubService.disconnectGithub(userId);
+    return { success: true };
+  }
+
   @Get('my-repositories')
   @Roles('DEVELOPER', 'SUPER_ADMIN')
   @ApiOperation({

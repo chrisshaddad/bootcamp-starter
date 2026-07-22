@@ -18,6 +18,7 @@ import {
   ProjectStatus,
   VerificationStatus,
 } from '@repo/db';
+import { normalizeMediaUrl } from '../common/utils/normalize-media-url';
 @Injectable()
 export class UsersService {
   constructor(private readonly prisma: DatabaseService) {}
@@ -280,7 +281,7 @@ export class UsersService {
       headline: profile.headline,
       bio: profile.bio,
       location: profile.location,
-      profilePictureUrl: normalizeOptionalUrl(profile.profilePictureUrl),
+      profilePictureUrl: normalizeMediaUrl(profile.profilePictureUrl),
       githubUsername: profile.githubUsername,
       githubUrl: profile.githubUsername
         ? `https://github.com/${profile.githubUsername}`

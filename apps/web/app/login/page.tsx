@@ -118,14 +118,16 @@ function LoginForm() {
   const onSubmit = async (data: LoginRequest) => {
     setIsSubmitting(true);
     try {
-      await login(data);
+      const { user } = await login(data);
       const rawRedirect = searchParams.get('redirect');
       const redirectPath =
-        rawRedirect &&
-        rawRedirect.startsWith('/') &&
-        !rawRedirect.startsWith('//')
-          ? rawRedirect
-          : '/dashboard';
+        user.role === 'SUPER_ADMIN'
+          ? '/admin'
+          : rawRedirect &&
+              rawRedirect.startsWith('/') &&
+              !rawRedirect.startsWith('//')
+            ? rawRedirect
+            : '/dashboard';
 
       router.push(redirectPath);
     } catch (error) {
@@ -163,6 +165,12 @@ function LoginForm() {
         {errors.password && (
           <p className="text-sm text-destructive">{errors.password.message}</p>
         )}
+        <Link
+          href="/forgot-password"
+          className="block text-right text-sm text-blue hover:underline"
+        >
+          Forgot password?
+        </Link>
       </div>
       <Button type="submit" className="h-12 w-full" disabled={isSubmitting}>
         {isSubmitting ? (

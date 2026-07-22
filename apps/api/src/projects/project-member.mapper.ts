@@ -3,6 +3,7 @@ import {
   type ProjectMemberResponse,
 } from '@repo/contracts';
 import type { Prisma } from '@repo/db';
+import { normalizeMediaUrl } from '../common/utils/normalize-media-url';
 
 type ProjectMemberWithPublicUser = Prisma.ProjectMemberGetPayload<{
   include: {
@@ -39,8 +40,9 @@ export function mapProjectMember(
           id: member.user.id,
           displayName: member.user.developerProfile.displayName,
           publicSlug: member.user.developerProfile.publicSlug,
-          profilePictureUrl:
-            member.user.developerProfile.profilePictureUrl?.trim() || null,
+          profilePictureUrl: normalizeMediaUrl(
+            member.user.developerProfile.profilePictureUrl,
+          ),
         }
       : null,
   });

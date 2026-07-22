@@ -48,6 +48,11 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException('Invalid or expired session');
     }
 
+    if (user.status === 'SUSPENDED') {
+      await this.sessionService.deleteSession(sessionId);
+      throw new UnauthorizedException('This account has been suspended');
+    }
+
     // Attach user and session ID to request for later use
     (request as AuthenticatedRequest).user = user;
     (request as AuthenticatedRequest).sessionId = sessionId;
