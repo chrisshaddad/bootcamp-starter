@@ -14,11 +14,15 @@ export function AnalyticsTracker({ event }: { event: AnalyticsTrackerEvent }) {
     event.eventType === 'PORTFOLIO_VIEW'
       ? event.developerSlug
       : event.projectSlug;
-  const eventIdRef = useRef<string | null>(null);
+  const eventIdRef = useRef<{ key: string; id: string } | null>(null);
 
   useEffect(() => {
-    const eventId = eventIdRef.current ?? crypto.randomUUID();
-    eventIdRef.current = eventId;
+    const key = `${eventType}:${target}`;
+    const eventId =
+      eventIdRef.current?.key === key
+        ? eventIdRef.current.id
+        : crypto.randomUUID();
+    eventIdRef.current = { key, id: eventId };
     const payload: AnalyticsTrackRequest =
       eventType === 'PORTFOLIO_VIEW'
         ? { eventId, eventType, developerSlug: target }
