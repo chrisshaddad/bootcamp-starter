@@ -11,6 +11,8 @@ import { CirculationModule } from './circulation/circulation.module';
 import { CatalogModule } from './catalog/catalog.module';
 import { CommerceModule } from './commerce/commerce.module';
 import { PortalModule } from './portal/portal.module';
+import { OverdueModule } from './overdue/overdue.module';
+import { StaffModule } from './staff/staff.module';
 import { DatabaseModule } from './database/database.module';
 
 @Module({
@@ -30,6 +32,8 @@ import { DatabaseModule } from './database/database.module';
     CatalogModule,
     CommerceModule,
     PortalModule,
+    OverdueModule,
+    StaffModule,
   ],
   controllers: [AppController],
   providers: [AppService],
