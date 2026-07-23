@@ -13,6 +13,7 @@ import { CommerceModule } from './commerce/commerce.module';
 import { PortalModule } from './portal/portal.module';
 import { OverdueModule } from './overdue/overdue.module';
 import { StaffModule } from './staff/staff.module';
+import { UploadsModule } from './uploads/uploads.module';
 import { DatabaseModule } from './database/database.module';
 
 @Module({
@@ -34,6 +35,7 @@ import { DatabaseModule } from './database/database.module';
     PortalModule,
     OverdueModule,
     StaffModule,
+    UploadsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

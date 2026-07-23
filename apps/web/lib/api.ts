@@ -45,6 +45,27 @@ export async function apiPost<T>(endpoint: string, data?: unknown): Promise<T> {
   return res.json();
 }
 
+export async function apiPostFormData<T>(
+  endpoint: string,
+  formData: FormData,
+): Promise<T> {
+  const res = await fetch(`${API_URL}${endpoint}`, {
+    method: 'POST',
+    credentials: 'include',
+    // No Content-Type header - the browser sets the multipart boundary.
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const error = await res
+      .json()
+      .catch(() => ({ message: 'An error occurred' }));
+    throw new ApiError(res.status, error.message || 'An error occurred');
+  }
+
+  return res.json();
+}
+
 export async function apiPatch<T>(
   endpoint: string,
   data?: unknown,

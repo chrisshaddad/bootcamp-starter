@@ -11,7 +11,10 @@
         "REDIS_URL",
         "NODE_ENV",
         "NEXT_PUBLIC_API_URL",
-        "GEMINI_API_KEY"
+        "GEMINI_API_KEY",
+        "CLOUDINARY_CLOUD_NAME",
+        "CLOUDINARY_API_KEY",
+        "CLOUDINARY_API_SECRET"
       ]
     },
     "lint": {
@@ -31,7 +34,10 @@
         "MAILPIT_URL",
         "APP_URL",
         "NEXT_PUBLIC_API_URL",
-        "GEMINI_API_KEY"
+        "GEMINI_API_KEY",
+        "CLOUDINARY_CLOUD_NAME",
+        "CLOUDINARY_API_KEY",
+        "CLOUDINARY_API_SECRET"
       ]
     },
     "db:generate": {

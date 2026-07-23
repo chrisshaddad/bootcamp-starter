@@ -14,3 +14,4 @@ export * from './cart';
 export * from './purchases';
 export * from './chat';
 export * from './staff';
+export * from './uploads';

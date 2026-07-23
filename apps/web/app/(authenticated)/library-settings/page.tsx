@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
@@ -9,6 +9,7 @@ import { SlidersHorizontal } from 'lucide-react';
 import { organizationUpdateRequestSchema } from '@repo/contracts';
 import type { OrganizationUpdateRequest } from '@repo/contracts';
 import { useLibrarySettings } from '@/hooks/use-library-settings';
+import { useImageUpload } from '@/hooks/use-image-upload';
 import { ApiError } from '@/lib/api';
 import { RequireRole } from '@/components/require-role';
 import { Button } from '@/components/ui/button';
@@ -65,6 +66,28 @@ function LibrarySettings() {
 
   const logoUrl = form.watch('logoUrl');
   const name = form.watch('name');
+
+  const { upload, isUploading } = useImageUpload();
+  const logoInputRef = useRef<HTMLInputElement>(null);
+
+  const handleLogoFileChange = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const url = await upload(file);
+      form.setValue('logoUrl', url, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : 'Failed to upload logo',
+      );
+    }
+  };
 
   const onSubmit = async (values: OrganizationUpdateRequest) => {
     try {
@@ -124,8 +147,39 @@ function LibrarySettings() {
                 {(name || organization.name).charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <div className="text-sm text-muted-foreground">
-              Logo preview. Paste an image URL below to update it.
+            <input
+              ref={logoInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleLogoFileChange}
+            />
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isUploading}
+                onClick={() => logoInputRef.current?.click()}
+              >
+                {isUploading
+                  ? 'Uploading...'
+                  : logoUrl
+                    ? 'Replace logo'
+                    : 'Upload logo'}
+              </Button>
+              {logoUrl && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    form.setValue('logoUrl', '', { shouldDirty: true })
+                  }
+                >
+                  Remove
+                </Button>
+              )}
             </div>
           </div>
 
@@ -157,23 +211,6 @@ function LibrarySettings() {
                       Your library&apos;s URL identity (lowercase, hyphenated).
                       Must be unique across NextShelf.
                     </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="logoUrl"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Logo URL</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="https://…"
-                        {...field}
-                        value={field.value ?? ''}
-                      />
-                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

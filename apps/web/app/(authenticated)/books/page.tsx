@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -21,10 +21,12 @@ import { useAuthors } from '@/hooks/use-authors';
 import { useCategories } from '@/hooks/use-categories';
 import { usePublishers } from '@/hooks/use-publishers';
 import { useDebounce } from '@/hooks/use-debounce';
+import { useImageUpload } from '@/hooks/use-image-upload';
 import { ApiError } from '@/lib/api';
 import { RequireRole } from '@/components/require-role';
 import { TablePagination } from '@/components/table-pagination';
 import { MultiSelect } from '@/components/multi-select';
+import { BookCover } from '@/components/book-cover';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -342,6 +344,28 @@ function BookDialog({
     resolver: zodResolver(bookCreateRequestSchema),
     defaultValues: { title: '', authorIds: [], categoryIds: [] },
   });
+
+  const { upload, isUploading } = useImageUpload();
+  const coverInputRef = useRef<HTMLInputElement>(null);
+
+  const handleCoverFileChange = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const url = await upload(file);
+      form.setValue('coverUrl', url, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : 'Failed to upload cover image',
+      );
+    }
+  };
 
   // BookCopyCondition is a fixed, closed 5-value enum, so a static
   // one-row-per-condition grid (rather than a dynamic add/remove list) can't
@@ -669,19 +693,58 @@ function BookDialog({
             <FormField
               control={form.control}
               name="coverUrl"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Cover URL</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="https://…"
-                      {...field}
-                      value={field.value ?? ''}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              render={() => {
+                const coverUrl = form.watch('coverUrl');
+                return (
+                  <FormItem>
+                    <FormLabel>Cover image</FormLabel>
+                    <div className="flex items-start gap-4">
+                      <BookCover
+                        coverUrl={coverUrl ?? null}
+                        title={form.watch('title') || 'Cover preview'}
+                        className="aspect-2/3 w-24 rounded-md"
+                      />
+                      <div className="flex flex-col gap-2">
+                        <input
+                          ref={coverInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleCoverFileChange}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={isUploading}
+                          onClick={() => coverInputRef.current?.click()}
+                        >
+                          {isUploading
+                            ? 'Uploading...'
+                            : coverUrl
+                              ? 'Replace image'
+                              : 'Upload image'}
+                        </Button>
+                        {coverUrl && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              form.setValue('coverUrl', undefined, {
+                                shouldDirty: true,
+                              })
+                            }
+                          >
+                            Remove
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
             <FormField
               control={form.control}
