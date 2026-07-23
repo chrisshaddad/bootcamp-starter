@@ -101,7 +101,9 @@ export class DepartmentsService {
     const skip = (query.page - 1) * query.limit;
     const where: Prisma.DepartmentWhereInput =
       currentUser.role === 'SUPER_ADMIN'
-        ? {}
+        ? query.organizationId
+          ? { organizationId: query.organizationId }
+          : {}
         : { organizationId: currentUser.organizationId as string };
 
     const [departments, total] = await Promise.all([

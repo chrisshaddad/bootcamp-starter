@@ -7,6 +7,7 @@ import { SessionService } from './session.service';
 import { MAIL_QUEUE, MAIL_JOBS } from '../mail/mail.constants';
 
 const MAGIC_LINK_EXPIRY_MINUTES = 15;
+const INVITATION_EXPIRY_DAYS = 7;
 
 @Injectable()
 export class AuthService {
@@ -31,6 +32,12 @@ export class AuthService {
     if (!user) {
       // Don't reveal if user exists - still return success
       this.logger.warn(`Magic link requested for non-existent email: ${email}`);
+      return { success: true };
+    }
+
+    if (!user.isActive) {
+      // Don't reveal that the account is deactivated - still return success
+      this.logger.warn(`Magic link requested for deactivated user: ${user.id}`);
       return { success: true };
     }
 
@@ -75,6 +82,43 @@ export class AuthService {
   }
 
   /**
+   * Create a longer-lived magic link and send it as an invitation email
+   * (used when a Super Admin creates a new organization + its admin user).
+   * Reuses the same `MagicLink`/`/auth/verify` verification path as a normal
+   * login link - only the expiry and email copy differ.
+   */
+  async createInvitation(
+    user: { id: string; email: string; name: string },
+    inviterName: string,
+    organizationName: string,
+  ): Promise<void> {
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(
+      Date.now() + INVITATION_EXPIRY_DAYS * 24 * 60 * 60 * 1000,
+    );
+
+    await this.prisma.magicLink.create({
+      data: {
+        userId: user.id,
+        token,
+        expiresAt,
+      },
+    });
+
+    const appUrl = process.env.APP_URL;
+    const invitationLink = `${appUrl}/auth/verify?token=${token}`;
+
+    await this.mailQueue.add(MAIL_JOBS.SEND_INVITATION, {
+      email: user.email,
+      inviterName,
+      organizationName,
+      invitationLink,
+    });
+
+    this.logger.log(`Invitation queued for user ${user.id}`);
+  }
+
+  /**
    * Verify a magic link token and create a session
    * Returns the session ID on success
    */
@@ -100,6 +144,10 @@ export class AuthService {
     // Check if expired
     if (magicLink.expiresAt < new Date()) {
       throw new NotFoundException('This magic link has expired');
+    }
+
+    if (!magicLink.user.isActive) {
+      throw new NotFoundException('Invalid or expired magic link');
     }
 
     // Mark as used

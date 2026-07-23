@@ -6,6 +6,7 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { MailModule } from './mail/mail.module';
 import { OrganizationsModule } from './organizations/organizations.module';
+import { UsersModule } from './users/users.module';
 import { DatabaseModule } from './database/database.module';
 import { EmployeesModule } from './employees/employees.module';
 import { OpportunitiesModule } from './opportunities/opportunities.module';
@@ -27,6 +28,7 @@ import { CareerPathsModule } from './career-paths/career-paths.module';
     AuthModule,
     MailModule,
     OrganizationsModule,
+    UsersModule,
     EmployeesModule,
     OpportunitiesModule,
     ApplicationsModule,

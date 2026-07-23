@@ -2,13 +2,23 @@
 
 import useSWR, { mutate } from 'swr';
 import { useCallback } from 'react';
-import { apiPatch } from '@/lib/api';
+import { apiPatch, apiPost } from '@/lib/api';
 import type {
   OrganizationListResponse,
   OrganizationDetailResponse,
   OrganizationActionResponse,
   OrganizationStatus,
+  OrganizationCreateRequest,
+  OrganizationUpdateRequest,
 } from '@repo/contracts';
+
+function invalidateOrganizationLists() {
+  mutate(
+    (key) => typeof key === 'string' && key.startsWith('/organizations'),
+    undefined,
+    { revalidate: true },
+  );
+}
 
 interface UseOrganizationsOptions {
   status?: OrganizationStatus;
@@ -51,6 +61,32 @@ export function useOrganizations(
   };
 }
 
+interface UseOrganizationMutationsReturn {
+  createOrganization: (
+    data: OrganizationCreateRequest,
+  ) => Promise<OrganizationDetailResponse>;
+}
+
+/**
+ * Hook for creating organizations. Invalidates all cached `/organizations`
+ * lists after a successful create.
+ */
+export function useOrganizationMutations(): UseOrganizationMutationsReturn {
+  const createOrganization = useCallback(
+    async (data: OrganizationCreateRequest) => {
+      const result = await apiPost<OrganizationDetailResponse>(
+        '/organizations',
+        data,
+      );
+      invalidateOrganizationLists();
+      return result;
+    },
+    [],
+  );
+
+  return { createOrganization };
+}
+
 interface UseOrganizationOptions {
   enabled?: boolean;
 }
@@ -61,6 +97,11 @@ interface UseOrganizationReturn {
   error: Error | undefined;
   approve: () => Promise<OrganizationActionResponse>;
   reject: () => Promise<OrganizationActionResponse>;
+  update: (
+    data: OrganizationUpdateRequest,
+  ) => Promise<OrganizationDetailResponse>;
+  suspend: () => Promise<OrganizationActionResponse>;
+  reactivate: () => Promise<OrganizationActionResponse>;
   mutate: () => void;
 }
 
@@ -109,12 +150,43 @@ export function useOrganization(
     return result;
   }, [id, invalidateAll]);
 
+  const update = useCallback(
+    async (updateData: OrganizationUpdateRequest) => {
+      const result = await apiPatch<OrganizationDetailResponse>(
+        `/organizations/${id}`,
+        updateData,
+      );
+      invalidateAll();
+      return result;
+    },
+    [id, invalidateAll],
+  );
+
+  const suspend = useCallback(async () => {
+    const result = await apiPatch<OrganizationActionResponse>(
+      `/organizations/${id}/suspend`,
+    );
+    invalidateAll();
+    return result;
+  }, [id, invalidateAll]);
+
+  const reactivate = useCallback(async () => {
+    const result = await apiPatch<OrganizationActionResponse>(
+      `/organizations/${id}/reactivate`,
+    );
+    invalidateAll();
+    return result;
+  }, [id, invalidateAll]);
+
   return {
     organization: data,
     isLoading,
     error,
     approve,
     reject,
+    update,
+    suspend,
+    reactivate,
     mutate: swrMutate,
   };
 }
