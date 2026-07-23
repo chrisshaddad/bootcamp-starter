@@ -42,9 +42,23 @@ export class BooksService {
       search?: string;
       categoryId?: string;
       authorId?: string;
+      // Patron-facing callers pass this to exclude books that have never
+      // been stocked with a physical copy - staff still need to see these
+      // (to know what to stock), but a patron browsing/searching the
+      // catalog shouldn't see a book that has nothing behind it at all.
+      // Distinct from "0 available" (all copies checked out), which is a
+      // real, useful status a patron should still see.
+      hasCopies?: boolean;
     },
   ): Promise<BookListResponse> {
-    const { page = 1, limit = 20, search, categoryId, authorId } = options;
+    const {
+      page = 1,
+      limit = 20,
+      search,
+      categoryId,
+      authorId,
+      hasCopies,
+    } = options;
     const skip = (page - 1) * limit;
     const trimmedSearch = search?.trim();
 
@@ -60,6 +74,7 @@ export class BooksService {
         : {}),
       ...(categoryId ? { categories: { some: { categoryId } } } : {}),
       ...(authorId ? { authors: { some: { authorId } } } : {}),
+      ...(hasCopies ? { copies: { some: {} } } : {}),
     };
 
     const [books, total] = await Promise.all([

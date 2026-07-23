@@ -31,6 +31,7 @@ export class PortalBooksController {
         search,
         categoryId,
         authorId,
+        hasCopies: true,
       },
     );
   }
