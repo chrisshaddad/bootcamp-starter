@@ -11,7 +11,13 @@ import {
   LogOut,
   Building2,
   Building,
+  Compass,
+  Library,
+  IdCard,
   BookOpen,
+  Clock,
+  Bookmark,
+  ShoppingCart,
   Feather,
   Tags,
   BookUp,
@@ -118,7 +124,23 @@ const orgAdminNavGroup: NavGroup = {
   ],
 };
 
-// Members (and any other role) get a minimal shell; their real portal is Phase 3.
+// MEMBER (patron): self-service portal - discover libraries, browse/buy/
+// reserve books, manage rentals and holds.
+const patronNavGroups: NavGroup[] = [
+  {
+    label: 'Main',
+    items: [
+      { title: 'Discover', url: '/discover', icon: Compass },
+      { title: 'My Libraries', url: '/my-libraries', icon: Library },
+      { title: 'Cart', url: '/cart', icon: ShoppingCart },
+      { title: 'My Rentals', url: '/my-rentals', icon: Clock },
+      { title: 'My Reservations', url: '/my-reservations', icon: Bookmark },
+      { title: 'My Memberships', url: '/my-memberships', icon: IdCard },
+    ],
+  },
+];
+
+// Fallback shell for any role without a dedicated nav above.
 const minimalNavGroups: NavGroup[] = [
   {
     label: 'Main',
@@ -134,6 +156,7 @@ function navGroupsForRole(role: string | undefined): NavGroup[] {
   if (role === 'SUPER_ADMIN') return superAdminNavGroups;
   if (role === 'ORG_ADMIN') return [...staffNavGroups, orgAdminNavGroup];
   if (role === 'LIBRARIAN') return staffNavGroups;
+  if (role === 'MEMBER') return patronNavGroups;
   return minimalNavGroups;
 }
 

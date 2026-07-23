@@ -8,8 +8,26 @@ import type {
   OrganizationListResponse,
   OrganizationDetailResponse,
   OrganizationActionResponse,
+  OrganizationDirectoryResponse,
   OrganizationStatus,
 } from '@repo/contracts';
+
+/**
+ * Hook for the public library directory (ACTIVE organizations only) - used
+ * by the patron-facing Discover page.
+ */
+export function useOrganizationDirectory() {
+  const { data, error, isLoading } = useSWR<OrganizationDirectoryResponse>(
+    '/organizations/directory',
+  );
+
+  return {
+    organizations: data?.organizations,
+    total: data?.total,
+    isLoading,
+    error,
+  };
+}
 
 interface UseOrganizationsOptions {
   status?: OrganizationStatus;

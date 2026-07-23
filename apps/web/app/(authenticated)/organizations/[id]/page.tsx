@@ -218,7 +218,7 @@ export default function OrganizationDetailPage() {
       </Button>
 
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-center gap-4">
           <Avatar className="h-12 w-12 rounded-lg">
             <AvatarImage

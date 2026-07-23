@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { bookConditionPriceInputSchema } from './book-condition-price.schema';
 
 // Request for POST /books
 export const bookCreateRequestSchema = z.object({
@@ -9,9 +10,15 @@ export const bookCreateRequestSchema = z.object({
   language: z.string().optional(),
   pageCount: z.number().int().positive().optional(),
   coverUrl: z.string().optional(),
-  salePrice: z
-    .string()
-    .regex(/^\d+(\.\d{1,2})?$/, 'Must be a valid amount')
+  // Omitted entirely on update means "leave existing prices untouched"; [] means "clear all
+  // prices"; a populated array fully replaces the rate card. Same convention as
+  // authorIds/categoryIds below. A condition may appear at most once.
+  conditionPrices: z
+    .array(bookConditionPriceInputSchema)
+    .refine(
+      (rows) => new Set(rows.map((r) => r.condition)).size === rows.length,
+      'Each condition can be priced at most once',
+    )
     .optional(),
   edition: z.string().optional(),
   publisherId: z.uuid().optional(),

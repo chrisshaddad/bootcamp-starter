@@ -23,6 +23,7 @@ import {
   type LibraryMemberListResponse,
   type LibraryMemberStatus,
   type LibraryMembershipType,
+  type LibraryMemberActionResponse,
 } from '@repo/contracts';
 import { ZodValidationPipe } from '../common/pipes';
 
@@ -51,6 +52,33 @@ export class LibraryMembersController {
         : undefined,
       search,
     });
+  }
+
+  // Inherits the class-level @Roles('ORG_ADMIN', 'LIBRARIAN') - a library's
+  // own staff approve/reject requests to join THEIR library, scoped by
+  // @OrganizationId() same as every other route on this controller.
+  @Patch(':id/approve')
+  async approve(
+    @OrganizationId() organizationId: string,
+    @Param('id') id: string,
+  ): Promise<LibraryMemberActionResponse> {
+    const libraryMember = await this.libraryMembersService.approve(
+      organizationId,
+      id,
+    );
+    return { message: 'Membership request approved', libraryMember };
+  }
+
+  @Patch(':id/reject')
+  async reject(
+    @OrganizationId() organizationId: string,
+    @Param('id') id: string,
+  ): Promise<LibraryMemberActionResponse> {
+    const libraryMember = await this.libraryMembersService.reject(
+      organizationId,
+      id,
+    );
+    return { message: 'Membership request rejected', libraryMember };
   }
 
   @Get(':id')

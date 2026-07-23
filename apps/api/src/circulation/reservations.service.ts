@@ -92,6 +92,8 @@ export class ReservationsService {
       throw new BadRequestException(`Book with ID ${data.bookId} not found`);
     }
 
+    await this.assertBookHasCopies(organizationId, data.bookId);
+
     const member = await this.prisma.libraryMember.findFirst({
       where: { id: data.memberId, organizationId },
     });
@@ -114,6 +116,7 @@ export class ReservationsService {
         bookId: data.bookId,
         memberId: data.memberId,
         expiresAt: data.expiresAt,
+        preferredCondition: data.preferredCondition,
       },
       include: reservationInclude,
     });
@@ -142,6 +145,17 @@ export class ReservationsService {
     if (bookCopy.status !== 'AVAILABLE') {
       throw new ConflictException(
         `Book copy is not available (status: ${bookCopy.status})`,
+      );
+    }
+
+    // Staff still explicitly pick the copy - this only validates their pick
+    // against the patron's preference, it never auto-selects a copy for them.
+    if (
+      existing.preferredCondition &&
+      bookCopy.condition !== existing.preferredCondition
+    ) {
+      throw new ConflictException(
+        `This copy is ${bookCopy.condition.toLowerCase()}, but the patron requested ${existing.preferredCondition.toLowerCase()} condition`,
       );
     }
 
@@ -258,6 +272,65 @@ export class ReservationsService {
     });
 
     return this.findOne(organizationId, id);
+  }
+
+  /**
+   * Daily housekeeping (see DueReminderScanProcessor - shares the same
+   * nightly circulation-scan trigger as rental due reminders): a hold that's
+   * been READY_FOR_PICKUP past its expiresAt without being picked up is
+   * expired, releasing its set-aside copy back to AVAILABLE for the next
+   * patron. Platform-wide, not organizationId-scoped, matching
+   * DueRemindersService.runDailyScan()'s same one-cron-for-everyone shape.
+   */
+  async expireStalePickups(): Promise<number> {
+    const stale = await this.prisma.reservation.findMany({
+      where: { status: 'READY_FOR_PICKUP', expiresAt: { lt: new Date() } },
+    });
+
+    for (const reservation of stale) {
+      await this.prisma.$transaction(async (tx) => {
+        const bookCopy = await tx.bookCopy.findFirst({
+          where: {
+            bookId: reservation.bookId,
+            organizationId: reservation.organizationId,
+            status: 'RESERVED',
+          },
+        });
+
+        if (bookCopy) {
+          await tx.bookCopy.update({
+            where: { id: bookCopy.id },
+            data: { status: 'AVAILABLE' },
+          });
+        }
+
+        await tx.reservation.update({
+          where: { id: reservation.id },
+          data: { status: 'EXPIRED' },
+        });
+      });
+    }
+
+    return stale.length;
+  }
+
+  // A hold is a bet on future availability, so this only checks the book has
+  // ever had copies at all (not that one is free right now) - unlike
+  // markReady() which is a *now* action and validates against the actual
+  // copy staff pick.
+  private async assertBookHasCopies(
+    organizationId: string,
+    bookId: string,
+  ): Promise<void> {
+    const count = await this.prisma.bookCopy.count({
+      where: { organizationId, bookId },
+    });
+
+    if (count === 0) {
+      throw new BadRequestException(
+        'This book has no copies in this library yet',
+      );
+    }
   }
 
   private async requireStatus(

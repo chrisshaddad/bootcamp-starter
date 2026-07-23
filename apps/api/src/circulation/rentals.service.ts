@@ -25,7 +25,22 @@ const rentalInclude = {
     select: {
       id: true,
       barcode: true,
-      book: { select: { id: true, title: true } },
+      condition: true,
+      book: {
+        select: {
+          id: true,
+          title: true,
+          coverUrl: true,
+          conditionPrices: {
+            select: {
+              id: true,
+              condition: true,
+              rentPrice: true,
+              buyPrice: true,
+            },
+          },
+        },
+      },
     },
   },
   member: { select: { id: true, libraryCardNumber: true } },
@@ -220,7 +235,15 @@ export class RentalsService {
         (returnedAt.getTime() - existing.dueDate.getTime()) / MS_PER_DAY,
       ),
     );
-    const fineAmount = (lateDays * LATE_FEE_PER_DAY).toFixed(2);
+    const computedFine = lateDays * LATE_FEE_PER_DAY;
+
+    // A fine already marked paid (e.g. settled mid-loan by the overdue sweep
+    // + a staff payment) only stays settled if nothing accrued past what was
+    // actually collected. If the final total is higher, the balance must
+    // reopen for collection instead of silently showing "paid" against an
+    // amount that was never fully covered.
+    const alreadyPaidCovers =
+      existing.finePaid && computedFine <= Number(existing.fineAmount);
 
     await this.prisma.$transaction(async (tx) => {
       await tx.rental.update({
@@ -228,7 +251,8 @@ export class RentalsService {
         data: {
           returnedAt,
           status: 'RETURNED',
-          fineAmount,
+          fineAmount: computedFine.toFixed(2),
+          finePaid: alreadyPaidCovers,
           notes: data.notes ?? existing.notes,
         },
       });
@@ -243,8 +267,9 @@ export class RentalsService {
   }
 
   /**
-   * Mark a rented book copy as lost. Fine defaults to the book's sale price
-   * (replacement cost), falling back to a flat fee if the book has none.
+   * Mark a rented book copy as lost. Fine defaults to the lost copy's own
+   * condition's buy price (replacement cost), falling back to a flat fee if
+   * that condition has no price row.
    */
   async markLost(
     organizationId: string,
@@ -255,12 +280,22 @@ export class RentalsService {
 
     const bookCopy = await this.prisma.bookCopy.findFirstOrThrow({
       where: { id: existing.bookCopyId },
-      include: { book: { select: { salePrice: true } } },
+      include: {
+        book: {
+          select: {
+            conditionPrices: { select: { condition: true, buyPrice: true } },
+          },
+        },
+      },
     });
+
+    const conditionPrice = bookCopy.book.conditionPrices.find(
+      (cp) => cp.condition === bookCopy.condition,
+    );
 
     const fineAmount =
       data.fineAmount ??
-      bookCopy.book.salePrice?.toString() ??
+      conditionPrice?.buyPrice.toString() ??
       FLAT_LOST_FEE.toFixed(2);
 
     await this.prisma.$transaction(async (tx) => {
@@ -338,6 +373,18 @@ export class RentalsService {
     return {
       ...rental,
       fineAmount: rental.fineAmount.toString(),
+      bookCopy: {
+        ...rental.bookCopy,
+        book: {
+          ...rental.bookCopy.book,
+          conditionPrices: rental.bookCopy.book.conditionPrices.map((cp) => ({
+            id: cp.id,
+            condition: cp.condition,
+            rentPrice: cp.rentPrice.toString(),
+            buyPrice: cp.buyPrice.toString(),
+          })),
+        },
+      },
     };
   }
 }

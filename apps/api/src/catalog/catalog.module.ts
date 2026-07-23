@@ -25,5 +25,6 @@ import { BookCopiesController } from './book-copies.controller';
     BooksController,
     BookCopiesController,
   ],
+  exports: [BooksService, BookCopiesService, AuthorsService, CategoriesService],
 })
 export class CatalogModule {}

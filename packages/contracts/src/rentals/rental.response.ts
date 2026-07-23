@@ -1,11 +1,19 @@
 import { z } from 'zod';
 import { dateSchema } from '../common';
 import { rentalStatusSchema } from './rental-status.schema';
+import { bookCopyConditionSchema } from '../book-copies';
+import { bookConditionPriceResponseSchema } from '../books';
 
 const rentalBookCopySummarySchema = z.object({
   id: z.uuid(),
   barcode: z.string(),
-  book: z.object({ id: z.uuid(), title: z.string() }),
+  condition: bookCopyConditionSchema,
+  book: z.object({
+    id: z.uuid(),
+    title: z.string(),
+    coverUrl: z.string().nullable(),
+    conditionPrices: z.array(bookConditionPriceResponseSchema),
+  }),
 });
 
 const rentalMemberSummarySchema = z.object({

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -9,16 +9,24 @@ import { toast } from 'sonner';
 import { BookOpen, Plus, Search, Pencil, Trash2 } from 'lucide-react';
 
 import { bookCreateRequestSchema } from '@repo/contracts';
-import type { BookCreateRequest, BookResponse } from '@repo/contracts';
+import type {
+  BookConditionPriceInput,
+  BookCopyCondition,
+  BookCreateRequest,
+  BookResponse,
+} from '@repo/contracts';
+import { CONDITION_ORDER, CONDITION_LABELS } from '@/lib/book-condition';
 import { useBooks } from '@/hooks/use-books';
 import { useAuthors } from '@/hooks/use-authors';
 import { useCategories } from '@/hooks/use-categories';
 import { usePublishers } from '@/hooks/use-publishers';
 import { useDebounce } from '@/hooks/use-debounce';
+import { useImageUpload } from '@/hooks/use-image-upload';
 import { ApiError } from '@/lib/api';
 import { RequireRole } from '@/components/require-role';
 import { TablePagination } from '@/components/table-pagination';
 import { MultiSelect } from '@/components/multi-select';
+import { BookCover } from '@/components/book-cover';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -62,6 +70,19 @@ const NO_PUBLISHER = '__none__';
 // z.coerce.date() makes the schema's input type diverge from its output type,
 // so the form is typed with the input while submit receives the parsed output.
 type BookFormInput = z.input<typeof bookCreateRequestSchema>;
+
+interface PriceRow {
+  rentPrice: string;
+  buyPrice: string;
+}
+
+type PriceRows = Record<BookCopyCondition, PriceRow>;
+
+function emptyPriceRows(): PriceRows {
+  return Object.fromEntries(
+    CONDITION_ORDER.map((c) => [c, { rentPrice: '', buyPrice: '' }]),
+  ) as PriceRows;
+}
 
 function toDateInput(value: unknown): string {
   if (!value) return '';
@@ -133,22 +154,22 @@ function BooksManager() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Books</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Manage your library&apos;s catalog of titles
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="relative">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative flex-1 sm:flex-none">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search title or ISBN..."
-              className="w-64 pl-9"
+              className="w-full pl-9 sm:w-64"
               aria-label="Search books by title or ISBN"
             />
           </div>
@@ -324,6 +345,33 @@ function BookDialog({
     defaultValues: { title: '', authorIds: [], categoryIds: [] },
   });
 
+  const { upload, isUploading } = useImageUpload();
+  const coverInputRef = useRef<HTMLInputElement>(null);
+
+  const handleCoverFileChange = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const url = await upload(file);
+      form.setValue('coverUrl', url, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : 'Failed to upload cover image',
+      );
+    }
+  };
+
+  // BookCopyCondition is a fixed, closed 5-value enum, so a static
+  // one-row-per-condition grid (rather than a dynamic add/remove list) can't
+  // produce duplicate or invalid rows - simpler than useFieldArray for this.
+  const [priceRows, setPriceRows] = useState<PriceRows>(emptyPriceRows);
+
   useEffect(() => {
     if (!open) return;
     form.reset({
@@ -336,15 +384,31 @@ function BookDialog({
       language: book?.language ?? undefined,
       pageCount: book?.pageCount ?? undefined,
       coverUrl: book?.coverUrl ?? undefined,
-      salePrice: book?.salePrice ?? undefined,
       edition: book?.edition ?? undefined,
       publisherId: book?.publisher?.id ?? undefined,
       authorIds: book?.authors.map((a) => a.id) ?? [],
       categoryIds: book?.categories.map((c) => c.id) ?? [],
     });
+
+    const rows = emptyPriceRows();
+    for (const cp of book?.conditionPrices ?? []) {
+      rows[cp.condition] = { rentPrice: cp.rentPrice, buyPrice: cp.buyPrice };
+    }
+    setPriceRows(rows);
   }, [open, book, form]);
 
   const onSubmit = async (values: BookCreateRequest) => {
+    const conditionPrices: BookConditionPriceInput[] = CONDITION_ORDER.map(
+      (condition) => ({ condition, ...priceRows[condition] }),
+    ).filter((r) => r.rentPrice.trim() !== '' || r.buyPrice.trim() !== '');
+
+    if (
+      conditionPrices.some((r) => !r.rentPrice.trim() || !r.buyPrice.trim())
+    ) {
+      toast.error('Each priced condition needs both a rent and a buy price');
+      return;
+    }
+
     const payload: BookCreateRequest = {
       title: values.title.trim(),
       isbn: values.isbn?.trim() || undefined,
@@ -353,7 +417,11 @@ function BookDialog({
       language: values.language?.trim() || undefined,
       pageCount: values.pageCount,
       coverUrl: values.coverUrl?.trim() || undefined,
-      salePrice: values.salePrice?.trim() || undefined,
+      conditionPrices: conditionPrices.map((r) => ({
+        condition: r.condition,
+        rentPrice: r.rentPrice.trim(),
+        buyPrice: r.buyPrice.trim(),
+      })),
       edition: values.edition?.trim() || undefined,
       publisherId: values.publisherId || undefined,
       // Always send the arrays so associations are replaced on edit.
@@ -551,65 +619,132 @@ function BookDialog({
                 )}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="pageCount"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Page count</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        placeholder="320"
-                        value={field.value ?? ''}
-                        onChange={(e) =>
-                          field.onChange(
-                            e.target.value === ''
-                              ? undefined
-                              : Number(e.target.value),
-                          )
-                        }
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="salePrice"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Sale price</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="12.99"
-                        {...field}
-                        value={field.value ?? ''}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
             <FormField
               control={form.control}
-              name="coverUrl"
+              name="pageCount"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Cover URL</FormLabel>
+                  <FormLabel>Page count</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="https://…"
-                      {...field}
+                      type="number"
+                      placeholder="320"
                       value={field.value ?? ''}
+                      onChange={(e) =>
+                        field.onChange(
+                          e.target.value === ''
+                            ? undefined
+                            : Number(e.target.value),
+                        )
+                      }
                     />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
+            />
+            <FormItem>
+              <FormLabel>Pricing by condition</FormLabel>
+              <p className="text-sm text-muted-foreground">
+                Set a rent and buy price for each condition you offer this book
+                in. Leave both blank to skip a condition.
+              </p>
+              <div className="space-y-2 rounded-md border border-border p-3">
+                {CONDITION_ORDER.map((condition) => (
+                  <div
+                    key={condition}
+                    className="grid grid-cols-3 items-center gap-3"
+                  >
+                    <span className="text-sm text-foreground">
+                      {CONDITION_LABELS[condition]}
+                    </span>
+                    <Input
+                      placeholder="Rent price"
+                      aria-label={`${CONDITION_LABELS[condition]} rent price`}
+                      value={priceRows[condition].rentPrice}
+                      onChange={(e) =>
+                        setPriceRows((prev) => ({
+                          ...prev,
+                          [condition]: {
+                            ...prev[condition],
+                            rentPrice: e.target.value,
+                          },
+                        }))
+                      }
+                    />
+                    <Input
+                      placeholder="Buy price"
+                      aria-label={`${CONDITION_LABELS[condition]} buy price`}
+                      value={priceRows[condition].buyPrice}
+                      onChange={(e) =>
+                        setPriceRows((prev) => ({
+                          ...prev,
+                          [condition]: {
+                            ...prev[condition],
+                            buyPrice: e.target.value,
+                          },
+                        }))
+                      }
+                    />
+                  </div>
+                ))}
+              </div>
+            </FormItem>
+            <FormField
+              control={form.control}
+              name="coverUrl"
+              render={() => {
+                const coverUrl = form.watch('coverUrl');
+                return (
+                  <FormItem>
+                    <FormLabel>Cover image</FormLabel>
+                    <div className="flex items-start gap-4">
+                      <BookCover
+                        coverUrl={coverUrl ?? null}
+                        title={form.watch('title') || 'Cover preview'}
+                        className="aspect-2/3 w-24 rounded-md"
+                      />
+                      <div className="flex flex-col gap-2">
+                        <input
+                          ref={coverInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleCoverFileChange}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={isUploading}
+                          onClick={() => coverInputRef.current?.click()}
+                        >
+                          {isUploading
+                            ? 'Uploading...'
+                            : coverUrl
+                              ? 'Replace image'
+                              : 'Upload image'}
+                        </Button>
+                        {coverUrl && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              form.setValue('coverUrl', undefined, {
+                                shouldDirty: true,
+                              })
+                            }
+                          >
+                            Remove
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
             <FormField
               control={form.control}

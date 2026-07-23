@@ -6,5 +6,6 @@ export const bookCopyStatusSchema = z.enum([
   'RESERVED',
   'LOST',
   'MAINTENANCE',
+  'SOLD',
 ]);
 export type BookCopyStatus = z.infer<typeof bookCopyStatusSchema>;

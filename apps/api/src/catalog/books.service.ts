@@ -17,6 +17,10 @@ const bookInclude = {
   publisher: { select: { id: true, name: true } },
   authors: { include: { author: { select: { id: true, name: true } } } },
   categories: { include: { category: { select: { id: true, name: true } } } },
+  conditionPrices: {
+    select: { id: true, condition: true, rentPrice: true, buyPrice: true },
+  },
+  _count: { select: { copies: { where: { status: 'AVAILABLE' } } } },
 } satisfies Prisma.BookInclude;
 
 type BookWithRelations = Prisma.BookGetPayload<{ include: typeof bookInclude }>;
@@ -26,24 +30,36 @@ export class BooksService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * List books for an organization
+   * List books for an organization, optionally filtered by title search,
+   * category, or author - all applied server-side so filtering covers the
+   * full catalog, not just whichever page happened to load.
    */
   async findAll(
     organizationId: string,
-    options: { page?: number; limit?: number; search?: string },
+    options: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      categoryId?: string;
+      authorId?: string;
+    },
   ): Promise<BookListResponse> {
-    const { page = 1, limit = 20, search } = options;
+    const { page = 1, limit = 20, search, categoryId, authorId } = options;
     const skip = (page - 1) * limit;
+    const trimmedSearch = search?.trim();
+
     const where: Prisma.BookWhereInput = {
       organizationId,
-      ...(search
+      ...(trimmedSearch
         ? {
             OR: [
-              { title: { contains: search, mode: 'insensitive' } },
-              { isbn: { contains: search, mode: 'insensitive' } },
+              { title: { contains: trimmedSearch, mode: 'insensitive' } },
+              { isbn: { contains: trimmedSearch, mode: 'insensitive' } },
             ],
           }
         : {}),
+      ...(categoryId ? { categories: { some: { categoryId } } } : {}),
+      ...(authorId ? { authors: { some: { authorId } } } : {}),
     };
 
     const [books, total] = await Promise.all([
@@ -86,6 +102,7 @@ export class BooksService {
     const {
       authorIds: rawAuthorIds = [],
       categoryIds: rawCategoryIds = [],
+      conditionPrices = [],
       ...bookFields
     } = data;
 
@@ -123,6 +140,18 @@ export class BooksService {
         });
       }
 
+      if (conditionPrices.length > 0) {
+        await tx.bookConditionPrice.createMany({
+          data: conditionPrices.map((cp) => ({
+            organizationId,
+            bookId: book.id,
+            condition: cp.condition,
+            rentPrice: cp.rentPrice,
+            buyPrice: cp.buyPrice,
+          })),
+        });
+      }
+
       return book.id;
     });
 
@@ -147,7 +176,7 @@ export class BooksService {
       throw new NotFoundException(`Book with ID ${id} not found`);
     }
 
-    const { authorIds, categoryIds, ...bookFields } = data;
+    const { authorIds, categoryIds, conditionPrices, ...bookFields } = data;
 
     await this.validateRelatedEntities(organizationId, {
       publisherId: bookFields.publisherId,
@@ -188,6 +217,22 @@ export class BooksService {
               organizationId,
               bookId: id,
               categoryId,
+            })),
+          });
+        }
+      }
+
+      if (conditionPrices !== undefined) {
+        await tx.bookConditionPrice.deleteMany({ where: { bookId: id } });
+
+        if (conditionPrices.length > 0) {
+          await tx.bookConditionPrice.createMany({
+            data: conditionPrices.map((cp) => ({
+              organizationId,
+              bookId: id,
+              condition: cp.condition,
+              rentPrice: cp.rentPrice,
+              buyPrice: cp.buyPrice,
             })),
           });
         }
@@ -240,11 +285,19 @@ export class BooksService {
   }
 
   private toResponse(book: BookWithRelations): BookResponse {
+    const { _count, ...rest } = book;
+
     return {
-      ...book,
-      salePrice: book.salePrice?.toString() ?? null,
+      ...rest,
+      conditionPrices: book.conditionPrices.map((cp) => ({
+        id: cp.id,
+        condition: cp.condition,
+        rentPrice: cp.rentPrice.toString(),
+        buyPrice: cp.buyPrice.toString(),
+      })),
       authors: book.authors.map(({ author }) => author),
       categories: book.categories.map(({ category }) => category),
+      availableCopies: _count.copies,
     };
   }
 

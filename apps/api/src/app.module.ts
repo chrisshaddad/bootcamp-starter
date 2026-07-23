@@ -9,8 +9,11 @@ import { OrganizationsModule } from './organizations/organizations.module';
 import { LibraryMembersModule } from './library-members/library-members.module';
 import { CirculationModule } from './circulation/circulation.module';
 import { CatalogModule } from './catalog/catalog.module';
+import { CommerceModule } from './commerce/commerce.module';
+import { PortalModule } from './portal/portal.module';
 import { OverdueModule } from './overdue/overdue.module';
 import { StaffModule } from './staff/staff.module';
+import { UploadsModule } from './uploads/uploads.module';
 import { DatabaseModule } from './database/database.module';
 
 @Module({
@@ -28,8 +31,11 @@ import { DatabaseModule } from './database/database.module';
     LibraryMembersModule,
     CirculationModule,
     CatalogModule,
+    CommerceModule,
+    PortalModule,
     OverdueModule,
     StaffModule,
+    UploadsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

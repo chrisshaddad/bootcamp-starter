@@ -13,6 +13,7 @@ import type {
   OrganizationListResponse,
   OrganizationDetailResponse,
   OrganizationRegisterResponse,
+  OrganizationDirectoryResponse,
 } from '@repo/contracts';
 
 @Injectable()
@@ -92,6 +93,40 @@ export class OrganizationsService {
     await this.authService.requestMagicLink(adminEmail);
 
     return { ...organization, adminEmail };
+  }
+
+  /**
+   * Public library directory - ACTIVE organizations only, lightweight shape.
+   * Deliberately separate from findAll() (SUPER_ADMIN-only, admin-oriented
+   * fields/counts, requires auth).
+   */
+  async directory(options: {
+    page?: number;
+    limit?: number;
+  }): Promise<OrganizationDirectoryResponse> {
+    const { page = 1, limit = 20 } = options;
+    const skip = (page - 1) * limit;
+    const where = { status: 'ACTIVE' as const };
+
+    const [organizations, total] = await Promise.all([
+      this.prisma.organization.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { name: 'asc' },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          description: true,
+          website: true,
+          logoUrl: true,
+        },
+      }),
+      this.prisma.organization.count({ where }),
+    ]);
+
+    return { organizations, total };
   }
 
   /**

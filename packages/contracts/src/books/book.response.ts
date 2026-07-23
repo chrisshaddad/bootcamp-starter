@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { dateSchema } from '../common';
+import { bookConditionPriceResponseSchema } from './book-condition-price.schema';
 
 const bookPublisherSummarySchema = z.object({
   id: z.uuid(),
@@ -28,14 +29,13 @@ export const bookResponseSchema = z.object({
   language: z.string().nullable(),
   pageCount: z.number().nullable(),
   coverUrl: z.string().nullable(),
-  // Prisma Decimal serializes to a string over the wire (see dateSchema's
-  // Date handling for the same JSON.stringify + toJSON() pattern).
-  salePrice: z.string().nullable(),
+  conditionPrices: z.array(bookConditionPriceResponseSchema),
   edition: z.string().nullable(),
   createdAt: dateSchema,
   updatedAt: dateSchema,
   publisher: bookPublisherSummarySchema.nullable(),
   authors: z.array(bookAuthorSummarySchema),
   categories: z.array(bookCategorySummarySchema),
+  availableCopies: z.number(),
 });
 export type BookResponse = z.infer<typeof bookResponseSchema>;

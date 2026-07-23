@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { Users, Plus, Search, Pencil, Trash2, Check } from 'lucide-react';
+import { Users, Plus, Search, Pencil, Trash2, Check, X } from 'lucide-react';
 
 import { libraryMemberCreateRequestSchema } from '@repo/contracts';
 import type {
@@ -72,7 +72,7 @@ const STATUS_OPTIONS: LibraryMemberStatus[] = [
   'PENDING',
   'CANCELLED',
 ];
-const TYPE_OPTIONS: LibraryMembershipType[] = ['STUDENT', 'ADULT', 'PREMIUM'];
+const TYPE_OPTIONS: LibraryMembershipType[] = ['STUDENT', 'REGULAR', 'PREMIUM'];
 
 // membershipStartDate/EndDate coerce dates → input type diverges from output.
 type MemberFormInput = z.input<typeof libraryMemberCreateRequestSchema>;
@@ -111,19 +111,27 @@ function MembersManager() {
   const [deleting, setDeleting] = useState<LibraryMemberResponse | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
 
-  const { members, total, isLoading, error, create, update, approve, remove } =
-    useLibraryMembers({
-      page,
-      search: debouncedSearch,
-      limit: PAGE_SIZE,
-      membershipStatus:
-        statusFilter === ALL
-          ? undefined
-          : (statusFilter as LibraryMemberStatus),
-      membershipType:
-        typeFilter === ALL ? undefined : (typeFilter as LibraryMembershipType),
-    });
+  const {
+    members,
+    total,
+    isLoading,
+    error,
+    create,
+    update,
+    approve,
+    reject,
+    remove,
+  } = useLibraryMembers({
+    page,
+    search: debouncedSearch,
+    limit: PAGE_SIZE,
+    membershipStatus:
+      statusFilter === ALL ? undefined : (statusFilter as LibraryMemberStatus),
+    membershipType:
+      typeFilter === ALL ? undefined : (typeFilter as LibraryMembershipType),
+  });
 
   useEffect(() => {
     setPage(1);
@@ -150,6 +158,20 @@ function MembersManager() {
       );
     } finally {
       setApprovingId(null);
+    }
+  };
+
+  const handleReject = async (member: LibraryMemberResponse) => {
+    setRejectingId(member.id);
+    try {
+      await reject(member.id);
+      toast.success(`Rejected ${member.libraryCardNumber}`);
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : 'Failed to reject member',
+      );
+    } finally {
+      setRejectingId(null);
     }
   };
 
@@ -305,15 +327,26 @@ function MembersManager() {
                           onClick={(e) => e.stopPropagation()}
                         >
                           {member.membershipStatus === 'PENDING' && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              aria-label={`Approve ${member.libraryCardNumber}`}
-                              disabled={approvingId === member.id}
-                              onClick={() => handleApprove(member)}
-                            >
-                              <Check className="h-4 w-4 text-success" />
-                            </Button>
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                aria-label={`Approve ${member.libraryCardNumber}`}
+                                disabled={approvingId === member.id}
+                                onClick={() => handleApprove(member)}
+                              >
+                                <Check className="h-4 w-4 text-success" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                aria-label={`Reject ${member.libraryCardNumber}`}
+                                disabled={rejectingId === member.id}
+                                onClick={() => handleReject(member)}
+                              >
+                                <X className="h-4 w-4 text-error" />
+                              </Button>
+                            </>
                           )}
                           <Button
                             variant="ghost"
@@ -412,7 +445,7 @@ function MemberDialog({
       // undefined (not '') so the optional schema passes when left blank —
       // '' would fail .min(1) and block the auto-generation path.
       libraryCardNumber: undefined,
-      membershipType: 'ADULT',
+      membershipType: 'REGULAR',
       membershipStatus: 'ACTIVE',
     },
   });
@@ -421,7 +454,7 @@ function MemberDialog({
     if (!open) return;
     form.reset({
       libraryCardNumber: member?.libraryCardNumber ?? undefined,
-      membershipType: member?.membershipType ?? 'ADULT',
+      membershipType: member?.membershipType ?? 'REGULAR',
       membershipStatus: member?.membershipStatus ?? 'ACTIVE',
       membershipStartDate: member?.membershipStartDate
         ? new Date(member.membershipStartDate)

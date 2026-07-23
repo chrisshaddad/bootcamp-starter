@@ -5,5 +5,6 @@ import { LibraryMembersController } from './library-members.controller';
 @Module({
   providers: [LibraryMembersService],
   controllers: [LibraryMembersController],
+  exports: [LibraryMembersService],
 })
 export class LibraryMembersModule {}

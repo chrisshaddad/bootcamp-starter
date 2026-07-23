@@ -3,6 +3,7 @@ import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { MailService } from './mail.service';
 import { MAIL_QUEUE, MAIL_JOBS } from './mail.constants';
+import { magicLinkEmail, invitationEmail, dueReminderEmail } from './templates';
 
 interface SendMagicLinkJobData {
   email: string;
@@ -17,7 +18,21 @@ interface SendInvitationJobData {
   invitationLink: string;
 }
 
-type MailJobData = SendMagicLinkJobData | SendInvitationJobData;
+interface SendDueReminderJobData {
+  email: string;
+  userName?: string;
+  bookTitle: string;
+  // ISO string - job data must be JSON-serializable, so this isn't a Date.
+  dueDate: string;
+  reminderType: 'DUE_IN_5_DAYS' | 'DUE_TOMORROW' | 'DUE_TODAY';
+}
+
+type MailJobData =
+  | SendMagicLinkJobData
+  | SendInvitationJobData
+  | SendDueReminderJobData;
+
+const FROM_ADDRESS = 'no-reply@nextshelf.local';
 
 @Processor(MAIL_QUEUE)
 export class MailProcessor extends WorkerHost {
@@ -37,6 +52,9 @@ export class MailProcessor extends WorkerHost {
       case MAIL_JOBS.SEND_INVITATION:
         await this.handleSendInvitation(job.data as SendInvitationJobData);
         break;
+      case MAIL_JOBS.SEND_DUE_REMINDER:
+        await this.handleSendDueReminder(job.data as SendDueReminderJobData);
+        break;
       default:
         this.logger.warn(`Unknown job type: ${job.name}`);
     }
@@ -44,15 +62,14 @@ export class MailProcessor extends WorkerHost {
 
   private async handleSendMagicLink(data: SendMagicLinkJobData): Promise<void> {
     const { email, magicLink, userName } = data;
-
-    const greeting = userName ? `Hello ${userName},` : 'Hello,';
-    const text = `${greeting}\n\nClick the link below to sign in to your account:\n\n${magicLink}\n\nThis link will expire in 15 minutes.\n\nIf you didn't request this link, you can safely ignore this email.`;
+    const { subject, text, html } = magicLinkEmail({ magicLink, userName });
 
     const success = await this.mailService.sendEmail({
       to: email,
-      from: 'no-reply@nextshelf.local',
-      subject: 'Sign in to NextShelf',
+      from: FROM_ADDRESS,
+      subject,
       text,
+      html,
     });
 
     if (success) {
@@ -67,20 +84,51 @@ export class MailProcessor extends WorkerHost {
     data: SendInvitationJobData,
   ): Promise<void> {
     const { email, inviterName, organizationName, invitationLink } = data;
-
-    const text = `Hello,\n\n${inviterName} has invited you to join ${organizationName} on NextShelf.\n\nClick the link below to accept the invitation and create your account:\n\n${invitationLink}\n\nThis invitation will expire in 7 days.\n\nIf you weren't expecting this invitation, you can safely ignore this email.`;
+    const { subject, text, html } = invitationEmail({
+      inviterName,
+      organizationName,
+      invitationLink,
+    });
 
     const success = await this.mailService.sendEmail({
       to: email,
-      from: 'no-reply@nextshelf.local',
-      subject: `You've been invited to join ${organizationName}`,
+      from: FROM_ADDRESS,
+      subject,
       text,
+      html,
     });
 
     if (success) {
       this.logger.log(`Invitation email sent successfully to ${email}`);
     } else {
       this.logger.error(`Failed to send invitation email to ${email}`);
+      throw new Error(`Failed to send email to ${email}`);
+    }
+  }
+
+  private async handleSendDueReminder(
+    data: SendDueReminderJobData,
+  ): Promise<void> {
+    const { email, userName, bookTitle, dueDate, reminderType } = data;
+    const { subject, text, html } = dueReminderEmail({
+      userName,
+      bookTitle,
+      dueDate,
+      reminderType,
+    });
+
+    const success = await this.mailService.sendEmail({
+      to: email,
+      from: FROM_ADDRESS,
+      subject,
+      text,
+      html,
+    });
+
+    if (success) {
+      this.logger.log(`Due reminder email sent successfully to ${email}`);
+    } else {
+      this.logger.error(`Failed to send due reminder email to ${email}`);
       throw new Error(`Failed to send email to ${email}`);
     }
   }

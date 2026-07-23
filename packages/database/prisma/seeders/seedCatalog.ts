@@ -30,6 +30,12 @@ interface BookCopySeed {
   acquiredAt?: Date;
 }
 
+interface BookConditionPriceSeed {
+  condition: 'NEW' | 'GOOD' | 'FAIR' | 'POOR' | 'DAMAGED';
+  rentPrice: string;
+  buyPrice: string;
+}
+
 interface BookSeed {
   title: string;
   isbn?: string;
@@ -38,7 +44,7 @@ interface BookSeed {
   language?: string;
   pageCount?: number;
   coverUrl?: string;
-  salePrice?: string;
+  conditionPrices?: BookConditionPriceSeed[];
   edition?: string;
   publisherKey?: string;
   authorKeys: string[];
@@ -109,7 +115,10 @@ const CATALOGS: CatalogSeed[] = [
         publishedDate: new Date('1979-06-01'),
         language: 'English',
         pageCount: 288,
-        salePrice: '16.99',
+        conditionPrices: [
+          { condition: 'GOOD', rentPrice: '2.99', buyPrice: '16.99' },
+          { condition: 'FAIR', rentPrice: '1.99', buyPrice: '12.99' },
+        ],
         edition: 'Paperback',
         publisherKey: 'penguin-random-house',
         authorKeys: ['octavia-butler'],
@@ -134,7 +143,10 @@ const CATALOGS: CatalogSeed[] = [
         publishedDate: new Date('2014-02-11'),
         language: 'English',
         pageCount: 369,
-        salePrice: '17.00',
+        conditionPrices: [
+          { condition: 'NEW', rentPrice: '3.00', buyPrice: '18.00' },
+          { condition: 'GOOD', rentPrice: '2.50', buyPrice: '15.00' },
+        ],
         edition: 'Paperback',
         publisherKey: 'crown',
         authorKeys: ['andy-weir'],
@@ -158,7 +170,9 @@ const CATALOGS: CatalogSeed[] = [
         publishedDate: new Date('1969-03-01'),
         language: 'English',
         pageCount: 304,
-        salePrice: '18.00',
+        conditionPrices: [
+          { condition: 'DAMAGED', rentPrice: '1.00', buyPrice: '8.00' },
+        ],
         authorKeys: ['ursula-le-guin'],
         categoryKeys: ['science-fiction', 'classics'],
         copies: [
@@ -215,7 +229,10 @@ const CATALOGS: CatalogSeed[] = [
         publishedDate: new Date('1813-01-28'),
         language: 'English',
         pageCount: 432,
-        salePrice: '10.00',
+        conditionPrices: [
+          { condition: 'GOOD', rentPrice: '1.50', buyPrice: '10.00' },
+          { condition: 'POOR', rentPrice: '1.00', buyPrice: '6.00' },
+        ],
         publisherKey: 'vintage',
         authorKeys: ['jane-austen'],
         categoryKeys: ['literary-fiction', 'history'],
@@ -238,7 +255,9 @@ const CATALOGS: CatalogSeed[] = [
         publishedDate: new Date('2015-07-14'),
         language: 'English',
         pageCount: 176,
-        salePrice: '26.00',
+        conditionPrices: [
+          { condition: 'NEW', rentPrice: '4.00', buyPrice: '26.00' },
+        ],
         publisherKey: 'one-world',
         authorKeys: ['ta-nehisi-coates'],
         categoryKeys: ['history'],
@@ -283,7 +302,9 @@ const CATALOGS: CatalogSeed[] = [
         publishedDate: new Date('2010-11-16'),
         language: 'English',
         pageCount: 592,
-        salePrice: '22.00',
+        conditionPrices: [
+          { condition: 'GOOD', rentPrice: '3.50', buyPrice: '22.00' },
+        ],
         publisherKey: 'scribner',
         authorKeys: ['siddhartha-mukherjee'],
         categoryKeys: ['medicine'],
@@ -382,7 +403,6 @@ export async function seedCatalog(prisma: PrismaClient) {
             language: book.language,
             pageCount: book.pageCount,
             coverUrl: book.coverUrl,
-            salePrice: book.salePrice,
             edition: book.edition,
           },
         });
@@ -413,6 +433,18 @@ export async function seedCatalog(prisma: PrismaClient) {
             acquiredAt: copy.acquiredAt,
           })),
         });
+
+        if (book.conditionPrices?.length) {
+          await tx.bookConditionPrice.createMany({
+            data: book.conditionPrices.map((cp) => ({
+              organizationId: organization.id,
+              bookId: createdBook.id,
+              condition: cp.condition,
+              rentPrice: cp.rentPrice,
+              buyPrice: cp.buyPrice,
+            })),
+          });
+        }
 
         console.log(
           `  Created book: ${book.title} (${book.copies.length} copies) - Organization: ${organization.name}`,
