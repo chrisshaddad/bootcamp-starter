@@ -168,7 +168,6 @@ export class ChatService {
     const { books } = await this.booksService.findAll(organizationId, {
       search: query,
       limit,
-      hasCopies: true,
     });
 
     for (const book of books) {

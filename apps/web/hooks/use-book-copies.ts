@@ -15,6 +15,19 @@ import type {
 
 const PREFIX = '/book-copies';
 
+// A copy's status/existence changes the owning book's availableCopies count,
+// which is embedded in the book list/detail responses on both sides - so
+// every mutation here has to invalidate those caches too, not just this
+// endpoint's own list, or a book can sit showing stale "Unavailable" after
+// staff add/return/remove stock until something else happens to refetch it.
+async function invalidateBookCopyEffects() {
+  await Promise.all([
+    invalidateByPrefix(PREFIX),
+    invalidateByPrefix('/books'),
+    invalidateByPrefix('/portal/books'),
+  ]);
+}
+
 interface UseBookCopiesOptions {
   bookId?: string;
   page?: number;
@@ -54,14 +67,14 @@ export function useBookCopies(options: UseBookCopiesOptions = {}) {
 
   const create = useCallback(async (body: BookCopyCreateRequest) => {
     const res = await apiPost<BookCopyResponse>(PREFIX, body);
-    await invalidateByPrefix(PREFIX);
+    await invalidateBookCopyEffects();
     return res;
   }, []);
 
   const update = useCallback(
     async (id: string, body: BookCopyUpdateRequest) => {
       const res = await apiPatch<BookCopyResponse>(`${PREFIX}/${id}`, body);
-      await invalidateByPrefix(PREFIX);
+      await invalidateBookCopyEffects();
       return res;
     },
     [],
@@ -69,7 +82,7 @@ export function useBookCopies(options: UseBookCopiesOptions = {}) {
 
   const remove = useCallback(async (id: string) => {
     await apiDelete(`${PREFIX}/${id}`);
-    await invalidateByPrefix(PREFIX);
+    await invalidateBookCopyEffects();
   }, []);
 
   return {
