@@ -14,6 +14,8 @@ import { PortalModule } from './portal/portal.module';
 import { OverdueModule } from './overdue/overdue.module';
 import { StaffModule } from './staff/staff.module';
 import { UploadsModule } from './uploads/uploads.module';
+import { ProfileModule } from './profile/profile.module';
+import { UsersModule } from './users/users.module';
 import { DatabaseModule } from './database/database.module';
 
 @Module({
@@ -36,6 +38,8 @@ import { DatabaseModule } from './database/database.module';
     OverdueModule,
     StaffModule,
     UploadsModule,
+    ProfileModule,
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

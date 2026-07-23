@@ -112,7 +112,7 @@ export default function RegisterPage() {
       <div className="relative flex w-full flex-col justify-between lg:w-1/2">
         <div className="flex flex-1 items-center justify-center px-6 py-12">
           {result ? (
-            <div className="flex w-full max-w-120 flex-col items-center gap-6 text-center">
+            <div className="flex w-full max-w-120 flex-col items-center gap-6 rounded-xl border border-border bg-card p-8 text-center shadow-sm">
               <CheckCircle2 className="h-14 w-14 text-success" />
               <h2 className="text-2xl font-bold leading-[1.3] text-library-ink">
                 Check your email
@@ -139,7 +139,7 @@ export default function RegisterPage() {
               </a>
             </div>
           ) : (
-            <div className="flex w-full max-w-120 flex-col items-center gap-8">
+            <div className="flex w-full max-w-120 flex-col items-center gap-8 rounded-xl border border-border bg-card p-8 shadow-sm">
               <h2 className="w-full text-center text-2xl font-bold leading-[1.3] text-library-ink">
                 Register your library
               </h2>

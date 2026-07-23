@@ -13,6 +13,9 @@ import { MAIL_QUEUE, MAIL_JOBS } from '../mail/mail.constants';
 import type { PatronRegisterResponse } from '@repo/contracts';
 
 const MAGIC_LINK_EXPIRY_MINUTES = 15;
+// Invitation links live longer than login links (7 days) — the copy in
+// invitation.email.ts states this window, so keep them in sync.
+const INVITATION_EXPIRY_MINUTES = 7 * 24 * 60;
 
 @Injectable()
 export class AuthService {
@@ -53,8 +56,38 @@ export class AuthService {
   }
 
   /**
-   * Request a magic link for the given email
-   * Creates a magic link token and queues an email to be sent
+   * Mint a fresh single-use magic-link token for a user (invalidating any
+   * outstanding ones) and return the sign-in URL. Shared by the login flow and
+   * the staff-invitation flow.
+   */
+  private async issueMagicLinkToken(
+    userId: string,
+    expiryMinutes: number = MAGIC_LINK_EXPIRY_MINUTES,
+  ): Promise<string> {
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + expiryMinutes * 60 * 1000);
+
+    // Invalidate any existing (unused, unexpired) magic links for this user.
+    await this.prisma.magicLink.updateMany({
+      where: {
+        userId,
+        usedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+      data: { usedAt: new Date() }, // Mark as used to invalidate
+    });
+
+    await this.prisma.magicLink.create({
+      data: { userId, token, expiresAt },
+    });
+
+    return `${process.env.APP_URL}/auth/verify?token=${token}`;
+  }
+
+  /**
+   * Request a magic link for the given email.
+   * Creates a magic link token and queues a sign-in email. Brand-new accounts
+   * (never confirmed) get a "welcome" heading; returning users get "welcome back".
    */
   async requestMagicLink(email: string): Promise<{ success: boolean }> {
     // Find user by email
@@ -68,44 +101,53 @@ export class AuthService {
       return { success: true };
     }
 
-    // Generate secure token
-    const token = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(
-      Date.now() + MAGIC_LINK_EXPIRY_MINUTES * 60 * 1000,
-    );
-
-    // Invalidate any existing magic links for this user
-    await this.prisma.magicLink.updateMany({
-      where: {
-        userId: user.id,
-        usedAt: null,
-        expiresAt: { gt: new Date() },
-      },
-      data: { usedAt: new Date() }, // Mark as used to invalidate
-    });
-
-    // Create new magic link
-    await this.prisma.magicLink.create({
-      data: {
-        userId: user.id,
-        token,
-        expiresAt,
-      },
-    });
-
-    // Build magic link URL
-    const appUrl = process.env.APP_URL;
-    const magicLinkUrl = `${appUrl}/auth/verify?token=${token}`;
+    const magicLinkUrl = await this.issueMagicLinkToken(user.id);
 
     // Queue email
     await this.mailQueue.add(MAIL_JOBS.SEND_MAGIC_LINK, {
       email: user.email,
       magicLink: magicLinkUrl,
       userName: user.name,
+      isNewAccount: !user.isConfirmed,
     });
 
     this.logger.log(`Magic link queued for user ${user.id}`);
     return { success: true };
+  }
+
+  /**
+   * Send a newly-invited staff member their first sign-in link as an
+   * invitation email (naming the inviter + library) rather than the
+   * "welcome back" login email. Uses a longer expiry so an invitee has time
+   * to act on it.
+   */
+  async sendStaffInvitation(
+    email: string,
+    inviterName: string,
+    organizationName: string,
+  ): Promise<void> {
+    const user = await this.prisma.user.findUnique({
+      where: { email: email.toLowerCase() },
+    });
+
+    if (!user) {
+      this.logger.warn(`Invitation requested for non-existent email: ${email}`);
+      return;
+    }
+
+    const invitationLink = await this.issueMagicLinkToken(
+      user.id,
+      INVITATION_EXPIRY_MINUTES,
+    );
+
+    await this.mailQueue.add(MAIL_JOBS.SEND_INVITATION, {
+      email: user.email,
+      inviterName,
+      organizationName,
+      invitationLink,
+    });
+
+    this.logger.log(`Invitation queued for user ${user.id}`);
   }
 
   /**
