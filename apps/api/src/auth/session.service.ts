@@ -67,9 +67,16 @@ export class SessionService {
       }
 
       // Get user from database
-      return this.prisma.user.findUnique({
+      const user = await this.prisma.user.findUnique({
         where: { id: sessionData.userId },
       });
+
+      if (user && !user.isActive) {
+        await this.deleteSession(sessionId);
+        return null;
+      }
+
+      return user;
     }
 
     // Cache miss - check database
@@ -84,6 +91,11 @@ export class SessionService {
 
     // Check expiration
     if (dbSession.expiresAt < new Date()) {
+      await this.deleteSession(sessionId);
+      return null;
+    }
+
+    if (!dbSession.user.isActive) {
       await this.deleteSession(sessionId);
       return null;
     }

@@ -82,7 +82,9 @@ const managerNavItems: NavItem[] = [
   },
 ];
 
-// Navigation items for SUPER_ADMIN role
+// Navigation items for SUPER_ADMIN role - a platform-level admin, not an
+// employee, so this (plus Settings) is the entirety of their nav (see
+// (authenticated)/layout.tsx, which enforces this the same way route-side).
 const superAdminNavItems: NavItem[] = [
   {
     title: 'Organizations',
@@ -93,7 +95,6 @@ const superAdminNavItems: NavItem[] = [
     title: 'Users',
     url: '/users',
     icon: Users,
-    disabled: true, // Placeholder for future implementation
   },
 ];
 
@@ -155,7 +156,7 @@ export function AppSidebar() {
   const { user } = useUser({ redirectOnUnauthenticated: false });
 
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
-  const isManager = Boolean(user?.isManager);
+  const isManager = Boolean(user?.isManager) && !isSuperAdmin;
 
   const isActive = (url: string) => {
     if (url === '/dashboard') {
@@ -168,7 +169,10 @@ export function AppSidebar() {
     <Sidebar className="border-r border-gray-200 bg-white">
       <SidebarHeader className="px-5 py-6">
         {/* Logo */}
-        <Link href="/dashboard" className="flex items-center gap-2.5">
+        <Link
+          href={isSuperAdmin ? '/organizations' : '/dashboard'}
+          className="flex items-center gap-2.5"
+        >
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary-base to-primary-400">
             <TrendingUp className="h-4.5 w-4.5 text-white" />
           </div>
@@ -177,14 +181,16 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="overflow-x-hidden px-3">
-        <SidebarGroup>
-          <SidebarGroupLabel className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-gray-500">
-            Employee
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <NavItemsList items={employeeNavItems} isActive={isActive} />
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {!isSuperAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-gray-500">
+              Employee
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <NavItemsList items={employeeNavItems} isActive={isActive} />
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         {isManager && (
           <>
@@ -203,8 +209,6 @@ export function AppSidebar() {
 
         {isSuperAdmin && (
           <>
-            <SidebarSeparator className="my-4" />
-
             <SidebarGroup>
               <SidebarGroupLabel className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-gray-500">
                 Administration

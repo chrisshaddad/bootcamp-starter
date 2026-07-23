@@ -113,6 +113,7 @@ model User {
   id             String   @id @default(uuid())
   email          String   @unique
   isConfirmed    Boolean  @default(false)
+  isActive       Boolean  @default(true)
   name           String
   role           UserRole @default(EMPLOYEE)
   organizationId String?  // null for SUPER_ADMIN users
