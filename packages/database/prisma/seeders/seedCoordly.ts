@@ -368,7 +368,13 @@ const GREEN_PRESENTERS = [
   'ltran',
 ] as const;
 
-const DATASYNC_PRESENTERS = ['tpatel', 'cwest', 'mross', 'alang', 'adata'] as const;
+const DATASYNC_PRESENTERS = [
+  'tpatel',
+  'cwest',
+  'mross',
+  'alang',
+  'adata',
+] as const;
 
 const TECHCORP_YEAR_TITLES = [
   'Sprint Planning',
@@ -429,8 +435,7 @@ function buildYearEndEvents(): EventSeed[] {
   const events: EventSeed[] = [];
 
   schedule.forEach((slot, index) => {
-    const tcPresenter =
-      TECHCORP_PRESENTERS[index % TECHCORP_PRESENTERS.length];
+    const tcPresenter = TECHCORP_PRESENTERS[index % TECHCORP_PRESENTERS.length];
     const tcTitle = TECHCORP_YEAR_TITLES[index % TECHCORP_YEAR_TITLES.length];
     events.push({
       ...TECHCORP,
@@ -447,14 +452,18 @@ function buildYearEndEvents(): EventSeed[] {
       seedKey: `green-2026-${slot.month.toString().padStart(2, '0')}-${slot.day.toString().padStart(2, '0')}`,
       eventName: `${geTitle} (${slot.month}/${slot.day})`,
       presenterUsername: gePresenter,
-      startsAt: onDate(year, slot.month, slot.day, slot.hour === 10 ? 9 : slot.hour),
+      startsAt: onDate(
+        year,
+        slot.month,
+        slot.day,
+        slot.hour === 10 ? 9 : slot.hour,
+      ),
     });
 
     if (index % 2 === 0) {
       const dsPresenter =
         DATASYNC_PRESENTERS[index % DATASYNC_PRESENTERS.length];
-      const dsTitle =
-        DATASYNC_YEAR_TITLES[index % DATASYNC_YEAR_TITLES.length];
+      const dsTitle = DATASYNC_YEAR_TITLES[index % DATASYNC_YEAR_TITLES.length];
       events.push({
         ...DATASYNC,
         seedKey: `datasync-2026-${slot.month.toString().padStart(2, '0')}-${slot.day.toString().padStart(2, '0')}`,
