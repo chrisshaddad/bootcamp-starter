@@ -6,6 +6,7 @@ import type { LucideIcon } from 'lucide-react';
 import {
   LayoutDashboard,
   Users,
+  UsersRound,
   Settings,
   LogOut,
   Building2,
@@ -48,6 +49,11 @@ const orgAdminNavItems: NavItem[] = [
     title: 'Members',
     url: '/members',
     icon: Users,
+  },
+  {
+    title: 'Groups',
+    url: '/groups',
+    icon: UsersRound,
   },
   {
     title: 'Events',
@@ -120,6 +126,11 @@ const superAdminNavItems: NavItem[] = [
     title: 'Members',
     url: '/members',
     icon: Users,
+  },
+  {
+    title: 'Groups',
+    url: '/groups',
+    icon: UsersRound,
   },
   {
     title: 'Events',

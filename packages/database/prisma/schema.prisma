@@ -162,6 +162,7 @@ model Organization {
   eventAttendees    EventAttendee[]
   announcements     Announcement[]
   memberInvitations MemberInvitation[]
+  groups            Group[]
 
   @@index([approvedById])
   @@index([status])
@@ -177,13 +178,46 @@ model Member {
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
 
-  user            User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
-  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  presentedEvents Event[]
+  user              User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  organization      Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  presentedEvents   Event[]
+  groupMemberships  GroupMember[]
 
   @@unique([organizationId, username])
   @@index([organizationId])
   @@index([userId])
+  @@schema("public")
+}
+
+model Group {
+  id             String   @id @default(uuid())
+  name           String
+  description    String?  @db.Text
+  organizationId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  memberships  GroupMember[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@schema("public")
+}
+
+model GroupMember {
+  id        String   @id @default(uuid())
+  groupId   String
+  memberId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  group  Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, memberId])
+  @@index([groupId])
+  @@index([memberId])
   @@schema("public")
 }
 

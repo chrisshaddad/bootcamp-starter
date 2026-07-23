@@ -63,7 +63,8 @@ const FEATURE_CARDS: FeatureCard[] = [
     title: 'Groups',
     description: 'Organize members into groups for targeted communication.',
     icon: UsersRound,
-    status: 'soon',
+    status: 'active',
+    href: '/groups',
   },
   {
     title: 'Dashboard Stats',

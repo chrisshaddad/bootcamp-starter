@@ -22,11 +22,12 @@ Pre-built: cookie-based magic-link auth, multi-tenant organization model (`SUPER
 | ------------------------------------------- | ----------- | ---------------------------------------------------------- |
 | Admin hub (stats + placeholders)            | Active      | `/admin` — super admin only                                |
 | Organizations (approve / reject)            | Active      | `/organizations` — super admin only                        |
-| Coordly members (username + role, list)     | Active      | `/members` — super admin + org admin; read-only, no create |
-| Events (list, detail, upcoming filter)      | Active      | `/events`, `/events/[id]`; read-only, no create            |
+| Coordly members (username + role, list)     | Active      | `/members` — super admin + org admin                       |
+| Groups (org staff membership)               | Active      | `/groups` — super admin + org admin                        |
+| Events (list, detail, upcoming filter)      | Active      | `/events`, `/events/[id]`; admin create/edit/cancel/delete |
 | Event sign-up (eligible users as attendees) | Active      | Detail page → **Sign up to attend**                        |
 | Settings                                    | Coming soon | `/settings` — placeholder                                  |
-| Announcements, groups                       | Coming soon | —                                                          |
+| Announcements                               | Active      | `/announcements`                                           |
 | Full attendance logging / history           | Coming soon | Basic registration exists via `EventAttendee`              |
 
 ### Roles
@@ -130,7 +131,7 @@ If Mailpit is empty, check that Docker is running, Redis is up (BullMQ sends the
 | User (attendee)    | `member@greenenergy.example.com` | `/dashboard`, `/events`             | Sign up for upcoming Green Energy events                     |
 | Presenter (member) | `presenter@techcorp.example.com` | `/dashboard`, `/events`             | Hosts Team Sync; can sign up for other events                |
 
-More seeded auth users: [`packages/database/prisma/seeders/seedUsers.ts`](packages/database/prisma/seeders/seedUsers.ts). Coordly domain members and events (with `startsAt` dates): [`packages/database/prisma/seeders/seedCoordly.ts`](packages/database/prisma/seeders/seedCoordly.ts).
+More seeded auth users (30+ attendees across TechCorp and Green Energy): [`packages/database/prisma/seeders/seedUsers.ts`](packages/database/prisma/seeders/seedUsers.ts). Coordly demo data (staff members, groups, many past/upcoming/cancelled events, attendance): [`packages/database/prisma/seeders/seedCoordly.ts`](packages/database/prisma/seeders/seedCoordly.ts).
 
 ### Event sign-up flow
 
