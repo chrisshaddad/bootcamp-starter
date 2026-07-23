@@ -12,8 +12,8 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: 'Fieldhouse',
-  description: 'Gym management, built for the front desk.',
+  title: 'GymCloud',
+  description: 'Multi-tenant gym management, built for modern operations.',
 };
 
 export default function RootLayout({

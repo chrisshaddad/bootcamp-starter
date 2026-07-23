@@ -14,6 +14,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import type { TooltipContentProps } from 'recharts';
 import { TrendingUp, PieChart as PieChartIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { CheckInTrendPoint, PlanBreakdownItem } from '@repo/contracts';
@@ -123,7 +124,7 @@ function CheckInTrendChart({ data }: { data: CheckInTrendPoint[] }) {
             />
             <Tooltip
               cursor={{ stroke: 'var(--color-border)', strokeWidth: 1 }}
-              content={({ active, payload, label }) => (
+              content={({ active, payload, label }: TooltipContentProps) => (
                 <ChartTooltip
                   active={active}
                   label={
@@ -205,7 +206,7 @@ function PlanBreakdownChart({ data }: { data: PlanBreakdownItem[] }) {
                     ))}
                   </Pie>
                   <Tooltip
-                    content={({ active, payload }) => {
+                    content={({ active, payload }: TooltipContentProps) => {
                       const item = payload?.[0]?.payload as
                         | (PlanBreakdownItem & { color: string })
                         | undefined;
