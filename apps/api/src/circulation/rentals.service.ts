@@ -235,7 +235,15 @@ export class RentalsService {
         (returnedAt.getTime() - existing.dueDate.getTime()) / MS_PER_DAY,
       ),
     );
-    const fineAmount = (lateDays * LATE_FEE_PER_DAY).toFixed(2);
+    const computedFine = lateDays * LATE_FEE_PER_DAY;
+
+    // A fine already marked paid (e.g. settled mid-loan by the overdue sweep
+    // + a staff payment) only stays settled if nothing accrued past what was
+    // actually collected. If the final total is higher, the balance must
+    // reopen for collection instead of silently showing "paid" against an
+    // amount that was never fully covered.
+    const alreadyPaidCovers =
+      existing.finePaid && computedFine <= Number(existing.fineAmount);
 
     await this.prisma.$transaction(async (tx) => {
       await tx.rental.update({
@@ -243,7 +251,8 @@ export class RentalsService {
         data: {
           returnedAt,
           status: 'RETURNED',
-          fineAmount,
+          fineAmount: computedFine.toFixed(2),
+          finePaid: alreadyPaidCovers,
           notes: data.notes ?? existing.notes,
         },
       });
