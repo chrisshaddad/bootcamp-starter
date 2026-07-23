@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@repo/db';
 import { PrismaService } from '../database/prisma.service';
-import type { User } from '@repo/db';
+import type { User, UserRole, EmploymentType, WorkArrangement } from '@repo/db';
 import type {
   EmployeeResponse,
   EmployeeListQuery,
@@ -15,6 +15,46 @@ import type {
   EmployeeSkillsUpdateRequest,
   EmployeeProfileUpdateRequest,
 } from '@repo/contracts';
+
+// HR/ORG_ADMIN/SUPER_ADMIN may view anyone's contact/address details; anyone
+// else only sees them for their own record or a direct report's (matches the
+// Team Overview manager use case) - see canViewPrivateProfile below.
+const ADMIN_ROLES: UserRole[] = ['HR', 'ORG_ADMIN', 'SUPER_ADMIN'];
+
+type EmployeeProfileRecord = {
+  bio: string | null;
+  careerGoal: string | null;
+  phoneNumber: string | null;
+  street1: string | null;
+  street2: string | null;
+  city: string | null;
+  state: string | null;
+  postalCode: string | null;
+  country: string | null;
+  employmentType: EmploymentType | null;
+  workArrangement: WorkArrangement | null;
+  profilePictureUrl: string | null;
+};
+
+type EmployeeListRecord = {
+  id: string;
+  email: string;
+  name: string;
+  title: string | null;
+  level: number | null;
+  organizationId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  department: { id: string; name: string } | null;
+  manager: { id: string; email: string; name: string } | null;
+  profile: EmployeeProfileRecord | null;
+  // Only populated when the "mine" filter is set (see findAll below) -
+  // omitted from the general directory listing for performance.
+  userSkills?: {
+    proficiencyLevel: number;
+    skill: { id: string; name: string; category: string };
+  }[];
+};
 
 @Injectable()
 export class EmployeesService {
@@ -62,9 +102,14 @@ export class EmployeesService {
             bio: true,
             careerGoal: true,
             phoneNumber: true,
+            street1: true,
+            street2: true,
             city: true,
             state: true,
+            postalCode: true,
             country: true,
+            employmentType: true,
+            workArrangement: true,
             profilePictureUrl: true,
           },
         },
@@ -93,9 +138,11 @@ export class EmployeesService {
     }
 
     const { userSkills, ...employeeFields } = employee;
+    const canViewPrivate = this.canViewPrivateProfile(currentUser, employee);
 
     return {
       ...employeeFields,
+      profile: this.toProfileResponse(employee.profile, canViewPrivate),
       skills: userSkills.map(({ skill, proficiencyLevel }) => ({
         ...skill,
         proficiencyLevel,
@@ -118,59 +165,159 @@ export class EmployeesService {
         ? {}
         : { organizationId: currentUser.organizationId as string }),
       ...(query.departmentId ? { departmentId: query.departmentId } : {}),
+      ...(query.mine ? { managerId: currentUser.id } : {}),
     };
 
-    const [employees, total] = await Promise.all([
-      this.prisma.user.findMany({
-        where,
-        skip,
-        take: query.limit,
-        orderBy: { name: 'asc' },
+    const baseSelect = {
+      id: true,
+      email: true,
+      name: true,
+      title: true,
+      level: true,
+      organizationId: true,
+      createdAt: true,
+      updatedAt: true,
+      department: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+      manager: {
         select: {
           id: true,
           email: true,
           name: true,
-          title: true,
-          level: true,
-          organizationId: true,
-          createdAt: true,
-          updatedAt: true,
-          department: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-          manager: {
-            select: {
-              id: true,
-              email: true,
-              name: true,
-            },
-          },
-          profile: {
-            select: {
-              bio: true,
-              careerGoal: true,
-              phoneNumber: true,
-              city: true,
-              state: true,
-              country: true,
-              profilePictureUrl: true,
-            },
-          },
-          // Note: NOT including full skills for performance
         },
-      }),
+      },
+      profile: {
+        select: {
+          bio: true,
+          careerGoal: true,
+          phoneNumber: true,
+          street1: true,
+          street2: true,
+          city: true,
+          state: true,
+          postalCode: true,
+          country: true,
+          employmentType: true,
+          workArrangement: true,
+          profilePictureUrl: true,
+        },
+      },
+    } satisfies Prisma.UserSelect;
+
+    // "mine" scopes to the caller's own (typically small) direct-reports
+    // list, so it's safe to eagerly include skills for the team overview -
+    // the general directory listing omits them for performance.
+    const [employees, total] = await Promise.all([
+      query.mine
+        ? this.prisma.user.findMany({
+            where,
+            skip,
+            take: query.limit,
+            orderBy: { name: 'asc' },
+            select: {
+              ...baseSelect,
+              userSkills: {
+                select: {
+                  proficiencyLevel: true,
+                  skill: {
+                    select: {
+                      id: true,
+                      name: true,
+                      category: true,
+                    },
+                  },
+                },
+                orderBy: {
+                  skill: {
+                    name: 'asc',
+                  },
+                },
+              },
+            },
+          })
+        : this.prisma.user.findMany({
+            where,
+            skip,
+            take: query.limit,
+            orderBy: { name: 'asc' },
+            select: baseSelect,
+          }),
       this.prisma.user.count({ where }),
     ]);
+    const employeeRecords = employees as unknown as EmployeeListRecord[];
 
     return {
-      employees: employees.map((emp) => ({
-        ...emp,
-        skills: [], // Empty skills array for list view
-      })),
+      employees: employeeRecords.map((emp) => {
+        const userSkills = emp.userSkills ?? [];
+        const canViewPrivate = this.canViewPrivateProfile(currentUser, emp);
+
+        return {
+          id: emp.id,
+          email: emp.email,
+          name: emp.name,
+          title: emp.title,
+          level: emp.level,
+          organizationId: emp.organizationId,
+          createdAt: emp.createdAt,
+          updatedAt: emp.updatedAt,
+          department: emp.department,
+          manager: emp.manager,
+          profile: this.toProfileResponse(emp.profile, canViewPrivate),
+          skills: userSkills.map(({ skill, proficiencyLevel }) => ({
+            ...skill,
+            proficiencyLevel,
+          })),
+        };
+      }),
       total,
+    };
+  }
+
+  /**
+   * Contact/address fields are only visible to the employee themselves,
+   * their direct manager, or HR/ORG_ADMIN/SUPER_ADMIN - not to every
+   * coworker in the org via the general directory listing.
+   */
+  private canViewPrivateProfile(
+    currentUser: User,
+    employee: { id: string; manager: { id: string } | null },
+  ): boolean {
+    return (
+      currentUser.id === employee.id ||
+      ADMIN_ROLES.includes(currentUser.role) ||
+      employee.manager?.id === currentUser.id
+    );
+  }
+
+  private toProfileResponse(
+    profile: EmployeeProfileRecord | null,
+    canViewPrivate: boolean,
+  ): EmployeeProfileRecord | null {
+    if (!profile) {
+      return null;
+    }
+
+    if (canViewPrivate) {
+      return profile;
+    }
+
+    return {
+      bio: profile.bio,
+      careerGoal: profile.careerGoal,
+      phoneNumber: null,
+      street1: null,
+      street2: null,
+      city: null,
+      state: null,
+      postalCode: null,
+      country: null,
+      employmentType: null,
+      workArrangement: null,
+      profilePictureUrl: profile.profilePictureUrl,
     };
   }
 

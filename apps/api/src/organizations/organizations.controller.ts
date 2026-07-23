@@ -1,11 +1,24 @@
-import { Controller, Get, Param, Patch, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { OrganizationsService } from './organizations.service';
 import { Roles, CurrentUser } from '../auth/decorators';
+import { ZodValidationPipe } from '../common/pipes';
 import type { User, OrganizationStatus } from '@repo/db';
-import type {
-  OrganizationListResponse,
-  OrganizationDetailResponse,
-  OrganizationActionResponse,
+import {
+  organizationCreateRequestSchema,
+  organizationUpdateRequestSchema,
+  type OrganizationCreateRequest,
+  type OrganizationUpdateRequest,
+  type OrganizationListResponse,
+  type OrganizationDetailResponse,
+  type OrganizationActionResponse,
 } from '@repo/contracts';
 
 @Controller('organizations')
@@ -32,6 +45,26 @@ export class OrganizationsController {
     return this.organizationsService.findOne(id);
   }
 
+  @Post()
+  @Roles('SUPER_ADMIN')
+  async create(
+    @CurrentUser() user: User,
+    @Body(new ZodValidationPipe(organizationCreateRequestSchema))
+    body: OrganizationCreateRequest,
+  ): Promise<OrganizationDetailResponse> {
+    return this.organizationsService.create(body, user);
+  }
+
+  @Patch(':id')
+  @Roles('SUPER_ADMIN')
+  async update(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(organizationUpdateRequestSchema))
+    body: OrganizationUpdateRequest,
+  ): Promise<OrganizationDetailResponse> {
+    return this.organizationsService.update(id, body);
+  }
+
   @Patch(':id/approve')
   @Roles('SUPER_ADMIN')
   async approve(
@@ -51,6 +84,28 @@ export class OrganizationsController {
     const organization = await this.organizationsService.reject(id);
     return {
       message: 'Organization rejected successfully',
+      organization,
+    };
+  }
+
+  @Patch(':id/suspend')
+  @Roles('SUPER_ADMIN')
+  async suspend(@Param('id') id: string): Promise<OrganizationActionResponse> {
+    const organization = await this.organizationsService.suspend(id);
+    return {
+      message: 'Organization suspended successfully',
+      organization,
+    };
+  }
+
+  @Patch(':id/reactivate')
+  @Roles('SUPER_ADMIN')
+  async reactivate(
+    @Param('id') id: string,
+  ): Promise<OrganizationActionResponse> {
+    const organization = await this.organizationsService.reactivate(id);
+    return {
+      message: 'Organization reactivated successfully',
       organization,
     };
   }

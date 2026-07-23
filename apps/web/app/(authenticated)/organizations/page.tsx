@@ -20,7 +20,10 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Building2, ShieldX } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { ForbiddenPage } from '@/components/forbidden-page';
+import { OrganizationFormDialog } from '@/components/organization-form-dialog';
+import { Building2, Plus } from 'lucide-react';
 import { useState } from 'react';
 import type { OrganizationStatus } from '@repo/contracts';
 
@@ -58,19 +61,6 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function ForbiddenPage() {
-  return (
-    <div className="flex flex-col items-center justify-center py-20">
-      <ShieldX className="h-16 w-16 text-red-400 mb-4" />
-      <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
-      <p className="text-gray-500 text-center max-w-md">
-        You don&apos;t have permission to access this page. Only Super Admins
-        can manage organizations.
-      </p>
-    </div>
-  );
-}
-
 function LoadingSkeleton() {
   return (
     <div className="space-y-6">
@@ -89,6 +79,7 @@ export default function OrganizationsPage() {
   const router = useRouter();
   const { user, isLoading: userLoading } = useUser();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
 
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
 
@@ -109,7 +100,9 @@ export default function OrganizationsPage() {
 
   // Show 403 for non-super admins
   if (user?.role !== 'SUPER_ADMIN') {
-    return <ForbiddenPage />;
+    return (
+      <ForbiddenPage message="Only Super Admins can manage organizations." />
+    );
   }
 
   return (
@@ -139,6 +132,13 @@ export default function OrganizationsPage() {
               <SelectItem value="INACTIVE">Inactive</SelectItem>
             </SelectContent>
           </Select>
+          <Button
+            className="gap-2 bg-primary-base hover:bg-primary-base/90"
+            onClick={() => setShowCreateDialog(true)}
+          >
+            <Plus className="h-4 w-4" />
+            Create Organization
+          </Button>
         </div>
       </div>
 
@@ -226,6 +226,11 @@ export default function OrganizationsPage() {
           )}
         </CardContent>
       </Card>
+
+      <OrganizationFormDialog
+        open={showCreateDialog}
+        onOpenChange={setShowCreateDialog}
+      />
     </div>
   );
 }

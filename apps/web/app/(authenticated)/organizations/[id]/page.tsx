@@ -8,6 +8,8 @@ import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ForbiddenPage } from '@/components/forbidden-page';
+import { OrganizationFormDialog } from '@/components/organization-form-dialog';
 import {
   Dialog,
   DialogContent,
@@ -25,8 +27,10 @@ import {
   Calendar,
   CheckCircle,
   XCircle,
-  ShieldX,
   Clock,
+  Pencil,
+  PauseCircle,
+  PlayCircle,
 } from 'lucide-react';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -52,19 +56,6 @@ function StatusBadge({ status }: { status: string }) {
     >
       {STATUS_LABELS[status] || status}
     </span>
-  );
-}
-
-function ForbiddenPage() {
-  return (
-    <div className="flex flex-col items-center justify-center py-20">
-      <ShieldX className="h-16 w-16 text-red-400 mb-4" />
-      <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
-      <p className="text-gray-500 text-center max-w-md">
-        You don&apos;t have permission to access this page. Only Super Admins
-        can manage organizations.
-      </p>
-    </div>
   );
 }
 
@@ -107,8 +98,13 @@ export default function OrganizationDetailPage() {
   const { user, isLoading: userLoading } = useUser();
   const [isApproving, setIsApproving] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
+  const [isSuspending, setIsSuspending] = useState(false);
+  const [isReactivating, setIsReactivating] = useState(false);
   const [showApproveDialog, setShowApproveDialog] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [showSuspendDialog, setShowSuspendDialog] = useState(false);
+  const [showReactivateDialog, setShowReactivateDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
 
   const orgId = params.id as string;
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
@@ -119,6 +115,8 @@ export default function OrganizationDetailPage() {
     error,
     approve,
     reject,
+    suspend,
+    reactivate,
   } = useOrganization(orgId, { enabled: isSuperAdmin });
 
   const handleApprove = async () => {
@@ -149,13 +147,43 @@ export default function OrganizationDetailPage() {
     }
   };
 
+  const handleSuspend = async () => {
+    setIsSuspending(true);
+    try {
+      await suspend();
+      toast.success('Organization suspended');
+      setShowSuspendDialog(false);
+    } catch (err) {
+      toast.error('Failed to suspend organization');
+      console.error(err);
+    } finally {
+      setIsSuspending(false);
+    }
+  };
+
+  const handleReactivate = async () => {
+    setIsReactivating(true);
+    try {
+      await reactivate();
+      toast.success('Organization reactivated');
+      setShowReactivateDialog(false);
+    } catch (err) {
+      toast.error('Failed to reactivate organization');
+      console.error(err);
+    } finally {
+      setIsReactivating(false);
+    }
+  };
+
   if (userLoading || orgLoading) {
     return <LoadingSkeleton />;
   }
 
   // Show 403 for non-super admins
   if (user?.role !== 'SUPER_ADMIN') {
-    return <ForbiddenPage />;
+    return (
+      <ForbiddenPage message="Only Super Admins can manage organizations." />
+    );
   }
 
   if (error) {
@@ -204,26 +232,66 @@ export default function OrganizationDetailPage() {
           </div>
         </div>
 
-        {/* Action Buttons (only for PENDING organizations) */}
-        {isPending && (
-          <div className="flex gap-3">
+        {/* Action Buttons */}
+        <div className="flex gap-3">
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => router.push(`/users?organizationId=${org.id}`)}
+          >
+            <Users className="h-4 w-4" />
+            View Users
+          </Button>
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => setShowEditDialog(true)}
+          >
+            <Pencil className="h-4 w-4" />
+            Edit
+          </Button>
+
+          {isPending && (
+            <>
+              <Button
+                variant="outline"
+                className="gap-2 text-red-600 border-red-200 hover:bg-red-50"
+                onClick={() => setShowRejectDialog(true)}
+              >
+                <XCircle className="h-4 w-4" />
+                Reject
+              </Button>
+              <Button
+                className="gap-2 bg-green-600 hover:bg-green-700"
+                onClick={() => setShowApproveDialog(true)}
+              >
+                <CheckCircle className="h-4 w-4" />
+                Approve
+              </Button>
+            </>
+          )}
+
+          {org.status === 'ACTIVE' && (
             <Button
               variant="outline"
-              className="gap-2 text-red-600 border-red-200 hover:bg-red-50"
-              onClick={() => setShowRejectDialog(true)}
+              className="gap-2 text-orange-600 border-orange-200 hover:bg-orange-50"
+              onClick={() => setShowSuspendDialog(true)}
             >
-              <XCircle className="h-4 w-4" />
-              Reject
+              <PauseCircle className="h-4 w-4" />
+              Suspend
             </Button>
+          )}
+
+          {org.status === 'SUSPENDED' && (
             <Button
               className="gap-2 bg-green-600 hover:bg-green-700"
-              onClick={() => setShowApproveDialog(true)}
+              onClick={() => setShowReactivateDialog(true)}
             >
-              <CheckCircle className="h-4 w-4" />
-              Approve
+              <PlayCircle className="h-4 w-4" />
+              Reactivate
             </Button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Details Grid */}
@@ -402,6 +470,74 @@ export default function OrganizationDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Suspend Confirmation Dialog */}
+      <Dialog open={showSuspendDialog} onOpenChange={setShowSuspendDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Suspend Organization</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to suspend <strong>{org.name}</strong>?
+              Members will be unable to use the platform until it&apos;s
+              reactivated.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowSuspendDialog(false)}
+              disabled={isSuspending}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleSuspend}
+              disabled={isSuspending}
+            >
+              {isSuspending ? 'Suspending...' : 'Suspend'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reactivate Confirmation Dialog */}
+      <Dialog
+        open={showReactivateDialog}
+        onOpenChange={setShowReactivateDialog}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reactivate Organization</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to reactivate <strong>{org.name}</strong>?
+              Members will regain access to the platform.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowReactivateDialog(false)}
+              disabled={isReactivating}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="bg-green-600 hover:bg-green-700"
+              onClick={handleReactivate}
+              disabled={isReactivating}
+            >
+              {isReactivating ? 'Reactivating...' : 'Reactivate'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <OrganizationFormDialog
+        open={showEditDialog}
+        onOpenChange={setShowEditDialog}
+        organization={org}
+      />
     </div>
   );
 }

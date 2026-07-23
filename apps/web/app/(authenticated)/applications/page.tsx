@@ -1,9 +1,10 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Calendar, FileText, Search, TrendingUp } from 'lucide-react';
-import { useApplications } from '@/hooks/use-applications';
+import { useUser } from '@/hooks/use-auth';
+import { useApplicationsInfinite } from '@/hooks/use-applications';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -80,14 +81,21 @@ function LoadingSkeleton() {
   );
 }
 
-export default function ApplicationsPage() {
+function ApplicationsContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { user } = useUser();
+  const teamView =
+    searchParams.get('team') === 'true' && Boolean(user?.isManager);
+
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
 
-  const { applications, isLoading, error } = useApplications({
-    status: statusFilter === 'ALL' ? undefined : statusFilter,
-  });
+  const { applications, isLoading, hasMore, isLoadingMore, loadMore, error } =
+    useApplicationsInfinite({
+      status: statusFilter === 'ALL' ? undefined : statusFilter,
+      team: teamView,
+    });
 
   const filtered = useMemo(() => {
     let result = applications ?? [];
@@ -105,9 +113,13 @@ export default function ApplicationsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">My Applications</h1>
+        <h1 className="text-2xl font-bold text-gray-900">
+          {teamView ? 'Team Applications' : 'My Applications'}
+        </h1>
         <p className="mt-1 text-sm text-gray-500">
-          Track the status of the opportunities you&apos;ve applied to
+          {teamView
+            ? 'Review the opportunities your direct reports have applied to'
+            : "Track the status of the opportunities you've applied to"}
         </p>
       </div>
 
@@ -148,9 +160,11 @@ export default function ApplicationsPage() {
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 bg-white py-20 text-center">
           <FileText className="h-10 w-10 text-gray-300" />
           <p className="mt-3 text-sm text-gray-500">
-            {statusFilter === 'ALL'
-              ? "You haven't applied to any opportunities yet"
-              : 'No applications match your filters'}
+            {statusFilter !== 'ALL'
+              ? 'No applications match your filters'
+              : teamView
+                ? "Your team hasn't applied to any opportunities yet"
+                : "You haven't applied to any opportunities yet"}
           </p>
         </div>
       ) : (
@@ -163,6 +177,12 @@ export default function ApplicationsPage() {
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex flex-wrap items-center gap-2">
+                  {teamView && (
+                    <span className="text-sm font-medium text-gray-500">
+                      {application.user.name}
+                      {' · '}
+                    </span>
+                  )}
                   <h2 className="text-base font-semibold text-gray-900">
                     {application.opportunity.title}
                   </h2>
@@ -194,8 +214,28 @@ export default function ApplicationsPage() {
               </div>
             </Card>
           ))}
+          {hasMore && (
+            <div className="flex justify-center pt-2">
+              <Button
+                variant="outline"
+                onClick={loadMore}
+                disabled={isLoadingMore}
+                className="h-9 rounded-lg border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                {isLoadingMore ? 'Loading...' : 'Load more'}
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>
+  );
+}
+
+export default function ApplicationsPage() {
+  return (
+    <Suspense fallback={<LoadingSkeleton />}>
+      <ApplicationsContent />
+    </Suspense>
   );
 }

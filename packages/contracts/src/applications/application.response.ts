@@ -8,6 +8,11 @@ const applicationOpportunitySchema = z.object({
   type: z.string(),
 });
 
+const applicationUserSchema = z.object({
+  id: z.uuid(),
+  name: z.string(),
+});
+
 export const applicationResponseSchema = z.object({
   id: z.uuid(),
   userId: z.uuid(),
@@ -17,6 +22,7 @@ export const applicationResponseSchema = z.object({
   coverNote: z.string().nullable(),
   managerApproved: z.boolean().nullable(),
   reviewerNotes: z.string().nullable(),
+  user: applicationUserSchema,
   opportunity: applicationOpportunitySchema,
   createdAt: dateSchema,
   updatedAt: dateSchema,
