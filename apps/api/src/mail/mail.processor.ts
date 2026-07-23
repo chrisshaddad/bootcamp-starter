@@ -9,6 +9,7 @@ interface SendMagicLinkJobData {
   email: string;
   magicLink: string;
   userName?: string;
+  isNewAccount?: boolean;
 }
 
 interface SendInvitationJobData {
@@ -61,8 +62,12 @@ export class MailProcessor extends WorkerHost {
   }
 
   private async handleSendMagicLink(data: SendMagicLinkJobData): Promise<void> {
-    const { email, magicLink, userName } = data;
-    const { subject, text, html } = magicLinkEmail({ magicLink, userName });
+    const { email, magicLink, userName, isNewAccount } = data;
+    const { subject, text, html } = magicLinkEmail({
+      magicLink,
+      userName,
+      isNewAccount,
+    });
 
     const success = await this.mailService.sendEmail({
       to: email,

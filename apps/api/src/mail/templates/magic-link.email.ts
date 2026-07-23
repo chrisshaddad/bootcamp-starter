@@ -9,6 +9,9 @@ import {
 interface MagicLinkEmailParams {
   magicLink: string;
   userName?: string;
+  // First-time accounts (never confirmed) get a "welcome" greeting instead of
+  // "welcome back" — set by requestMagicLink from user.isConfirmed.
+  isNewAccount?: boolean;
 }
 
 interface EmailContent {
@@ -20,9 +23,12 @@ interface EmailContent {
 export function magicLinkEmail({
   magicLink,
   userName,
+  isNewAccount,
 }: MagicLinkEmailParams): EmailContent {
   const heading = userName
-    ? `Welcome back, ${userName}`
+    ? isNewAccount
+      ? `Welcome to NextShelf, ${userName}`
+      : `Welcome back, ${userName}`
     : 'Sign in to your library';
 
   const text = `${heading}\n\nClick the link below to sign in to your account:\n\n${magicLink}\n\nThis link will expire in 15 minutes.\n\nIf you didn't request this link, you can safely ignore this email.`;

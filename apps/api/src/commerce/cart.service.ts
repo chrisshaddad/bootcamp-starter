@@ -25,7 +25,6 @@ const cartInclude = {
             select: {
               id: true,
               condition: true,
-              rentPrice: true,
               buyPrice: true,
             },
           },
@@ -297,7 +296,6 @@ export class CartService {
           conditionPrices: item.book.conditionPrices.map((cp) => ({
             id: cp.id,
             condition: cp.condition,
-            rentPrice: cp.rentPrice.toString(),
             buyPrice: cp.buyPrice.toString(),
           })),
         },

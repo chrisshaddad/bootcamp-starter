@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
@@ -10,9 +10,11 @@ import { authorCreateRequestSchema } from '@repo/contracts';
 import type { AuthorCreateRequest, AuthorResponse } from '@repo/contracts';
 import { useAuthors } from '@/hooks/use-authors';
 import { useDebounce } from '@/hooks/use-debounce';
+import { useImageUpload } from '@/hooks/use-image-upload';
 import { ApiError } from '@/lib/api';
 import { RequireRole } from '@/components/require-role';
 import { TablePagination } from '@/components/table-pagination';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -280,6 +282,28 @@ function AuthorDialog({
     },
   });
 
+  const { upload, isUploading } = useImageUpload();
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePhotoFileChange = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const url = await upload(file);
+      form.setValue('photoUrl', url, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : 'Failed to upload photo',
+      );
+    }
+  };
+
   // Populate (edit) or clear (create) the form each time the dialog opens.
   useEffect(() => {
     if (!open) return;
@@ -390,19 +414,64 @@ function AuthorDialog({
             <FormField
               control={form.control}
               name="photoUrl"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Photo URL</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="https://…"
-                      {...field}
-                      value={field.value ?? ''}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              render={() => {
+                const photoUrl = form.watch('photoUrl');
+                const name = form.watch('name');
+                return (
+                  <FormItem>
+                    <FormLabel>Photo</FormLabel>
+                    <div className="flex items-center gap-4">
+                      <Avatar className="h-16 w-16 rounded-md">
+                        <AvatarImage
+                          src={photoUrl || undefined}
+                          alt={name || 'Author photo'}
+                          className="object-cover"
+                        />
+                        <AvatarFallback className="rounded-md">
+                          {name?.trim()?.[0]?.toUpperCase() ?? '?'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex flex-col gap-2">
+                        <input
+                          ref={photoInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handlePhotoFileChange}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={isUploading}
+                          onClick={() => photoInputRef.current?.click()}
+                        >
+                          {isUploading
+                            ? 'Uploading...'
+                            : photoUrl
+                              ? 'Replace photo'
+                              : 'Upload photo'}
+                        </Button>
+                        {photoUrl && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              form.setValue('photoUrl', undefined, {
+                                shouldDirty: true,
+                              })
+                            }
+                          >
+                            Remove
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
             <FormField
               control={form.control}

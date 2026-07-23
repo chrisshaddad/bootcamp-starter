@@ -15,3 +15,4 @@ export * from './purchases';
 export * from './chat';
 export * from './staff';
 export * from './uploads';
+export * from './profile';
