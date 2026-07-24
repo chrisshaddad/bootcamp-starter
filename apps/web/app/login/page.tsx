@@ -12,9 +12,8 @@ import {
   Mail,
   Send,
   ShieldCheck,
-  Building2,
-  ChevronRight,
 } from 'lucide-react';
+import Image from 'next/image';
 import { magicLinkRequestSchema, type MagicLinkRequest } from '@repo/contracts';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
@@ -74,18 +73,20 @@ export default function LoginPage() {
     <div className="flex min-h-screen bg-canvas">
       {/* Left Panel - Hero Section */}
       <div className="relative hidden w-1/2 overflow-hidden bg-primary lg:flex lg:flex-col lg:justify-between">
-        {/* Ambient background: plum base + warm sunset glow */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[oklch(0.24_0.06_320)] via-[oklch(0.2_0.05_318)] to-[oklch(0.16_0.03_315)]"
+        {/* Background illustration */}
+        <Image
+          src="/login-hero.png"
+          alt=""
+          fill
+          priority
+          quality={90}
+          sizes="100vw"
+          className="object-cover"
         />
+        {/* Legibility overlay: darken the left where the text sits */}
         <div
           aria-hidden
-          className="pointer-events-none absolute -bottom-24 right-0 h-[420px] w-[420px] rounded-full bg-[radial-gradient(circle,_oklch(0.78_0.15_60/0.45)_0%,_transparent_70%)] blur-2xl"
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -left-16 top-1/3 h-72 w-72 rounded-full bg-[radial-gradient(circle,_oklch(0.48_0.18_305/0.35)_0%,_transparent_70%)] blur-2xl"
+          className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[oklch(0.14_0.03_315/0.85)] via-[oklch(0.16_0.03_315/0.35)] to-transparent"
         />
 
         {/* Content */}
@@ -215,41 +216,6 @@ export default function LoginPage() {
               </p>
             </div>
 
-            {/* Divider */}
-            <div className="my-6 flex items-center gap-4">
-              <span className="h-px flex-1 bg-border" />
-              <span className="text-xs font-medium text-muted-foreground">
-                OR
-              </span>
-              <span className="h-px flex-1 bg-border" />
-            </div>
-
-            {/* Organization SSO */}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() =>
-                toast.info('Organization SSO isn’t available yet.')
-              }
-              className="h-14 w-full rounded-xl border-border text-base font-semibold text-foreground hover:bg-secondary"
-            >
-              <Building2 className="mr-2 h-5 w-5" />
-              Continue with Organization SSO
-            </Button>
-
-            {/* Register Link */}
-            <p className="mt-6 text-center text-sm font-medium">
-              <span className="text-muted-foreground">
-                Don&apos;t have an organization?{' '}
-              </span>
-              <a
-                href="/register"
-                className="inline-flex items-center gap-0.5 font-semibold text-primary hover:underline"
-              >
-                Create an Org
-                <ChevronRight className="h-4 w-4" />
-              </a>
-            </p>
           </div>
         </div>
 
