@@ -345,12 +345,14 @@ model BookCategory {
   @@schema("public")
 }
 
+// Buy-only rate card: a row means "this book is for sale in this condition at
+// buyPrice." Borrowing is free (patrons only ever pay overdue/lost fines), so
+// there is no rent price.
 model BookConditionPrice {
   id             String            @id @default(uuid())
   organizationId String
   bookId         String
   condition      BookCopyCondition
-  rentPrice      Decimal           @db.Decimal(10, 2)
   buyPrice       Decimal           @db.Decimal(10, 2)
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)

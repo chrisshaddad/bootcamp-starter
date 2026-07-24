@@ -32,7 +32,6 @@ interface BookCopySeed {
 
 interface BookConditionPriceSeed {
   condition: 'NEW' | 'GOOD' | 'FAIR' | 'POOR' | 'DAMAGED';
-  rentPrice: string;
   buyPrice: string;
 }
 
@@ -116,8 +115,8 @@ const CATALOGS: CatalogSeed[] = [
         language: 'English',
         pageCount: 288,
         conditionPrices: [
-          { condition: 'GOOD', rentPrice: '2.99', buyPrice: '16.99' },
-          { condition: 'FAIR', rentPrice: '1.99', buyPrice: '12.99' },
+          { condition: 'GOOD', buyPrice: '16.99' },
+          { condition: 'FAIR', buyPrice: '12.99' },
         ],
         edition: 'Paperback',
         publisherKey: 'penguin-random-house',
@@ -144,8 +143,8 @@ const CATALOGS: CatalogSeed[] = [
         language: 'English',
         pageCount: 369,
         conditionPrices: [
-          { condition: 'NEW', rentPrice: '3.00', buyPrice: '18.00' },
-          { condition: 'GOOD', rentPrice: '2.50', buyPrice: '15.00' },
+          { condition: 'NEW', buyPrice: '18.00' },
+          { condition: 'GOOD', buyPrice: '15.00' },
         ],
         edition: 'Paperback',
         publisherKey: 'crown',
@@ -170,9 +169,7 @@ const CATALOGS: CatalogSeed[] = [
         publishedDate: new Date('1969-03-01'),
         language: 'English',
         pageCount: 304,
-        conditionPrices: [
-          { condition: 'DAMAGED', rentPrice: '1.00', buyPrice: '8.00' },
-        ],
+        conditionPrices: [{ condition: 'DAMAGED', buyPrice: '8.00' }],
         authorKeys: ['ursula-le-guin'],
         categoryKeys: ['science-fiction', 'classics'],
         copies: [
@@ -230,8 +227,8 @@ const CATALOGS: CatalogSeed[] = [
         language: 'English',
         pageCount: 432,
         conditionPrices: [
-          { condition: 'GOOD', rentPrice: '1.50', buyPrice: '10.00' },
-          { condition: 'POOR', rentPrice: '1.00', buyPrice: '6.00' },
+          { condition: 'GOOD', buyPrice: '10.00' },
+          { condition: 'POOR', buyPrice: '6.00' },
         ],
         publisherKey: 'vintage',
         authorKeys: ['jane-austen'],
@@ -255,9 +252,7 @@ const CATALOGS: CatalogSeed[] = [
         publishedDate: new Date('2015-07-14'),
         language: 'English',
         pageCount: 176,
-        conditionPrices: [
-          { condition: 'NEW', rentPrice: '4.00', buyPrice: '26.00' },
-        ],
+        conditionPrices: [{ condition: 'NEW', buyPrice: '26.00' }],
         publisherKey: 'one-world',
         authorKeys: ['ta-nehisi-coates'],
         categoryKeys: ['history'],
@@ -302,9 +297,7 @@ const CATALOGS: CatalogSeed[] = [
         publishedDate: new Date('2010-11-16'),
         language: 'English',
         pageCount: 592,
-        conditionPrices: [
-          { condition: 'GOOD', rentPrice: '3.50', buyPrice: '22.00' },
-        ],
+        conditionPrices: [{ condition: 'GOOD', buyPrice: '22.00' }],
         publisherKey: 'scribner',
         authorKeys: ['siddhartha-mukherjee'],
         categoryKeys: ['medicine'],
@@ -440,7 +433,6 @@ export async function seedCatalog(prisma: PrismaClient) {
               organizationId: organization.id,
               bookId: createdBook.id,
               condition: cp.condition,
-              rentPrice: cp.rentPrice,
               buyPrice: cp.buyPrice,
             })),
           });
