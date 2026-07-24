@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { Pencil, Plus, Search, Sparkles, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import type { SkillResponse } from '@repo/contracts';
 import { useUser } from '@/hooks/use-auth';
 import { useSkills, useSkillMutations } from '@/hooks/use-skills';

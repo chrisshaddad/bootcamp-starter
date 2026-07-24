@@ -28,19 +28,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 
-function LoadingSkeleton() {
-  return (
-    <div className="space-y-6">
-      <Skeleton className="h-8 w-48" />
-      <div className="space-y-2">
-        {[...Array(4)].map((_, i) => (
-          <Skeleton key={i} className="h-14 w-full" />
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export default function DepartmentsPage() {
   const { user } = useUser();
   const isOrgAdmin = user?.role === 'ORG_ADMIN';
