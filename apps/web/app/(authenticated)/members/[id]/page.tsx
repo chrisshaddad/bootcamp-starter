@@ -8,6 +8,7 @@ import {
   BookMarked,
   CalendarClock,
   Check,
+  Mail,
   ShoppingBag,
 } from 'lucide-react';
 
@@ -15,6 +16,7 @@ import {
   useLibraryMember,
   useLibraryMembers,
 } from '@/hooks/use-library-members';
+import { ClaimInviteDialog } from '@/components/claim-invite-dialog';
 import { useRentals } from '@/hooks/use-rentals';
 import { useReservations } from '@/hooks/use-reservations';
 import { usePurchases } from '@/hooks/use-purchases';
@@ -84,7 +86,7 @@ function MemberDetail() {
   const memberId = params.id as string;
 
   const { member, isLoading, error, mutate } = useLibraryMember(memberId);
-  const { approve } = useLibraryMembers({ enabled: false });
+  const { approve, sendClaimInvite } = useLibraryMembers({ enabled: false });
   const {
     rentals,
     total: rentalTotal,
@@ -102,6 +104,7 @@ function MemberDetail() {
   } = usePurchases({ memberId, limit: HISTORY_LIMIT });
 
   const [isApproving, setIsApproving] = useState(false);
+  const [claimInviteOpen, setClaimInviteOpen] = useState(false);
   const [rentalPage, setRentalPage] = useState(1);
   const [reservationPage, setReservationPage] = useState(1);
   const [purchasePage, setPurchasePage] = useState(1);
@@ -200,13 +203,35 @@ function MemberDetail() {
             Card {member.libraryCardNumber}
           </p>
         </div>
-        {member.membershipStatus === 'PENDING' && (
-          <Button onClick={handleApprove} disabled={isApproving}>
-            <Check className="h-4 w-4" />
-            {isApproving ? 'Approving...' : 'Approve'}
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {member.membershipStatus === 'PENDING' && (
+            <Button onClick={handleApprove} disabled={isApproving}>
+              <Check className="h-4 w-4" />
+              {isApproving ? 'Approving...' : 'Approve'}
+            </Button>
+          )}
+          {!member.user && (
+            <Button
+              variant="outline"
+              onClick={() => setClaimInviteOpen(true)}
+            >
+              <Mail className="h-4 w-4" />
+              Send claim invite
+            </Button>
+          )}
+        </div>
       </div>
+
+      <ClaimInviteDialog
+        open={claimInviteOpen}
+        onOpenChange={setClaimInviteOpen}
+        member={member}
+        onInvite={async (id, body) => {
+          const updated = await sendClaimInvite(id, body);
+          await mutate();
+          return updated;
+        }}
+      />
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
