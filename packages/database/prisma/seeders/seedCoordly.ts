@@ -4,10 +4,7 @@ import {
   AttendanceStatus,
   EventStatus,
 } from '../../src/generated/prisma/client';
-import {
-  GREEN_ATTENDEE_EMAILS,
-  TECHCORP_ATTENDEE_EMAILS,
-} from './seedUsers';
+import { GREEN_ATTENDEE_EMAILS, TECHCORP_ATTENDEE_EMAILS } from './seedUsers';
 
 interface OrgRef {
   organizationName: string;

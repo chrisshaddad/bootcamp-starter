@@ -12,10 +12,12 @@ import {
 } from '@nestjs/common';
 import type { User } from '@repo/db';
 import {
+  groupCreateQuerySchema,
   groupCreateRequestSchema,
   groupListQuerySchema,
   groupMembersAssignRequestSchema,
   groupUpdateRequestSchema,
+  type GroupCreateQuery,
   type GroupCreateRequest,
   type GroupDetailResponse,
   type GroupListQuery,
@@ -31,6 +33,9 @@ import { GroupsService } from './groups.service';
 export class GroupsController {
   constructor(private readonly groupsService: GroupsService) {}
 
+  /**
+   * Lists groups visible to the current admin.
+   */
   @Get()
   @Roles('SUPER_ADMIN', 'ORG_ADMIN')
   async findAll(
@@ -41,6 +46,9 @@ export class GroupsController {
     return this.groupsService.findAll(query, user);
   }
 
+  /**
+   * Returns one group with its member roster.
+   */
   @Get(':id')
   @Roles('SUPER_ADMIN', 'ORG_ADMIN')
   async findOne(
@@ -50,16 +58,24 @@ export class GroupsController {
     return this.groupsService.findOne(id, user);
   }
 
+  /**
+   * Creates a group in the caller's organization scope.
+   */
   @Post()
   @Roles('SUPER_ADMIN', 'ORG_ADMIN')
   async create(
+    @Query(new ZodValidationPipe<GroupCreateQuery>(groupCreateQuerySchema))
+    query: GroupCreateQuery,
     @Body(new ZodValidationPipe<GroupCreateRequest>(groupCreateRequestSchema))
     body: GroupCreateRequest,
     @CurrentUser() user: User,
   ): Promise<GroupDetailResponse> {
-    return this.groupsService.create(body, user);
+    return this.groupsService.create(body, user, query.organizationId);
   }
 
+  /**
+   * Updates an existing group's name or description.
+   */
   @Patch(':id')
   @Roles('SUPER_ADMIN', 'ORG_ADMIN')
   async update(
@@ -71,6 +87,9 @@ export class GroupsController {
     return this.groupsService.update(id, body, user);
   }
 
+  /**
+   * Deletes a group in the caller's organization scope.
+   */
   @Delete(':id')
   @Roles('SUPER_ADMIN', 'ORG_ADMIN')
   @HttpCode(HttpStatus.NO_CONTENT)
@@ -81,6 +100,9 @@ export class GroupsController {
     return this.groupsService.remove(id, user);
   }
 
+  /**
+   * Adds Coordly members to a group (additive assignment).
+   */
   @Post(':id/members')
   @Roles('SUPER_ADMIN', 'ORG_ADMIN')
   async assignMembers(
@@ -96,6 +118,9 @@ export class GroupsController {
     return this.groupsService.assignMembers(id, body, user);
   }
 
+  /**
+   * Removes one Coordly member from a group.
+   */
   @Delete(':id/members/:memberId')
   @Roles('SUPER_ADMIN', 'ORG_ADMIN')
   async removeMember(

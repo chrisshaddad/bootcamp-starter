@@ -24,6 +24,9 @@ export class GroupsService {
 
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * Maps a Prisma group row into the shared group response shape.
+   */
   private toGroup(
     group: {
       id: string;
@@ -46,6 +49,9 @@ export class GroupsService {
     };
   }
 
+  /**
+   * Loads a group constrained to the caller's organization scope.
+   */
   private async getScopedGroup(id: string, user: User) {
     const organizationId = resolveOrganizationScope(user);
     const group = await this.prisma.group.findFirst({
@@ -70,6 +76,9 @@ export class GroupsService {
     return group;
   }
 
+  /**
+   * Ensures every member ID belongs to the group's organization.
+   */
   private async assertMembersInOrganization(
     memberIds: string[],
     organizationId: string,
@@ -90,6 +99,9 @@ export class GroupsService {
     }
   }
 
+  /**
+   * Lists groups visible in the caller's organization scope.
+   */
   async findAll(query: GroupListQuery, user: User): Promise<GroupListResponse> {
     const { page = 1, limit = 20, organizationId: requestedOrgId } = query;
     const skip = (page - 1) * limit;
@@ -124,6 +136,9 @@ export class GroupsService {
     };
   }
 
+  /**
+   * Returns one group with its Coordly member roster.
+   */
   async findOne(id: string, user: User): Promise<GroupDetailResponse> {
     const group = await this.getScopedGroup(id, user);
 
@@ -149,11 +164,18 @@ export class GroupsService {
     };
   }
 
+  /**
+   * Creates a group in the resolved organization scope.
+   */
   async create(
     body: GroupCreateRequest,
     user: User,
+    requestedOrganizationId?: string,
   ): Promise<GroupDetailResponse> {
-    const organizationId = resolveOrganizationScope(user, body.organizationId);
+    const organizationId = resolveOrganizationScope(
+      user,
+      requestedOrganizationId,
+    );
 
     if (!organizationId) {
       throw new BadRequestException(
@@ -193,6 +215,9 @@ export class GroupsService {
     }
   }
 
+  /**
+   * Updates group name or description after scope validation.
+   */
   async update(
     id: string,
     body: GroupUpdateRequest,
@@ -226,6 +251,9 @@ export class GroupsService {
     return this.findOne(scoped.id, user);
   }
 
+  /**
+   * Deletes a group after confirming it is in the caller's scope.
+   */
   async remove(id: string, user: User): Promise<void> {
     const scoped = await this.getScopedGroup(id, user);
 
@@ -236,6 +264,9 @@ export class GroupsService {
     this.logger.log(`Deleted group ${scoped.id}`);
   }
 
+  /**
+   * Adds Coordly members to a group (additive; ignores existing memberships).
+   */
   async assignMembers(
     id: string,
     body: GroupMembersAssignRequest,
@@ -272,6 +303,9 @@ export class GroupsService {
     return this.findOne(scoped.id, user);
   }
 
+  /**
+   * Removes one Coordly member from a group.
+   */
   async removeMember(
     id: string,
     memberId: string,

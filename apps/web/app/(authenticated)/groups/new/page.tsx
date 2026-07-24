@@ -46,10 +46,13 @@ export default function NewGroupPage() {
     return <ForbiddenPage />;
   }
 
-  const handleSubmit = async (data: GroupCreateRequest) => {
+  const handleSubmit = async (
+    data: GroupCreateRequest,
+    organizationId?: string,
+  ) => {
     setIsSubmitting(true);
     try {
-      const group = await create(data);
+      const group = await create(data, organizationId);
       toast.success('Group created');
       router.push(`/groups/${group.id}`);
     } catch (err) {

@@ -2,6 +2,7 @@
 
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import {
   groupCreateRequestSchema,
   groupUpdateRequestSchema,
@@ -20,13 +21,24 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
+const createGroupFormSchema = groupCreateRequestSchema.extend({
+  organizationId: z.uuid().optional(),
+});
+type CreateGroupFormValues = z.infer<typeof createGroupFormSchema>;
+
 interface CreateGroupFormProps {
   isSuperAdmin: boolean;
   isSubmitting?: boolean;
-  onSubmit: (data: GroupCreateRequest) => Promise<void>;
+  onSubmit: (
+    data: GroupCreateRequest,
+    organizationId?: string,
+  ) => Promise<void>;
   onCancel: () => void;
 }
 
+/**
+ * Form for creating a group, with an org picker for super admins.
+ */
 export function CreateGroupForm({
   isSuperAdmin,
   isSubmitting = false,
@@ -39,8 +51,8 @@ export function CreateGroupForm({
     control,
     watch,
     formState: { errors },
-  } = useForm<GroupCreateRequest>({
-    resolver: zodResolver(groupCreateRequestSchema),
+  } = useForm<CreateGroupFormValues>({
+    resolver: zodResolver(createGroupFormSchema),
     defaultValues: {
       name: '',
       description: '',
@@ -58,10 +70,14 @@ export function CreateGroupForm({
     <form
       className="space-y-6"
       onSubmit={handleSubmit(async (data) => {
-        await onSubmit({
-          ...data,
-          description: data.description?.trim() || null,
-        });
+        const { organizationId: selectedOrgId, ...body } = data;
+        await onSubmit(
+          {
+            ...body,
+            description: body.description?.trim() || null,
+          },
+          isSuperAdmin ? selectedOrgId : undefined,
+        );
       })}
     >
       {isSuperAdmin && (
@@ -145,6 +161,9 @@ interface EditGroupFormProps {
   onCancel: () => void;
 }
 
+/**
+ * Form for editing an existing group's name and description.
+ */
 export function EditGroupForm({
   defaultValues,
   isSubmitting = false,

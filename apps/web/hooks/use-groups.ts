@@ -21,10 +21,16 @@ interface UseGroupsReturn {
   total: number | undefined;
   isLoading: boolean;
   error: Error | undefined;
-  create: (body: GroupCreateRequest) => Promise<GroupDetailResponse>;
+  create: (
+    body: GroupCreateRequest,
+    organizationId?: string,
+  ) => Promise<GroupDetailResponse>;
   mutate: () => void;
 }
 
+/**
+ * Builds a groups API endpoint with an optional organization filter.
+ */
 function buildGroupsEndpoint(organizationId?: string): string {
   if (!organizationId) {
     return '/groups';
@@ -33,6 +39,9 @@ function buildGroupsEndpoint(organizationId?: string): string {
   return `/groups?${params.toString()}`;
 }
 
+/**
+ * Returns a callback that revalidates all cached group list and detail keys.
+ */
 function useInvalidateGroups() {
   const { mutate } = useSWRConfig();
   return useCallback(
@@ -46,6 +55,9 @@ function useInvalidateGroups() {
   );
 }
 
+/**
+ * Fetches the groups list and exposes create + cache revalidation.
+ */
 export function useGroups(options: UseGroupsOptions = {}): UseGroupsReturn {
   const { enabled = true, organizationId } = options;
   const endpoint = buildGroupsEndpoint(organizationId);
@@ -58,9 +70,13 @@ export function useGroups(options: UseGroupsOptions = {}): UseGroupsReturn {
     mutate: mutateList,
   } = useSWR<GroupListResponse>(enabled ? endpoint : null);
 
+  /**
+   * Creates a group and refreshes group-related caches.
+   */
   const create = useCallback(
-    async (body: GroupCreateRequest) => {
-      const result = await apiPost<GroupDetailResponse>('/groups', body);
+    async (body: GroupCreateRequest, organizationId?: string) => {
+      const endpoint = buildGroupsEndpoint(organizationId);
+      const result = await apiPost<GroupDetailResponse>(endpoint, body);
       await invalidateGroups();
       return result;
     },
@@ -94,6 +110,9 @@ interface UseGroupReturn {
   mutate: () => void;
 }
 
+/**
+ * Fetches one group and exposes update, delete, and membership helpers.
+ */
 export function useGroup(
   id: string,
   options: UseGroupOptions = {},
@@ -109,6 +128,9 @@ export function useGroup(
     mutate: mutateDetail,
   } = useSWR<GroupDetailResponse>(endpoint);
 
+  /**
+   * Updates the group and refreshes group-related caches.
+   */
   const update = useCallback(
     async (body: GroupUpdateRequest) => {
       const result = await apiPatch<GroupDetailResponse>(`/groups/${id}`, body);
@@ -118,11 +140,17 @@ export function useGroup(
     [id, invalidateGroups],
   );
 
+  /**
+   * Deletes the group and refreshes group-related caches.
+   */
   const remove = useCallback(async () => {
     await apiDelete(`/groups/${id}`);
     await invalidateGroups();
   }, [id, invalidateGroups]);
 
+  /**
+   * Assigns Coordly members to the group and refreshes caches.
+   */
   const assignMembers = useCallback(
     async (body: GroupMembersAssignRequest) => {
       const result = await apiPost<GroupDetailResponse>(
@@ -135,6 +163,9 @@ export function useGroup(
     [id, invalidateGroups],
   );
 
+  /**
+   * Removes one Coordly member from the group and refreshes caches.
+   */
   const removeMember = useCallback(
     async (memberId: string) => {
       const result = await apiDelete<GroupDetailResponse>(
