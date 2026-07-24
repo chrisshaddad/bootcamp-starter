@@ -78,8 +78,14 @@ export class InstitutionsController {
 
   @Patch(':id/approve')
   @Roles('SUPER_ADMIN')
-  async approve(@Param('id') id: string): Promise<InstitutionActionResponse> {
-    const institution = await this.institutionsService.approve(id);
+  async approve(
+    @Param('id') id: string,
+    @CurrentUser() user: User,
+  ): Promise<InstitutionActionResponse> {
+    const institution = await this.institutionsService.approve(
+      id,
+      user.fullName,
+    );
     return {
       message: 'Institution approved successfully',
       institution,

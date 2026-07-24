@@ -180,8 +180,8 @@ function AddAdminDialog({
         <DialogHeader>
           <DialogTitle>Add Institution Admin</DialogTitle>
           <DialogDescription>
-            Adds another admin to this institution and emails them an
-            invitation to log in.
+            Adds another admin to this institution and emails them an invitation
+            to log in.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -194,11 +194,7 @@ function AddAdminDialog({
           </div>
           <div className="space-y-2">
             <Label htmlFor="new-admin-email">Email</Label>
-            <Input
-              id="new-admin-email"
-              type="email"
-              {...register('email')}
-            />
+            <Input id="new-admin-email" type="email" {...register('email')} />
             {errors.email && (
               <p className="text-sm text-error">{errors.email.message}</p>
             )}
@@ -471,19 +467,13 @@ export default function InstitutionDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
-              <InfoRow
-                icon={Building2}
-                label="Type"
-                value={institution.type}
-              />
+              <InfoRow icon={Building2} label="Type" value={institution.type} />
               <InfoRow
                 icon={MapPin}
                 label="Address"
                 value={
                   institution.address || (
-                    <span className="text-muted-foreground">
-                      Not provided
-                    </span>
+                    <span className="text-muted-foreground">Not provided</span>
                   )
                 }
               />
@@ -492,9 +482,7 @@ export default function InstitutionDetailPage() {
                 label="Phone"
                 value={
                   institution.phone || (
-                    <span className="text-muted-foreground">
-                      Not provided
-                    </span>
+                    <span className="text-muted-foreground">Not provided</span>
                   )
                 }
               />
@@ -554,8 +542,8 @@ export default function InstitutionDetailPage() {
                       <span className="font-medium">Access blocked</span>
                     </div>
                     <p className="mt-1 text-sm text-error-dark">
-                      No one at this institution can log in or use the
-                      platform until it&apos;s reactivated.
+                      No one at this institution can log in or use the platform
+                      until it&apos;s reactivated.
                     </p>
                   </div>
                 )}

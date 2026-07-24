@@ -268,9 +268,7 @@ export class InstitutionsService {
       );
     }
 
-    this.logger.log(
-      `Admin ${createdId} added to institution ${institutionId}`,
-    );
+    this.logger.log(`Admin ${createdId} added to institution ${institutionId}`);
     return this.findOne(institutionId);
   }
 
@@ -345,15 +343,23 @@ export class InstitutionsService {
   }
 
   /**
-   * Approve an institution (set status to ACTIVE)
+   * Approve an institution (set status to ACTIVE) and invite its admin(s) —
+   * this is the first point at which their account is actually usable
+   * (login is blocked for non-ACTIVE institutions), so this is when the
+   * invite should go out, not at creation time.
    */
-  async approve(id: string): Promise<InstitutionDetailResponse> {
+  async approve(
+    id: string,
+    inviterName: string,
+  ): Promise<InstitutionDetailResponse> {
     await this.ensureExists(id);
 
     await this.prisma.institution.update({
       where: { id },
       data: { status: 'ACTIVE' },
     });
+
+    await this.inviteAdmins(id, inviterName);
 
     this.logger.log(`Institution ${id} approved`);
     return this.findOne(id);
@@ -403,6 +409,42 @@ export class InstitutionsService {
 
     this.logger.log(`Institution ${id} reactivated`);
     return this.findOne(id);
+  }
+
+  /**
+   * Best-effort: invite every current admin of an institution. Used when an
+   * institution transitions to ACTIVE for the first time (approve), so a
+   * founding admin who was never sent an invite at creation gets one now.
+   */
+  private async inviteAdmins(
+    institutionId: string,
+    inviterName: string,
+  ): Promise<void> {
+    const [admins, institution] = await Promise.all([
+      this.prisma.user.findMany({
+        where: { institutionId, role: 'INSTITUTION_ADMIN' },
+        select: { id: true, email: true },
+      }),
+      this.prisma.institution.findUniqueOrThrow({
+        where: { id: institutionId },
+        select: { name: true },
+      }),
+    ]);
+
+    for (const admin of admins) {
+      try {
+        await this.authService.sendInvitation(
+          admin,
+          inviterName,
+          institution.name,
+        );
+      } catch (error) {
+        this.logger.error(
+          `Institution ${institutionId} approved but invitation failed to send to admin ${admin.id}`,
+          error instanceof Error ? error.stack : String(error),
+        );
+      }
+    }
   }
 
   private async ensureExists(id: string): Promise<void> {

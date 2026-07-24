@@ -306,9 +306,7 @@ function UserRowActions({
             </Button>
           </span>
         </TooltipTrigger>
-        <TooltipContent>
-          Manage your own account from Profile
-        </TooltipContent>
+        <TooltipContent>Manage your own account from Profile</TooltipContent>
       </Tooltip>
     );
   }

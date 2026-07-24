@@ -17,6 +17,7 @@ describe('InstitutionsService', () => {
     };
     user: {
       findFirst: jest.Mock;
+      findMany: jest.Mock;
       update: jest.Mock;
       create: jest.Mock;
     };
@@ -34,6 +35,7 @@ describe('InstitutionsService', () => {
       },
       user: {
         findFirst: jest.fn(),
+        findMany: jest.fn(),
         update: jest.fn(),
         create: jest.fn(),
       },
@@ -181,6 +183,63 @@ describe('InstitutionsService', () => {
         ),
       ).rejects.toThrow(ConflictException);
       expect(authService.sendInvitation).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('approve', () => {
+    it('sets status to ACTIVE and invites every current admin', async () => {
+      prisma.institution.findUnique.mockResolvedValue({ id: 'inst-1' });
+      prisma.institution.update.mockResolvedValue({});
+      prisma.user.findMany.mockResolvedValue([
+        { id: 'admin-1', email: 'admin1@example.com' },
+        { id: 'admin-2', email: 'admin2@example.com' },
+      ]);
+      prisma.institution.findUniqueOrThrow.mockResolvedValue({
+        name: 'Acme Clinic',
+      });
+
+      await service.approve('inst-1', 'Platform Super Admin');
+
+      expect(prisma.institution.update).toHaveBeenCalledWith({
+        where: { id: 'inst-1' },
+        data: { status: 'ACTIVE' },
+      });
+      expect(authService.sendInvitation).toHaveBeenCalledTimes(2);
+      expect(authService.sendInvitation).toHaveBeenCalledWith(
+        { id: 'admin-1', email: 'admin1@example.com' },
+        'Platform Super Admin',
+        'Acme Clinic',
+      );
+      expect(authService.sendInvitation).toHaveBeenCalledWith(
+        { id: 'admin-2', email: 'admin2@example.com' },
+        'Platform Super Admin',
+        'Acme Clinic',
+      );
+    });
+
+    it('does not fail the approval if an invitation fails to send', async () => {
+      prisma.institution.findUnique.mockResolvedValue({ id: 'inst-1' });
+      prisma.institution.update.mockResolvedValue({});
+      prisma.user.findMany.mockResolvedValue([
+        { id: 'admin-1', email: 'admin1@example.com' },
+      ]);
+      prisma.institution.findUniqueOrThrow.mockResolvedValue({
+        name: 'Acme Clinic',
+      });
+      authService.sendInvitation.mockRejectedValue(new Error('mail down'));
+
+      await expect(
+        service.approve('inst-1', 'Platform Super Admin'),
+      ).resolves.toBeDefined();
+    });
+
+    it('throws NotFoundException for a non-existent institution', async () => {
+      prisma.institution.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.approve('missing', 'Platform Super Admin'),
+      ).rejects.toThrow(NotFoundException);
+      expect(prisma.institution.update).not.toHaveBeenCalled();
     });
   });
 
