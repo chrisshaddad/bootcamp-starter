@@ -30,10 +30,10 @@ import { cn } from '@/lib/utils';
 import type { ApplicationStatus } from '@repo/contracts';
 
 const STATUS_BADGE_COLORS: Record<ApplicationStatus, string> = {
-  PENDING: 'bg-yellow-100 text-yellow-700',
-  ACCEPTED: 'bg-green-100 text-green-700',
-  REJECTED: 'bg-red-100 text-red-700',
-  WITHDRAWN: 'bg-gray-100 text-gray-600',
+  PENDING: 'bg-warning/18 text-warning ring-1 ring-inset ring-warning/30',
+  ACCEPTED: 'bg-success/15 text-success ring-1 ring-inset ring-success/25',
+  REJECTED: 'bg-destructive/12 text-destructive ring-1 ring-inset ring-destructive/25',
+  WITHDRAWN: 'bg-muted text-muted-foreground ring-1 ring-inset ring-border',
 };
 
 function toLabel(value: string) {
@@ -143,7 +143,7 @@ export default function ApplicationDetailPage() {
             <h1 className="text-2xl font-bold text-gray-900">
               {application.opportunity.title}
             </h1>
-            <span className="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-700">
+            <span className="inline-flex items-center rounded-full bg-violet/15 px-2.5 py-0.5 text-xs font-medium text-violet ring-1 ring-inset ring-violet/25">
               {toLabel(application.opportunity.type)}
             </span>
             <span
@@ -161,7 +161,7 @@ export default function ApplicationDetailPage() {
           <Button
             variant="outline"
             onClick={() => setWithdrawDialogOpen(true)}
-            className="shrink-0 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+            className="shrink-0 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
           >
             Withdraw Application
           </Button>

@@ -52,7 +52,7 @@ const ROLE_LABELS: Record<string, string> = {
 
 function RoleBadge({ role }: { role: string }) {
   return (
-    <span className="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-700">
+    <span className="inline-flex items-center rounded-full bg-violet/15 px-2.5 py-0.5 text-xs font-medium text-violet ring-1 ring-inset ring-violet/25">
       {ROLE_LABELS[role] ?? role}
     </span>
   );
@@ -62,7 +62,9 @@ function ActiveBadge({ isActive }: { isActive: boolean }) {
   return (
     <span
       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-        isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
+        isActive
+          ? 'bg-success/15 text-success ring-1 ring-inset ring-success/25'
+          : 'bg-muted text-muted-foreground ring-1 ring-inset ring-border'
       }`}
     >
       {isActive ? 'Active' : 'Deactivated'}
@@ -223,7 +225,7 @@ function UsersContent() {
               ))}
             </div>
           ) : error ? (
-            <div className="py-10 text-center text-red-500">
+            <div className="py-10 text-center text-destructive">
               Failed to load users
             </div>
           ) : !users?.length ? (
@@ -284,7 +286,7 @@ function UsersContent() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="gap-1.5 text-orange-600 hover:text-orange-700"
+                            className="gap-1.5 text-amber hover:text-amber/80"
                             onClick={() => setDeactivatingUser(u)}
                           >
                             <PauseCircle className="h-3.5 w-3.5" />
@@ -294,7 +296,7 @@ function UsersContent() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="gap-1.5 text-green-600 hover:text-green-700"
+                            className="gap-1.5 text-success hover:text-success/80"
                             onClick={() => setReactivatingUser(u)}
                           >
                             <PlayCircle className="h-3.5 w-3.5" />
@@ -382,7 +384,7 @@ function UsersContent() {
               Cancel
             </Button>
             <Button
-              className="bg-green-600 hover:bg-green-700"
+              className="bg-success text-success-foreground hover:bg-success/90"
               onClick={handleReactivate}
               disabled={isProcessing}
             >

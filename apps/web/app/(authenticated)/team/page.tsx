@@ -17,10 +17,10 @@ import { cn } from '@/lib/utils';
 import type { ApplicationStatus } from '@repo/contracts';
 
 const STATUS_BADGE_COLORS: Record<ApplicationStatus, string> = {
-  PENDING: 'bg-yellow-100 text-yellow-700',
-  ACCEPTED: 'bg-green-100 text-green-700',
-  REJECTED: 'bg-red-100 text-red-700',
-  WITHDRAWN: 'bg-gray-100 text-gray-600',
+  PENDING: 'bg-warning/18 text-warning ring-1 ring-inset ring-warning/30',
+  ACCEPTED: 'bg-success/15 text-success ring-1 ring-inset ring-success/25',
+  REJECTED: 'bg-destructive/12 text-destructive ring-1 ring-inset ring-destructive/25',
+  WITHDRAWN: 'bg-muted text-muted-foreground ring-1 ring-inset ring-border',
 };
 
 function toLabel(value: string) {
@@ -42,7 +42,7 @@ function getInitials(name: string) {
 function ForbiddenPage() {
   return (
     <div className="flex flex-col items-center justify-center py-20">
-      <ShieldX className="mb-4 h-16 w-16 text-red-400" />
+      <ShieldX className="mb-4 h-16 w-16 text-destructive" />
       <h1 className="mb-2 text-2xl font-bold text-gray-900">Access Denied</h1>
       <p className="max-w-md text-center text-gray-500">
         Only managers can view their team&apos;s overview.

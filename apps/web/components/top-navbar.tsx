@@ -91,7 +91,7 @@ export function TopNavbar() {
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => logout()}
-              className="flex items-center gap-2 text-red-600 focus:bg-red-50 focus:text-red-600"
+              className="flex items-center gap-2 text-destructive focus:bg-destructive/10 focus:text-destructive"
             >
               <LogOut className="h-4 w-4" />
               <span>Logout</span>

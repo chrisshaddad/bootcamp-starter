@@ -44,17 +44,17 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  PENDING: 'bg-yellow-100 text-yellow-800',
-  ACTIVE: 'bg-green-100 text-green-800',
-  REJECTED: 'bg-red-100 text-red-800',
-  SUSPENDED: 'bg-orange-100 text-orange-800',
-  INACTIVE: 'bg-gray-100 text-gray-800',
+  PENDING: 'bg-warning/18 text-warning ring-1 ring-inset ring-warning/30',
+  ACTIVE: 'bg-success/15 text-success ring-1 ring-inset ring-success/25',
+  REJECTED: 'bg-destructive/12 text-destructive ring-1 ring-inset ring-destructive/25',
+  SUSPENDED: 'bg-amber/18 text-amber ring-1 ring-inset ring-amber/30',
+  INACTIVE: 'bg-muted text-muted-foreground ring-1 ring-inset ring-border',
 };
 
 function StatusBadge({ status }: { status: string }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[status] || 'bg-gray-100 text-gray-800'}`}
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[status] || 'bg-muted text-muted-foreground ring-1 ring-inset ring-border'}`}
     >
       {STATUS_LABELS[status] || status}
     </span>
@@ -163,7 +163,7 @@ export default function OrganizationsPage() {
               ))}
             </div>
           ) : error ? (
-            <div className="py-10 text-center text-red-500">
+            <div className="py-10 text-center text-destructive">
               Failed to load organizations
             </div>
           ) : !organizations?.length ? (

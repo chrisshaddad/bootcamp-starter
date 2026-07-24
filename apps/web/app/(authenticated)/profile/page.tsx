@@ -2,13 +2,20 @@
 
 import { useMemo, useState } from 'react';
 import {
+  Briefcase,
+  Building2,
+  CalendarDays,
   FileText,
+  Hash,
+  Layers,
+  Mail,
   MapPin,
+  MapPinned,
   Pencil,
   Phone,
   Plus,
   Target,
-  Layers,
+  UserRound,
   X,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -18,6 +25,8 @@ import { useSkills } from '@/hooks/use-skills';
 import { ApiError } from '@/lib/api';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SkillRating } from '@/components/skill-rating';
 import { SkillPickerDialog } from '@/components/skill-picker-dialog';
@@ -36,6 +45,15 @@ const WORK_ARRANGEMENT_LABELS = {
   ONSITE: 'On-site',
 } as const;
 
+function initials(name: string): string {
+  return name
+    .split(' ')
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+}
+
 function formatTenure(createdAt: string | Date): string {
   const start = new Date(createdAt);
   const months = (Date.now() - start.getTime()) / (1000 * 60 * 60 * 24 * 30.44);
@@ -43,6 +61,14 @@ function formatTenure(createdAt: string | Date): string {
   if (months < 1) return 'New';
   if (months < 12) return `${Math.floor(months)}mo tenure`;
   return `${Math.floor(months / 12)}y tenure`;
+}
+
+function formatDate(value: string | Date): string {
+  return new Date(value).toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
 }
 
 function formatAddress(profile: {
@@ -60,11 +86,62 @@ function formatAddress(profile: {
   return parts.length ? parts.join(' · ') : null;
 }
 
+/** A labelled value row. Falls back to a muted "Not provided" when empty. */
+function DetailItem({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+      <div className="min-w-0">
+        <dt className="text-xs text-muted-foreground">{label}</dt>
+        <dd className="mt-0.5 break-words text-sm text-foreground">
+          {value || <span className="text-muted-foreground">Not provided</span>}
+        </dd>
+      </div>
+    </div>
+  );
+}
+
+function SectionCard({
+  icon: Icon,
+  title,
+  action,
+  children,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card className="gap-4 p-6">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Icon className="h-4 w-4 text-muted-foreground" />
+          <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+        </div>
+        {action}
+      </div>
+      {children}
+    </Card>
+  );
+}
+
 function LoadingSkeleton() {
   return (
     <div className="space-y-6">
-      <Skeleton className="h-28 w-full rounded-xl" />
-      <Skeleton className="h-28 w-full rounded-xl" />
+      <Skeleton className="h-32 w-full rounded-xl" />
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Skeleton className="h-52 w-full rounded-xl" />
+        <Skeleton className="h-52 w-full rounded-xl" />
+      </div>
       <Skeleton className="h-40 w-full rounded-xl" />
     </div>
   );
@@ -88,6 +165,9 @@ export default function ProfilePage() {
   if (isLoading || !employee) {
     return <LoadingSkeleton />;
   }
+
+  const profile = employee.profile;
+  const address = profile ? formatAddress(profile) : null;
 
   const handleAddSkill = (skillId: string, proficiencyLevel: number) => {
     return updateSkills({
@@ -141,108 +221,149 @@ export default function ProfilePage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">My Profile</h1>
+        <h1 className="text-2xl font-bold text-foreground">My Profile</h1>
         <Button variant="outline" onClick={() => setEditOpen(true)}>
           <Pencil className="h-4 w-4" />
           Edit Profile
         </Button>
       </div>
 
-      <Card className="gap-4 border-gray-200 p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-start gap-4">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary-100 text-lg font-semibold text-primary-base">
-            {employee.name
-              .split(' ')
-              .map((part) => part[0])
-              .join('')
-              .slice(0, 2)
-              .toUpperCase()}
-          </div>
-          <div className="space-y-2">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">
-                {employee.name}
-              </h2>
-              {employee.title && (
-                <p className="text-sm text-gray-500">{employee.title}</p>
-              )}
-            </div>
-            <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
-              {employee.level && (
-                <span className="rounded-full bg-gray-100 px-2.5 py-0.5">
-                  L{employee.level}
-                </span>
-              )}
-              {employee.department && (
-                <span className="text-gray-500">
-                  {employee.department.name}
-                </span>
-              )}
-              <span className="text-gray-500">
-                {formatTenure(employee.createdAt)}
-              </span>
-              {employee.profile?.employmentType && (
-                <span className="rounded-full bg-primary-100 px-2.5 py-0.5 text-primary-base">
-                  {EMPLOYMENT_TYPE_LABELS[employee.profile.employmentType]}
-                </span>
-              )}
-              {employee.profile?.workArrangement && (
-                <span className="rounded-full bg-success/15 px-2.5 py-0.5 text-success">
-                  {WORK_ARRANGEMENT_LABELS[employee.profile.workArrangement]}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
+      {/* Identity header */}
+      <Card className="gap-5 p-6 sm:flex-row sm:items-center">
+        <Avatar className="h-16 w-16 text-lg">
+          {profile?.profilePictureUrl && (
+            <AvatarImage src={profile.profilePictureUrl} alt={employee.name} />
+          )}
+          <AvatarFallback className="bg-primary/10 font-semibold text-primary">
+            {initials(employee.name)}
+          </AvatarFallback>
+        </Avatar>
 
-        <div className="flex flex-col gap-2 border-t border-gray-100 pt-4 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-6">
-          <div className="flex items-center gap-2 text-sm text-gray-700">
-            <Phone className="h-4 w-4 shrink-0 text-gray-400" />
-            {employee.profile?.phoneNumber || (
-              <span className="text-gray-400">No phone added</span>
-            )}
+        <div className="min-w-0 space-y-2">
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">
+              {employee.name}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {employee.title || 'No title set'}
+            </p>
           </div>
-          <div className="flex items-center gap-2 text-sm text-gray-700">
-            <MapPin className="h-4 w-4 shrink-0 text-gray-400" />
-            {(employee.profile && formatAddress(employee.profile)) || (
-              <span className="text-gray-400">No location added</span>
+          <div className="flex flex-wrap items-center gap-2">
+            {employee.level && <Badge tone="neutral">L{employee.level}</Badge>}
+            {employee.department && (
+              <Badge tone="neutral">{employee.department.name}</Badge>
             )}
+            {profile?.employmentType && (
+              <Badge tone="primary">
+                {EMPLOYMENT_TYPE_LABELS[profile.employmentType]}
+              </Badge>
+            )}
+            {profile?.workArrangement && (
+              <Badge tone="success">
+                {WORK_ARRANGEMENT_LABELS[profile.workArrangement]}
+              </Badge>
+            )}
+            <span className="text-xs text-muted-foreground">
+              {formatTenure(employee.createdAt)}
+            </span>
           </div>
         </div>
       </Card>
 
-      <Card className="grid grid-cols-1 gap-6 border-gray-200 p-5 shadow-sm sm:grid-cols-2 sm:divide-x sm:divide-gray-100">
+      {/* About */}
+      <Card className="grid grid-cols-1 gap-6 p-6 sm:grid-cols-2 sm:divide-x sm:divide-border">
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <FileText className="h-4 w-4 text-gray-500" />
-            <h3 className="text-sm font-semibold text-gray-900">Bio</h3>
+            <FileText className="h-4 w-4 text-muted-foreground" />
+            <h3 className="text-sm font-semibold text-foreground">Bio</h3>
           </div>
-          <p className="text-sm text-gray-600">
-            {employee.profile?.bio || 'No bio added yet.'}
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            {profile?.bio || 'No bio added yet.'}
           </p>
         </div>
         <div className="space-y-2 sm:pl-6">
           <div className="flex items-center gap-2">
-            <Target className="h-4 w-4 text-gray-500" />
-            <h3 className="text-sm font-semibold text-gray-900">
+            <Target className="h-4 w-4 text-muted-foreground" />
+            <h3 className="text-sm font-semibold text-foreground">
               Career Goals
             </h3>
           </div>
-          <p className="text-sm text-gray-600">
-            {employee.profile?.careerGoal || 'No career goals added yet.'}
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            {profile?.careerGoal || 'No career goals added yet.'}
           </p>
         </div>
       </Card>
 
-      <Card className="gap-3 border-gray-200 p-5 shadow-sm">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Layers className="h-4 w-4 text-gray-500" />
-            <h3 className="text-sm font-semibold text-gray-900">Skills</h3>
-            <span className="text-xs text-gray-500">
-              {employee.skills.length} skills
-            </span>
-          </div>
+      {/* Contact + Employment */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <SectionCard icon={UserRound} title="Contact Information">
+          <dl className="grid gap-4 sm:grid-cols-2">
+            <DetailItem icon={Mail} label="Email" value={employee.email} />
+            <DetailItem
+              icon={Phone}
+              label="Phone"
+              value={profile?.phoneNumber}
+            />
+            <DetailItem
+              icon={MapPinned}
+              label="Location"
+              value={[profile?.city, profile?.country]
+                .filter(Boolean)
+                .join(', ')}
+            />
+            <DetailItem icon={MapPin} label="Address" value={address} />
+          </dl>
+        </SectionCard>
+
+        <SectionCard icon={Briefcase} title="Employment Details">
+          <dl className="grid gap-4 sm:grid-cols-2">
+            <DetailItem
+              icon={Building2}
+              label="Department"
+              value={employee.department?.name}
+            />
+            <DetailItem
+              icon={Layers}
+              label="Level"
+              value={employee.level ? `L${employee.level}` : null}
+            />
+            <DetailItem
+              icon={UserRound}
+              label="Manager"
+              value={employee.manager?.name}
+            />
+            <DetailItem
+              icon={CalendarDays}
+              label="Start date"
+              value={formatDate(employee.createdAt)}
+            />
+            <DetailItem
+              icon={Briefcase}
+              label="Employment type"
+              value={
+                profile?.employmentType
+                  ? EMPLOYMENT_TYPE_LABELS[profile.employmentType]
+                  : null
+              }
+            />
+            <DetailItem
+              icon={Hash}
+              label="Employee ID"
+              value={
+                <span className="font-mono text-xs">
+                  #{employee.id.slice(0, 8).toUpperCase()}
+                </span>
+              }
+            />
+          </dl>
+        </SectionCard>
+      </div>
+
+      {/* Skills */}
+      <SectionCard
+        icon={Layers}
+        title="Skills"
+        action={
           <Button
             type="button"
             variant="outline"
@@ -252,18 +373,18 @@ export default function ProfilePage() {
             <Plus className="h-4 w-4" />
             Add Skill
           </Button>
-        </div>
-
+        }
+      >
         {!employee.skills.length ? (
-          <p className="text-sm text-gray-500">No skills added yet.</p>
+          <p className="text-sm text-muted-foreground">No skills added yet.</p>
         ) : (
           <div className="flex flex-wrap gap-3">
             {employee.skills.map((skill) => (
               <div
                 key={skill.id}
-                className="group flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2"
+                className="group flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2"
               >
-                <span className="text-sm font-medium text-gray-900">
+                <span className="text-sm font-medium text-foreground">
                   {skill.name}
                 </span>
                 <SkillRating
@@ -274,7 +395,7 @@ export default function ProfilePage() {
                   type="button"
                   aria-label={`Remove ${skill.name}`}
                   onClick={() => handleRemoveSkill(skill.id)}
-                  className="text-gray-300 hover:text-error"
+                  className="rounded text-muted-foreground/50 transition-colors hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -282,7 +403,7 @@ export default function ProfilePage() {
             ))}
           </div>
         )}
-      </Card>
+      </SectionCard>
 
       <EditProfileDialog
         open={editOpen}

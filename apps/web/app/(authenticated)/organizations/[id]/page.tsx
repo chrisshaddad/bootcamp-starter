@@ -42,17 +42,17 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  PENDING: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  ACTIVE: 'bg-green-100 text-green-800 border-green-200',
-  REJECTED: 'bg-red-100 text-red-800 border-red-200',
-  SUSPENDED: 'bg-orange-100 text-orange-800 border-orange-200',
-  INACTIVE: 'bg-gray-100 text-gray-800 border-gray-200',
+  PENDING: 'bg-warning/18 text-warning ring-warning/30',
+  ACTIVE: 'bg-success/15 text-success ring-success/25',
+  REJECTED: 'bg-destructive/12 text-destructive ring-destructive/25',
+  SUSPENDED: 'bg-amber/18 text-amber ring-amber/30',
+  INACTIVE: 'bg-muted text-muted-foreground ring-border',
 };
 
 function StatusBadge({ status }: { status: string }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full border px-3 py-1 text-sm font-medium ${STATUS_COLORS[status] || 'bg-gray-100 text-gray-800'}`}
+      className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ring-1 ring-inset ${STATUS_COLORS[status] || 'bg-muted text-muted-foreground ring-border'}`}
     >
       {STATUS_LABELS[status] || status}
     </span>
@@ -189,7 +189,7 @@ export default function OrganizationDetailPage() {
   if (error) {
     return (
       <div className="py-10 text-center">
-        <div className="text-red-500 mb-4">Failed to load organization</div>
+        <div className="text-destructive mb-4">Failed to load organization</div>
         <Button variant="outline" onClick={() => router.back()}>
           Go Back
         </Button>
@@ -255,14 +255,14 @@ export default function OrganizationDetailPage() {
             <>
               <Button
                 variant="outline"
-                className="gap-2 text-red-600 border-red-200 hover:bg-red-50"
+                className="gap-2 text-destructive border-destructive/30 hover:bg-destructive/10"
                 onClick={() => setShowRejectDialog(true)}
               >
                 <XCircle className="h-4 w-4" />
                 Reject
               </Button>
               <Button
-                className="gap-2 bg-green-600 hover:bg-green-700"
+                className="gap-2 bg-success text-success-foreground hover:bg-success/90"
                 onClick={() => setShowApproveDialog(true)}
               >
                 <CheckCircle className="h-4 w-4" />
@@ -274,7 +274,7 @@ export default function OrganizationDetailPage() {
           {org.status === 'ACTIVE' && (
             <Button
               variant="outline"
-              className="gap-2 text-orange-600 border-orange-200 hover:bg-orange-50"
+              className="gap-2 text-amber border-amber/30 hover:bg-amber/10"
               onClick={() => setShowSuspendDialog(true)}
             >
               <PauseCircle className="h-4 w-4" />
@@ -284,7 +284,7 @@ export default function OrganizationDetailPage() {
 
           {org.status === 'SUSPENDED' && (
             <Button
-              className="gap-2 bg-green-600 hover:bg-green-700"
+              className="gap-2 bg-success text-success-foreground hover:bg-success/90"
               onClick={() => setShowReactivateDialog(true)}
             >
               <PlayCircle className="h-4 w-4" />
@@ -320,7 +320,7 @@ export default function OrganizationDetailPage() {
                     href={org.website}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline"
+                    className="text-primary hover:underline"
                   >
                     {org.website}
                   </a>
@@ -383,8 +383,8 @@ export default function OrganizationDetailPage() {
 
               {/* Approved By (if applicable) */}
               {org.approvedBy ? (
-                <div className="p-4 bg-green-50 rounded-lg">
-                  <div className="text-xs text-green-600 uppercase tracking-wide mb-2">
+                <div className="p-4 bg-success/10 rounded-lg">
+                  <div className="text-xs text-success uppercase tracking-wide mb-2">
                     Approved By
                   </div>
                   <div className="font-medium text-gray-900">
@@ -396,12 +396,12 @@ export default function OrganizationDetailPage() {
                   </div>
                 </div>
               ) : isPending ? (
-                <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                  <div className="flex items-center gap-2 text-yellow-700">
+                <div className="p-4 bg-warning/10 rounded-lg border border-warning/30">
+                  <div className="flex items-center gap-2 text-warning">
                     <Clock className="h-5 w-5" />
                     <span className="font-medium">Awaiting Approval</span>
                   </div>
-                  <p className="mt-1 text-sm text-yellow-600">
+                  <p className="mt-1 text-sm text-warning">
                     This organization is waiting for a super admin to review and
                     approve the registration.
                   </p>
@@ -432,7 +432,7 @@ export default function OrganizationDetailPage() {
               Cancel
             </Button>
             <Button
-              className="bg-green-600 hover:bg-green-700"
+              className="bg-success text-success-foreground hover:bg-success/90"
               onClick={handleApprove}
               disabled={isApproving}
             >
@@ -523,7 +523,7 @@ export default function OrganizationDetailPage() {
               Cancel
             </Button>
             <Button
-              className="bg-green-600 hover:bg-green-700"
+              className="bg-success text-success-foreground hover:bg-success/90"
               onClick={handleReactivate}
               disabled={isReactivating}
             >
