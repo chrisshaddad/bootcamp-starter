@@ -151,6 +151,33 @@ export class AuthService {
   }
 
   /**
+   * Send a walk-in library member's newly-linked account their first sign-in
+   * link, so they can start using the patron portal for a membership staff
+   * just linked to their (new or existing) account. Takes the already-
+   * resolved user directly, unlike sendStaffInvitation, since the caller has
+   * already found-or-created the account and knows its real stored name.
+   */
+  async sendMembershipClaimInvitation(
+    user: { id: string; email: string; name: string },
+    details: { organizationName: string; libraryCardNumber: string },
+  ): Promise<void> {
+    const claimLink = await this.issueMagicLinkToken(
+      user.id,
+      INVITATION_EXPIRY_MINUTES,
+    );
+
+    await this.mailQueue.add(MAIL_JOBS.SEND_MEMBERSHIP_CLAIM, {
+      email: user.email,
+      patronName: user.name,
+      organizationName: details.organizationName,
+      libraryCardNumber: details.libraryCardNumber,
+      claimLink,
+    });
+
+    this.logger.log(`Membership claim invitation queued for user ${user.id}`);
+  }
+
+  /**
    * Verify a magic link token and create a session
    * Returns the session ID on success
    */

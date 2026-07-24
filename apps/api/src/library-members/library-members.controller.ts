@@ -17,6 +17,7 @@ import {
   libraryMemberUpdateRequestSchema,
   libraryMemberStatusSchema,
   libraryMembershipTypeSchema,
+  libraryMemberClaimInviteRequestSchema,
   type LibraryMemberCreateRequest,
   type LibraryMemberUpdateRequest,
   type LibraryMemberResponse,
@@ -24,6 +25,7 @@ import {
   type LibraryMemberStatus,
   type LibraryMembershipType,
   type LibraryMemberActionResponse,
+  type LibraryMemberClaimInviteRequest,
 } from '@repo/contracts';
 import { ZodValidationPipe } from '../common/pipes';
 
@@ -79,6 +81,19 @@ export class LibraryMembersController {
       id,
     );
     return { message: 'Membership request rejected', libraryMember };
+  }
+
+  // Link a walk-in member (userId: null) to a User account and email them a
+  // sign-in link. No membership-status gate (unlike approve/reject) -
+  // linking an identity is orthogonal to membership status.
+  @Post(':id/claim-invite')
+  async sendClaimInvite(
+    @OrganizationId() organizationId: string,
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(libraryMemberClaimInviteRequestSchema))
+    body: LibraryMemberClaimInviteRequest,
+  ): Promise<LibraryMemberActionResponse> {
+    return this.libraryMembersService.sendClaimInvite(organizationId, id, body);
   }
 
   @Get(':id')
