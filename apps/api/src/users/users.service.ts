@@ -17,7 +17,20 @@ import type {
 } from '@repo/contracts';
 
 // Roles this module manages. PATIENT lives in the Patients module.
-const MANAGED_ROLES: UserRole[] = ['STAFF', 'PROFESSIONAL'];
+const MANAGED_ROLES: UserRole[] = [
+  'STAFF',
+  'PROFESSIONAL',
+  'INSTITUTION_ADMIN',
+];
+
+// Human-readable labels for the admin-notification email.
+const ROLE_LABELS: Record<UserRole, string> = {
+  STAFF: 'staff member',
+  PROFESSIONAL: 'professional',
+  INSTITUTION_ADMIN: 'institution admin',
+  SUPER_ADMIN: 'super admin',
+  PATIENT: 'patient',
+};
 
 const withProfile = {
   professionalProfile: { select: { specialty: true, bio: true } },
@@ -175,6 +188,21 @@ export class UsersService {
       );
     }
 
+    try {
+      await this.authService.notifyAdminsOfNewUser({
+        institutionId: actor.institutionId,
+        excludeUserId: actor.id,
+        newUserName: data.fullName,
+        newUserRoleLabel: ROLE_LABELS[data.role],
+        createdByName: actor.fullName,
+      });
+    } catch (error) {
+      this.logger.error(
+        `User ${createdId} created but admin notification failed to send`,
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
+
     this.logger.log(`User ${createdId} created by ${actor.id}`);
     return this.findOne(createdId, actor.institutionId);
   }
@@ -240,6 +268,22 @@ export class UsersService {
 
     if (!existing) {
       throw new NotFoundException(`User with ID ${id} not found`);
+    }
+
+    if (existing.role === 'INSTITUTION_ADMIN' && !isActive) {
+      const activeAdminCount = await this.prisma.user.count({
+        where: {
+          institutionId: actor.institutionId,
+          role: 'INSTITUTION_ADMIN',
+          isActive: true,
+        },
+      });
+
+      if (activeAdminCount <= 1) {
+        throw new ForbiddenException(
+          'Cannot deactivate the last active institution admin',
+        );
+      }
     }
 
     await this.prisma.user.update({ where: { id }, data: { isActive } });

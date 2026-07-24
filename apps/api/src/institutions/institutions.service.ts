@@ -214,6 +214,37 @@ export class InstitutionsService {
     return this.findOne(id);
   }
 
+  /**
+   * Suspend an institution (set status to SUSPENDED). Enforced at login/auth
+   * time — every user of a non-ACTIVE institution is blocked from acting.
+   */
+  async suspend(id: string): Promise<InstitutionDetailResponse> {
+    await this.ensureExists(id);
+
+    await this.prisma.institution.update({
+      where: { id },
+      data: { status: 'SUSPENDED' },
+    });
+
+    this.logger.log(`Institution ${id} suspended`);
+    return this.findOne(id);
+  }
+
+  /**
+   * Reactivate a suspended or rejected institution (set status back to ACTIVE).
+   */
+  async reactivate(id: string): Promise<InstitutionDetailResponse> {
+    await this.ensureExists(id);
+
+    await this.prisma.institution.update({
+      where: { id },
+      data: { status: 'ACTIVE' },
+    });
+
+    this.logger.log(`Institution ${id} reactivated`);
+    return this.findOne(id);
+  }
+
   private async ensureExists(id: string): Promise<void> {
     if (id === PLATFORM_INSTITUTION_ID) {
       throw new NotFoundException(`Institution with ID ${id} not found`);

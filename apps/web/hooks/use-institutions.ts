@@ -3,17 +3,19 @@
 import useSWR, { mutate } from 'swr';
 import { useCallback } from 'react';
 import { apiPatch, apiPost } from '@/lib/api';
-import type {
-  InstitutionListResponse,
-  InstitutionDetailResponse,
-  InstitutionActionResponse,
-  InstitutionCreateRequest,
-  InstitutionStatus,
+import {
+  DEFAULT_PAGE_SIZE,
+  type InstitutionListResponse,
+  type InstitutionDetailResponse,
+  type InstitutionActionResponse,
+  type InstitutionCreateRequest,
+  type InstitutionStatus,
 } from '@repo/contracts';
 
 interface UseInstitutionsOptions {
   status?: InstitutionStatus;
   page?: number;
+  limit?: number;
   enabled?: boolean;
 }
 
@@ -31,11 +33,12 @@ interface UseInstitutionsReturn {
 export function useInstitutions(
   options: UseInstitutionsOptions = {},
 ): UseInstitutionsReturn {
-  const { status, page, enabled = true } = options;
+  const { status, page, limit, enabled = true } = options;
 
   const params = new URLSearchParams();
   if (status) params.set('status', status);
   if (page && page > 1) params.set('page', String(page));
+  if (limit && limit !== DEFAULT_PAGE_SIZE) params.set('limit', String(limit));
   const qs = params.toString();
   const endpoint = qs ? `/institutions?${qs}` : '/institutions';
 
@@ -73,6 +76,8 @@ interface UseInstitutionReturn {
   error: Error | undefined;
   approve: () => Promise<InstitutionActionResponse>;
   reject: () => Promise<InstitutionActionResponse>;
+  suspend: () => Promise<InstitutionActionResponse>;
+  reactivate: () => Promise<InstitutionActionResponse>;
   mutate: () => void;
 }
 
@@ -113,12 +118,30 @@ export function useInstitution(
     return result;
   }, [id, invalidateAll]);
 
+  const suspend = useCallback(async () => {
+    const result = await apiPatch<InstitutionActionResponse>(
+      `/institutions/${id}/suspend`,
+    );
+    invalidateAll();
+    return result;
+  }, [id, invalidateAll]);
+
+  const reactivate = useCallback(async () => {
+    const result = await apiPatch<InstitutionActionResponse>(
+      `/institutions/${id}/reactivate`,
+    );
+    invalidateAll();
+    return result;
+  }, [id, invalidateAll]);
+
   return {
     institution: data,
     isLoading,
     error,
     approve,
     reject,
+    suspend,
+    reactivate,
     mutate: swrMutate,
   };
 }

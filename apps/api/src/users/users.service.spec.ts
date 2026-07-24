@@ -1,37 +1,64 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ForbiddenException } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { PrismaService } from '../database/prisma.service';
 import { AuthService } from '../auth/auth.service';
 
 describe('UsersService', () => {
   let service: UsersService;
+  let prisma: {
+    user: {
+      findMany: jest.Mock;
+      findFirst: jest.Mock;
+      findUniqueOrThrow: jest.Mock;
+      count: jest.Mock;
+      create: jest.Mock;
+      update: jest.Mock;
+    };
+  };
+  let authService: {
+    sendInvitation: jest.Mock;
+    notifyAdminsOfNewUser: jest.Mock;
+  };
+
+  const actor = {
+    id: 'admin-1',
+    fullName: 'Admin One',
+    institutionId: 'inst-1',
+    role: 'INSTITUTION_ADMIN',
+  } as never;
 
   beforeEach(async () => {
+    prisma = {
+      user: {
+        findMany: jest.fn(),
+        findFirst: jest.fn(),
+        findUniqueOrThrow: jest.fn(),
+        count: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn(),
+      },
+    };
+    authService = {
+      sendInvitation: jest.fn(),
+      notifyAdminsOfNewUser: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UsersService,
         {
           provide: PrismaService,
           useValue: {
-            user: {
-              findMany: jest.fn(),
-              findFirst: jest.fn(),
-              findUniqueOrThrow: jest.fn(),
-              count: jest.fn(),
-              create: jest.fn(),
-              update: jest.fn(),
-            },
-            professionalProfile: {
-              create: jest.fn(),
-              update: jest.fn(),
-            },
+            ...prisma,
+            professionalProfile: { create: jest.fn(), update: jest.fn() },
             institution: { findUniqueOrThrow: jest.fn() },
             $transaction: jest.fn(),
           },
         },
         {
           provide: AuthService,
-          useValue: { sendInvitation: jest.fn() },
+          useValue: authService,
         },
       ],
     }).compile();
@@ -41,5 +68,36 @@ describe('UsersService', () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  describe('setStatus', () => {
+    it('throws ForbiddenException when deactivating the last active institution admin', async () => {
+      prisma.user.findFirst.mockResolvedValue({
+        id: 'admin-2',
+        role: 'INSTITUTION_ADMIN',
+      });
+      prisma.user.count.mockResolvedValue(1);
+
+      await expect(service.setStatus('admin-2', false, actor)).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it('allows deactivating an institution admin when another active admin remains', async () => {
+      prisma.user.findFirst.mockResolvedValue({
+        id: 'admin-2',
+        role: 'INSTITUTION_ADMIN',
+      });
+      prisma.user.count.mockResolvedValue(2);
+      prisma.user.update.mockResolvedValue({});
+
+      await service.setStatus('admin-2', false, actor);
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'admin-2' },
+        data: { isActive: false },
+      });
+    });
   });
 });

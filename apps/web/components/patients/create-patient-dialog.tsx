@@ -272,7 +272,16 @@ export function CreatePatientDialog({ canEditClinical }: Props) {
 
         <StepIndicator steps={stepLabels} current={step} />
 
-        <form onSubmit={submit} className="space-y-4">
+        <form
+          onSubmit={submit}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && step < lastStep) {
+              e.preventDefault();
+              void goNext();
+            }
+          }}
+          className="space-y-4"
+        >
           {/* Step 1 — Identity & Contact */}
           <div className={cn('space-y-4', step !== 0 && 'hidden')}>
             <div className="space-y-2">

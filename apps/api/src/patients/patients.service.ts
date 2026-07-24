@@ -91,6 +91,21 @@ export class PatientsService {
       );
     }
 
+    try {
+      await this.authService.notifyAdminsOfNewUser({
+        institutionId: actor.institutionId,
+        excludeUserId: actor.id,
+        newUserName: data.fullName,
+        newUserRoleLabel: 'patient',
+        createdByName: actor.fullName,
+      });
+    } catch (error) {
+      this.logger.error(
+        `Patient ${patientId} created but admin notification failed to send`,
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
+
     this.logger.log(`Patient ${patientId} created by ${actor.id}`);
     return this.buildDetail(patientId);
   }

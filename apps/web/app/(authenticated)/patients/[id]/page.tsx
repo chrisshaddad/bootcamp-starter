@@ -2,10 +2,13 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
+import { toast } from 'sonner';
 import { useUser } from '@/hooks/use-auth';
-import { usePatient } from '@/hooks/use-patients';
+import { usePatient, useSetPatientStatus } from '@/hooks/use-patients';
+import { ApiError } from '@/lib/api';
 import { ForbiddenPage } from '@/components/forbidden-page';
 import { StatusBadge } from '@/components/status-badge';
+import { ActivationStatusBadge } from '@/components/activation-status-badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -27,6 +30,7 @@ export default function PatientDetailPage() {
 
   const { patient, isLoading, error, updateAdmin, updateClinical, mutate } =
     usePatient(patientId, { enabled: canAccess });
+  const { setPatientStatus } = useSetPatientStatus();
 
   if (userLoading || (canAccess && isLoading)) {
     return (
@@ -89,7 +93,33 @@ export default function PatientDetailPage() {
             {patient.email}
           </p>
         </div>
-        <StatusBadge status={patient.isActive ? 'ACTIVE' : 'INACTIVE'} />
+        {canEditAdmin ? (
+          <ActivationStatusBadge
+            isActive={patient.isActive}
+            name={patient.fullName}
+            entityLabel="patient"
+            onConfirm={async () => {
+              try {
+                await setPatientStatus(patient.id, !patient.isActive);
+                mutate();
+                toast.success(
+                  patient.isActive
+                    ? 'Patient deactivated'
+                    : 'Patient reactivated',
+                );
+              } catch (error) {
+                toast.error(
+                  error instanceof ApiError
+                    ? error.message
+                    : 'Failed to update status',
+                );
+                throw error;
+              }
+            }}
+          />
+        ) : (
+          <StatusBadge status={patient.isActive ? 'ACTIVE' : 'INACTIVE'} />
+        )}
       </div>
 
       <Tabs defaultValue="clinical">

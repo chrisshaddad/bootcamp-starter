@@ -91,4 +91,26 @@ export class InstitutionsController {
       institution,
     };
   }
+
+  @Patch(':id/suspend')
+  @Roles('SUPER_ADMIN')
+  async suspend(@Param('id') id: string): Promise<InstitutionActionResponse> {
+    const institution = await this.institutionsService.suspend(id);
+    return {
+      message: 'Institution suspended successfully',
+      institution,
+    };
+  }
+
+  @Patch(':id/reactivate')
+  @Roles('SUPER_ADMIN')
+  async reactivate(
+    @Param('id') id: string,
+  ): Promise<InstitutionActionResponse> {
+    const institution = await this.institutionsService.reactivate(id);
+    return {
+      message: 'Institution reactivated successfully',
+      institution,
+    };
+  }
 }

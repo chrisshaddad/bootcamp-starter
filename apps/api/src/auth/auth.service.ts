@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import * as crypto from 'crypto';
@@ -9,6 +14,11 @@ import { SessionService } from './session.service';
 import { MAIL_QUEUE, MAIL_JOBS } from '../mail/mail.constants';
 
 const MAGIC_LINK_EXPIRY_MINUTES = 15;
+const INVITATION_EXPIRY_DAYS = 7;
+const INACTIVE_ACCOUNT_MESSAGE =
+  'This account is currently inactive. Please contact your administrator for access.';
+const INACTIVE_INSTITUTION_MESSAGE =
+  'Your institution is not currently active. Please contact platform support.';
 
 /**
  * Single source of truth for shaping a Prisma User into the UserResponse
@@ -42,13 +52,16 @@ export class AuthService {
    * Mint a fresh magic-link token for a user, invalidating any outstanding
    * ones. Returns the token so callers can build the URL they need
    * (sign-in vs. invitation). Shared by requestMagicLink and sendInvitation
-   * so the token/expiry logic lives in one place.
+   * so the token/expiry logic lives in one place. Sign-in links default to
+   * the short-lived expiry; sendInvitation passes the longer one explicitly
+   * since a new hire may not check their email for a few days.
    */
-  private async createMagicLinkToken(userId: string): Promise<string> {
+  private async createMagicLinkToken(
+    userId: string,
+    expiryMs: number = MAGIC_LINK_EXPIRY_MINUTES * 60 * 1000,
+  ): Promise<string> {
     const token = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(
-      Date.now() + MAGIC_LINK_EXPIRY_MINUTES * 60 * 1000,
-    );
+    const expiresAt = new Date(Date.now() + expiryMs);
 
     // Invalidate any existing magic links for this user
     await this.prisma.magicLink.updateMany({
@@ -79,6 +92,7 @@ export class AuthService {
     // Find user by email
     const user = await this.prisma.user.findUnique({
       where: { email: email.toLowerCase() },
+      include: { institution: { select: { status: true } } },
     });
 
     if (!user) {
@@ -87,6 +101,18 @@ export class AuthService {
       // but was explicitly requested over the safer silent-success default.
       this.logger.warn('Magic link requested for a non-existent account');
       throw new NotFoundException('No account found with this email address');
+    }
+
+    if (!user.isActive) {
+      this.logger.warn(`Magic link requested for deactivated user ${user.id}`);
+      throw new ForbiddenException(INACTIVE_ACCOUNT_MESSAGE);
+    }
+
+    if (user.institution.status !== 'ACTIVE') {
+      this.logger.warn(
+        `Magic link requested for user ${user.id} in non-active institution ${user.institutionId}`,
+      );
+      throw new ForbiddenException(INACTIVE_INSTITUTION_MESSAGE);
     }
 
     const token = await this.createMagicLinkToken(user.id);
@@ -116,7 +142,10 @@ export class AuthService {
     inviterName: string,
     institutionName: string,
   ): Promise<void> {
-    const token = await this.createMagicLinkToken(user.id);
+    const token = await this.createMagicLinkToken(
+      user.id,
+      INVITATION_EXPIRY_DAYS * 24 * 60 * 60 * 1000,
+    );
     const appUrl = process.env.APP_URL;
     const invitationLink = `${appUrl}/auth/verify?token=${token}`;
 
@@ -131,6 +160,52 @@ export class AuthService {
   }
 
   /**
+   * Let an institution's other admins know a new user was created — the
+   * invitee already got their own invitation email via sendInvitation; this
+   * is a separate heads-up for admins who didn't do the creating themselves.
+   * Best-effort: callers should not let a failure here fail the creation.
+   */
+  async notifyAdminsOfNewUser(params: {
+    institutionId: string;
+    excludeUserId: string;
+    newUserName: string;
+    newUserRoleLabel: string;
+    createdByName: string;
+  }): Promise<void> {
+    const [admins, institution] = await Promise.all([
+      this.prisma.user.findMany({
+        where: {
+          institutionId: params.institutionId,
+          role: 'INSTITUTION_ADMIN',
+          isActive: true,
+          id: { not: params.excludeUserId },
+        },
+        select: { email: true },
+      }),
+      this.prisma.institution.findUniqueOrThrow({
+        where: { id: params.institutionId },
+        select: { name: true },
+      }),
+    ]);
+
+    if (admins.length === 0) {
+      return;
+    }
+
+    await this.mailQueue.add(MAIL_JOBS.NOTIFY_NEW_USER, {
+      adminEmails: admins.map((admin) => admin.email),
+      newUserName: params.newUserName,
+      newUserRoleLabel: params.newUserRoleLabel,
+      institutionName: institution.name,
+      createdByName: params.createdByName,
+    });
+
+    this.logger.log(
+      `Queued new-user notification for ${admins.length} admin(s) in institution ${params.institutionId}`,
+    );
+  }
+
+  /**
    * Verify a magic link token and create a session
    * Returns the session ID on success
    */
@@ -141,11 +216,27 @@ export class AuthService {
     // Find the magic link
     const magicLink = await this.prisma.magicLink.findUnique({
       where: { token },
-      include: { user: true },
+      include: {
+        user: { include: { institution: { select: { status: true } } } },
+      },
     });
 
     if (!magicLink) {
       throw new NotFoundException('Invalid or expired magic link');
+    }
+
+    if (!magicLink.user.isActive) {
+      this.logger.warn(
+        `Magic link verification attempted for deactivated user ${magicLink.userId}`,
+      );
+      throw new ForbiddenException(INACTIVE_ACCOUNT_MESSAGE);
+    }
+
+    if (magicLink.user.institution.status !== 'ACTIVE') {
+      this.logger.warn(
+        `Magic link verification attempted for user ${magicLink.userId} in non-active institution`,
+      );
+      throw new ForbiddenException(INACTIVE_INSTITUTION_MESSAGE);
     }
 
     // Check if already used

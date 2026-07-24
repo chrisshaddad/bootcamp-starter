@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { UsersRound } from 'lucide-react';
+import { DEFAULT_PAGE_SIZE } from '@repo/contracts';
 import { useUser } from '@/hooks/use-auth';
 import { usePatients, useSetPatientStatus } from '@/hooks/use-patients';
 import { ApiError } from '@/lib/api';
@@ -27,7 +28,6 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 
 const ALLOWED_ROLES = ['INSTITUTION_ADMIN', 'STAFF', 'PROFESSIONAL'];
-const PAGE_SIZE = 20;
 
 function formatDate(value: string | Date | null): string {
   if (!value) return '—';
@@ -40,6 +40,7 @@ export default function PatientsPage() {
   const { user, isLoading: userLoading } = useUser();
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const unassignedOnly = searchParams.get('unassigned') === 'true';
 
   const role = user?.role;
@@ -51,9 +52,18 @@ export default function PatientsPage() {
     search: search || undefined,
     unassigned: unassignedOnly || undefined,
     page,
+    limit: pageSize,
     enabled: canAccess,
   });
   const { setPatientStatus } = useSetPatientStatus();
+
+  // Clamp back to the last valid page if a filter/pageSize change or a
+  // background revalidation shrinks `total` out from under the current page.
+  useEffect(() => {
+    if (total === undefined) return;
+    const maxPage = Math.max(1, Math.ceil(total / pageSize));
+    if (page > maxPage) setPage(maxPage);
+  }, [total, pageSize, page]);
 
   const toggleUnassignedOnly = (checked: boolean) => {
     setPage(1);
@@ -223,9 +233,13 @@ export default function PatientsPage() {
           {total !== undefined && (
             <Pagination
               page={page}
-              pageSize={PAGE_SIZE}
+              pageSize={pageSize}
               total={total}
               onPageChange={setPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size);
+                setPage(1);
+              }}
             />
           )}
         </CardContent>

@@ -41,9 +41,10 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Building2, Plus } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   institutionCreateRequestSchema,
+  DEFAULT_PAGE_SIZE,
   type InstitutionCreateRequest,
   type InstitutionStatus,
 } from '@repo/contracts';
@@ -58,8 +59,6 @@ type StatusFilter =
   | 'REJECTED'
   | 'SUSPENDED'
   | 'INACTIVE';
-
-const PAGE_SIZE = 20;
 
 function LoadingSkeleton() {
   return (
@@ -194,6 +193,7 @@ export default function InstitutionsPage() {
   const { user, isLoading: userLoading } = useUser();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
 
@@ -206,8 +206,17 @@ export default function InstitutionsPage() {
     status:
       statusFilter === 'all' ? undefined : (statusFilter as InstitutionStatus),
     page,
+    limit: pageSize,
     enabled: isSuperAdmin,
   });
+
+  // Clamp back to the last valid page if a filter/pageSize change or a
+  // background revalidation shrinks `total` out from under the current page.
+  useEffect(() => {
+    if (total === undefined) return;
+    const maxPage = Math.max(1, Math.ceil(total / pageSize));
+    if (page > maxPage) setPage(maxPage);
+  }, [total, pageSize, page]);
 
   if (userLoading) {
     return <LoadingSkeleton />;
@@ -336,9 +345,13 @@ export default function InstitutionsPage() {
           {total !== undefined && (
             <Pagination
               page={page}
-              pageSize={PAGE_SIZE}
+              pageSize={pageSize}
               total={total}
               onPageChange={setPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size);
+                setPage(1);
+              }}
             />
           )}
         </CardContent>

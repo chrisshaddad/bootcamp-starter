@@ -79,7 +79,6 @@ export default function InstitutionPage() {
       type: institution.type,
       address: institution.address ?? undefined,
       phone: institution.phone ?? undefined,
-      emailNotifications: institution.emailNotifications,
     });
     setOpen(true);
   };
@@ -131,10 +130,6 @@ export default function InstitutionPage() {
             <Field label="Members" value={`${institution._count.users}`} />
             <Field label="Address" value={institution.address} />
             <Field label="Phone" value={institution.phone} />
-            <Field
-              label="Email Notifications"
-              value={institution.emailNotifications ? 'Enabled' : 'Disabled'}
-            />
           </dl>
         </CardContent>
       </Card>
@@ -169,10 +164,6 @@ export default function InstitutionPage() {
               <Label htmlFor="inst-phone">Phone</Label>
               <Input id="inst-phone" {...register('phone')} />
             </div>
-            <label className="flex items-center gap-2 text-sm text-foreground">
-              <input type="checkbox" {...register('emailNotifications')} />
-              Enable email notifications
-            </label>
             <DialogFooter>
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? 'Saving...' : 'Save'}

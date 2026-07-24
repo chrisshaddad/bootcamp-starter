@@ -17,7 +17,18 @@ interface SendInvitationJobData {
   invitationLink: string;
 }
 
-type MailJobData = SendMagicLinkJobData | SendInvitationJobData;
+interface NotifyNewUserJobData {
+  adminEmails: string[];
+  newUserName: string;
+  newUserRoleLabel: string;
+  institutionName: string;
+  createdByName: string;
+}
+
+type MailJobData =
+  | SendMagicLinkJobData
+  | SendInvitationJobData
+  | NotifyNewUserJobData;
 
 @Processor(MAIL_QUEUE)
 export class MailProcessor extends WorkerHost {
@@ -36,6 +47,9 @@ export class MailProcessor extends WorkerHost {
         break;
       case MAIL_JOBS.SEND_INVITATION:
         await this.handleSendInvitation(job.data as SendInvitationJobData);
+        break;
+      case MAIL_JOBS.NOTIFY_NEW_USER:
+        await this.handleNotifyNewUser(job.data as NotifyNewUserJobData);
         break;
       default:
         this.logger.warn(`Unknown job type: ${job.name}`);
@@ -82,6 +96,33 @@ export class MailProcessor extends WorkerHost {
     } else {
       this.logger.error(`Failed to send invitation email to ${email}`);
       throw new Error(`Failed to send email to ${email}`);
+    }
+  }
+
+  private async handleNotifyNewUser(data: NotifyNewUserJobData): Promise<void> {
+    const {
+      adminEmails,
+      newUserName,
+      newUserRoleLabel,
+      institutionName,
+      createdByName,
+    } = data;
+
+    const text = `Hello,\n\n${createdByName} added a new ${newUserRoleLabel} (${newUserName}) to ${institutionName}.\n\nNo action is needed — this is just a heads-up.`;
+
+    for (const email of adminEmails) {
+      const success = await this.mailService.sendEmail({
+        to: email,
+        from: 'no-reply@bootcamp-starter.local',
+        subject: `New ${newUserRoleLabel} added to ${institutionName}`,
+        text,
+      });
+
+      if (success) {
+        this.logger.log(`New-user notification sent successfully to ${email}`);
+      } else {
+        this.logger.error(`Failed to send new-user notification to ${email}`);
+      }
     }
   }
 }

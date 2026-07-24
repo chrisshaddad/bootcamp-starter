@@ -19,7 +19,9 @@ describe('ProfileService', () => {
             professionalProfile: {
               update: jest.fn(),
             },
-            $transaction: jest.fn((cb) => cb()),
+            $transaction: jest.fn((cb: (tx: unknown) => unknown) =>
+              cb(undefined),
+            ),
           },
         },
       ],

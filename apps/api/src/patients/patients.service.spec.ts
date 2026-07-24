@@ -30,7 +30,10 @@ describe('PatientsService', () => {
         },
         {
           provide: AuthService,
-          useValue: { sendInvitation: jest.fn() },
+          useValue: {
+            sendInvitation: jest.fn(),
+            notifyAdminsOfNewUser: jest.fn(),
+          },
         },
       ],
     }).compile();

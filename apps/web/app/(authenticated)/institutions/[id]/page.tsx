@@ -26,6 +26,7 @@ import {
   CheckCircle,
   XCircle,
   Clock,
+  Ban,
 } from 'lucide-react';
 import { StatusBadge } from '@/components/status-badge';
 import { ForbiddenPage } from '@/components/forbidden-page';
@@ -71,8 +72,12 @@ export default function InstitutionDetailPage() {
   const { user, isLoading: userLoading } = useUser();
   const [isApproving, setIsApproving] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
+  const [isSuspending, setIsSuspending] = useState(false);
+  const [isReactivating, setIsReactivating] = useState(false);
   const [showApproveDialog, setShowApproveDialog] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [showSuspendDialog, setShowSuspendDialog] = useState(false);
+  const [showReactivateDialog, setShowReactivateDialog] = useState(false);
 
   const institutionId = params.id as string;
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
@@ -83,6 +88,8 @@ export default function InstitutionDetailPage() {
     error,
     approve,
     reject,
+    suspend,
+    reactivate,
   } = useInstitution(institutionId, { enabled: isSuperAdmin });
 
   const handleApprove = async () => {
@@ -110,6 +117,34 @@ export default function InstitutionDetailPage() {
       console.error(err);
     } finally {
       setIsRejecting(false);
+    }
+  };
+
+  const handleSuspend = async () => {
+    setIsSuspending(true);
+    try {
+      await suspend();
+      toast.success('Institution suspended');
+      setShowSuspendDialog(false);
+    } catch (err) {
+      toast.error('Failed to suspend institution');
+      console.error(err);
+    } finally {
+      setIsSuspending(false);
+    }
+  };
+
+  const handleReactivate = async () => {
+    setIsReactivating(true);
+    try {
+      await reactivate();
+      toast.success('Institution reactivated');
+      setShowReactivateDialog(false);
+    } catch (err) {
+      toast.error('Failed to reactivate institution');
+      console.error(err);
+    } finally {
+      setIsReactivating(false);
     }
   };
 
@@ -147,6 +182,11 @@ export default function InstitutionDetailPage() {
   }
 
   const isPending = institution.status === 'PENDING';
+  const isActive = institution.status === 'ACTIVE';
+  const isSuspendedOrRejected =
+    institution.status === 'SUSPENDED' ||
+    institution.status === 'REJECTED' ||
+    institution.status === 'INACTIVE';
 
   return (
     <div className="space-y-6">
@@ -172,7 +212,7 @@ export default function InstitutionDetailPage() {
           </div>
         </div>
 
-        {/* Action Buttons (only for PENDING institutions) */}
+        {/* Action Buttons — vary by current status */}
         {isPending && (
           <div className="flex gap-3">
             <Button
@@ -189,6 +229,29 @@ export default function InstitutionDetailPage() {
             >
               <CheckCircle className="h-4 w-4" />
               Approve
+            </Button>
+          </div>
+        )}
+        {isActive && (
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              className="gap-2 text-error border-error-light hover:bg-error-light"
+              onClick={() => setShowSuspendDialog(true)}
+            >
+              <Ban className="h-4 w-4" />
+              Suspend
+            </Button>
+          </div>
+        )}
+        {isSuspendedOrRejected && (
+          <div className="flex gap-3">
+            <Button
+              className="gap-2 bg-success hover:bg-success-dark"
+              onClick={() => setShowReactivateDialog(true)}
+            >
+              <CheckCircle className="h-4 w-4" />
+              Reactivate
             </Button>
           </div>
         )}
@@ -271,6 +334,19 @@ export default function InstitutionDetailPage() {
                   </p>
                 </div>
               )}
+
+              {isSuspendedOrRejected && (
+                <div className="p-4 bg-error-light rounded-lg border border-error">
+                  <div className="flex items-center gap-2 text-error-dark">
+                    <Ban className="h-5 w-5" />
+                    <span className="font-medium">Access blocked</span>
+                  </div>
+                  <p className="mt-1 text-sm text-error-dark">
+                    No one at this institution can log in or use the platform
+                    until it&apos;s reactivated.
+                  </p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -332,6 +408,70 @@ export default function InstitutionDetailPage() {
               disabled={isRejecting}
             >
               {isRejecting ? 'Rejecting...' : 'Reject'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Suspend Confirmation Dialog */}
+      <Dialog open={showSuspendDialog} onOpenChange={setShowSuspendDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Suspend Institution</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to suspend{' '}
+              <strong>{institution.name}</strong>? Every user at this
+              institution will immediately be blocked from logging in or using
+              the platform, until it&apos;s reactivated.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowSuspendDialog(false)}
+              disabled={isSuspending}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleSuspend}
+              disabled={isSuspending}
+            >
+              {isSuspending ? 'Suspending...' : 'Suspend'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reactivate Confirmation Dialog */}
+      <Dialog
+        open={showReactivateDialog}
+        onOpenChange={setShowReactivateDialog}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reactivate Institution</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to reactivate{' '}
+              <strong>{institution.name}</strong>? Its users will immediately
+              regain the ability to log in and use the platform.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowReactivateDialog(false)}
+              disabled={isReactivating}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="bg-success hover:bg-success-dark"
+              onClick={handleReactivate}
+              disabled={isReactivating}
+            >
+              {isReactivating ? 'Reactivating...' : 'Reactivate'}
             </Button>
           </DialogFooter>
         </DialogContent>

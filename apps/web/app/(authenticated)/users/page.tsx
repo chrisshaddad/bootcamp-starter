@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
@@ -8,6 +8,7 @@ import { Users as UsersIcon, Plus, Pencil } from 'lucide-react';
 import {
   userCreateRequestSchema,
   userUpdateRequestSchema,
+  DEFAULT_PAGE_SIZE,
   type UserCreateRequest,
   type UserUpdateRequest,
   type UserListItem,
@@ -57,9 +58,8 @@ import {
 const ROLE_LABELS: Record<string, string> = {
   STAFF: 'Staff',
   PROFESSIONAL: 'Professional',
+  INSTITUTION_ADMIN: 'Institution Admin',
 };
-
-const PAGE_SIZE = 20;
 
 type RoleFilter = 'all' | StaffRole;
 
@@ -111,8 +111,8 @@ function CreateUserDialog() {
         <DialogHeader>
           <DialogTitle>Create User</DialogTitle>
           <DialogDescription>
-            Adds a staff member or professional and emails them an invitation to
-            log in.
+            Adds a staff member, professional, or institution admin and emails
+            them an invitation to log in.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -149,6 +149,7 @@ function CreateUserDialog() {
             >
               <option value="STAFF">Staff</option>
               <option value="PROFESSIONAL">Professional</option>
+              <option value="INSTITUTION_ADMIN">Institution Admin</option>
             </select>
           </div>
 
@@ -297,15 +298,25 @@ export default function UsersPage() {
   const { user, isLoading: userLoading } = useUser();
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
   const isAdmin = user?.role === 'INSTITUTION_ADMIN';
 
   const { users, total, isLoading, error } = useUsers({
     role: roleFilter === 'all' ? undefined : roleFilter,
     page,
+    limit: pageSize,
     enabled: isAdmin,
   });
   const { setUserStatus } = useSetUserStatus();
+
+  // Clamp back to the last valid page if a filter/pageSize change or a
+  // background revalidation shrinks `total` out from under the current page.
+  useEffect(() => {
+    if (total === undefined) return;
+    const maxPage = Math.max(1, Math.ceil(total / pageSize));
+    if (page > maxPage) setPage(maxPage);
+  }, [total, pageSize, page]);
 
   if (userLoading) {
     return <Skeleton className="h-64 w-full" />;
@@ -343,6 +354,9 @@ export default function UsersPage() {
               <SelectItem value="all">All Roles</SelectItem>
               <SelectItem value="STAFF">Staff</SelectItem>
               <SelectItem value="PROFESSIONAL">Professional</SelectItem>
+              <SelectItem value="INSTITUTION_ADMIN">
+                Institution Admin
+              </SelectItem>
             </SelectContent>
           </Select>
           <CreateUserDialog />
@@ -413,7 +427,9 @@ export default function UsersPage() {
                         entityLabel={
                           u.role === 'PROFESSIONAL'
                             ? 'professional'
-                            : 'staff member'
+                            : u.role === 'INSTITUTION_ADMIN'
+                              ? 'institution admin'
+                              : 'staff member'
                         }
                         onConfirm={async () => {
                           try {
@@ -445,9 +461,13 @@ export default function UsersPage() {
           {total !== undefined && (
             <Pagination
               page={page}
-              pageSize={PAGE_SIZE}
+              pageSize={pageSize}
               total={total}
               onPageChange={setPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size);
+                setPage(1);
+              }}
             />
           )}
         </CardContent>

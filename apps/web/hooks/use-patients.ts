@@ -3,19 +3,21 @@
 import useSWR, { mutate } from 'swr';
 import { useCallback } from 'react';
 import { apiPatch, apiPost } from '@/lib/api';
-import type {
-  PatientListResponse,
-  PatientDetailResponse,
-  PatientCreateRequest,
-  PatientAdminUpdateRequest,
-  PatientClinicalUpdateRequest,
-  UserStatusRequest,
+import {
+  DEFAULT_PAGE_SIZE,
+  type PatientListResponse,
+  type PatientDetailResponse,
+  type PatientCreateRequest,
+  type PatientAdminUpdateRequest,
+  type PatientClinicalUpdateRequest,
+  type UserStatusRequest,
 } from '@repo/contracts';
 
 interface UsePatientsOptions {
   search?: string;
   unassigned?: boolean;
   page?: number;
+  limit?: number;
   enabled?: boolean;
 }
 
@@ -25,6 +27,8 @@ function buildPatientsKey(options: UsePatientsOptions): string {
   if (options.unassigned) params.set('unassigned', 'true');
   if (options.page && options.page > 1)
     params.set('page', String(options.page));
+  if (options.limit && options.limit !== DEFAULT_PAGE_SIZE)
+    params.set('limit', String(options.limit));
   const qs = params.toString();
   return qs ? `/patients?${qs}` : '/patients';
 }
