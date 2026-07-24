@@ -18,7 +18,7 @@ const bookInclude = {
   authors: { include: { author: { select: { id: true, name: true } } } },
   categories: { include: { category: { select: { id: true, name: true } } } },
   conditionPrices: {
-    select: { id: true, condition: true, rentPrice: true, buyPrice: true },
+    select: { id: true, condition: true, buyPrice: true },
   },
   _count: { select: { copies: { where: { status: 'AVAILABLE' } } } },
 } satisfies Prisma.BookInclude;
@@ -146,7 +146,6 @@ export class BooksService {
             organizationId,
             bookId: book.id,
             condition: cp.condition,
-            rentPrice: cp.rentPrice,
             buyPrice: cp.buyPrice,
           })),
         });
@@ -231,7 +230,6 @@ export class BooksService {
               organizationId,
               bookId: id,
               condition: cp.condition,
-              rentPrice: cp.rentPrice,
               buyPrice: cp.buyPrice,
             })),
           });
@@ -292,7 +290,6 @@ export class BooksService {
       conditionPrices: book.conditionPrices.map((cp) => ({
         id: cp.id,
         condition: cp.condition,
-        rentPrice: cp.rentPrice.toString(),
         buyPrice: cp.buyPrice.toString(),
       })),
       authors: book.authors.map(({ author }) => author),
