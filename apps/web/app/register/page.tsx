@@ -113,8 +113,8 @@ export default function RegisterPage() {
           </h1>
 
           <p className="text-lg leading-normal text-white/85">
-            Register your library to manage your catalog, members, and loans
-            in one place. We&apos;ll email you a magic link to get started.
+            Register your library to manage your catalog, members, and loans in
+            one place. We&apos;ll email you a magic link to get started.
           </p>
         </div>
       </div>

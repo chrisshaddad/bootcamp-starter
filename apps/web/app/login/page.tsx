@@ -183,7 +183,9 @@ export default function LoginPage() {
 
               {/* Register a user account */}
               <p className="text-center text-sm font-medium leading-[1.6]">
-                <span className="text-muted-foreground">New to NextShelf? </span>
+                <span className="text-muted-foreground">
+                  New to NextShelf?{' '}
+                </span>
                 <a
                   href="/signup"
                   className="font-semibold text-library-primary hover:underline"
