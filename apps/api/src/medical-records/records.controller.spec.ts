@@ -17,6 +17,8 @@ describe('MedicalRecords controllers', () => {
             create: jest.fn(),
             findForPatient: jest.fn(),
             findOne: jest.fn(),
+            update: jest.fn(),
+            remove: jest.fn(),
             addFile: jest.fn(),
             downloadFile: jest.fn(),
           },

@@ -1,7 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { useFieldArray, useForm, type Resolver } from 'react-hook-form';
+import {
+  useFieldArray,
+  useForm,
+  type FieldErrors,
+  type Resolver,
+  type UseFormRegister,
+} from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { mutate as globalMutate } from 'swr';
 import { toast } from 'sonner';
@@ -129,14 +135,84 @@ const DEFAULT_VALUES: RecordFormValues = {
   },
   vaccination: {
     vaccineName: '',
-    doseNumber: '',
     administeredDate: '',
     nextDoseDate: '',
     batchNumber: '',
     administeredBy: '',
+    doseNumber: '',
   },
   prescription: { prescriptionDate: '', items: [emptyLine()] },
 };
+
+// API dates arrive as ISO strings over the wire (despite the TS type saying
+// `Date`, courtesy of the shared zod schema) — `new Date(value)` accepts
+// either, so this is safe regardless of which one actually shows up.
+function toDateInputValue(value: string | Date | null | undefined): string {
+  if (!value) return '';
+  return new Date(value).toISOString().slice(0, 10);
+}
+
+/** Maps an existing record back into the form shape, for the edit dialog. */
+function toFormValues(record: RecordDetailResponse): RecordFormValues {
+  return {
+    recordType: record.recordType,
+    recordDate: toDateInputValue(record.recordDate),
+    institutionOfOrigin: record.institutionOfOrigin ?? '',
+    requestedBy: record.requestedBy ?? '',
+    notes: record.notes ?? '',
+    labResult: record.labResult
+      ? {
+          testName: record.labResult.testName,
+          testDate: toDateInputValue(record.labResult.testDate),
+          labName: record.labResult.labName ?? '',
+        }
+      : DEFAULT_VALUES.labResult,
+    consultation: record.consultation
+      ? {
+          chiefComplaint: record.consultation.chiefComplaint,
+          findings: record.consultation.findings ?? '',
+          diagnosis: record.consultation.diagnosis ?? '',
+          plan: record.consultation.plan ?? '',
+          followUpDate: toDateInputValue(record.consultation.followUpDate),
+        }
+      : DEFAULT_VALUES.consultation,
+    scan: record.scan
+      ? {
+          modalityType: record.scan.modalityType,
+          bodyPart: record.scan.bodyPart,
+          radiologistName: record.scan.radiologistName ?? '',
+          findings: record.scan.findings ?? '',
+        }
+      : DEFAULT_VALUES.scan,
+    vaccination: record.vaccination
+      ? {
+          vaccineName: record.vaccination.vaccineName,
+          doseNumber: record.vaccination.doseNumber?.toString() ?? '',
+          administeredDate: toDateInputValue(
+            record.vaccination.administeredDate,
+          ),
+          nextDoseDate: toDateInputValue(record.vaccination.nextDoseDate),
+          batchNumber: record.vaccination.batchNumber ?? '',
+          administeredBy: record.vaccination.administeredBy ?? '',
+        }
+      : DEFAULT_VALUES.vaccination,
+    prescription: record.prescription
+      ? {
+          prescriptionDate: toDateInputValue(
+            record.prescription.prescriptionDate,
+          ),
+          items: record.prescription.items.map((item) => ({
+            medicationName: item.medicationName,
+            dosage: item.dosage,
+            frequency: item.frequency,
+            duration: item.duration ?? '',
+            route: item.route,
+            notes: item.notes ?? '',
+          })),
+        }
+      : DEFAULT_VALUES.prescription,
+  };
+}
 
 function toPayload(values: RecordFormValues): RecordCreateRequest {
   const base = {
@@ -212,6 +288,333 @@ function toPayload(values: RecordFormValues): RecordCreateRequest {
         },
       };
   }
+}
+
+// Shared between AddRecordDialog and EditRecordDialog — the ~15 fields that
+// vary per recordType. Lifted out so the two dialogs (create vs. edit) don't
+// carry two copies of the same five field blocks.
+function RecordTypeFields({
+  recordType,
+  register,
+  errors,
+  fields,
+  append,
+  remove,
+}: {
+  recordType: RecordType;
+  register: UseFormRegister<RecordFormValues>;
+  errors: FieldErrors<RecordFormValues>;
+  fields: { id: string }[];
+  append: (value: ReturnType<typeof emptyLine>) => void;
+  remove: (index: number) => void;
+}) {
+  return (
+    <>
+      {recordType === 'LAB_RESULT' && (
+        <div className="space-y-4 rounded-lg border border-border p-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="lab-testName">Test Name</Label>
+              <Input
+                id="lab-testName"
+                required
+                {...register('labResult.testName')}
+              />
+              {errors.labResult?.testName && (
+                <p className="text-sm text-error">
+                  {errors.labResult.testName.message}
+                </p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="lab-testDate">Test Date</Label>
+              <Input
+                id="lab-testDate"
+                type="date"
+                required
+                {...register('labResult.testDate')}
+              />
+              {errors.labResult?.testDate && (
+                <p className="text-sm text-error">
+                  {errors.labResult.testDate.message}
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="lab-labName">Lab Name</Label>
+            <Input id="lab-labName" {...register('labResult.labName')} />
+          </div>
+        </div>
+      )}
+
+      {recordType === 'CONSULTATION' && (
+        <div className="space-y-4 rounded-lg border border-border p-4">
+          <div className="space-y-2">
+            <Label htmlFor="con-cc">Chief Complaint</Label>
+            <Input
+              id="con-cc"
+              required
+              {...register('consultation.chiefComplaint')}
+            />
+            {errors.consultation?.chiefComplaint && (
+              <p className="text-sm text-error">
+                {errors.consultation.chiefComplaint.message}
+              </p>
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="con-findings">Findings</Label>
+              <Input id="con-findings" {...register('consultation.findings')} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="con-diagnosis">Diagnosis</Label>
+              <Input
+                id="con-diagnosis"
+                {...register('consultation.diagnosis')}
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="con-plan">Plan</Label>
+            <Input id="con-plan" {...register('consultation.plan')} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="con-followup">Follow-up Date</Label>
+            <Input
+              id="con-followup"
+              type="date"
+              {...register('consultation.followUpDate')}
+            />
+          </div>
+        </div>
+      )}
+
+      {recordType === 'SCAN' && (
+        <div className="space-y-4 rounded-lg border border-border p-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="scan-modality">Modality</Label>
+              <select
+                id="scan-modality"
+                className="h-10 w-full rounded-md border border-border bg-card px-3 text-sm"
+                {...register('scan.modalityType')}
+              >
+                {MODALITY_TYPES.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="scan-bodyPart">Body Part</Label>
+              <Input
+                id="scan-bodyPart"
+                required
+                {...register('scan.bodyPart')}
+              />
+              {errors.scan?.bodyPart && (
+                <p className="text-sm text-error">
+                  {errors.scan.bodyPart.message}
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="scan-radiologist">Radiologist</Label>
+            <Input
+              id="scan-radiologist"
+              {...register('scan.radiologistName')}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="scan-findings">Findings</Label>
+            <Input id="scan-findings" {...register('scan.findings')} />
+          </div>
+        </div>
+      )}
+
+      {recordType === 'VACCINATION' && (
+        <div className="space-y-4 rounded-lg border border-border p-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="vac-name">Vaccine Name</Label>
+              <Input
+                id="vac-name"
+                required
+                {...register('vaccination.vaccineName')}
+              />
+              {errors.vaccination?.vaccineName && (
+                <p className="text-sm text-error">
+                  {errors.vaccination.vaccineName.message}
+                </p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="vac-dose">Dose Number</Label>
+              <Input
+                id="vac-dose"
+                type="number"
+                min="1"
+                {...register('vaccination.doseNumber', {
+                  // The contract coerces this to a number; an empty string
+                  // must become `undefined` (absent), not `NaN`.
+                  setValueAs: (v) => (v === '' ? undefined : v),
+                })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="vac-admDate">Administered Date</Label>
+              <Input
+                id="vac-admDate"
+                type="date"
+                required
+                {...register('vaccination.administeredDate')}
+              />
+              {errors.vaccination?.administeredDate && (
+                <p className="text-sm text-error">
+                  {errors.vaccination.administeredDate.message}
+                </p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="vac-nextDose">Next Dose Date</Label>
+              <Input
+                id="vac-nextDose"
+                type="date"
+                {...register('vaccination.nextDoseDate')}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="vac-batch">Batch Number</Label>
+              <Input id="vac-batch" {...register('vaccination.batchNumber')} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="vac-by">Administered By</Label>
+              <Input id="vac-by" {...register('vaccination.administeredBy')} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {recordType === 'PRESCRIPTION' && (
+        <div className="space-y-4 rounded-lg border border-border p-4">
+          <div className="space-y-2">
+            <Label htmlFor="pre-date">Prescription Date</Label>
+            <Input
+              id="pre-date"
+              type="date"
+              required
+              {...register('prescription.prescriptionDate')}
+            />
+            {errors.prescription?.prescriptionDate && (
+              <p className="text-sm text-error">
+                {errors.prescription.prescriptionDate.message}
+              </p>
+            )}
+          </div>
+          <div className="space-y-4">
+            {fields.map((field, index) => (
+              <div
+                key={field.id}
+                className="space-y-3 rounded-md border border-border bg-muted p-3"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-foreground">
+                    Medication {index + 1}
+                  </span>
+                  {fields.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-muted-foreground hover:text-error"
+                      onClick={() => remove(index)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Input
+                      placeholder="Medication name"
+                      required
+                      {...register(
+                        `prescription.items.${index}.medicationName`,
+                      )}
+                    />
+                    {errors.prescription?.items?.[index]?.medicationName && (
+                      <p className="mt-1 text-sm text-error">
+                        {
+                          errors.prescription.items[index]?.medicationName
+                            ?.message
+                        }
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <Input
+                      placeholder="Dosage (e.g. 500mg)"
+                      required
+                      {...register(`prescription.items.${index}.dosage`)}
+                    />
+                    {errors.prescription?.items?.[index]?.dosage && (
+                      <p className="mt-1 text-sm text-error">
+                        {errors.prescription.items[index]?.dosage?.message}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <Input
+                      placeholder="Frequency (e.g. twice daily)"
+                      required
+                      {...register(`prescription.items.${index}.frequency`)}
+                    />
+                    {errors.prescription?.items?.[index]?.frequency && (
+                      <p className="mt-1 text-sm text-error">
+                        {errors.prescription.items[index]?.frequency?.message}
+                      </p>
+                    )}
+                  </div>
+                  <Input
+                    placeholder="Duration (e.g. 7 days)"
+                    {...register(`prescription.items.${index}.duration`)}
+                  />
+                  <select
+                    className="h-10 w-full rounded-md border border-border bg-card px-3 text-sm"
+                    {...register(`prescription.items.${index}.route`)}
+                  >
+                    {ROUTES.map((r) => (
+                      <option key={r} value={r}>
+                        {r}
+                      </option>
+                    ))}
+                  </select>
+                  <Input
+                    placeholder="Notes"
+                    {...register(`prescription.items.${index}.notes`)}
+                  />
+                </div>
+              </div>
+            ))}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() => append(emptyLine())}
+            >
+              <Plus className="h-4 w-4" />
+              Add Medication
+            </Button>
+          </div>
+        </div>
+      )}
+    </>
+  );
 }
 
 interface Props {
@@ -323,323 +726,14 @@ export function AddRecordDialog({ createRecord }: Props) {
             </div>
           </div>
 
-          {/* Type-specific fields */}
-          {recordType === 'LAB_RESULT' && (
-            <div className="space-y-4 rounded-lg border border-border p-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="lab-testName">Test Name</Label>
-                  <Input
-                    id="lab-testName"
-                    required
-                    {...register('labResult.testName')}
-                  />
-                  {errors.labResult?.testName && (
-                    <p className="text-sm text-error">
-                      {errors.labResult.testName.message}
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="lab-testDate">Test Date</Label>
-                  <Input
-                    id="lab-testDate"
-                    type="date"
-                    required
-                    {...register('labResult.testDate')}
-                  />
-                  {errors.labResult?.testDate && (
-                    <p className="text-sm text-error">
-                      {errors.labResult.testDate.message}
-                    </p>
-                  )}
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="lab-labName">Lab Name</Label>
-                <Input id="lab-labName" {...register('labResult.labName')} />
-              </div>
-            </div>
-          )}
-
-          {recordType === 'CONSULTATION' && (
-            <div className="space-y-4 rounded-lg border border-border p-4">
-              <div className="space-y-2">
-                <Label htmlFor="con-cc">Chief Complaint</Label>
-                <Input
-                  id="con-cc"
-                  required
-                  {...register('consultation.chiefComplaint')}
-                />
-                {errors.consultation?.chiefComplaint && (
-                  <p className="text-sm text-error">
-                    {errors.consultation.chiefComplaint.message}
-                  </p>
-                )}
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="con-findings">Findings</Label>
-                  <Input
-                    id="con-findings"
-                    {...register('consultation.findings')}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="con-diagnosis">Diagnosis</Label>
-                  <Input
-                    id="con-diagnosis"
-                    {...register('consultation.diagnosis')}
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="con-plan">Plan</Label>
-                <Input id="con-plan" {...register('consultation.plan')} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="con-followup">Follow-up Date</Label>
-                <Input
-                  id="con-followup"
-                  type="date"
-                  {...register('consultation.followUpDate')}
-                />
-              </div>
-            </div>
-          )}
-
-          {recordType === 'SCAN' && (
-            <div className="space-y-4 rounded-lg border border-border p-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="scan-modality">Modality</Label>
-                  <select
-                    id="scan-modality"
-                    className="h-10 w-full rounded-md border border-border bg-card px-3 text-sm"
-                    {...register('scan.modalityType')}
-                  >
-                    {MODALITY_TYPES.map((m) => (
-                      <option key={m} value={m}>
-                        {m}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="scan-bodyPart">Body Part</Label>
-                  <Input
-                    id="scan-bodyPart"
-                    required
-                    {...register('scan.bodyPart')}
-                  />
-                  {errors.scan?.bodyPart && (
-                    <p className="text-sm text-error">
-                      {errors.scan.bodyPart.message}
-                    </p>
-                  )}
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="scan-radiologist">Radiologist</Label>
-                <Input
-                  id="scan-radiologist"
-                  {...register('scan.radiologistName')}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="scan-findings">Findings</Label>
-                <Input id="scan-findings" {...register('scan.findings')} />
-              </div>
-            </div>
-          )}
-
-          {recordType === 'VACCINATION' && (
-            <div className="space-y-4 rounded-lg border border-border p-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="vac-name">Vaccine Name</Label>
-                  <Input
-                    id="vac-name"
-                    required
-                    {...register('vaccination.vaccineName')}
-                  />
-                  {errors.vaccination?.vaccineName && (
-                    <p className="text-sm text-error">
-                      {errors.vaccination.vaccineName.message}
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="vac-dose">Dose Number</Label>
-                  <Input
-                    id="vac-dose"
-                    type="number"
-                    min="1"
-                    {...register('vaccination.doseNumber', {
-                      // The contract coerces this to a number; an empty
-                      // string must become `undefined` (absent), not `NaN`.
-                      setValueAs: (v) => (v === '' ? undefined : v),
-                    })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="vac-admDate">Administered Date</Label>
-                  <Input
-                    id="vac-admDate"
-                    type="date"
-                    required
-                    {...register('vaccination.administeredDate')}
-                  />
-                  {errors.vaccination?.administeredDate && (
-                    <p className="text-sm text-error">
-                      {errors.vaccination.administeredDate.message}
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="vac-nextDose">Next Dose Date</Label>
-                  <Input
-                    id="vac-nextDose"
-                    type="date"
-                    {...register('vaccination.nextDoseDate')}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="vac-batch">Batch Number</Label>
-                  <Input
-                    id="vac-batch"
-                    {...register('vaccination.batchNumber')}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="vac-by">Administered By</Label>
-                  <Input
-                    id="vac-by"
-                    {...register('vaccination.administeredBy')}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {recordType === 'PRESCRIPTION' && (
-            <div className="space-y-4 rounded-lg border border-border p-4">
-              <div className="space-y-2">
-                <Label htmlFor="pre-date">Prescription Date</Label>
-                <Input
-                  id="pre-date"
-                  type="date"
-                  required
-                  {...register('prescription.prescriptionDate')}
-                />
-                {errors.prescription?.prescriptionDate && (
-                  <p className="text-sm text-error">
-                    {errors.prescription.prescriptionDate.message}
-                  </p>
-                )}
-              </div>
-              <div className="space-y-4">
-                {fields.map((field, index) => (
-                  <div
-                    key={field.id}
-                    className="space-y-3 rounded-md border border-border bg-muted p-3"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-foreground">
-                        Medication {index + 1}
-                      </span>
-                      {fields.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-muted-foreground hover:text-error"
-                          onClick={() => remove(index)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <Input
-                          placeholder="Medication name"
-                          required
-                          {...register(
-                            `prescription.items.${index}.medicationName`,
-                          )}
-                        />
-                        {errors.prescription?.items?.[index]
-                          ?.medicationName && (
-                          <p className="mt-1 text-sm text-error">
-                            {
-                              errors.prescription.items[index]?.medicationName
-                                ?.message
-                            }
-                          </p>
-                        )}
-                      </div>
-                      <div>
-                        <Input
-                          placeholder="Dosage (e.g. 500mg)"
-                          required
-                          {...register(`prescription.items.${index}.dosage`)}
-                        />
-                        {errors.prescription?.items?.[index]?.dosage && (
-                          <p className="mt-1 text-sm text-error">
-                            {errors.prescription.items[index]?.dosage?.message}
-                          </p>
-                        )}
-                      </div>
-                      <div>
-                        <Input
-                          placeholder="Frequency (e.g. twice daily)"
-                          required
-                          {...register(`prescription.items.${index}.frequency`)}
-                        />
-                        {errors.prescription?.items?.[index]?.frequency && (
-                          <p className="mt-1 text-sm text-error">
-                            {
-                              errors.prescription.items[index]?.frequency
-                                ?.message
-                            }
-                          </p>
-                        )}
-                      </div>
-                      <Input
-                        placeholder="Duration (e.g. 7 days)"
-                        {...register(`prescription.items.${index}.duration`)}
-                      />
-                      <select
-                        className="h-10 w-full rounded-md border border-border bg-card px-3 text-sm"
-                        {...register(`prescription.items.${index}.route`)}
-                      >
-                        {ROUTES.map((r) => (
-                          <option key={r} value={r}>
-                            {r}
-                          </option>
-                        ))}
-                      </select>
-                      <Input
-                        placeholder="Notes"
-                        {...register(`prescription.items.${index}.notes`)}
-                      />
-                    </div>
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="gap-2"
-                  onClick={() => append(emptyLine())}
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Medication
-                </Button>
-              </div>
-            </div>
-          )}
+          <RecordTypeFields
+            recordType={recordType}
+            register={register}
+            errors={errors}
+            fields={fields}
+            append={append}
+            remove={remove}
+          />
 
           {/* Common optional fields */}
           <div className="grid grid-cols-2 gap-4">
@@ -668,6 +762,136 @@ export function AddRecordDialog({ createRecord }: Props) {
           <DialogFooter>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? 'Saving...' : 'Add Record'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+interface EditProps {
+  record: RecordDetailResponse;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  updateRecord: (payload: RecordCreateRequest) => Promise<RecordDetailResponse>;
+}
+
+export function EditRecordDialog({
+  record,
+  open,
+  onOpenChange,
+  updateRecord,
+}: EditProps) {
+  const {
+    register,
+    handleSubmit,
+    control,
+    formState: { errors, isSubmitting },
+  } = useForm<RecordFormValues>({
+    resolver: zodResolver(
+      recordCreateRequestSchema,
+    ) as unknown as Resolver<RecordFormValues>,
+    // `values` (not `defaultValues`) so the form rehydrates if a different
+    // record is opened for editing.
+    values: toFormValues(record),
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: 'prescription.items',
+  });
+
+  const onSubmit = async (values: RecordFormValues) => {
+    try {
+      await updateRecord(toPayload(values));
+      toast.success('Record updated');
+      onOpenChange(false);
+    } catch (error) {
+      toast.error(
+        error instanceof ApiError ? error.message : 'Failed to update record',
+      );
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit Medical Record</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-rec-type">Record Type</Label>
+              {/* The type itself can't change — a different type is a new
+                  record, not an edit — so this is shown but locked. */}
+              <select
+                id="edit-rec-type"
+                disabled
+                className="h-10 w-full rounded-md border border-border bg-muted px-3 text-sm text-muted-foreground"
+                value={record.recordType}
+                onChange={() => {}}
+              >
+                <option value={record.recordType}>
+                  {RECORD_TYPE_LABELS[record.recordType]}
+                </option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-rec-date">Record Date</Label>
+              <Input
+                id="edit-rec-date"
+                type="date"
+                required
+                {...register('recordDate')}
+              />
+              {errors.recordDate && (
+                <p className="text-sm text-error">
+                  {errors.recordDate.message}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <RecordTypeFields
+            recordType={record.recordType}
+            register={register}
+            errors={errors}
+            fields={fields}
+            append={append}
+            remove={remove}
+          />
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-rec-origin">Institution of Origin</Label>
+              <Input
+                id="edit-rec-origin"
+                {...register('institutionOfOrigin')}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-rec-requestedBy">Requested By</Label>
+              <Input id="edit-rec-requestedBy" {...register('requestedBy')} />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-rec-notes">Notes</Label>
+            <Input id="edit-rec-notes" {...register('notes')} />
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Saving...' : 'Save'}
             </Button>
           </DialogFooter>
         </form>

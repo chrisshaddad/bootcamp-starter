@@ -31,6 +31,7 @@ type RecordScope = {
   patientId: string;
   institutionId: string;
   patientUserId: string;
+  recordType: RecordType;
 };
 
 @Injectable()
@@ -197,6 +198,7 @@ export class MedicalRecordsService {
     const records = await this.prisma.medicalRecord.findMany({
       where: {
         patientId,
+        isVoid: false,
         ...(query.recordType?.length
           ? { recordType: { in: query.recordType } }
           : {}),
@@ -299,11 +301,16 @@ export class MedicalRecordsService {
     actor: User,
   ): Promise<RecordScope> {
     const record = await this.prisma.medicalRecord.findFirst({
-      where: { id: recordId, institutionId: actor.institutionId },
+      where: {
+        id: recordId,
+        institutionId: actor.institutionId,
+        isVoid: false,
+      },
       select: {
         id: true,
         patientId: true,
         institutionId: true,
+        recordType: true,
         patient: { select: { userId: true } },
       },
     });
@@ -317,10 +324,151 @@ export class MedicalRecordsService {
       patientId: record.patientId,
       institutionId: record.institutionId,
       patientUserId: record.patient.userId,
+      recordType: record.recordType,
     };
 
     await this.assertCanViewRecord(scope, actor);
     return scope;
+  }
+
+  /**
+   * Correct a record after the fact (wrong lab value, dosage typo, etc.).
+   * Restricted to an assigned professional, same population that can create
+   * records — a patient can view their own records via getAccessibleRecord
+   * but must not be able to edit them. The record type itself can't change;
+   * that's a new record, not an edit.
+   */
+  async update(
+    recordId: string,
+    data: RecordCreateRequest,
+    actor: User,
+  ): Promise<RecordDetailResponse> {
+    if (actor.role !== 'PROFESSIONAL') {
+      throw new ForbiddenException(
+        'Only an assigned professional can edit a record',
+      );
+    }
+
+    const record = await this.getAccessibleRecord(recordId, actor);
+
+    if (data.recordType !== record.recordType) {
+      throw new ForbiddenException('Record type cannot be changed');
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.medicalRecord.update({
+        where: { id: recordId },
+        data: {
+          recordDate: new Date(data.recordDate),
+          institutionOfOrigin: data.institutionOfOrigin ?? null,
+          requestedBy: data.requestedBy ?? null,
+          notes: data.notes ?? null,
+        },
+      });
+
+      switch (data.recordType) {
+        case 'LAB_RESULT':
+          await tx.labResultDetail.update({
+            where: { recordId },
+            data: {
+              testName: data.labResult.testName,
+              testDate: new Date(data.labResult.testDate),
+              labName: data.labResult.labName ?? null,
+            },
+          });
+          break;
+        case 'CONSULTATION':
+          await tx.consultationDetail.update({
+            where: { recordId },
+            data: {
+              chiefComplaint: data.consultation.chiefComplaint,
+              findings: data.consultation.findings ?? null,
+              diagnosis: data.consultation.diagnosis ?? null,
+              plan: data.consultation.plan ?? null,
+              followUpDate: data.consultation.followUpDate
+                ? new Date(data.consultation.followUpDate)
+                : null,
+            },
+          });
+          break;
+        case 'SCAN':
+          await tx.scanDetail.update({
+            where: { recordId },
+            data: {
+              modalityType: data.scan.modalityType,
+              bodyPart: data.scan.bodyPart,
+              radiologistName: data.scan.radiologistName ?? null,
+              findings: data.scan.findings ?? null,
+            },
+          });
+          break;
+        case 'VACCINATION':
+          await tx.vaccinationDetail.update({
+            where: { recordId },
+            data: {
+              vaccineName: data.vaccination.vaccineName,
+              doseNumber: data.vaccination.doseNumber ?? null,
+              administeredDate: new Date(data.vaccination.administeredDate),
+              nextDoseDate: data.vaccination.nextDoseDate
+                ? new Date(data.vaccination.nextDoseDate)
+                : null,
+              batchNumber: data.vaccination.batchNumber ?? null,
+              administeredBy: data.vaccination.administeredBy ?? null,
+            },
+          });
+          break;
+        case 'PRESCRIPTION':
+          // Items are a child list, not a 1:1 row — the edit form always
+          // resubmits the full set, so replace wholesale rather than diffing.
+          await tx.prescriptionItem.deleteMany({
+            where: { prescription: { recordId } },
+          });
+          await tx.prescription.update({
+            where: { recordId },
+            data: {
+              prescriptionDate: new Date(data.prescription.prescriptionDate),
+              items: {
+                create: data.prescription.items.map((item) => ({
+                  medicationName: item.medicationName,
+                  dosage: item.dosage,
+                  frequency: item.frequency,
+                  duration: item.duration ?? null,
+                  route: item.route,
+                  notes: item.notes ?? null,
+                })),
+              },
+            },
+          });
+          break;
+      }
+    });
+
+    this.logger.log(`Record ${recordId} updated by ${actor.id}`);
+    return this.buildDetail(recordId);
+  }
+
+  /**
+   * Delete a record made in error. Soft delete — flips `isVoid`, which every
+   * read path (list, detail, edit, file access) already treats as "doesn't
+   * exist"; the row and its files are left in place, so it's recoverable
+   * directly in the database if that's ever needed. Restricted to an
+   * assigned professional.
+   */
+  async remove(recordId: string, actor: User): Promise<void> {
+    if (actor.role !== 'PROFESSIONAL') {
+      throw new ForbiddenException(
+        'Only an assigned professional can delete a record',
+      );
+    }
+
+    await this.getAccessibleRecord(recordId, actor);
+
+    await this.prisma.medicalRecord.update({
+      where: { id: recordId },
+      data: { isVoid: true },
+    });
+
+    this.logger.log(`Record ${recordId} deleted (soft) by ${actor.id}`);
   }
 
   private async assertCanViewRecord(

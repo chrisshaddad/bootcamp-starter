@@ -2,7 +2,7 @@
 
 import useSWR, { mutate as globalMutate } from 'swr';
 import { useCallback } from 'react';
-import { apiPost, apiUpload, API_URL } from '@/lib/api';
+import { apiDelete, apiPatch, apiPost, apiUpload, API_URL } from '@/lib/api';
 import type {
   RecordListResponse,
   RecordDetailResponse,
@@ -82,11 +82,48 @@ export function useRecord(
     [id, mutate, data?.patientId],
   );
 
+  const updateRecord = useCallback(
+    async (payload: RecordCreateRequest) => {
+      if (!id) throw new Error('No record selected');
+      const result = await apiPatch<RecordDetailResponse>(
+        `/records/${id}`,
+        payload,
+      );
+      mutate();
+      // Also refresh the patient's records list so its title/type isn't stale.
+      if (data?.patientId) {
+        globalMutate(
+          (key) =>
+            typeof key === 'string' &&
+            key.startsWith(`/patients/${data.patientId}/records`),
+        );
+      }
+      return result;
+    },
+    [id, mutate, data?.patientId],
+  );
+
+  const deleteRecord = useCallback(async () => {
+    if (!id) throw new Error('No record selected');
+    await apiDelete(`/records/${id}`);
+    // No mutate() on the (now-deleted) record itself — the caller closes the
+    // detail view. Just refresh the patient's records list so it disappears.
+    if (data?.patientId) {
+      globalMutate(
+        (key) =>
+          typeof key === 'string' &&
+          key.startsWith(`/patients/${data.patientId}/records`),
+      );
+    }
+  }, [id, data?.patientId]);
+
   return {
     record: data,
     isLoading,
     error,
     uploadFile,
+    updateRecord,
+    deleteRecord,
     mutate,
   };
 }

@@ -1,9 +1,12 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { DEFAULT_PAGE_SIZE } from '@repo/contracts';
 import { useNotifications } from '@/hooks/use-notifications';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Pagination } from '@/components/pagination';
 import { Bell, CheckCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -21,14 +24,26 @@ function timeAgo(date: string | Date): string {
 }
 
 export default function NotificationsPage() {
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+
   const {
     notifications,
     unreadCount,
+    total,
     isLoading,
     error,
     markRead,
     markAllRead,
-  } = useNotifications();
+  } = useNotifications({ page, limit: pageSize });
+
+  // Clamp back to the last valid page if a page-size change or a background
+  // revalidation shrinks `total` out from under the current page.
+  useEffect(() => {
+    if (total === undefined) return;
+    const maxPage = Math.max(1, Math.ceil(total / pageSize));
+    if (page > maxPage) setPage(maxPage);
+  }, [total, pageSize, page]);
 
   return (
     <div className="space-y-6">
@@ -97,6 +112,20 @@ export default function NotificationsPage() {
                 </li>
               ))}
             </ul>
+          )}
+          {total !== undefined && (
+            <div className="px-4 pb-4">
+              <Pagination
+                page={page}
+                pageSize={pageSize}
+                total={total}
+                onPageChange={setPage}
+                onPageSizeChange={(size) => {
+                  setPageSize(size);
+                  setPage(1);
+                }}
+              />
+            </div>
           )}
         </CardContent>
       </Card>

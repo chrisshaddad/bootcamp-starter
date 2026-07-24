@@ -1,8 +1,12 @@
 import {
   BadRequestException,
+  Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
   Param,
+  Patch,
   Post,
   StreamableFile,
   UploadedFile,
@@ -15,7 +19,13 @@ import {
 } from './medical-records.service';
 import { Roles, CurrentUser } from '../auth/decorators';
 import type { User } from '@repo/db';
-import type { RecordDetailResponse, RecordFileResponse } from '@repo/contracts';
+import {
+  recordCreateRequestSchema,
+  type RecordCreateRequest,
+  type RecordDetailResponse,
+  type RecordFileResponse,
+} from '@repo/contracts';
+import { ZodValidationPipe } from '../common/pipes';
 
 // Attachment upload limits — medical-record files are documents/images.
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -63,6 +73,27 @@ export class RecordsController {
     @CurrentUser() user: User,
   ): Promise<RecordDetailResponse> {
     return this.recordsService.findOne(id, user);
+  }
+
+  @Patch(':id')
+  @Roles('PROFESSIONAL')
+  async update(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(recordCreateRequestSchema))
+    body: RecordCreateRequest,
+    @CurrentUser() user: User,
+  ): Promise<RecordDetailResponse> {
+    return this.recordsService.update(id, body, user);
+  }
+
+  @Delete(':id')
+  @Roles('PROFESSIONAL')
+  @HttpCode(204)
+  async remove(
+    @Param('id') id: string,
+    @CurrentUser() user: User,
+  ): Promise<void> {
+    return this.recordsService.remove(id, user);
   }
 
   @Post(':id/files')

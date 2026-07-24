@@ -20,6 +20,7 @@ describe('AuthService', () => {
   };
   let sessionService: { createSession: jest.Mock };
   let mailQueue: { add: jest.Mock };
+  let redis: { incr: jest.Mock; expire: jest.Mock };
 
   beforeEach(async () => {
     prisma = {
@@ -34,6 +35,7 @@ describe('AuthService', () => {
     };
     sessionService = { createSession: jest.fn() };
     mailQueue = { add: jest.fn() };
+    redis = { incr: jest.fn().mockResolvedValue(1), expire: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -53,6 +55,10 @@ describe('AuthService', () => {
         {
           provide: getQueueToken(MAIL_QUEUE),
           useValue: mailQueue,
+        },
+        {
+          provide: 'REDIS_CLIENT',
+          useValue: redis,
         },
       ],
     }).compile();
@@ -122,6 +128,41 @@ describe('AuthService', () => {
       ).rejects.toThrow(ForbiddenException);
       expect(mailQueue.add).not.toHaveBeenCalled();
       expect(prisma.magicLink.create).not.toHaveBeenCalled();
+    });
+
+    it('sets an expiry on the rate-limit counter the first time an email is seen', async () => {
+      redis.incr.mockResolvedValue(1);
+      prisma.user.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.requestMagicLink('nobody@example.com'),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(redis.expire).toHaveBeenCalledWith(
+        'magic-link-rate-limit:nobody@example.com',
+        15 * 60,
+      );
+    });
+
+    it('does not re-set the expiry on subsequent requests within the window', async () => {
+      redis.incr.mockResolvedValue(2);
+      prisma.user.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.requestMagicLink('nobody@example.com'),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(redis.expire).not.toHaveBeenCalled();
+    });
+
+    it('throws ForbiddenException once the per-email cap is exceeded, before ever touching the database', async () => {
+      redis.incr.mockResolvedValue(6); // cap is 5
+
+      await expect(
+        service.requestMagicLink('victim@example.com'),
+      ).rejects.toThrow(ForbiddenException);
+      expect(prisma.user.findUnique).not.toHaveBeenCalled();
+      expect(mailQueue.add).not.toHaveBeenCalled();
     });
   });
 

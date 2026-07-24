@@ -1,5 +1,6 @@
 import {
   ForbiddenException,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
@@ -7,6 +8,7 @@ import {
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import * as crypto from 'crypto';
+import Redis from 'ioredis';
 import type { User } from '@repo/db';
 import type { UserResponse } from '@repo/contracts';
 import { PrismaService } from '../database/prisma.service';
@@ -19,6 +21,15 @@ const INACTIVE_ACCOUNT_MESSAGE =
   'This account is currently inactive. Please contact your administrator for access.';
 const INACTIVE_INSTITUTION_MESSAGE =
   'Your institution is not currently active. Please contact platform support.';
+
+// Caps how often a magic link can be requested for a given email. Without
+// this, anyone who knows an email can repeatedly call requestMagicLink to
+// invalidate the real owner's outstanding link (createMagicLinkToken kills
+// the prior one on every call) — a zero-auth way to lock someone out.
+const MAGIC_LINK_RATE_LIMIT_MAX = 5;
+const MAGIC_LINK_RATE_LIMIT_WINDOW_SECONDS = 15 * 60;
+const RATE_LIMIT_MESSAGE =
+  'Too many login link requests for this email address. Please wait a few minutes and try again.';
 
 /**
  * Single source of truth for shaping a Prisma User into the UserResponse
@@ -46,6 +57,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly sessionService: SessionService,
     @InjectQueue(MAIL_QUEUE) private readonly mailQueue: Queue,
+    @Inject('REDIS_CLIENT') private readonly redis: Redis,
   ) {}
 
   /**
@@ -85,13 +97,38 @@ export class AuthService {
   }
 
   /**
+   * Counts requests per email in a rolling window (Redis `INCR` + `EXPIRE`
+   * on the first hit) and rejects once the cap is exceeded. Keyed by email,
+   * not IP — this bounds the damage from someone spamming a known victim's
+   * address to a limited window, rather than stopping it outright (we can't
+   * tell the real owner's request from an attacker's by email alone).
+   */
+  private async enforceMagicLinkRateLimit(email: string): Promise<void> {
+    const key = `magic-link-rate-limit:${email}`;
+    const attempts = await this.redis.incr(key);
+
+    if (attempts === 1) {
+      await this.redis.expire(key, MAGIC_LINK_RATE_LIMIT_WINDOW_SECONDS);
+    }
+
+    if (attempts > MAGIC_LINK_RATE_LIMIT_MAX) {
+      this.logger.warn(`Magic link rate limit exceeded for ${email}`);
+      throw new ForbiddenException(RATE_LIMIT_MESSAGE);
+    }
+  }
+
+  /**
    * Request a magic link for the given email
    * Creates a magic link token and queues an email to be sent
    */
   async requestMagicLink(email: string): Promise<{ success: boolean }> {
+    const normalizedEmail = email.toLowerCase();
+
+    await this.enforceMagicLinkRateLimit(normalizedEmail);
+
     // Find user by email
     const user = await this.prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
+      where: { email: normalizedEmail },
       include: { institution: { select: { status: true } } },
     });
 

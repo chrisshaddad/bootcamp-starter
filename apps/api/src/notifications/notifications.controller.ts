@@ -1,8 +1,13 @@
-import { Controller, Get, Param, Patch } from '@nestjs/common';
+import { Controller, Get, Param, Patch, Query } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { CurrentUser } from '../auth/decorators';
 import type { User } from '@repo/db';
-import type { NotificationListResponse } from '@repo/contracts';
+import {
+  notificationListQuerySchema,
+  type NotificationListQuery,
+  type NotificationListResponse,
+} from '@repo/contracts';
+import { ZodValidationPipe } from '../common/pipes';
 
 @Controller('notifications')
 export class NotificationsController {
@@ -10,8 +15,12 @@ export class NotificationsController {
 
   // Any authenticated user can read their own inbox — no @Roles restriction.
   @Get()
-  async findAll(@CurrentUser() user: User): Promise<NotificationListResponse> {
-    return this.notificationsService.findForUser(user.id);
+  async findAll(
+    @Query(new ZodValidationPipe(notificationListQuerySchema))
+    query: NotificationListQuery,
+    @CurrentUser() user: User,
+  ): Promise<NotificationListResponse> {
+    return this.notificationsService.findForUser(user.id, query);
   }
 
   @Patch('read-all')
