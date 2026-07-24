@@ -17,6 +17,7 @@ import { AnnouncementList } from '@/components/announcement-list';
 import { RichTextEditor } from '@/components/rich-text-editor';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -37,6 +38,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAnnouncements } from '@/hooks/use-announcements';
 import { useEvents } from '@/hooks/use-events';
+import { useGroups } from '@/hooks/use-groups';
 import { useUser } from '@/hooks/use-auth';
 import { ApiError } from '@/lib/api';
 import {
@@ -49,12 +51,14 @@ import {
   Megaphone,
   Search,
   ShieldX,
+  UsersRound,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 const scopeIcons: Record<AnnouncementScope, LucideIcon> = {
   SITE: Megaphone,
   ORG: Globe,
+  GROUP: UsersRound,
   EVENT: Calendar,
 };
 
@@ -124,18 +128,21 @@ export default function AnnouncementsPage() {
       scope: 'EVENT',
       audience: 'EVENT_ATTENDEES',
       eventId: undefined,
+      groupIds: undefined,
     },
   });
   const scope = watch('scope');
   const title = watch('title');
   const bodyHtml = watch('bodyHtml');
   const eventId = watch('eventId');
+  const groupIds = watch('groupIds') ?? [];
   const audience = watch('audience') ?? 'EVENT_ATTENDEES';
   const isFormIncomplete =
     !title?.trim() ||
     !scope ||
     !hasBodyContent(bodyHtml) ||
-    (scope === 'EVENT' && (!audience || !eventId));
+    (scope === 'EVENT' && (!audience || !eventId)) ||
+    (scope === 'GROUP' && groupIds.length === 0);
   const {
     register: registerEdit,
     handleSubmit: handleEditSubmit,
@@ -152,7 +159,11 @@ export default function AnnouncementsPage() {
   });
   const editTitle = watchEdit('title');
   const editBodyHtml = watchEdit('bodyHtml');
-  const isEditIncomplete = !editTitle?.trim() || !hasBodyContent(editBodyHtml);
+  const editGroupIds = watchEdit('groupIds') ?? [];
+  const isEditIncomplete =
+    !editTitle?.trim() ||
+    !hasBodyContent(editBodyHtml) ||
+    (editingAnnouncement?.scope === 'GROUP' && editGroupIds.length === 0);
 
   const {
     announcements,
@@ -167,6 +178,12 @@ export default function AnnouncementsPage() {
     enabled: canCreate && scope === 'EVENT',
     upcoming: true,
     ...(isPresenter ? { hostedByMe: true } : {}),
+  });
+  const { groups, isLoading: groupsLoading } = useGroups({
+    enabled:
+      isOrgAdmin &&
+      (scope === 'GROUP' || editingAnnouncement?.scope === 'GROUP'),
+    limit: 100,
   });
   const filteredEvents = useMemo(() => {
     const query = eventSearch.trim().toLowerCase();
@@ -189,6 +206,7 @@ export default function AnnouncementsPage() {
     }
     if (isOrgAdmin) {
       options.push({ value: 'ORG', label: 'Org-wide' });
+      options.push({ value: 'GROUP', label: 'Selected groups' });
       options.push({ value: 'EVENT', label: 'Event-related' });
     }
     if (isPresenter) {
@@ -205,6 +223,7 @@ export default function AnnouncementsPage() {
     ) {
       setValue('scope', fallbackScope, { shouldValidate: true });
       setValue('eventId', undefined, { shouldValidate: true });
+      setValue('groupIds', undefined, { shouldValidate: true });
       setValue(
         'audience',
         fallbackScope === 'EVENT' ? 'EVENT_ATTENDEES' : undefined,
@@ -251,6 +270,7 @@ export default function AnnouncementsPage() {
         ...(data.scope === 'EVENT'
           ? { audience: data.audience, eventId: data.eventId }
           : {}),
+        ...(data.scope === 'GROUP' ? { groupIds: data.groupIds } : {}),
       });
       toast.success('Announcement posted');
       reset({
@@ -259,6 +279,7 @@ export default function AnnouncementsPage() {
         scope: data.scope,
         audience: data.scope === 'EVENT' ? data.audience : undefined,
         eventId: data.scope === 'EVENT' ? data.eventId : undefined,
+        groupIds: data.scope === 'GROUP' ? data.groupIds : undefined,
       });
       setEventSearch('');
       setEventDropdownOpen(false);
@@ -282,7 +303,9 @@ export default function AnnouncementsPage() {
 
     if (user.role === 'ORG_ADMIN') {
       return (
-        (announcement.scope === 'ORG' || announcement.scope === 'EVENT') &&
+        (announcement.scope === 'ORG' ||
+          announcement.scope === 'GROUP' ||
+          announcement.scope === 'EVENT') &&
         announcement.organizationId === user.organizationId
       );
     }
@@ -300,6 +323,10 @@ export default function AnnouncementsPage() {
     resetEdit({
       title: announcement.title,
       bodyHtml: announcement.bodyHtml,
+      groupIds:
+        announcement.scope === 'GROUP'
+          ? announcement.targetGroups.map((group) => group.id)
+          : undefined,
     });
   };
 
@@ -363,7 +390,7 @@ export default function AnnouncementsPage() {
             Announcements
           </h1>
           <p className="mt-1 text-sm text-gray-500">
-            Updates for the platform, your organization, and events.
+            Updates for the platform, your organization, groups, and events.
           </p>
         </div>
         {total !== undefined && (
@@ -406,6 +433,9 @@ export default function AnnouncementsPage() {
                         shouldValidate: true,
                       });
                       setValue('eventId', undefined, { shouldValidate: true });
+                      setValue('groupIds', undefined, {
+                        shouldValidate: true,
+                      });
                       setValue(
                         'audience',
                         nextScope === 'EVENT' ? 'EVENT_ATTENDEES' : undefined,
@@ -572,6 +602,55 @@ export default function AnnouncementsPage() {
                 </div>
               )}
 
+              {scope === 'GROUP' && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Target groups</Label>
+                  <div className="grid max-h-52 gap-2 overflow-y-auto rounded-md border border-gray-200 p-3 sm:grid-cols-2">
+                    {groupsLoading && (
+                      <p className="text-sm text-gray-500">Loading groups...</p>
+                    )}
+                    {!groupsLoading && groups?.length === 0 && (
+                      <p className="text-sm text-gray-500">
+                        Create a group before posting a targeted announcement.
+                      </p>
+                    )}
+                    {groups?.map((group) => (
+                      <label
+                        key={group.id}
+                        className="flex cursor-pointer items-start gap-2 rounded-md p-2 hover:bg-gray-50"
+                      >
+                        <Checkbox
+                          checked={groupIds.includes(group.id)}
+                          onCheckedChange={(checked) =>
+                            setValue(
+                              'groupIds',
+                              checked
+                                ? [...new Set([...groupIds, group.id])]
+                                : groupIds.filter((id) => id !== group.id),
+                              { shouldDirty: true, shouldValidate: true },
+                            )
+                          }
+                        />
+                        <span className="min-w-0 text-sm">
+                          <span className="block truncate font-medium text-gray-900">
+                            {group.name}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {group.memberCount}{' '}
+                            {group.memberCount === 1 ? 'member' : 'members'}
+                          </span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                  {errors.groupIds && (
+                    <p className="text-sm text-error">
+                      {errors.groupIds.message}
+                    </p>
+                  )}
+                </div>
+              )}
+
               <div className="space-y-1.5">
                 <Label className="text-xs">Message</Label>
                 <RichTextEditor
@@ -654,6 +733,43 @@ export default function AnnouncementsPage() {
                 </p>
               )}
             </div>
+            {editingAnnouncement?.scope === 'GROUP' && (
+              <div className="space-y-2">
+                <Label>Target groups</Label>
+                <div className="grid max-h-48 gap-2 overflow-y-auto rounded-md border border-gray-200 p-3 sm:grid-cols-2">
+                  {groupsLoading && (
+                    <p className="text-sm text-gray-500">Loading groups...</p>
+                  )}
+                  {groups?.map((group) => (
+                    <label
+                      key={group.id}
+                      className="flex cursor-pointer items-center gap-2 rounded-md p-2 hover:bg-gray-50"
+                    >
+                      <Checkbox
+                        checked={editGroupIds.includes(group.id)}
+                        onCheckedChange={(checked) =>
+                          setEditValue(
+                            'groupIds',
+                            checked
+                              ? [...new Set([...editGroupIds, group.id])]
+                              : editGroupIds.filter((id) => id !== group.id),
+                            { shouldDirty: true, shouldValidate: true },
+                          )
+                        }
+                      />
+                      <span className="truncate text-sm font-medium text-gray-900">
+                        {group.name}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                {editErrors.groupIds && (
+                  <p className="text-sm text-error">
+                    {editErrors.groupIds.message}
+                  </p>
+                )}
+              </div>
+            )}
             <DialogFooter>
               <Button
                 type="button"

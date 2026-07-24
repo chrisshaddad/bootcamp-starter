@@ -39,6 +39,7 @@ enum MemberRole {
 enum AnnouncementScope {
   SITE
   ORG
+  GROUP
   EVENT
 
   @@schema("public")
@@ -154,15 +155,16 @@ model Organization {
   updatedAt    DateTime           @updatedAt
   approvedAt   DateTime? // When super admin approved
 
-  createdBy         User               @relation("OrganizationCreator", fields: [createdById], references: [id])
-  approvedBy        User?              @relation("OrganizationApprover", fields: [approvedById], references: [id])
-  users             User[]             @relation("OrganizationMembers")
-  members           Member[]
-  events            Event[]
-  eventAttendees    EventAttendee[]
-  announcements     Announcement[]
-  memberInvitations MemberInvitation[]
-  groups            Group[]
+  createdBy          User                @relation("OrganizationCreator", fields: [createdById], references: [id])
+  approvedBy         User?               @relation("OrganizationApprover", fields: [approvedById], references: [id])
+  users              User[]              @relation("OrganizationMembers")
+  members            Member[]
+  events             Event[]
+  eventAttendees     EventAttendee[]
+  announcements      Announcement[]
+  announcementGroups AnnouncementGroup[]
+  memberInvitations  MemberInvitation[]
+  groups             Group[]
 
   @@index([approvedById])
   @@index([status])
@@ -178,10 +180,10 @@ model Member {
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
 
-  user              User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
-  organization      Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  presentedEvents   Event[]
-  groupMemberships  GroupMember[]
+  user             User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  organization     Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  presentedEvents  Event[]
+  groupMemberships GroupMember[]
 
   @@unique([organizationId, username])
   @@index([organizationId])
@@ -197,8 +199,9 @@ model Group {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  memberships  GroupMember[]
+  organization        Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  memberships         GroupMember[]
+  announcementTargets AnnouncementGroup[]
 
   @@unique([organizationId, name])
   @@index([organizationId])
@@ -279,15 +282,35 @@ model Announcement {
   createdAt      DateTime              @default(now())
   updatedAt      DateTime              @updatedAt
 
-  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  event        Event?        @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  author       User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  organization Organization?       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  event        Event?              @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  author       User                @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  groupTargets AnnouncementGroup[]
 
   @@index([organizationId])
   @@index([eventId])
   @@index([authorId])
   @@index([scope])
   @@index([createdAt])
+  @@schema("public")
+}
+
+model AnnouncementGroup {
+  id             String   @id @default(uuid())
+  announcementId String
+  groupId        String
+  organizationId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  announcement Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  group        Group        @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([announcementId, groupId])
+  @@index([announcementId])
+  @@index([groupId])
+  @@index([organizationId])
   @@schema("public")
 }
 

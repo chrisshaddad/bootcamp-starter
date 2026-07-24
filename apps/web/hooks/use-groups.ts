@@ -14,6 +14,7 @@ import type {
 interface UseGroupsOptions {
   enabled?: boolean;
   organizationId?: string;
+  limit?: number;
 }
 
 interface UseGroupsReturn {
@@ -31,11 +32,13 @@ interface UseGroupsReturn {
 /**
  * Builds a groups API endpoint with an optional organization filter.
  */
-function buildGroupsEndpoint(organizationId?: string): string {
-  if (!organizationId) {
+function buildGroupsEndpoint(organizationId?: string, limit?: number): string {
+  if (!organizationId && !limit) {
     return '/groups';
   }
-  const params = new URLSearchParams({ organizationId });
+  const params = new URLSearchParams();
+  if (organizationId) params.set('organizationId', organizationId);
+  if (limit) params.set('limit', String(limit));
   return `/groups?${params.toString()}`;
 }
 
@@ -59,8 +62,8 @@ function useInvalidateGroups() {
  * Fetches the groups list and exposes create + cache revalidation.
  */
 export function useGroups(options: UseGroupsOptions = {}): UseGroupsReturn {
-  const { enabled = true, organizationId } = options;
-  const endpoint = buildGroupsEndpoint(organizationId);
+  const { enabled = true, organizationId, limit } = options;
+  const endpoint = buildGroupsEndpoint(organizationId, limit);
   const invalidateGroups = useInvalidateGroups();
 
   const {

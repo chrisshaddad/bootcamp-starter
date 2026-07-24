@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { dateSchema, idSchema } from '../common';
 import { announcementAudienceSchema } from './announcement-audience.schema';
 import { announcementScopeSchema } from './announcement-scope.schema';
+import { announcementTargetGroupSchema } from './announcement-target-group.response';
 
 export const announcementSchema = z.object({
   id: idSchema,
@@ -14,6 +15,7 @@ export const announcementSchema = z.object({
   authorId: idSchema,
   authorName: z.string(),
   eventName: z.string().nullable(),
+  targetGroups: z.array(announcementTargetGroupSchema),
   createdAt: dateSchema,
   updatedAt: dateSchema,
 });

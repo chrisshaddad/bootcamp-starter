@@ -37,6 +37,17 @@ const ANNOUNCEMENTS = [
     'Renewable Energy Seminar',
     'WHOLE_ORG',
   ],
+  [
+    'techcorp-presenter-briefing',
+    'Presenter briefing',
+    '<p>Please review the updated presentation checklist before your next session.</p>',
+    'GROUP',
+    'admin@techcorp.example.com',
+    'admin@techcorp.example.com',
+    undefined,
+    undefined,
+    ['Presenters', 'Engineering Guild'],
+  ],
 ] as const;
 
 function seedAnnouncementId(key: string): string {
@@ -65,6 +76,7 @@ export async function seedAnnouncements(prisma: PrismaClient) {
       orgEmail,
       eventName,
       audience,
+      groupNames,
     ] = item;
     const author = await prisma.user.findUnique({
       where: { email: authorEmail },
@@ -83,8 +95,23 @@ export async function seedAnnouncements(prisma: PrismaClient) {
             where: { eventName, organizationId: organization.id },
           })
         : null;
+    const groups =
+      groupNames && organization
+        ? await prisma.group.findMany({
+            where: {
+              organizationId: organization.id,
+              name: { in: [...groupNames] },
+            },
+            select: { id: true },
+          })
+        : [];
 
-    if (!author || (orgEmail && !organization) || (eventName && !event)) {
+    if (
+      !author ||
+      (orgEmail && !organization) ||
+      (eventName && !event) ||
+      (groupNames && groups.length !== groupNames.length)
+    ) {
       console.warn(`  Warning: Skipping announcement ${title}.`);
       continue;
     }
@@ -99,11 +126,30 @@ export async function seedAnnouncements(prisma: PrismaClient) {
       authorId: author.id,
     };
 
-    await prisma.announcement.upsert({
+    const announcement = await prisma.announcement.upsert({
       where: { id: seedAnnouncementId(key) },
       create: { id: seedAnnouncementId(key), ...data },
       update: data,
     });
+
+    if (groupNames && organization) {
+      await prisma.$transaction([
+        prisma.announcementGroup.deleteMany({
+          where: {
+            announcementId: announcement.id,
+            organizationId: organization.id,
+          },
+        }),
+        prisma.announcementGroup.createMany({
+          data: groups.map((group) => ({
+            announcementId: announcement.id,
+            groupId: group.id,
+            organizationId: organization.id,
+          })),
+        }),
+      ]);
+    }
+
     console.log(`  Announcement ready: ${title}`);
   }
 }
