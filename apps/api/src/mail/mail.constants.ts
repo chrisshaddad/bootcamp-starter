@@ -4,4 +4,5 @@ export const MAIL_JOBS = {
   SEND_MAGIC_LINK: 'send-magic-link',
   SEND_INVITATION: 'send-invitation',
   SEND_DUE_REMINDER: 'send-due-reminder',
+  SEND_MEMBERSHIP_CLAIM: 'send-membership-claim',
 };
