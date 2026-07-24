@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { useUser } from '@/hooks/use-auth';
@@ -9,6 +9,7 @@ import { useUsers, useUserMutations } from '@/hooks/use-users';
 import { ForbiddenPage } from '@/components/forbidden-page';
 import { UserFormDialog } from '@/components/user-form-dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -36,13 +37,18 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  ChevronLeft,
+  ChevronRight,
   Pencil,
   PauseCircle,
   PlayCircle,
   Plus,
+  Search,
   UsersRound,
 } from 'lucide-react';
 import type { UserAccountResponse, UserRole } from '@repo/contracts';
+
+const PAGE_SIZE = 10;
 
 const ROLE_LABELS: Record<string, string> = {
   SUPER_ADMIN: 'Super Admin',
@@ -50,6 +56,89 @@ const ROLE_LABELS: Record<string, string> = {
   HR: 'HR',
   EMPLOYEE: 'Employee',
 };
+
+/**
+ * Windowed page numbers with ellipses so the control stays compact for large
+ * page counts, e.g. 1 … 4 5 6 … 20. Always includes first and last page.
+ */
+function getPageItems(current: number, count: number): (number | 'gap')[] {
+  if (count <= 7) {
+    return Array.from({ length: count }, (_, i) => i + 1);
+  }
+  const items: (number | 'gap')[] = [1];
+  const start = Math.max(2, current - 1);
+  const end = Math.min(count - 1, current + 1);
+  if (start > 2) items.push('gap');
+  for (let p = start; p <= end; p++) items.push(p);
+  if (end < count - 1) items.push('gap');
+  items.push(count);
+  return items;
+}
+
+function Pagination({
+  page,
+  pageCount,
+  total,
+  onPageChange,
+}: {
+  page: number;
+  pageCount: number;
+  total: number;
+  onPageChange: (page: number) => void;
+}) {
+  const from = (page - 1) * PAGE_SIZE + 1;
+  const to = Math.min(page * PAGE_SIZE, total);
+
+  return (
+    <div className="flex flex-col items-center justify-between gap-3 border-t border-border pt-4 sm:flex-row">
+      <p className="text-sm text-muted-foreground">
+        Showing <span className="font-medium text-foreground">{from}</span>–
+        <span className="font-medium text-foreground">{to}</span> of{' '}
+        <span className="font-medium text-foreground">{total}</span>
+      </p>
+      <div className="flex items-center gap-1">
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={page <= 1}
+          onClick={() => onPageChange(page - 1)}
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Prev
+        </Button>
+        {getPageItems(page, pageCount).map((item, i) =>
+          item === 'gap' ? (
+            <span
+              key={`gap-${i}`}
+              className="px-1.5 text-sm text-muted-foreground"
+            >
+              …
+            </span>
+          ) : (
+            <Button
+              key={item}
+              variant={item === page ? 'default' : 'outline'}
+              size="sm"
+              className="min-w-9"
+              onClick={() => onPageChange(item)}
+            >
+              {item}
+            </Button>
+          ),
+        )}
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={page >= pageCount}
+          onClick={() => onPageChange(page + 1)}
+        >
+          Next
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 function RoleBadge({ role }: { role: string }) {
   return <Badge tone="violet">{ROLE_LABELS[role] ?? role}</Badge>;
@@ -86,6 +175,9 @@ function UsersContent() {
     searchParams.get('organizationId') ?? 'all',
   );
   const [roleFilter, setRoleFilter] = useState<'all' | UserRole>('all');
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingUser, setEditingUser] = useState<UserAccountResponse | null>(
     null,
@@ -95,6 +187,26 @@ function UsersContent() {
   const [reactivatingUser, setReactivatingUser] =
     useState<UserAccountResponse | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Debounce the search box so we hit the API once the user pauses, not on
+  // every keystroke. Any new query resets back to the first page.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(searchInput.trim());
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  const handleOrganizationChange = (value: string) => {
+    setOrganizationFilter(value);
+    setPage(1);
+  };
+
+  const handleRoleChange = (value: 'all' | UserRole) => {
+    setRoleFilter(value);
+    setPage(1);
+  };
 
   const { organizations } = useOrganizations({ enabled: isSuperAdmin });
   const {
@@ -106,8 +218,12 @@ function UsersContent() {
     organizationId:
       organizationFilter === 'all' ? undefined : organizationFilter,
     role: roleFilter === 'all' ? undefined : roleFilter,
+    search: search || undefined,
+    page,
+    limit: PAGE_SIZE,
     enabled: isSuperAdmin,
   });
+  const pageCount = total ? Math.ceil(total / PAGE_SIZE) : 0;
   const { deactivateUser, reactivateUser } = useUserMutations();
 
   if (!isSuperAdmin) {
@@ -153,9 +269,19 @@ function UsersContent() {
           </p>
         </div>
         <div className="flex items-center gap-4">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Search name or email"
+              className="h-10 w-64 pl-9"
+            />
+          </div>
           <Select
             value={organizationFilter}
-            onValueChange={setOrganizationFilter}
+            onValueChange={handleOrganizationChange}
           >
             <SelectTrigger className="w-48">
               <SelectValue placeholder="Filter by organization" />
@@ -171,7 +297,7 @@ function UsersContent() {
           </Select>
           <Select
             value={roleFilter}
-            onValueChange={(value) => setRoleFilter(value as 'all' | UserRole)}
+            onValueChange={(value) => handleRoleChange(value as 'all' | UserRole)}
           >
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Filter by role" />
@@ -300,6 +426,16 @@ function UsersContent() {
                 ))}
               </TableBody>
             </Table>
+          )}
+          {!usersLoading && !error && total !== undefined && pageCount > 1 && (
+            <div className="mt-4">
+              <Pagination
+                page={page}
+                pageCount={pageCount}
+                total={total}
+                onPageChange={setPage}
+              />
+            </div>
           )}
         </CardContent>
       </Card>

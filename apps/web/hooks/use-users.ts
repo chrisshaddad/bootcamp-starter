@@ -22,6 +22,9 @@ function invalidateUserLists() {
 interface UseUsersOptions {
   organizationId?: string;
   role?: UserRole;
+  search?: string;
+  page?: number;
+  limit?: number;
   enabled?: boolean;
 }
 
@@ -34,15 +37,27 @@ interface UseUsersReturn {
 }
 
 /**
- * Hook for fetching the list of users across organizations (Super Admin only)
+ * Hook for fetching a page of users across organizations (Super Admin only).
+ * Server-side paginated: pass `page`/`limit` and read `total` back to drive
+ * numbered pagination. `keepPreviousData` holds the current page on screen
+ * while the next one loads, so paging doesn't flash a skeleton.
  */
 export function useUsers(options: UseUsersOptions = {}): UseUsersReturn {
-  const { organizationId, role, enabled = true } = options;
+  const {
+    organizationId,
+    role,
+    search,
+    page = 1,
+    limit = 20,
+    enabled = true,
+  } = options;
 
   const params = new URLSearchParams();
   if (organizationId) params.set('organizationId', organizationId);
   if (role) params.set('role', role);
-  params.set('limit', '100');
+  if (search) params.set('search', search);
+  params.set('page', String(page));
+  params.set('limit', String(limit));
   const endpoint = `/users?${params.toString()}`;
 
   const {
@@ -50,7 +65,9 @@ export function useUsers(options: UseUsersOptions = {}): UseUsersReturn {
     error,
     isLoading,
     mutate: swrMutate,
-  } = useSWR<UserListResponse>(enabled ? endpoint : null);
+  } = useSWR<UserListResponse>(enabled ? endpoint : null, {
+    keepPreviousData: true,
+  });
 
   return {
     users: data?.users,

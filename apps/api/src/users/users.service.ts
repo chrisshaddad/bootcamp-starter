@@ -61,6 +61,14 @@ export class UsersService {
     const where: Prisma.UserWhereInput = {
       ...(query.organizationId ? { organizationId: query.organizationId } : {}),
       ...(query.role ? { role: query.role } : {}),
+      ...(query.search
+        ? {
+            OR: [
+              { name: { contains: query.search, mode: 'insensitive' } },
+              { email: { contains: query.search, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
     };
 
     const [users, total] = await Promise.all([
