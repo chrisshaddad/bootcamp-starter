@@ -40,8 +40,8 @@ Stored on the `User` model. Controls portal access and API authorization.
 
 | Role          | Scope            | Portal access                                       |
 | ------------- | ---------------- | --------------------------------------------------- |
-| `SUPER_ADMIN` | Platform-wide    | `/admin`, `/organizations`, `/members`, `/events`   |
-| `ORG_ADMIN`   | One organization | `/dashboard`, `/members`, `/events`                 |
+| `SUPER_ADMIN` | Platform-wide    | `/admin`, `/organizations`, `/members`, `/groups`, `/events` |
+| `ORG_ADMIN`   | One organization | `/dashboard`, `/members`, `/groups`, `/events`               |
 | `MEMBER`      | One organization | `/dashboard`, `/events` (list defaults to upcoming) |
 
 Super admins are redirected from `/dashboard` to `/admin` after login. Org admins and regular users stay on `/dashboard`.

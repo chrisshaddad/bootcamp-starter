@@ -30,10 +30,9 @@ export default function EditGroupPage() {
   const id = params.id as string;
   const router = useRouter();
   const { user, isLoading: userLoading } = useUser();
-  const { group, isLoading, update } = useGroup(id);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
   const isAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'ORG_ADMIN';
+  const { group, isLoading, update } = useGroup(id, { enabled: isAdmin });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (userLoading || isLoading) {
     return (

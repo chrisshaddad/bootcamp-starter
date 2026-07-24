@@ -108,6 +108,24 @@ const ATTENDEE_USERS: Prisma.UserCreateManyInput[] = [
   ...GENERATED_ATTENDEES,
 ];
 
+/** Shared with seedCoordly attendance lists (featured + generated, org-grouped). */
+export const TECHCORP_ATTENDEE_EMAILS = [
+  'member@techcorp.example.com',
+  ...TECHCORP_ATTENDEE_NAMES.map(([first, last]) =>
+    attendeeEmail(first, last, 'techcorp.example.com'),
+  ),
+  'presenter@techcorp.example.com',
+  'presenter2@techcorp.example.com',
+];
+
+export const GREEN_ATTENDEE_EMAILS = [
+  'member@greenenergy.example.com',
+  ...GREEN_ATTENDEE_NAMES.map(([first, last]) =>
+    attendeeEmail(first, last, 'greenenergy.example.com'),
+  ),
+  'presenter@greenenergy.example.com',
+];
+
 async function upsertUsers(
   prisma: PrismaClient,
   users: Prisma.UserCreateManyInput[],

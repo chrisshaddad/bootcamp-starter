@@ -1,4 +1,3 @@
-import { randomUUID } from 'crypto';
 import {
   BadRequestException,
   ConflictException,
@@ -258,14 +257,12 @@ export class GroupsService {
     const toCreate = uniqueIds.filter((memberId) => !existingIds.has(memberId));
 
     if (toCreate.length > 0) {
-      const now = new Date();
       await this.prisma.groupMember.createMany({
         data: toCreate.map((memberId) => ({
-          id: randomUUID(),
           groupId: scoped.id,
           memberId,
-          updatedAt: now,
         })),
+        skipDuplicates: true,
       });
     }
 

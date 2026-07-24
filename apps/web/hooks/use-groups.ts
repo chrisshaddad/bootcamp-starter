@@ -1,6 +1,6 @@
 'use client';
 
-import useSWR, { mutate } from 'swr';
+import useSWR, { useSWRConfig } from 'swr';
 import { useCallback } from 'react';
 import { apiDelete, apiPatch, apiPost } from '@/lib/api';
 import type {
@@ -33,17 +33,23 @@ function buildGroupsEndpoint(organizationId?: string): string {
   return `/groups?${params.toString()}`;
 }
 
-function invalidateGroups() {
-  return mutate(
-    (key) => typeof key === 'string' && key.startsWith('/groups'),
-    undefined,
-    { revalidate: true },
+function useInvalidateGroups() {
+  const { mutate } = useSWRConfig();
+  return useCallback(
+    () =>
+      mutate(
+        (key) => typeof key === 'string' && key.startsWith('/groups'),
+        undefined,
+        { revalidate: true },
+      ),
+    [mutate],
   );
 }
 
 export function useGroups(options: UseGroupsOptions = {}): UseGroupsReturn {
   const { enabled = true, organizationId } = options;
   const endpoint = buildGroupsEndpoint(organizationId);
+  const invalidateGroups = useInvalidateGroups();
 
   const {
     data,
@@ -52,11 +58,14 @@ export function useGroups(options: UseGroupsOptions = {}): UseGroupsReturn {
     mutate: mutateList,
   } = useSWR<GroupListResponse>(enabled ? endpoint : null);
 
-  const create = useCallback(async (body: GroupCreateRequest) => {
-    const result = await apiPost<GroupDetailResponse>('/groups', body);
-    await invalidateGroups();
-    return result;
-  }, []);
+  const create = useCallback(
+    async (body: GroupCreateRequest) => {
+      const result = await apiPost<GroupDetailResponse>('/groups', body);
+      await invalidateGroups();
+      return result;
+    },
+    [invalidateGroups],
+  );
 
   return {
     groups: data?.groups,
@@ -91,6 +100,7 @@ export function useGroup(
 ): UseGroupReturn {
   const { enabled = true } = options;
   const endpoint = enabled && id ? `/groups/${id}` : null;
+  const invalidateGroups = useInvalidateGroups();
 
   const {
     data,
@@ -105,13 +115,13 @@ export function useGroup(
       await invalidateGroups();
       return result;
     },
-    [id],
+    [id, invalidateGroups],
   );
 
   const remove = useCallback(async () => {
     await apiDelete(`/groups/${id}`);
     await invalidateGroups();
-  }, [id]);
+  }, [id, invalidateGroups]);
 
   const assignMembers = useCallback(
     async (body: GroupMembersAssignRequest) => {
@@ -122,7 +132,7 @@ export function useGroup(
       await invalidateGroups();
       return result;
     },
-    [id],
+    [id, invalidateGroups],
   );
 
   const removeMember = useCallback(
@@ -133,7 +143,7 @@ export function useGroup(
       await invalidateGroups();
       return result;
     },
-    [id],
+    [id, invalidateGroups],
   );
 
   return {

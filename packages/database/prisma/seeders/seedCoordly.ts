@@ -4,6 +4,10 @@ import {
   AttendanceStatus,
   EventStatus,
 } from '../../src/generated/prisma/client';
+import {
+  GREEN_ATTENDEE_EMAILS,
+  TECHCORP_ATTENDEE_EMAILS,
+} from './seedUsers';
 
 interface OrgRef {
   organizationName: string;
@@ -510,47 +514,6 @@ function buildYearEndEvents(): EventSeed[] {
 }
 
 const EVENTS: EventSeed[] = [...NEAR_TERM_EVENTS, ...buildYearEndEvents()];
-
-const TECHCORP_ATTENDEE_EMAILS = [
-  'member@techcorp.example.com',
-  'maya.brooks@techcorp.example.com',
-  'noah.patel@techcorp.example.com',
-  'sofia.nguyen@techcorp.example.com',
-  'liam.carter@techcorp.example.com',
-  'ava.kim@techcorp.example.com',
-  'ethan.morales@techcorp.example.com',
-  'isla.bennett@techcorp.example.com',
-  'lucas.hayes@techcorp.example.com',
-  'mia.torres@techcorp.example.com',
-  'owen.reed@techcorp.example.com',
-  'chloe.diaz@techcorp.example.com',
-  'iris.park@techcorp.example.com',
-  'zoe.coleman@techcorp.example.com',
-  'henry.singh@techcorp.example.com',
-  'layla.foster@techcorp.example.com',
-  'jack.nguyen@techcorp.example.com',
-  'ella.brooks@techcorp.example.com',
-  'leo.ramirez@techcorp.example.com',
-  'presenter@techcorp.example.com',
-  'presenter2@techcorp.example.com',
-];
-
-const GREEN_ATTENDEE_EMAILS = [
-  'member@greenenergy.example.com',
-  'nina.walsh@greenenergy.example.com',
-  'omar.hassan@greenenergy.example.com',
-  'ruby.stone@greenenergy.example.com',
-  'kai.vogel@greenenergy.example.com',
-  'ivy.lambert@greenenergy.example.com',
-  'jude.chen@greenenergy.example.com',
-  'nora.blake@greenenergy.example.com',
-  'finn.adler@greenenergy.example.com',
-  'ada.quincy@greenenergy.example.com',
-  'beau.sutton@greenenergy.example.com',
-  'cora.mendez@greenenergy.example.com',
-  'drew.keller@greenenergy.example.com',
-  'presenter@greenenergy.example.com',
-];
 
 function rotateEmails(
   emails: string[],
