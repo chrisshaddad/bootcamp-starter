@@ -215,7 +215,6 @@ export default function LoginPage() {
                 No password required.
               </p>
             </div>
-
           </div>
         </div>
 

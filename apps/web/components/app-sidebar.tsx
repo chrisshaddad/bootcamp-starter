@@ -189,8 +189,7 @@ export function AppSidebar() {
   const isOrgAdmin = user?.role === 'ORG_ADMIN';
   // Org admins get their own Administration section instead of the manager's
   // team view, so don't also show them the Manager group.
-  const isManager =
-    Boolean(user?.isManager) && !isSuperAdmin && !isOrgAdmin;
+  const isManager = Boolean(user?.isManager) && !isSuperAdmin && !isOrgAdmin;
 
   const isActive = (url: string) => {
     if (url === '/dashboard') {

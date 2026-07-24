@@ -22,10 +22,7 @@ import {
 
 const skillFormSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(100),
-  category: z
-    .string()
-    .min(2, 'Category must be at least 2 characters')
-    .max(50),
+  category: z.string().min(2, 'Category must be at least 2 characters').max(50),
 });
 
 type SkillFormValues = z.infer<typeof skillFormSchema>;

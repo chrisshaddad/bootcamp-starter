@@ -5,7 +5,10 @@ import { toast } from 'sonner';
 import { Building2, Pencil, Plus, Trash2 } from 'lucide-react';
 import type { DepartmentResponse } from '@repo/contracts';
 import { useUser } from '@/hooks/use-auth';
-import { useDepartments, useDepartmentMutations } from '@/hooks/use-departments';
+import {
+  useDepartments,
+  useDepartmentMutations,
+} from '@/hooks/use-departments';
 import { ForbiddenPage } from '@/components/forbidden-page';
 import { DepartmentFormDialog } from '@/components/department-form-dialog';
 import { Button } from '@/components/ui/button';
@@ -185,8 +188,8 @@ export default function DepartmentsPage() {
           <DialogHeader>
             <DialogTitle>Delete Department</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete{' '}
-              <strong>{deleting?.name}</strong>? This can&apos;t be undone.
+              Are you sure you want to delete <strong>{deleting?.name}</strong>?
+              This can&apos;t be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

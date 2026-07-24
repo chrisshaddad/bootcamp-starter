@@ -172,10 +172,7 @@ export default function SkillsPage() {
                 <p className="truncate font-medium text-foreground">
                   {skill.name}
                 </p>
-                <Badge
-                  tone={categoryTone(skill.category)}
-                  className="mt-2"
-                >
+                <Badge tone={categoryTone(skill.category)} className="mt-2">
                   {skill.category}
                 </Badge>
               </div>

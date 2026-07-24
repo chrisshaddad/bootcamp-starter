@@ -36,7 +36,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Pencil, PauseCircle, PlayCircle, Plus, Search, UsersRound } from 'lucide-react';
+import {
+  Pencil,
+  PauseCircle,
+  PlayCircle,
+  Plus,
+  Search,
+  UsersRound,
+} from 'lucide-react';
 import type { UserAccountResponse, UserRole } from '@repo/contracts';
 import { Pagination } from '@/components/pagination';
 
@@ -212,7 +219,9 @@ function UsersContent() {
           )}
           <Select
             value={roleFilter}
-            onValueChange={(value) => handleRoleChange(value as 'all' | UserRole)}
+            onValueChange={(value) =>
+              handleRoleChange(value as 'all' | UserRole)
+            }
           >
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Filter by role" />
