@@ -9,6 +9,7 @@ import { useUsers, useUserMutations } from '@/hooks/use-users';
 import { ForbiddenPage } from '@/components/forbidden-page';
 import { UserFormDialog } from '@/components/user-form-dialog';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -51,24 +52,14 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 function RoleBadge({ role }: { role: string }) {
-  return (
-    <span className="inline-flex items-center rounded-full bg-violet/15 px-2.5 py-0.5 text-xs font-medium text-violet ring-1 ring-inset ring-violet/25">
-      {ROLE_LABELS[role] ?? role}
-    </span>
-  );
+  return <Badge tone="violet">{ROLE_LABELS[role] ?? role}</Badge>;
 }
 
 function ActiveBadge({ isActive }: { isActive: boolean }) {
   return (
-    <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-        isActive
-          ? 'bg-success/15 text-success ring-1 ring-inset ring-success/25'
-          : 'bg-muted text-muted-foreground ring-1 ring-inset ring-border'
-      }`}
-    >
+    <Badge tone={isActive ? 'success' : 'neutral'}>
       {isActive ? 'Active' : 'Deactivated'}
-    </span>
+    </Badge>
   );
 }
 
@@ -286,7 +277,7 @@ function UsersContent() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="gap-1.5 text-amber hover:text-amber/80"
+                            className="gap-1.5 text-warning-strong hover:text-warning-strong/80"
                             onClick={() => setDeactivatingUser(u)}
                           >
                             <PauseCircle className="h-3.5 w-3.5" />
@@ -296,7 +287,7 @@ function UsersContent() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="gap-1.5 text-success hover:text-success/80"
+                            className="gap-1.5 text-success-strong hover:text-success-strong/80"
                             onClick={() => setReactivatingUser(u)}
                           >
                             <PlayCircle className="h-3.5 w-3.5" />

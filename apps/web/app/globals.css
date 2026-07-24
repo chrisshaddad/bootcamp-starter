@@ -78,6 +78,13 @@ a {
   --color-warning-foreground: var(--warning-foreground);
   --color-info: var(--info);
   --color-info-foreground: var(--info-foreground);
+
+  /* "Strong" foregrounds — darker, AA-readable text for use ON soft/tinted
+     status surfaces (badges, banners) where the mid-tone role color fails
+     contrast. */
+  --color-success-strong: var(--success-strong);
+  --color-warning-strong: var(--warning-strong);
+  --color-destructive-strong: var(--destructive-strong);
   --color-violet: var(--violet);
   --color-violet-foreground: var(--violet-foreground);
   --color-amber: var(--amber);
@@ -199,6 +206,11 @@ a {
   --warning: oklch(0.78 0.15 60);
   --warning-foreground: oklch(0.22 0.05 60);
   --info: oklch(0.55 0.13 260); /* muted indigo (info only) */
+
+  /* Darker, AA-readable text for soft/tinted status surfaces */
+  --success-strong: oklch(0.45 0.11 155);
+  --warning-strong: oklch(0.42 0.09 65);
+  --destructive-strong: oklch(0.5 0.2 25);
   --info-foreground: oklch(0.985 0 0);
   --violet: oklch(0.48 0.18 305); /* plum-violet */
   --violet-foreground: oklch(0.985 0 0);
@@ -255,6 +267,11 @@ a {
   --warning: oklch(0.82 0.15 65);
   --warning-foreground: oklch(0.19 0.03 315);
   --info: oklch(0.72 0.12 260);
+
+  /* On dark, tinted surfaces are dark → strong text goes light */
+  --success-strong: oklch(0.82 0.13 155);
+  --warning-strong: oklch(0.86 0.14 75);
+  --destructive-strong: oklch(0.8 0.15 25);
   --info-foreground: oklch(0.19 0.03 315);
   --violet: oklch(0.68 0.18 305);
   --violet-foreground: oklch(0.145 0 0);

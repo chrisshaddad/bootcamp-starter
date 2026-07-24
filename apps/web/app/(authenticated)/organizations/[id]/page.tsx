@@ -7,9 +7,11 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ForbiddenPage } from '@/components/forbidden-page';
 import { OrganizationFormDialog } from '@/components/organization-form-dialog';
+import { ORGANIZATION_STATUS_TONE } from '@/lib/labels';
 import {
   Dialog,
   DialogContent,
@@ -41,21 +43,14 @@ const STATUS_LABELS: Record<string, string> = {
   INACTIVE: 'Inactive',
 };
 
-const STATUS_COLORS: Record<string, string> = {
-  PENDING: 'bg-warning/18 text-warning ring-warning/30',
-  ACTIVE: 'bg-success/15 text-success ring-success/25',
-  REJECTED: 'bg-destructive/12 text-destructive ring-destructive/25',
-  SUSPENDED: 'bg-amber/18 text-amber ring-amber/30',
-  INACTIVE: 'bg-muted text-muted-foreground ring-border',
-};
-
 function StatusBadge({ status }: { status: string }) {
   return (
-    <span
-      className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ring-1 ring-inset ${STATUS_COLORS[status] || 'bg-muted text-muted-foreground ring-border'}`}
+    <Badge
+      tone={ORGANIZATION_STATUS_TONE[status] ?? 'neutral'}
+      className="px-3 py-1 text-sm"
     >
       {STATUS_LABELS[status] || status}
-    </span>
+    </Badge>
   );
 }
 
@@ -274,7 +269,7 @@ export default function OrganizationDetailPage() {
           {org.status === 'ACTIVE' && (
             <Button
               variant="outline"
-              className="gap-2 text-amber border-amber/30 hover:bg-amber/10"
+              className="gap-2 text-warning-strong border-warning/30 hover:bg-warning/10"
               onClick={() => setShowSuspendDialog(true)}
             >
               <PauseCircle className="h-4 w-4" />
@@ -384,7 +379,7 @@ export default function OrganizationDetailPage() {
               {/* Approved By (if applicable) */}
               {org.approvedBy ? (
                 <div className="p-4 bg-success/10 rounded-lg">
-                  <div className="text-xs text-success uppercase tracking-wide mb-2">
+                  <div className="text-xs text-success-strong uppercase tracking-wide mb-2">
                     Approved By
                   </div>
                   <div className="font-medium text-gray-900">
@@ -397,11 +392,11 @@ export default function OrganizationDetailPage() {
                 </div>
               ) : isPending ? (
                 <div className="p-4 bg-warning/10 rounded-lg border border-warning/30">
-                  <div className="flex items-center gap-2 text-warning">
+                  <div className="flex items-center gap-2 text-warning-strong">
                     <Clock className="h-5 w-5" />
                     <span className="font-medium">Awaiting Approval</span>
                   </div>
-                  <p className="mt-1 text-sm text-warning">
+                  <p className="mt-1 text-sm text-warning-strong">
                     This organization is waiting for a super admin to review and
                     approve the registration.
                   </p>

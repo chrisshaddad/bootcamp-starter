@@ -21,8 +21,10 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { ForbiddenPage } from '@/components/forbidden-page';
 import { OrganizationFormDialog } from '@/components/organization-form-dialog';
+import { ORGANIZATION_STATUS_TONE } from '@/lib/labels';
 import { Building2, Plus } from 'lucide-react';
 import { useState } from 'react';
 import type { OrganizationStatus } from '@repo/contracts';
@@ -43,22 +45,11 @@ const STATUS_LABELS: Record<string, string> = {
   INACTIVE: 'Inactive',
 };
 
-const STATUS_COLORS: Record<string, string> = {
-  PENDING: 'bg-warning/18 text-warning ring-1 ring-inset ring-warning/30',
-  ACTIVE: 'bg-success/15 text-success ring-1 ring-inset ring-success/25',
-  REJECTED:
-    'bg-destructive/12 text-destructive ring-1 ring-inset ring-destructive/25',
-  SUSPENDED: 'bg-amber/18 text-amber ring-1 ring-inset ring-amber/30',
-  INACTIVE: 'bg-muted text-muted-foreground ring-1 ring-inset ring-border',
-};
-
 function StatusBadge({ status }: { status: string }) {
   return (
-    <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[status] || 'bg-muted text-muted-foreground ring-1 ring-inset ring-border'}`}
-    >
+    <Badge tone={ORGANIZATION_STATUS_TONE[status] ?? 'neutral'}>
       {STATUS_LABELS[status] || status}
-    </span>
+    </Badge>
   );
 }
 

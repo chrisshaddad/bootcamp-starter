@@ -18,6 +18,7 @@ import {
 import { ApiError } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog,
@@ -26,24 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { cn } from '@/lib/utils';
-import type { ApplicationStatus } from '@repo/contracts';
-
-const STATUS_BADGE_COLORS: Record<ApplicationStatus, string> = {
-  PENDING: 'bg-warning/18 text-warning ring-1 ring-inset ring-warning/30',
-  ACCEPTED: 'bg-success/15 text-success ring-1 ring-inset ring-success/25',
-  REJECTED:
-    'bg-destructive/12 text-destructive ring-1 ring-inset ring-destructive/25',
-  WITHDRAWN: 'bg-muted text-muted-foreground ring-1 ring-inset ring-border',
-};
-
-function toLabel(value: string) {
-  return value
-    .toLowerCase()
-    .split('_')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-}
+import { APPLICATION_STATUS_TONE, toLabel } from '@/lib/labels';
 
 function InfoRow({
   label,
@@ -144,17 +128,10 @@ export default function ApplicationDetailPage() {
             <h1 className="text-2xl font-bold text-gray-900">
               {application.opportunity.title}
             </h1>
-            <span className="inline-flex items-center rounded-full bg-violet/15 px-2.5 py-0.5 text-xs font-medium text-violet ring-1 ring-inset ring-violet/25">
-              {toLabel(application.opportunity.type)}
-            </span>
-            <span
-              className={cn(
-                'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
-                STATUS_BADGE_COLORS[application.status],
-              )}
-            >
+            <Badge tone="violet">{toLabel(application.opportunity.type)}</Badge>
+            <Badge tone={APPLICATION_STATUS_TONE[application.status]}>
               {toLabel(application.status)}
-            </span>
+            </Badge>
           </div>
         </div>
 

@@ -27,3 +27,16 @@ export const APPLICATION_STATUS_TONE: Record<ApplicationStatus, Tone> = {
   REJECTED: 'danger',
   WITHDRAWN: 'neutral',
 };
+
+/**
+ * Badge tone for an organization status. Keyed loosely by string since the
+ * status set (PENDING/ACTIVE/REJECTED/SUSPENDED/INACTIVE) spans a couple of
+ * contract types; callers fall back to 'neutral' for anything unmapped.
+ */
+export const ORGANIZATION_STATUS_TONE: Record<string, Tone> = {
+  PENDING: 'warning',
+  ACTIVE: 'success',
+  REJECTED: 'danger',
+  SUSPENDED: 'warning',
+  INACTIVE: 'neutral',
+};
