@@ -13,6 +13,7 @@ import type {
 
 interface UseInstitutionsOptions {
   status?: InstitutionStatus;
+  page?: number;
   enabled?: boolean;
 }
 
@@ -30,9 +31,13 @@ interface UseInstitutionsReturn {
 export function useInstitutions(
   options: UseInstitutionsOptions = {},
 ): UseInstitutionsReturn {
-  const { status, enabled = true } = options;
+  const { status, page, enabled = true } = options;
 
-  const endpoint = status ? `/institutions?status=${status}` : '/institutions';
+  const params = new URLSearchParams();
+  if (status) params.set('status', status);
+  if (page && page > 1) params.set('page', String(page));
+  const qs = params.toString();
+  const endpoint = qs ? `/institutions?${qs}` : '/institutions';
 
   const {
     data,

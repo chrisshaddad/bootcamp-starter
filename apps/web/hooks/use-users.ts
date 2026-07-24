@@ -16,6 +16,7 @@ interface UseUsersOptions {
   role?: StaffRole;
   isActive?: boolean;
   search?: string;
+  page?: number;
   enabled?: boolean;
 }
 
@@ -25,6 +26,8 @@ function buildUsersKey(options: UseUsersOptions): string {
   if (options.isActive !== undefined)
     params.set('isActive', String(options.isActive));
   if (options.search) params.set('search', options.search);
+  if (options.page && options.page > 1)
+    params.set('page', String(options.page));
   const qs = params.toString();
   return qs ? `/users?${qs}` : '/users';
 }

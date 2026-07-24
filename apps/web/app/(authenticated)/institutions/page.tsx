@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Pagination } from '@/components/pagination';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -57,6 +58,8 @@ type StatusFilter =
   | 'REJECTED'
   | 'SUSPENDED'
   | 'INACTIVE';
+
+const PAGE_SIZE = 20;
 
 function LoadingSkeleton() {
   return (
@@ -190,6 +193,7 @@ export default function InstitutionsPage() {
   const router = useRouter();
   const { user, isLoading: userLoading } = useUser();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [page, setPage] = useState(1);
 
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
 
@@ -201,6 +205,7 @@ export default function InstitutionsPage() {
   } = useInstitutions({
     status:
       statusFilter === 'all' ? undefined : (statusFilter as InstitutionStatus),
+    page,
     enabled: isSuperAdmin,
   });
 
@@ -218,17 +223,20 @@ export default function InstitutionsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Institutions</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Manage institution registrations and approvals
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4">
           <Select
             value={statusFilter}
-            onValueChange={(value) => setStatusFilter(value as StatusFilter)}
+            onValueChange={(value) => {
+              setStatusFilter(value as StatusFilter);
+              setPage(1);
+            }}
           >
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Filter by status" />
@@ -324,6 +332,14 @@ export default function InstitutionsPage() {
                 ))}
               </TableBody>
             </Table>
+          )}
+          {total !== undefined && (
+            <Pagination
+              page={page}
+              pageSize={PAGE_SIZE}
+              total={total}
+              onPageChange={setPage}
+            />
           )}
         </CardContent>
       </Card>

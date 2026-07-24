@@ -15,6 +15,7 @@ import type {
 interface UsePatientsOptions {
   search?: string;
   unassigned?: boolean;
+  page?: number;
   enabled?: boolean;
 }
 
@@ -22,6 +23,8 @@ function buildPatientsKey(options: UsePatientsOptions): string {
   const params = new URLSearchParams();
   if (options.search) params.set('search', options.search);
   if (options.unassigned) params.set('unassigned', 'true');
+  if (options.page && options.page > 1)
+    params.set('page', String(options.page));
   const qs = params.toString();
   return qs ? `/patients?${qs}` : '/patients';
 }
@@ -60,6 +63,26 @@ export function useCreatePatient() {
   }, []);
 
   return { createPatient };
+}
+
+/**
+ * Standalone clinical update — used at patient-creation time (the stepper's
+ * optional Clinical step) where there is no per-id `usePatient` hook yet.
+ */
+export function useUpdatePatientClinical() {
+  const updatePatientClinical = useCallback(
+    async (id: string, payload: PatientClinicalUpdateRequest) => {
+      const result = await apiPatch<PatientDetailResponse>(
+        `/patients/${id}/clinical`,
+        payload,
+      );
+      invalidatePatientsList();
+      return result;
+    },
+    [],
+  );
+
+  return { updatePatientClinical };
 }
 
 export function useSetPatientStatus() {

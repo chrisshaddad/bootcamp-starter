@@ -39,6 +39,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Pagination } from '@/components/pagination';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -57,6 +58,8 @@ const ROLE_LABELS: Record<string, string> = {
   STAFF: 'Staff',
   PROFESSIONAL: 'Professional',
 };
+
+const PAGE_SIZE = 20;
 
 type RoleFilter = 'all' | StaffRole;
 
@@ -293,11 +296,13 @@ function UserRowActions({ user }: { user: UserListItem }) {
 export default function UsersPage() {
   const { user, isLoading: userLoading } = useUser();
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
+  const [page, setPage] = useState(1);
 
   const isAdmin = user?.role === 'INSTITUTION_ADMIN';
 
   const { users, total, isLoading, error } = useUsers({
     role: roleFilter === 'all' ? undefined : roleFilter,
+    page,
     enabled: isAdmin,
   });
   const { setUserStatus } = useSetUserStatus();
@@ -314,7 +319,7 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">
             Staff & Doctors
@@ -323,10 +328,13 @@ export default function UsersPage() {
             Manage staff and professional accounts
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4">
           <Select
             value={roleFilter}
-            onValueChange={(value) => setRoleFilter(value as RoleFilter)}
+            onValueChange={(value) => {
+              setRoleFilter(value as RoleFilter);
+              setPage(1);
+            }}
           >
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Filter by role" />
@@ -433,6 +441,14 @@ export default function UsersPage() {
                 ))}
               </TableBody>
             </Table>
+          )}
+          {total !== undefined && (
+            <Pagination
+              page={page}
+              pageSize={PAGE_SIZE}
+              total={total}
+              onPageChange={setPage}
+            />
           )}
         </CardContent>
       </Card>
