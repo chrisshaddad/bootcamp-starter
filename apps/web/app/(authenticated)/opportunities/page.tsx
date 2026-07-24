@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   ArrowUpRight,
+  BadgeCheck,
   Briefcase,
   Building2,
   Calendar,
@@ -11,17 +12,30 @@ import {
   Search,
   Users,
 } from 'lucide-react';
-import { useOpportunities } from '@/hooks/use-opportunities';
+import { useOpportunitiesInfinite } from '@/hooks/use-opportunities';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { OPPORTUNITY_STATUS_TONE, toLabel } from '@/lib/labels';
-import type { OpportunityStatus } from '@repo/contracts';
+import {
+  OPPORTUNITY_STATUS_TONE,
+  OPPORTUNITY_TYPE_TONE,
+  toLabel,
+} from '@/lib/labels';
+import type { OpportunityStatus, OpportunityType } from '@repo/contracts';
 
 type StatusFilter = 'ALL' | OpportunityStatus;
+
+// Literal class strings (not built dynamically) so Tailwind's scanner picks
+// them up - mirrors OPPORTUNITY_TYPE_TONE's category coloring as a solid
+// header strip per card.
+const TYPE_ACCENT: Record<OpportunityType, string> = {
+  ROLE: 'bg-violet',
+  PROJECT: 'bg-warning',
+  ROTATION: 'bg-blush',
+};
 
 const STATUS_FILTERS: { label: string; value: StatusFilter }[] = [
   { label: 'Open', value: 'OPEN' },
@@ -68,9 +82,10 @@ export default function OpportunitiesPage() {
   const [typeFilter, setTypeFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('OPEN');
 
-  const { opportunities, isLoading, error } = useOpportunities({
-    status: statusFilter === 'ALL' ? undefined : statusFilter,
-  });
+  const { opportunities, isLoading, hasMore, isLoadingMore, loadMore, error } =
+    useOpportunitiesInfinite({
+      status: statusFilter === 'ALL' ? undefined : statusFilter,
+    });
 
   const types = useMemo(() => {
     const unique = new Set((opportunities ?? []).map((o) => o.type));
@@ -185,63 +200,94 @@ export default function OpportunitiesPage() {
                 href={`/opportunities/${opportunity.id}`}
                 className="group rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
-                <Card className="h-full gap-0 p-5 transition-shadow group-hover:shadow-md">
-                  {/* Badges */}
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge tone="violet">{toLabel(opportunity.type)}</Badge>
-                    <Badge tone={OPPORTUNITY_STATUS_TONE[opportunity.status]}>
-                      {toLabel(opportunity.status)}
-                    </Badge>
-                  </div>
-
-                  {/* Title */}
-                  <h2 className="mt-3 line-clamp-2 text-base font-semibold text-foreground">
-                    {opportunity.title}
-                  </h2>
-
-                  {/* Department / level */}
-                  {(opportunity.department || opportunity.requiredLevel) && (
-                    <p className="mt-1.5 flex items-center gap-1.5 text-sm text-muted-foreground">
-                      <Building2 className="h-3.5 w-3.5 shrink-0" />
-                      <span className="truncate">
-                        {opportunity.department?.name}
-                        {opportunity.department && opportunity.requiredLevel
-                          ? ' · '
-                          : ''}
-                        {opportunity.requiredLevel
-                          ? `L${opportunity.requiredLevel}+`
-                          : ''}
-                      </span>
-                    </p>
-                  )}
-
-                  {/* Description */}
-                  <p className="mt-3 line-clamp-2 min-h-10 text-sm text-muted-foreground">
-                    {opportunity.description || 'No description provided.'}
-                  </p>
-
-                  {/* Meta footer — pinned to bottom for equal alignment */}
-                  <div className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-4 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1.5">
-                      <Users className="h-3.5 w-3.5" />
-                      {opportunity.applicationCount} applied
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <ListChecks className="h-3.5 w-3.5" />
-                      {opportunity.requiredSkills.length} skills
-                    </span>
-                    {opportunity.deadline && (
-                      <span className="flex items-center gap-1.5">
-                        <Calendar className="h-3.5 w-3.5" />
-                        {new Date(opportunity.deadline).toLocaleDateString()}
-                      </span>
+                <Card className="h-full gap-0 overflow-hidden p-0 transition-shadow group-hover:shadow-md">
+                  {/* Category accent strip */}
+                  <div
+                    className={cn(
+                      'h-1.5 w-full',
+                      TYPE_ACCENT[opportunity.type],
                     )}
-                    <ArrowUpRight className="ml-auto h-4 w-4 text-muted-foreground/60 transition-colors group-hover:text-foreground" />
+                  />
+
+                  <div className="flex h-full flex-col p-5">
+                    {/* Badges */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge tone={OPPORTUNITY_TYPE_TONE[opportunity.type]}>
+                        {toLabel(opportunity.type)}
+                      </Badge>
+                      <Badge tone={OPPORTUNITY_STATUS_TONE[opportunity.status]}>
+                        {toLabel(opportunity.status)}
+                      </Badge>
+                      {opportunity.hasApplied && (
+                        <Badge tone="success" className="gap-1">
+                          <BadgeCheck className="h-3 w-3" />
+                          Applied
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* Title */}
+                    <h2 className="mt-3 line-clamp-2 text-base font-semibold text-foreground">
+                      {opportunity.title}
+                    </h2>
+
+                    {/* Department / level */}
+                    {(opportunity.department || opportunity.requiredLevel) && (
+                      <p className="mt-1.5 flex items-center gap-1.5 text-sm text-muted-foreground">
+                        <Building2 className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate">
+                          {opportunity.department?.name}
+                          {opportunity.department && opportunity.requiredLevel
+                            ? ' · '
+                            : ''}
+                          {opportunity.requiredLevel
+                            ? `L${opportunity.requiredLevel}+`
+                            : ''}
+                        </span>
+                      </p>
+                    )}
+
+                    {/* Description */}
+                    <p className="mt-3 line-clamp-2 min-h-10 text-sm text-muted-foreground">
+                      {opportunity.description || 'No description provided.'}
+                    </p>
+
+                    {/* Meta footer — pinned to bottom for equal alignment */}
+                    <div className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-4 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1.5">
+                        <Users className="h-3.5 w-3.5" />
+                        {opportunity.applicationCount} applied
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <ListChecks className="h-3.5 w-3.5" />
+                        {opportunity.requiredSkills.length} skills
+                      </span>
+                      {opportunity.deadline && (
+                        <span className="flex items-center gap-1.5">
+                          <Calendar className="h-3.5 w-3.5" />
+                          {new Date(opportunity.deadline).toLocaleDateString()}
+                        </span>
+                      )}
+                      <ArrowUpRight className="ml-auto h-4 w-4 text-muted-foreground/60 transition-colors group-hover:text-foreground" />
+                    </div>
                   </div>
                 </Card>
               </Link>
             ))}
           </div>
+
+          {hasMore && (
+            <div className="flex justify-center pt-2">
+              <Button
+                variant="outline"
+                onClick={loadMore}
+                disabled={isLoadingMore}
+                className="h-9 rounded-lg px-4 text-sm font-medium"
+              >
+                {isLoadingMore ? 'Loading...' : 'Load more'}
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -1,7 +1,8 @@
 'use client';
 
 import useSWR, { mutate } from 'swr';
-import { useCallback } from 'react';
+import useSWRInfinite from 'swr/infinite';
+import { useCallback, useEffect, useMemo } from 'react';
 import { apiPost, apiPatch, apiDelete } from '@/lib/api';
 import type {
   OpportunityListResponse,
@@ -54,6 +55,84 @@ export function useOpportunities(
     isLoading,
     error,
     mutate: swrMutate,
+  };
+}
+
+interface UseOpportunitiesInfiniteOptions {
+  status?: OpportunityStatus;
+  mine?: boolean;
+  pageSize?: number;
+  enabled?: boolean;
+}
+
+interface UseOpportunitiesInfiniteReturn {
+  opportunities: OpportunityListResponse['opportunities'] | undefined;
+  total: number | undefined;
+  isLoading: boolean;
+  isLoadingMore: boolean;
+  hasMore: boolean;
+  loadMore: () => void;
+  error: Error | undefined;
+}
+
+const DEFAULT_PAGE_SIZE = 12;
+
+/**
+ * Fetches opportunities a page at a time via `loadMore`, so lists beyond the
+ * default page size stay reachable instead of being silently truncated (see
+ * useApplicationsInfinite in use-applications.ts for the same pattern).
+ */
+export function useOpportunitiesInfinite(
+  options: UseOpportunitiesInfiniteOptions = {},
+): UseOpportunitiesInfiniteReturn {
+  const {
+    status,
+    mine,
+    pageSize = DEFAULT_PAGE_SIZE,
+    enabled = true,
+  } = options;
+
+  const getKey = (
+    pageIndex: number,
+    previousPageData: OpportunityListResponse | null,
+  ) => {
+    if (!enabled) return null;
+    if (previousPageData && previousPageData.opportunities.length < pageSize) {
+      return null;
+    }
+
+    const params = new URLSearchParams();
+    if (status) params.set('status', status);
+    if (mine) params.set('mine', 'true');
+    params.set('limit', String(pageSize));
+    params.set('page', String(pageIndex + 1));
+    return `/opportunities?${params.toString()}`;
+  };
+
+  const { data, error, isLoading, isValidating, size, setSize } =
+    useSWRInfinite<OpportunityListResponse>(getKey);
+
+  useEffect(() => {
+    setSize(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, mine, enabled]);
+
+  const opportunities = useMemo(
+    () => data?.flatMap((page) => page.opportunities),
+    [data],
+  );
+  const total = data?.[0]?.total;
+  const loaded = opportunities?.length ?? 0;
+  const hasMore = total !== undefined && loaded < total;
+
+  return {
+    opportunities,
+    total,
+    isLoading,
+    isLoadingMore: isValidating && size > 1,
+    hasMore,
+    loadMore: () => setSize(size + 1),
+    error,
   };
 }
 

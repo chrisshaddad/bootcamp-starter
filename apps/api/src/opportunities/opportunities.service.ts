@@ -46,6 +46,7 @@ type OpportunityRecord = {
     skill: { id: string; name: string; category: string };
   }[];
   _count: { applications: number };
+  applications: { id: string }[];
 };
 
 @Injectable()
@@ -160,6 +161,11 @@ export class OpportunitiesService {
               applications: true,
             },
           },
+          applications: {
+            where: { userId: currentUser.id },
+            select: { id: true },
+            take: 1,
+          },
         },
       }),
       this.prisma.opportunity.count({ where }),
@@ -233,6 +239,11 @@ export class OpportunitiesService {
           select: {
             applications: true,
           },
+        },
+        applications: {
+          where: { userId: currentUser.id },
+          select: { id: true },
+          take: 1,
         },
       },
     });
@@ -390,6 +401,11 @@ export class OpportunitiesService {
           select: {
             applications: true,
           },
+        },
+        applications: {
+          where: { userId: currentUser.id },
+          select: { id: true },
+          take: 1,
         },
       },
     });
@@ -590,6 +606,11 @@ export class OpportunitiesService {
               applications: true,
             },
           },
+          applications: {
+            where: { userId: currentUser.id },
+            select: { id: true },
+            take: 1,
+          },
         },
       });
     });
@@ -677,6 +698,8 @@ export class OpportunitiesService {
         }),
       ),
       applicationCount: opportunity._count.applications,
+      hasApplied: opportunity.applications.length > 0,
+      myApplicationId: opportunity.applications[0]?.id ?? null,
       createdAt: opportunity.createdAt,
       updatedAt: opportunity.updatedAt,
     };
