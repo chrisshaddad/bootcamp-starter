@@ -33,7 +33,6 @@ import {
   sortByCondition,
   findConditionPrice,
   getBuyPriceRange,
-  getRentPriceRange,
   formatPriceRange,
 } from '@/lib/book-condition';
 import type { BookCopyCondition } from '@repo/contracts';
@@ -318,18 +317,11 @@ export default function BookDetailPage() {
                 <SelectContent>
                   <SelectItem value={NO_PREFERENCE}>No preference</SelectItem>
                   {sortByCondition(Object.keys(conditionBreakdown)).map(
-                    (condition) => {
-                      const price = findConditionPrice(
-                        book.conditionPrices,
-                        condition as BookCopyCondition,
-                      );
-                      return (
-                        <SelectItem key={condition} value={condition}>
-                          {CONDITION_LABELS[condition as BookCopyCondition]}
-                          {price && ` — $${price.rentPrice}`}
-                        </SelectItem>
-                      );
-                    },
+                    (condition) => (
+                      <SelectItem key={condition} value={condition}>
+                        {CONDITION_LABELS[condition as BookCopyCondition]}
+                      </SelectItem>
+                    ),
                   )}
                 </SelectContent>
               </Select>
@@ -343,10 +335,9 @@ export default function BookDetailPage() {
                 {isPlacingHold ? 'Placing Hold...' : 'Reserve a Copy'}
               </Button>
               <p className="text-center text-xs text-muted-foreground">
-                {book.conditionPrices.length > 0
-                  ? `Rent from ${formatPriceRange(getRentPriceRange(book.conditionPrices))}. `
-                  : ''}
-                We&apos;ll notify you when a copy is ready for pickup.
+                Borrowing is free - you&apos;ll only be charged if a book is
+                returned late. We&apos;ll notify you when a copy is ready for
+                pickup.
               </p>
             </CardContent>
           </Card>

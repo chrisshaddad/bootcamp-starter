@@ -265,9 +265,7 @@ function BookDetail() {
                       className="flex justify-between text-sm text-foreground"
                     >
                       <span>{CONDITION_LABELS[cp.condition]}</span>
-                      <span>
-                        Buy ${cp.buyPrice} / Rent ${cp.rentPrice}
-                      </span>
+                      <span>Buy ${cp.buyPrice}</span>
                     </div>
                   ))}
               </div>
