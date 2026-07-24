@@ -32,8 +32,6 @@ import {
 import type { User } from '@repo/db';
 import { ZodValidationPipe } from '../common/pipes';
 
-const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
-
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -68,12 +66,13 @@ export class AuthController {
       body.token,
     );
 
-    // Set session cookie
+    // Set session cookie - deliberately no maxAge/expires, so it's a
+    // browser-session cookie the browser discards when it fully closes.
+    // The 7-day TTL still backstops it server-side (see SessionService).
     response.cookie(SESSION_COOKIE_NAME, sessionId, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: SESSION_MAX_AGE_MS,
       path: '/',
     });
 
