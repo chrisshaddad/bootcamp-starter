@@ -33,7 +33,9 @@ a {
 
 @theme inline {
   /* Font Family */
-  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --font-sans:
+    var(--font-manrope), ui-sans-serif, system-ui, -apple-system, 'Segoe UI',
+    sans-serif;
 
   /* Border Radius */
   --radius-sm: calc(var(--radius) - 4px);
@@ -44,9 +46,12 @@ a {
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
 
-  /* Semantic Colors */
+  /* ------------------------------------------------------------------ */
+  /* Editorial Plum + Amber — semantic color roles → CSS variables      */
+  /* ------------------------------------------------------------------ */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-canvas: var(--canvas);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
@@ -59,15 +64,40 @@ a {
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-accent-soft: var(--accent-soft);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+
+  /* Semantic status roles */
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+
+  /* "Strong" foregrounds — darker, AA-readable text for use ON soft/tinted
+     status surfaces (badges, banners) where the mid-tone role color fails
+     contrast. */
+  --color-success-strong: var(--success-strong);
+  --color-warning-strong: var(--warning-strong);
+  --color-destructive-strong: var(--destructive-strong);
+  --color-violet: var(--violet);
+  --color-violet-foreground: var(--violet-foreground);
+  --color-amber: var(--amber);
+  --color-amber-foreground: var(--amber-foreground);
+
+  /* Chart roles */
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+
+  /* Sidebar roles */
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -77,52 +107,49 @@ a {
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  /* Primary Colors (Indigo Violet — dark blue with a purple cast) */
-  --color-primary-base: #4338ca;
-  --color-primary-400: #7c6fef;
-  --color-primary-300: #ada3f7;
-  --color-primary-200: #ded9fb;
-  --color-primary-100: #f3f1fe;
+  /* Elevation (plum-tinted) */
+  --shadow-elevated:
+    0 1px 2px 0 rgb(60 20 60 / 0.06), 0 8px 24px -12px rgb(60 20 60 / 0.12);
+  --shadow-glow:
+    0 0 0 1px oklch(0.78 0.15 60 / 0.25),
+    0 8px 32px -12px oklch(0.78 0.15 60 / 0.4);
 
-  /* Secondary Colors (Yellow) */
-  --color-secondary-base: #ffd023;
-  --color-secondary-400: #ffde65;
-  --color-secondary-300: #ffeca7;
-  --color-secondary-200: #fff6d3;
-  --color-secondary-100: #fffae9;
+  /* ------------------------------------------------------------------ */
+  /* LEGACY palette aliases — REMAPPED to Editorial Plum + Amber.        */
+  /* These names are still consumed by ~32 files (bg-gray-900,           */
+  /* text-primary-base, etc.). Rather than touch every call site at      */
+  /* once, the aliases now resolve to the plum/amber system so the whole */
+  /* app recolors coherently. New code should prefer the semantic roles  */
+  /* above (primary / accent / muted / foreground …).                    */
+  /* ------------------------------------------------------------------ */
 
-  /* Alert - Success */
-  --color-success: #0caf60;
-  --color-success-dark: #0ba259;
-  --color-success-light: #55c790;
+  /* Primary ramp → editorial plum (hue ~320) */
+  --color-primary-base: oklch(0.32 0.11 320); /* = --primary */
+  --color-primary-400: oklch(0.47 0.13 318);
+  --color-primary-300: oklch(0.63 0.11 318);
+  --color-primary-200: oklch(0.9 0.05 320);
+  --color-primary-100: oklch(0.965 0.02 320);
 
-  /* Alert - Warning */
-  --color-warning: #ffd023;
-  --color-warning-dark: #e6bb20;
-  --color-warning-light: #ffde65;
+  /* Secondary ramp → warm amber (hue ~60–75) */
+  --color-secondary-base: oklch(0.78 0.15 60); /* = --accent */
+  --color-secondary-400: oklch(0.83 0.13 68);
+  --color-secondary-300: oklch(0.9 0.09 75);
+  --color-secondary-200: oklch(0.955 0.05 75); /* = --accent-soft */
+  --color-secondary-100: oklch(0.98 0.025 75);
 
-  /* Alert - Error */
-  --color-error: #e03137;
-  --color-error-dark: #c02337;
-  --color-error-light: #ffedec;
+  /* Neutral ramp → plum-tinted grays (hue ~315–320, low chroma) */
+  --color-gray-50: oklch(0.985 0.005 320);
+  --color-gray-100: oklch(0.975 0.006 320);
+  --color-gray-200: oklch(0.94 0.008 320);
+  --color-gray-300: oklch(0.9 0.01 320);
+  --color-gray-400: oklch(0.8 0.015 318);
+  --color-gray-500: oklch(0.62 0.025 315);
+  --color-gray-600: oklch(0.5 0.03 315); /* = --muted-foreground */
+  --color-gray-700: oklch(0.38 0.04 315);
+  --color-gray-800: oklch(0.26 0.04 315);
+  --color-gray-900: oklch(0.19 0.03 315); /* = --foreground (plum ink) */
 
-  /* Greyscale */
-  --color-gray-50: #fafafa;
-  --color-gray-100: #f8f8f8;
-  --color-gray-200: #f1f2f4;
-  --color-gray-300: #e9eaec;
-  --color-gray-400: #cbd5e0;
-  --color-gray-500: #a0aec0;
-  --color-gray-600: #687588;
-  --color-gray-700: #323b49;
-  --color-gray-800: #1f2937;
-  --color-gray-900: #111827;
-
-  /* Additional Colors */
   --color-white: #ffffff;
-  --color-orange: #fe964a;
-  --color-blue: #2f78ee;
-  --color-purple: #8c62ff;
 
   /* Typography - Font Sizes */
   --font-size-xs: 0.625rem; /* 10px */
@@ -137,7 +164,7 @@ a {
   --font-size-6xl: 3rem; /* 48px */
 
   /* Line Heights */
-  --line-height-tight: 1.2;
+  --line-height-tight: 1.15;
   --line-height-snug: 1.25;
   --line-height-normal: 1.4;
   --line-height-relaxed: 1.5;
@@ -147,72 +174,128 @@ a {
 :root {
   --radius: 0.625rem;
 
-  /* Light Theme - Updated with Humanline Design System */
-  --background: #ffffff;
-  --foreground: #111827;
-  --card: #ffffff;
-  --card-foreground: #111827;
-  --popover: #ffffff;
-  --popover-foreground: #111827;
-  --primary: #4338ca;
-  --primary-foreground: #ffffff;
-  --secondary: #ffd023;
-  --secondary-foreground: #111827;
-  --muted: #f1f2f4;
-  --muted-foreground: #687588;
-  --accent: #f3f1fe;
-  --accent-foreground: #4338ca;
-  --destructive: #e03137;
-  --border: #e9eaec;
-  --input: #e9eaec;
-  --ring: #4338ca;
-  --chart-1: #4338ca;
-  --chart-2: #ffd023;
-  --chart-3: #2f78ee;
-  --chart-4: #8c62ff;
-  --chart-5: #fe964a;
-  --sidebar: #fafafa;
-  --sidebar-foreground: #111827;
-  --sidebar-primary: #4338ca;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f3f1fe;
-  --sidebar-accent-foreground: #4338ca;
-  --sidebar-border: #e9eaec;
-  --sidebar-ring: #4338ca;
+  /* Neutrals — warm paper with plum undertone.
+     Canvas sits a few points below pure-white cards so surfaces separate. */
+  --canvas: oklch(0.967 0.009 320); /* plum-tinted paper */
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.19 0.03 315); /* deep plum ink */
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.19 0.03 315);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.19 0.03 315);
+
+  /* Primary — editorial plum */
+  --primary: oklch(0.32 0.11 320); /* rich plum */
+  --primary-foreground: oklch(0.985 0.01 60);
+  --secondary: oklch(0.965 0.01 320); /* muted lavender-paper */
+  --secondary-foreground: oklch(0.32 0.11 320);
+  --muted: oklch(0.965 0.008 320);
+  --muted-foreground: oklch(0.5 0.03 315);
+
+  /* Accent — warm amber */
+  --accent: oklch(0.78 0.15 60); /* amber */
+  --accent-foreground: oklch(0.22 0.05 60);
+  --accent-soft: oklch(0.955 0.05 75); /* soft amber wash */
+
+  --destructive: oklch(0.6 0.22 25);
+  --destructive-foreground: oklch(0.985 0 0);
+
+  --success: oklch(0.68 0.14 155);
+  --success-foreground: oklch(0.145 0 0);
+  --warning: oklch(0.78 0.15 60);
+  --warning-foreground: oklch(0.22 0.05 60);
+  --info: oklch(0.55 0.13 260); /* muted indigo (info only) */
+
+  /* Darker, AA-readable text for soft/tinted status surfaces */
+  --success-strong: oklch(0.45 0.11 155);
+  --warning-strong: oklch(0.42 0.09 65);
+  --destructive-strong: oklch(0.5 0.2 25);
+  --info-foreground: oklch(0.985 0 0);
+  --violet: oklch(0.48 0.18 305); /* plum-violet */
+  --violet-foreground: oklch(0.985 0 0);
+  --amber: oklch(0.78 0.15 60);
+  --amber-foreground: oklch(0.22 0.05 60);
+
+  --border: oklch(0.905 0.012 320);
+  --input: oklch(0.905 0.012 320);
+  --ring: oklch(0.78 0.15 60); /* amber focus */
+
+  --chart-1: oklch(0.32 0.11 320);
+  --chart-2: oklch(0.78 0.15 60);
+  --chart-3: oklch(0.48 0.18 305);
+  --chart-4: oklch(0.68 0.14 155);
+  --chart-5: oklch(0.55 0.13 260);
+
+  /* Sidebar — plum-tinted paper on light */
+  --sidebar: oklch(0.975 0.012 320);
+  --sidebar-foreground: oklch(0.24 0.05 315);
+  --sidebar-primary: oklch(0.32 0.11 320);
+  --sidebar-primary-foreground: oklch(0.985 0.01 60);
+  --sidebar-accent: oklch(0.94 0.03 60); /* amber wash */
+  --sidebar-accent-foreground: oklch(0.32 0.11 320);
+  --sidebar-border: oklch(0.9 0.015 320);
+  --sidebar-ring: oklch(0.78 0.15 60);
 }
 
 .dark {
-  --background: #111827;
-  --foreground: #fafafa;
-  --card: #1f2937;
-  --card-foreground: #fafafa;
-  --popover: #1f2937;
-  --popover-foreground: #fafafa;
-  --primary: #7c6fef;
-  --primary-foreground: #ffffff;
-  --secondary: #ffd023;
-  --secondary-foreground: #111827;
-  --muted: #323b49;
-  --muted-foreground: #a0aec0;
-  --accent: #4338ca;
-  --accent-foreground: #ffffff;
-  --destructive: #e03137;
-  --border: #323b49;
-  --input: #323b49;
-  --ring: #7c6fef;
-  --chart-1: #7c6fef;
-  --chart-2: #ffde65;
-  --chart-3: #2f78ee;
-  --chart-4: #8c62ff;
-  --chart-5: #fe964a;
-  --sidebar: #1f2937;
-  --sidebar-foreground: #fafafa;
-  --sidebar-primary: #7c6fef;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #323b49;
-  --sidebar-accent-foreground: #ada3f7;
-  --sidebar-border: #323b49;
-  --sidebar-ring: #7c6fef;
+  --canvas: oklch(0.16 0.02 315); /* deep plum-black */
+  --background: oklch(0.2 0.025 315);
+  --foreground: oklch(0.97 0.01 60);
+
+  --card: oklch(0.23 0.03 315);
+  --card-foreground: oklch(0.97 0.01 60);
+  --popover: oklch(0.23 0.03 315);
+  --popover-foreground: oklch(0.97 0.01 60);
+
+  --primary: oklch(0.78 0.15 60); /* amber leads on dark */
+  --primary-foreground: oklch(0.19 0.03 315);
+  --secondary: oklch(0.28 0.04 315);
+  --secondary-foreground: oklch(0.97 0.01 60);
+  --muted: oklch(0.28 0.04 315);
+  --muted-foreground: oklch(0.72 0.02 60);
+
+  --accent: oklch(0.82 0.16 65);
+  --accent-foreground: oklch(0.19 0.03 315);
+  --accent-soft: oklch(0.36 0.09 60);
+
+  --destructive: oklch(0.66 0.2 25);
+  --destructive-foreground: oklch(0.985 0 0);
+
+  --success: oklch(0.74 0.14 155);
+  --success-foreground: oklch(0.145 0 0);
+  --warning: oklch(0.82 0.15 65);
+  --warning-foreground: oklch(0.19 0.03 315);
+  --info: oklch(0.72 0.12 260);
+
+  /* On dark, tinted surfaces are dark → strong text goes light */
+  --success-strong: oklch(0.82 0.13 155);
+  --warning-strong: oklch(0.86 0.14 75);
+  --destructive-strong: oklch(0.8 0.15 25);
+  --info-foreground: oklch(0.19 0.03 315);
+  --violet: oklch(0.68 0.18 305);
+  --violet-foreground: oklch(0.145 0 0);
+  --amber: oklch(0.82 0.15 65);
+  --amber-foreground: oklch(0.19 0.03 315);
+
+  --border: oklch(1 0 0 / 9%);
+  --input: oklch(1 0 0 / 12%);
+  --ring: oklch(0.82 0.16 65);
+
+  --chart-1: oklch(0.78 0.15 60);
+  --chart-2: oklch(0.82 0.15 65);
+  --chart-3: oklch(0.68 0.18 305);
+  --chart-4: oklch(0.74 0.14 155);
+  --chart-5: oklch(0.72 0.12 260);
+
+  --sidebar: oklch(0.14 0.025 315);
+  --sidebar-foreground: oklch(0.88 0.01 60);
+  --sidebar-primary: oklch(0.78 0.15 60);
+  --sidebar-primary-foreground: oklch(0.19 0.03 315);
+  --sidebar-accent: oklch(0.32 0.08 60);
+  --sidebar-accent-foreground: oklch(0.97 0.01 60);
+  --sidebar-border: oklch(1 0 0 / 7%);
+  --sidebar-ring: oklch(0.82 0.16 65);
 }
 
 @layer base {
@@ -221,6 +304,13 @@ a {
   }
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: 'ss01', 'cv11';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklab, var(--color-accent) 30%, transparent);
   }
 
   /* Heading Styles - Manrope Bold */
@@ -245,6 +335,30 @@ a {
   h6 {
     @apply text-xl font-bold leading-normal;
   }
+}
+
+/* ------------------------------------------------------------------ */
+/* Component utilities — unified card + pill system                    */
+/* ------------------------------------------------------------------ */
+@utility pathway-card {
+  background-color: var(--color-card);
+  color: var(--color-card-foreground);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-elevated);
+}
+
+@utility pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 9999px;
+  padding: 0.125rem 0.625rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  min-height: 1.375rem;
 }
 
 /* Utility Classes for Typography */

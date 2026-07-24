@@ -18,6 +18,7 @@ import {
 import { ApiError } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog,
@@ -26,23 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { cn } from '@/lib/utils';
-import type { ApplicationStatus } from '@repo/contracts';
-
-const STATUS_BADGE_COLORS: Record<ApplicationStatus, string> = {
-  PENDING: 'bg-yellow-100 text-yellow-700',
-  ACCEPTED: 'bg-green-100 text-green-700',
-  REJECTED: 'bg-red-100 text-red-700',
-  WITHDRAWN: 'bg-gray-100 text-gray-600',
-};
-
-function toLabel(value: string) {
-  return value
-    .toLowerCase()
-    .split('_')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-}
+import { APPLICATION_STATUS_TONE, toLabel } from '@/lib/labels';
 
 function InfoRow({
   label,
@@ -143,17 +128,10 @@ export default function ApplicationDetailPage() {
             <h1 className="text-2xl font-bold text-gray-900">
               {application.opportunity.title}
             </h1>
-            <span className="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-700">
-              {toLabel(application.opportunity.type)}
-            </span>
-            <span
-              className={cn(
-                'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
-                STATUS_BADGE_COLORS[application.status],
-              )}
-            >
+            <Badge tone="violet">{toLabel(application.opportunity.type)}</Badge>
+            <Badge tone={APPLICATION_STATUS_TONE[application.status]}>
               {toLabel(application.status)}
-            </span>
+            </Badge>
           </div>
         </div>
 
@@ -161,7 +139,7 @@ export default function ApplicationDetailPage() {
           <Button
             variant="outline"
             onClick={() => setWithdrawDialogOpen(true)}
-            className="shrink-0 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+            className="shrink-0 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
           >
             Withdraw Application
           </Button>

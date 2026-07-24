@@ -21,8 +21,10 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { ForbiddenPage } from '@/components/forbidden-page';
 import { OrganizationFormDialog } from '@/components/organization-form-dialog';
+import { ORGANIZATION_STATUS_TONE } from '@/lib/labels';
 import { Building2, Plus } from 'lucide-react';
 import { useState } from 'react';
 import type { OrganizationStatus } from '@repo/contracts';
@@ -43,21 +45,11 @@ const STATUS_LABELS: Record<string, string> = {
   INACTIVE: 'Inactive',
 };
 
-const STATUS_COLORS: Record<string, string> = {
-  PENDING: 'bg-yellow-100 text-yellow-800',
-  ACTIVE: 'bg-green-100 text-green-800',
-  REJECTED: 'bg-red-100 text-red-800',
-  SUSPENDED: 'bg-orange-100 text-orange-800',
-  INACTIVE: 'bg-gray-100 text-gray-800',
-};
-
 function StatusBadge({ status }: { status: string }) {
   return (
-    <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[status] || 'bg-gray-100 text-gray-800'}`}
-    >
+    <Badge tone={ORGANIZATION_STATUS_TONE[status] ?? 'neutral'}>
       {STATUS_LABELS[status] || status}
-    </span>
+    </Badge>
   );
 }
 
@@ -163,7 +155,7 @@ export default function OrganizationsPage() {
               ))}
             </div>
           ) : error ? (
-            <div className="py-10 text-center text-red-500">
+            <div className="py-10 text-center text-destructive">
               Failed to load organizations
             </div>
           ) : !organizations?.length ? (
