@@ -12,9 +12,9 @@ import {
   User,
   Users,
   FolderKanban,
-  Settings,
   LogOut,
   Building2,
+  Sparkles,
   Loader2,
 } from 'lucide-react';
 import { useAuth, useUser } from '@/hooks/use-auth';
@@ -84,8 +84,34 @@ const managerNavItems: NavItem[] = [
   },
 ];
 
+// Org-administration nav for ORG_ADMIN - manages a single organization
+// (users, structure, skill catalog, and org-wide openings). Shown in addition
+// to the employee nav, mirroring how managers get an extra section.
+const orgAdminNavItems: NavItem[] = [
+  {
+    title: 'Users',
+    url: '/users',
+    icon: Users,
+  },
+  {
+    title: 'Departments',
+    url: '/departments',
+    icon: Building2,
+  },
+  {
+    title: 'Skills',
+    url: '/skills',
+    icon: Sparkles,
+  },
+  {
+    title: 'Manage Openings',
+    url: '/openings',
+    icon: FolderKanban,
+  },
+];
+
 // Navigation items for SUPER_ADMIN role - a platform-level admin, not an
-// employee, so this (plus Settings) is the entirety of their nav (see
+// employee, so this is the entirety of their nav (see
 // (authenticated)/layout.tsx, which enforces this the same way route-side).
 const superAdminNavItems: NavItem[] = [
   {
@@ -97,14 +123,6 @@ const superAdminNavItems: NavItem[] = [
     title: 'Users',
     url: '/users',
     icon: Users,
-  },
-];
-
-const superAdminSecondaryNavItems: NavItem[] = [
-  {
-    title: 'Settings',
-    url: '/settings',
-    icon: Settings,
   },
 ];
 
@@ -127,21 +145,21 @@ function NavItemsList({
               'h-11 gap-3 rounded-lg px-3 text-sm font-medium transition-colors',
               item.disabled && 'cursor-not-allowed opacity-50',
               isActive(item.url)
-                ? 'bg-primary-100 text-gray-900 hover:bg-primary-200'
-                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+                ? 'bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90'
+                : 'text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-foreground',
             )}
           >
             {item.disabled ? (
               <div className="flex items-center gap-3">
-                <item.icon className="h-5 w-5 text-gray-400" />
+                <item.icon className="h-5 w-5 text-sidebar-foreground/40" />
                 <span>{item.title}</span>
-                <span className="ml-auto text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
+                <span className="ml-auto text-xs bg-sidebar-accent text-sidebar-foreground/60 px-1.5 py-0.5 rounded">
                   Soon
                 </span>
               </div>
             ) : (
               <Link href={item.url}>
-                <item.icon className="h-5 w-5 text-gray-500" />
+                <item.icon className="h-5 w-5" />
                 <span>{item.title}</span>
               </Link>
             )}
@@ -168,7 +186,10 @@ export function AppSidebar() {
   };
 
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
-  const isManager = Boolean(user?.isManager) && !isSuperAdmin;
+  const isOrgAdmin = user?.role === 'ORG_ADMIN';
+  // Org admins get their own Administration section instead of the manager's
+  // team view, so don't also show them the Manager group.
+  const isManager = Boolean(user?.isManager) && !isSuperAdmin && !isOrgAdmin;
 
   const isActive = (url: string) => {
     if (url === '/dashboard') {
@@ -178,24 +199,32 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar className="border-r border-gray-200 bg-white">
+    <Sidebar className="border-r border-sidebar-border">
       <SidebarHeader className="px-5 py-6">
         {/* Logo */}
         <Link
-          href={isSuperAdmin ? '/organizations' : '/dashboard'}
+          href={
+            isSuperAdmin
+              ? '/organizations'
+              : isOrgAdmin
+                ? '/users'
+                : '/dashboard'
+          }
           className="flex items-center gap-2.5"
         >
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary-base to-primary-400">
-            <TrendingUp className="h-4.5 w-4.5 text-white" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sidebar-primary">
+            <TrendingUp className="h-4.5 w-4.5 text-sidebar-primary-foreground" />
           </div>
-          <span className="text-xl font-semibold text-gray-900">PathWay</span>
+          <span className="text-xl font-semibold text-sidebar-foreground">
+            PathWay
+          </span>
         </Link>
       </SidebarHeader>
 
       <SidebarContent className="overflow-x-hidden px-3">
-        {!isSuperAdmin && (
+        {!isSuperAdmin && !isOrgAdmin && (
           <SidebarGroup>
-            <SidebarGroupLabel className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-gray-500">
+            <SidebarGroupLabel className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-sidebar-foreground/60">
               Employee
             </SidebarGroupLabel>
             <SidebarGroupContent>
@@ -209,7 +238,7 @@ export function AppSidebar() {
             <SidebarSeparator className="my-4" />
 
             <SidebarGroup>
-              <SidebarGroupLabel className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-gray-500">
+              <SidebarGroupLabel className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-sidebar-foreground/60">
                 Manager
               </SidebarGroupLabel>
               <SidebarGroupContent>
@@ -219,28 +248,25 @@ export function AppSidebar() {
           </>
         )}
 
+        {isOrgAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-sidebar-foreground/60">
+              Administration
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <NavItemsList items={orgAdminNavItems} isActive={isActive} />
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
         {isSuperAdmin && (
           <>
             <SidebarGroup>
-              <SidebarGroupLabel className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-gray-500">
+              <SidebarGroupLabel className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-sidebar-foreground/60">
                 Administration
               </SidebarGroupLabel>
               <SidebarGroupContent>
                 <NavItemsList items={superAdminNavItems} isActive={isActive} />
-              </SidebarGroupContent>
-            </SidebarGroup>
-
-            <SidebarSeparator className="my-4" />
-
-            <SidebarGroup>
-              <SidebarGroupLabel className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-gray-500">
-                Support
-              </SidebarGroupLabel>
-              <SidebarGroupContent>
-                <NavItemsList
-                  items={superAdminSecondaryNavItems}
-                  isActive={isActive}
-                />
               </SidebarGroupContent>
             </SidebarGroup>
           </>
@@ -253,12 +279,12 @@ export function AppSidebar() {
             <SidebarMenuButton
               onClick={handleLogout}
               disabled={isLoggingOut}
-              className="h-11 gap-3 rounded-lg px-3 text-sm font-medium text-gray-600 transition-colors hover:bg-destructive/10 hover:text-destructive"
+              className="h-11 gap-3 rounded-lg px-3 text-sm font-medium text-sidebar-foreground/75 transition-colors hover:bg-destructive/90 hover:text-white"
             >
               {isLoggingOut ? (
-                <Loader2 className="h-5 w-5 animate-spin text-gray-500" />
+                <Loader2 className="h-5 w-5 animate-spin" />
               ) : (
-                <LogOut className="h-5 w-5 text-gray-500" />
+                <LogOut className="h-5 w-5" />
               )}
               <span>{isLoggingOut ? 'Logging out...' : 'Logout'}</span>
             </SidebarMenuButton>

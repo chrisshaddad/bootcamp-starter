@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@repo/db';
+import type { User } from '@repo/db';
 import { PrismaService } from '../database/prisma.service';
 import { SessionService } from '../auth/session.service';
 import type {
@@ -55,12 +56,31 @@ export class UsersService {
     private readonly sessionService: SessionService,
   ) {}
 
-  async findAll(query: UserListQuery): Promise<UserListResponse> {
+  async findAll(
+    query: UserListQuery,
+    currentUser: User,
+  ): Promise<UserListResponse> {
     const skip = (query.page - 1) * query.limit;
 
+    // An ORG_ADMIN only ever sees their own organization's users - the
+    // requested organizationId is ignored so it can't be used to read across
+    // tenants. SUPER_ADMIN may filter by any organization.
+    const organizationId =
+      currentUser.role === 'SUPER_ADMIN'
+        ? query.organizationId
+        : currentUser.organizationId;
+
     const where: Prisma.UserWhereInput = {
-      ...(query.organizationId ? { organizationId: query.organizationId } : {}),
+      ...(organizationId ? { organizationId } : {}),
       ...(query.role ? { role: query.role } : {}),
+      ...(query.search
+        ? {
+            OR: [
+              { name: { contains: query.search, mode: 'insensitive' } },
+              { email: { contains: query.search, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
     };
 
     const [users, total] = await Promise.all([
@@ -77,7 +97,7 @@ export class UsersService {
     return { users, total };
   }
 
-  async findOne(id: string): Promise<UserAccountResponse> {
+  async findOne(id: string, currentUser: User): Promise<UserAccountResponse> {
     const user = await this.prisma.user.findUnique({
       where: { id },
       select: accountSelect,
@@ -87,28 +107,41 @@ export class UsersService {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
 
+    this.assertManageable(user.organization?.id ?? null, currentUser);
+
     return user;
   }
 
-  async create(data: UserCreateRequest): Promise<UserAccountResponse> {
+  async create(
+    data: UserCreateRequest,
+    currentUser: User,
+  ): Promise<UserAccountResponse> {
     const email = data.email.toLowerCase();
+
+    // An ORG_ADMIN can only create users inside their own organization, and
+    // may not mint platform admins. SUPER_ADMIN keeps full control.
+    const organizationId =
+      currentUser.role === 'SUPER_ADMIN'
+        ? data.organizationId
+        : currentUser.organizationId;
+    this.assertAssignableRole(data.role, currentUser);
 
     const existing = await this.prisma.user.findUnique({ where: { email } });
     if (existing) {
       throw new ConflictException('A user with this email already exists');
     }
 
-    if (data.organizationId) {
-      await this.assertOrganizationExists(data.organizationId);
+    if (organizationId) {
+      await this.assertOrganizationExists(organizationId);
       await this.assertBelongsToOrganization(
         'department',
         data.departmentId,
-        data.organizationId,
+        organizationId,
       );
       await this.assertBelongsToOrganization(
         'manager',
         data.managerId,
-        data.organizationId,
+        organizationId,
       );
     }
 
@@ -117,7 +150,7 @@ export class UsersService {
         email,
         name: data.name,
         role: data.role,
-        organizationId: data.organizationId,
+        organizationId,
         departmentId: data.departmentId,
         managerId: data.managerId,
         title: data.title,
@@ -133,10 +166,16 @@ export class UsersService {
   async update(
     id: string,
     data: UserUpdateRequest,
+    currentUser: User,
   ): Promise<UserAccountResponse> {
     const existing = await this.prisma.user.findUnique({ where: { id } });
     if (!existing) {
       throw new NotFoundException(`User with ID ${id} not found`);
+    }
+
+    this.assertManageable(existing.organizationId, currentUser);
+    if (data.role) {
+      this.assertAssignableRole(data.role, currentUser);
     }
 
     if (existing.organizationId) {
@@ -167,9 +206,9 @@ export class UsersService {
 
   async deactivate(
     id: string,
-    currentUserId: string,
+    currentUser: User,
   ): Promise<UserAccountResponse> {
-    if (id === currentUserId) {
+    if (id === currentUser.id) {
       throw new BadRequestException('You cannot deactivate your own account');
     }
 
@@ -177,6 +216,8 @@ export class UsersService {
     if (!existing) {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
+
+    this.assertManageable(existing.organizationId, currentUser);
 
     const user = await this.prisma.user.update({
       where: { id },
@@ -189,17 +230,50 @@ export class UsersService {
     return user;
   }
 
-  async reactivate(id: string): Promise<UserAccountResponse> {
+  async reactivate(
+    id: string,
+    currentUser: User,
+  ): Promise<UserAccountResponse> {
     const existing = await this.prisma.user.findUnique({ where: { id } });
     if (!existing) {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
+
+    this.assertManageable(existing.organizationId, currentUser);
 
     return this.prisma.user.update({
       where: { id },
       data: { isActive: true },
       select: accountSelect,
     });
+  }
+
+  /**
+   * A non-super-admin (i.e. ORG_ADMIN) may only act on users in their own
+   * organization. We throw NotFound rather than Forbidden so the endpoint
+   * doesn't leak the existence of users in other tenants.
+   */
+  private assertManageable(
+    targetOrganizationId: string | null,
+    currentUser: User,
+  ) {
+    if (currentUser.role === 'SUPER_ADMIN') return;
+    if (
+      !targetOrganizationId ||
+      targetOrganizationId !== currentUser.organizationId
+    ) {
+      throw new NotFoundException('User not found');
+    }
+  }
+
+  /**
+   * Only SUPER_ADMIN can create or promote platform-level admins. An
+   * ORG_ADMIN managing their org must not be able to escalate privileges.
+   */
+  private assertAssignableRole(role: string, currentUser: User) {
+    if (currentUser.role !== 'SUPER_ADMIN' && role === 'SUPER_ADMIN') {
+      throw new BadRequestException('You cannot assign the Super Admin role');
+    }
   }
 
   private async assertOrganizationExists(organizationId: string) {

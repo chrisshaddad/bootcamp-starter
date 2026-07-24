@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { useUser } from '@/hooks/use-auth';
@@ -9,6 +9,7 @@ import { useUsers, useUserMutations } from '@/hooks/use-users';
 import { ForbiddenPage } from '@/components/forbidden-page';
 import { UserFormDialog } from '@/components/user-form-dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -40,9 +41,13 @@ import {
   PauseCircle,
   PlayCircle,
   Plus,
+  Search,
   UsersRound,
 } from 'lucide-react';
 import type { UserAccountResponse, UserRole } from '@repo/contracts';
+import { Pagination } from '@/components/pagination';
+
+const PAGE_SIZE = 10;
 
 const ROLE_LABELS: Record<string, string> = {
   SUPER_ADMIN: 'Super Admin',
@@ -81,11 +86,16 @@ function UsersContent() {
   const searchParams = useSearchParams();
   const { user } = useUser();
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+  const isOrgAdmin = user?.role === 'ORG_ADMIN';
+  const canManageUsers = isSuperAdmin || isOrgAdmin;
 
   const [organizationFilter, setOrganizationFilter] = useState(
     searchParams.get('organizationId') ?? 'all',
   );
   const [roleFilter, setRoleFilter] = useState<'all' | UserRole>('all');
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingUser, setEditingUser] = useState<UserAccountResponse | null>(
     null,
@@ -95,6 +105,26 @@ function UsersContent() {
   const [reactivatingUser, setReactivatingUser] =
     useState<UserAccountResponse | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Debounce the search box so we hit the API once the user pauses, not on
+  // every keystroke. Any new query resets back to the first page.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(searchInput.trim());
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  const handleOrganizationChange = (value: string) => {
+    setOrganizationFilter(value);
+    setPage(1);
+  };
+
+  const handleRoleChange = (value: 'all' | UserRole) => {
+    setRoleFilter(value);
+    setPage(1);
+  };
 
   const { organizations } = useOrganizations({ enabled: isSuperAdmin });
   const {
@@ -106,12 +136,16 @@ function UsersContent() {
     organizationId:
       organizationFilter === 'all' ? undefined : organizationFilter,
     role: roleFilter === 'all' ? undefined : roleFilter,
-    enabled: isSuperAdmin,
+    search: search || undefined,
+    page,
+    limit: PAGE_SIZE,
+    enabled: canManageUsers,
   });
+  const pageCount = total ? Math.ceil(total / PAGE_SIZE) : 0;
   const { deactivateUser, reactivateUser } = useUserMutations();
 
-  if (!isSuperAdmin) {
-    return <ForbiddenPage message="Only Super Admins can manage users." />;
+  if (!canManageUsers) {
+    return <ForbiddenPage message="Only admins can manage users." />;
   }
 
   const handleDeactivate = async () => {
@@ -149,29 +183,45 @@ function UsersContent() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Users</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Manage user accounts across all organizations
+            {isSuperAdmin
+              ? 'Manage user accounts across all organizations'
+              : 'Manage user accounts in your organization'}
           </p>
         </div>
         <div className="flex items-center gap-4">
-          <Select
-            value={organizationFilter}
-            onValueChange={setOrganizationFilter}
-          >
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Filter by organization" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Organizations</SelectItem>
-              {(organizations ?? []).map((org) => (
-                <SelectItem key={org.id} value={org.id}>
-                  {org.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Search name or email"
+              className="h-10 w-64 pl-9"
+            />
+          </div>
+          {isSuperAdmin && (
+            <Select
+              value={organizationFilter}
+              onValueChange={handleOrganizationChange}
+            >
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Filter by organization" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Organizations</SelectItem>
+                {(organizations ?? []).map((org) => (
+                  <SelectItem key={org.id} value={org.id}>
+                    {org.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <Select
             value={roleFilter}
-            onValueChange={(value) => setRoleFilter(value as 'all' | UserRole)}
+            onValueChange={(value) =>
+              handleRoleChange(value as 'all' | UserRole)
+            }
           >
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Filter by role" />
@@ -229,7 +279,7 @@ function UsersContent() {
                 <TableRow>
                   <TableHead>User</TableHead>
                   <TableHead>Role</TableHead>
-                  <TableHead>Organization</TableHead>
+                  {isSuperAdmin && <TableHead>Organization</TableHead>}
                   <TableHead>Department</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -249,11 +299,13 @@ function UsersContent() {
                     <TableCell>
                       <RoleBadge role={u.role} />
                     </TableCell>
-                    <TableCell className="text-gray-600">
-                      {u.organization?.name ?? (
-                        <span className="text-gray-400">—</span>
-                      )}
-                    </TableCell>
+                    {isSuperAdmin && (
+                      <TableCell className="text-gray-600">
+                        {u.organization?.name ?? (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </TableCell>
+                    )}
                     <TableCell className="text-gray-600">
                       {u.department?.name ?? (
                         <span className="text-gray-400">—</span>
@@ -300,6 +352,17 @@ function UsersContent() {
                 ))}
               </TableBody>
             </Table>
+          )}
+          {!usersLoading && !error && total !== undefined && pageCount > 1 && (
+            <div className="mt-4">
+              <Pagination
+                page={page}
+                pageCount={pageCount}
+                total={total}
+                pageSize={PAGE_SIZE}
+                onPageChange={setPage}
+              />
+            </div>
           )}
         </CardContent>
       </Card>

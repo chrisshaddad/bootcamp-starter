@@ -104,9 +104,9 @@ export default function ManageOpeningsPage() {
     return <LoadingSkeleton />;
   }
 
-  if (!user?.isManager) {
+  if (!user?.isManager && user?.role !== 'ORG_ADMIN') {
     return (
-      <ForbiddenPage message="Only managers can manage openings for their team." />
+      <ForbiddenPage message="Only managers and org admins can manage openings." />
     );
   }
 

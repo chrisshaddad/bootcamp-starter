@@ -2,19 +2,27 @@
 
 import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import type { UserRole } from '@repo/contracts';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/app-sidebar';
 import { TopNavbar } from '@/components/top-navbar';
 import { useUser } from '@/hooks/use-auth';
 
-// Super Admins are platform-level admins, not employees - they only manage
-// organizations/users and their own settings. Everything else here is
-// employee/manager-facing (see app-sidebar.tsx's nav split) and out of
-// bounds for them.
-const SUPER_ADMIN_ALLOWED_PREFIXES = ['/organizations', '/users', '/settings'];
+// Roles with a restricted surface: they only see admin pages, not the
+// employee-facing app. Any other role (HR/EMPLOYEE/managers) has no entry
+// here and keeps full access. Kept in sync with app-sidebar.tsx's nav split.
+const ROLE_ALLOWED_PREFIXES: Partial<Record<UserRole, string[]>> = {
+  SUPER_ADMIN: ['/organizations', '/users'],
+  ORG_ADMIN: ['/users', '/departments', '/skills', '/openings'],
+};
 
-function isAllowedForSuperAdmin(pathname: string) {
-  return SUPER_ADMIN_ALLOWED_PREFIXES.some(
+const ROLE_HOME: Partial<Record<UserRole, string>> = {
+  SUPER_ADMIN: '/organizations',
+  ORG_ADMIN: '/users',
+};
+
+function isAllowed(prefixes: string[], pathname: string) {
+  return prefixes.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
 }
@@ -28,14 +36,16 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const { user } = useUser({ redirectOnUnauthenticated: false });
 
+  const allowedPrefixes = user ? ROLE_ALLOWED_PREFIXES[user.role] : undefined;
+  const home = user ? ROLE_HOME[user.role] : undefined;
   const isOutOfBounds =
-    user?.role === 'SUPER_ADMIN' && !isAllowedForSuperAdmin(pathname);
+    !!allowedPrefixes && !isAllowed(allowedPrefixes, pathname);
 
   useEffect(() => {
-    if (isOutOfBounds) {
-      router.replace('/organizations');
+    if (isOutOfBounds && home) {
+      router.replace(home);
     }
-  }, [isOutOfBounds, router]);
+  }, [isOutOfBounds, home, router]);
 
   return (
     <SidebarProvider>
