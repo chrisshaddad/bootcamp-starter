@@ -1,4 +1,5 @@
 import { PrismaClient } from '../../src/generated/prisma/client';
+import { DEMO_ORG_USER_LINKS } from './seedUsers';
 
 interface OrganizationSeed {
   name: string;
@@ -7,10 +8,9 @@ interface OrganizationSeed {
   status: 'PENDING' | 'ACTIVE' | 'REJECTED' | 'SUSPENDED' | 'INACTIVE';
   createdAt: Date;
   approvedAt?: Date;
-  adminEmail: string; // Email of the org admin who created this org
+  adminEmail: string;
 }
 
-// Sample organizations with varied statuses
 const ORGANIZATIONS: OrganizationSeed[] = [
   {
     name: 'TechCorp Solutions',
@@ -71,21 +71,6 @@ const ORGANIZATIONS: OrganizationSeed[] = [
   },
 ];
 
-const ORG_ATTENDEE_LINKS: { email: string; organizationName: string }[] = [
-  {
-    email: 'member@techcorp.example.com',
-    organizationName: 'TechCorp Solutions',
-  },
-  {
-    email: 'member@greenenergy.example.com',
-    organizationName: 'Green Energy Partners',
-  },
-  {
-    email: 'presenter@techcorp.example.com',
-    organizationName: 'TechCorp Solutions',
-  },
-];
-
 export async function seedOrganizations(prisma: PrismaClient) {
   console.log('Seeding organizations...');
 
@@ -143,7 +128,8 @@ export async function seedOrganizations(prisma: PrismaClient) {
     );
   }
 
-  for (const link of ORG_ATTENDEE_LINKS) {
+  let linked = 0;
+  for (const link of DEMO_ORG_USER_LINKS) {
     const attendee = await prisma.user.findUnique({
       where: { email: link.email },
     });
@@ -159,34 +145,20 @@ export async function seedOrganizations(prisma: PrismaClient) {
         })
       : null;
 
-    if (!attendee) {
-      console.warn(
-        `  Warning: Attendee user ${link.email} not found. Skipping.`,
-      );
+    if (!attendee || !organization) {
       continue;
     }
 
-    if (!organization) {
-      console.warn(
-        `  Warning: Organization "${link.organizationName}" not found. Skipping ${link.email}.`,
-      );
-      continue;
+    if (attendee.organizationId !== organization.id) {
+      await prisma.user.update({
+        where: { id: attendee.id },
+        data: { organizationId: organization.id },
+      });
     }
-
-    if (attendee.organizationId === organization.id) {
-      console.log(
-        `  Attendee ${link.email} already linked to ${link.organizationName}`,
-      );
-      continue;
-    }
-
-    await prisma.user.update({
-      where: { id: attendee.id },
-      data: { organizationId: organization.id },
-    });
-
-    console.log(`  Linked attendee ${link.email} to ${link.organizationName}`);
+    linked += 1;
   }
 
-  console.log(`Organizations seeded: ${ORGANIZATIONS.length} total`);
+  console.log(
+    `Organizations seeded: ${ORGANIZATIONS.length} orgs, ${linked} users linked`,
+  );
 }

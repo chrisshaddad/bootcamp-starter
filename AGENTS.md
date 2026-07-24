@@ -11,7 +11,7 @@ Instructions for AI coding assistants (Claude Code, Cursor, Codex, Aider, etc.) 
 
 **Coordly** — member and event management for organizations. Built on the Bootcamp Starter Turborepo stack.
 
-Multi-tenant auth (orgs + auth roles) is pre-wired. Phase 1 includes Coordly domain models (`Member`, `Event`, `EventAttendee`), role-based portals, event detail pages, and auth-member event sign-up. Announcements, groups, and full attendance history are planned next.
+Multi-tenant auth (orgs + auth roles) is pre-wired. Phase 1 includes Coordly domain models (`Member`, `Event`, `EventAttendee`, `Group`, `GroupMember`), role-based portals, event detail pages, auth-member event sign-up, and org-scoped groups. Announcement targeting by group and full attendance history are planned next.
 
 Human-facing setup and sign-in steps live in [`README.md`](README.md).
 
@@ -79,6 +79,8 @@ Contracts: `userRoleSchema` vs `memberRoleSchema`. Never reuse one enum for the 
 ### Prisma models (tenant-scoped)
 
 - **`Member`** — `username`, `role`, `organizationId`; `@@unique([organizationId, username])`
+- **`Group`** — `name`, `description`, `organizationId`; `@@unique([organizationId, name])`
+- **`GroupMember`** — `groupId`, `memberId`; `@@unique([groupId, memberId])` (links to Coordly `Member`)
 - **`Event`** — `eventName`, `startsAt`, `presenterId` (→ `Member`, `onDelete: SetNull`), `organizationId`
 - **`EventAttendee`** — `eventId`, `userId`, `organizationId`; `@@unique([eventId, userId])`
 
@@ -90,18 +92,20 @@ All index `organizationId`. On attendee create, set `organizationId` from the ev
 | ---------------- | ------------------------------------ | ------------------------------------------------ |
 | `/admin`         | `SUPER_ADMIN`                        | Hub: stats + feature placeholder cards           |
 | `/members`       | `SUPER_ADMIN`, `ORG_ADMIN`           | List Coordly members (org-scoped for admins)     |
+| `/groups`        | `SUPER_ADMIN`, `ORG_ADMIN`           | List/create/edit groups; assign Coordly members  |
 | `/events`        | `SUPER_ADMIN`, `ORG_ADMIN`, `MEMBER` | List with All / Upcoming / Past filter           |
 | `/events/[id]`   | `SUPER_ADMIN`, `ORG_ADMIN`, `MEMBER` | Detail; sign-up button for eligible auth members |
 | `/organizations` | `SUPER_ADMIN`                        | Platform org management                          |
 | `/dashboard`     | org users                            | Super admins redirect to `/admin`                |
 
-Sidebar: org admins see **Members** + **Events**; auth **MEMBER** users see **Events** only (`apps/web/components/app-sidebar.tsx`).
+Sidebar: org admins see **Members**, **Groups**, + **Events**; auth **MEMBER** users see **Events** only (`apps/web/components/app-sidebar.tsx`).
 
 ### API
 
 | Endpoint                    | Module                        | Auth roles                           | Notes                                                   |
 | --------------------------- | ----------------------------- | ------------------------------------ | ------------------------------------------------------- |
 | `GET /members`              | `apps/api/src/members/`       | `SUPER_ADMIN`, `ORG_ADMIN`           |                                                         |
+| `GET/POST /groups` …        | `apps/api/src/groups/`        | `SUPER_ADMIN`, `ORG_ADMIN`           | CRUD + assign/remove Coordly members                    |
 | `GET /events`               | `apps/api/src/events/`        | `SUPER_ADMIN`, `ORG_ADMIN`, `MEMBER` | Query: `upcoming=true\|false`, `page`, `limit`          |
 | `GET /events/:id`           | `apps/api/src/events/`        | `SUPER_ADMIN`, `ORG_ADMIN`, `MEMBER` | Includes `canRegister`, `isRegistered`, `attendeeCount` |
 | `POST /events/:id/register` | `apps/api/src/events/`        | `SUPER_ADMIN`, `ORG_ADMIN`, `MEMBER` | Upcoming events in caller's org; see registration rules |
@@ -121,16 +125,16 @@ Event registration rules (enforced in `EventsService.register`):
 
 ### Reference implementations
 
-| Layer     | Organizations (platform)                | Members / Events (Coordly)                                         |
-| --------- | --------------------------------------- | ------------------------------------------------------------------ |
-| Contracts | `packages/contracts/src/organizations/` | `members/`, `events/`                                              |
-| API       | `apps/api/src/organizations/`           | `members/`, `events/`                                              |
-| Web hooks | `hooks/use-organizations.ts`            | `use-members.ts`, `use-events.ts` (incl. `useEvent`, `register()`) |
-| Web pages | `app/(authenticated)/organizations/`    | `admin/`, `members/`, `events/`, `events/[id]/`                    |
+| Layer     | Organizations (platform)                | Members / Events (Coordly)                                 |
+| --------- | --------------------------------------- | ---------------------------------------------------------- |
+| Contracts | `packages/contracts/src/organizations/` | `members/`, `events/`, `groups/`                           |
+| API       | `apps/api/src/organizations/`           | `members/`, `events/`, `groups/`                           |
+| Web hooks | `hooks/use-organizations.ts`            | `use-members.ts`, `use-events.ts`, `use-groups.ts`         |
+| Web pages | `app/(authenticated)/organizations/`    | `admin/`, `members/`, `groups/`, `events/`, `events/[id]/` |
 
 ### Planned (out of scope)
 
-Announcements, groups, create/edit forms for members and events, attendance logging per event session, attendance history views.
+Announcement targeting by group, nested groups, event invite-by-group, attendance history views.
 
 ## Conventions (read before editing)
 

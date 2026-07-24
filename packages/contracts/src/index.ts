@@ -4,5 +4,6 @@ export * from './users';
 export * from './organizations';
 export * from './members';
 export * from './events';
+export * from './groups';
 export * from './announcements';
 export * from './stats';

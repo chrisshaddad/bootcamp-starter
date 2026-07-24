@@ -10,6 +10,7 @@ import { MembersModule } from './members/members.module';
 import { EventsModule } from './events/events.module';
 import { StatsModule } from './stats/stats.module';
 import { AnnouncementsModule } from './announcements/announcements.module';
+import { GroupsModule } from './groups/groups.module';
 import { DatabaseModule } from './database/database.module';
 
 @Module({
@@ -28,6 +29,7 @@ import { DatabaseModule } from './database/database.module';
     EventsModule,
     StatsModule,
     AnnouncementsModule,
+    GroupsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
