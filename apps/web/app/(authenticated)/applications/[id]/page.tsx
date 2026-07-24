@@ -32,7 +32,8 @@ import type { ApplicationStatus } from '@repo/contracts';
 const STATUS_BADGE_COLORS: Record<ApplicationStatus, string> = {
   PENDING: 'bg-warning/18 text-warning ring-1 ring-inset ring-warning/30',
   ACCEPTED: 'bg-success/15 text-success ring-1 ring-inset ring-success/25',
-  REJECTED: 'bg-destructive/12 text-destructive ring-1 ring-inset ring-destructive/25',
+  REJECTED:
+    'bg-destructive/12 text-destructive ring-1 ring-inset ring-destructive/25',
   WITHDRAWN: 'bg-muted text-muted-foreground ring-1 ring-inset ring-border',
 };
 

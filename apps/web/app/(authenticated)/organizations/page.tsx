@@ -46,7 +46,8 @@ const STATUS_LABELS: Record<string, string> = {
 const STATUS_COLORS: Record<string, string> = {
   PENDING: 'bg-warning/18 text-warning ring-1 ring-inset ring-warning/30',
   ACTIVE: 'bg-success/15 text-success ring-1 ring-inset ring-success/25',
-  REJECTED: 'bg-destructive/12 text-destructive ring-1 ring-inset ring-destructive/25',
+  REJECTED:
+    'bg-destructive/12 text-destructive ring-1 ring-inset ring-destructive/25',
   SUSPENDED: 'bg-amber/18 text-amber ring-1 ring-inset ring-amber/30',
   INACTIVE: 'bg-muted text-muted-foreground ring-1 ring-inset ring-border',
 };

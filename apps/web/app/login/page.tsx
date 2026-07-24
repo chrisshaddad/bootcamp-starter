@@ -145,7 +145,10 @@ export default function LoginPage() {
               <span className="text-muted-foreground">
                 Don&apos;t have a organization?{' '}
               </span>
-              <a href="/register" className="font-semibold text-primary hover:underline">
+              <a
+                href="/register"
+                className="font-semibold text-primary hover:underline"
+              >
                 Create an Org
               </a>
             </p>
