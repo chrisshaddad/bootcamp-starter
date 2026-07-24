@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FileText, Paperclip } from 'lucide-react';
-import type { RecordType } from '@repo/contracts';
+import { DEFAULT_PAGE_SIZE, type RecordType } from '@repo/contracts';
 import { useRecords } from '@/hooks/use-records';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Pagination } from '@/components/pagination';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AddRecordDialog } from './add-record-dialog';
 import { RecordDetailDialog } from './record-detail-dialog';
@@ -86,11 +87,26 @@ interface Props {
 
 export function RecordsSection({ patientId, canAdd }: Props) {
   const [selectedTypes, setSelectedTypes] = useState<RecordType[]>([]);
-  const { records, isLoading, error, createRecord } = useRecords(patientId, {
-    recordTypes: selectedTypes.length ? selectedTypes : undefined,
-  });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const { records, total, isLoading, error, createRecord } = useRecords(
+    patientId,
+    {
+      recordTypes: selectedTypes.length ? selectedTypes : undefined,
+      page,
+      limit: pageSize,
+    },
+  );
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+
+  // Clamp back to the last valid page if a filter/pageSize change or a
+  // background revalidation shrinks `total` out from under the current page.
+  useEffect(() => {
+    if (total === undefined) return;
+    const maxPage = Math.max(1, Math.ceil(total / pageSize));
+    if (page > maxPage) setPage(maxPage);
+  }, [total, pageSize, page]);
 
   const openRecord = (id: string) => {
     setSelectedId(id);
@@ -101,6 +117,7 @@ export function RecordsSection({ patientId, canAdd }: Props) {
     setSelectedTypes((prev) =>
       prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type],
     );
+    setPage(1);
   };
 
   return (
@@ -115,7 +132,10 @@ export function RecordsSection({ patientId, canAdd }: Props) {
       <RecordTypeFilters
         selected={selectedTypes}
         onToggle={toggleType}
-        onClear={() => setSelectedTypes([])}
+        onClear={() => {
+          setSelectedTypes([]);
+          setPage(1);
+        }}
       />
       <CardContent>
         {isLoading ? (
@@ -165,6 +185,18 @@ export function RecordsSection({ patientId, canAdd }: Props) {
               </li>
             ))}
           </ul>
+        )}
+        {total !== undefined && (
+          <Pagination
+            page={page}
+            pageSize={pageSize}
+            total={total}
+            onPageChange={setPage}
+            onPageSizeChange={(size) => {
+              setPageSize(size);
+              setPage(1);
+            }}
+          />
         )}
       </CardContent>
 

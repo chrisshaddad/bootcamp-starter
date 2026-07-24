@@ -600,6 +600,11 @@ function RecordTypeFields({
                 </div>
               </div>
             ))}
+            {errors.prescription?.items?.message && (
+              <p className="text-sm text-error">
+                {errors.prescription.items.message}
+              </p>
+            )}
             <Button
               type="button"
               variant="outline"

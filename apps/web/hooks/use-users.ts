@@ -98,3 +98,15 @@ export function useSetUserStatus() {
 
   return { setUserStatus };
 }
+
+export function useResendUserInvitation() {
+  const resendInvitation = useCallback(async (id: string) => {
+    const result = await apiPost<UserDetailResponse>(
+      `/users/${id}/resend-invitation`,
+    );
+    invalidateUsersList();
+    return result;
+  }, []);
+
+  return { resendInvitation };
+}

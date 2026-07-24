@@ -3,22 +3,30 @@
 import useSWR, { mutate as globalMutate } from 'swr';
 import { useCallback } from 'react';
 import { apiDelete, apiPatch, apiPost, apiUpload, API_URL } from '@/lib/api';
-import type {
-  RecordListResponse,
-  RecordDetailResponse,
-  RecordFileResponse,
-  RecordCreateRequest,
-  RecordType,
+import {
+  DEFAULT_PAGE_SIZE,
+  type RecordListResponse,
+  type RecordDetailResponse,
+  type RecordFileResponse,
+  type RecordCreateRequest,
+  type RecordType,
 } from '@repo/contracts';
 
 /** Records timeline for a patient. */
 export function useRecords(
   patientId: string,
-  options: { recordTypes?: RecordType[]; enabled?: boolean } = {},
+  options: {
+    recordTypes?: RecordType[];
+    page?: number;
+    limit?: number;
+    enabled?: boolean;
+  } = {},
 ) {
-  const { recordTypes, enabled = true } = options;
+  const { recordTypes, page, limit, enabled = true } = options;
   const params = new URLSearchParams();
   recordTypes?.forEach((type) => params.append('recordType', type));
+  if (page && page > 1) params.set('page', String(page));
+  if (limit && limit !== DEFAULT_PAGE_SIZE) params.set('limit', String(limit));
   const qs = params.toString();
   const key = qs
     ? `/patients/${patientId}/records?${qs}`
@@ -42,6 +50,7 @@ export function useRecords(
 
   return {
     records: data?.records,
+    total: data?.total,
     isLoading,
     error,
     createRecord,

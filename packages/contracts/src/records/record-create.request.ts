@@ -36,17 +36,33 @@ export const vaccinationDetailInputSchema = z.object({
 
 export const prescriptionItemInputSchema = z.object({
   medicationName: z.string().min(1),
-  dosage: z.string().min(1),
+  dosage: z
+    .string()
+    .min(1)
+    .regex(/\d/, 'Dosage should include a number (e.g. 500mg, 2 tablets)'),
   frequency: z.string().min(1),
   duration: z.string().optional(),
   route: prescriptionRouteSchema,
   notes: z.string().optional(),
 });
 
-export const prescriptionDetailInputSchema = z.object({
-  prescriptionDate: z.string(),
-  items: z.array(prescriptionItemInputSchema).min(1),
-});
+export const prescriptionDetailInputSchema = z
+  .object({
+    prescriptionDate: z.string(),
+    items: z.array(prescriptionItemInputSchema).min(1),
+  })
+  .refine(
+    (data) => {
+      const names = data.items.map((item) =>
+        item.medicationName.trim().toLowerCase(),
+      );
+      return new Set(names).size === names.length;
+    },
+    {
+      message: 'Each medication can only appear once in a prescription',
+      path: ['items'],
+    },
+  );
 
 // ---- Common base fields shared by every record type -------------------
 

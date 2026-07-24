@@ -51,7 +51,12 @@ export default function InstitutionPage() {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { register, handleSubmit, reset } = useForm<InstitutionUpdateRequest>({
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<InstitutionUpdateRequest>({
     resolver: zodResolver(institutionUpdateRequestSchema),
   });
 
@@ -143,6 +148,9 @@ export default function InstitutionPage() {
             <div className="space-y-2">
               <Label htmlFor="inst-name">Name</Label>
               <Input id="inst-name" {...register('name')} />
+              {errors.name && (
+                <p className="text-sm text-error">{errors.name.message}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="inst-type">Type</Label>
@@ -155,16 +163,33 @@ export default function InstitutionPage() {
                 <option value="HOSPITAL">Hospital</option>
                 <option value="LAB">Lab</option>
               </select>
+              {errors.type && (
+                <p className="text-sm text-error">{errors.type.message}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="inst-address">Address</Label>
               <Input id="inst-address" {...register('address')} />
+              {errors.address && (
+                <p className="text-sm text-error">{errors.address.message}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="inst-phone">Phone</Label>
               <Input id="inst-phone" {...register('phone')} />
+              {errors.phone && (
+                <p className="text-sm text-error">{errors.phone.message}</p>
+              )}
             </div>
             <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOpen(false)}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? 'Saving...' : 'Save'}
               </Button>

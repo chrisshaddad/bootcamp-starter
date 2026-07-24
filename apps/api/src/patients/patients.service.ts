@@ -21,6 +21,23 @@ import type {
 // Minimal shape needed for access checks before building the full detail.
 type PatientScope = { id: string; institutionId: string; userId: string };
 
+// Trims whitespace and de-dupes case-insensitively (first-seen casing wins),
+// so "Penicillin", "penicillin", and "  Penicillin " don't end up as three
+// separate entries in a safety-critical field like allergies.
+function normalizeList(values: string[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const raw of values) {
+    const trimmed = raw.trim();
+    if (!trimmed) continue;
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(trimmed);
+  }
+  return result;
+}
+
 @Injectable()
 export class PatientsService {
   private readonly logger = new Logger(PatientsService.name);
@@ -161,6 +178,7 @@ export class PatientsService {
               email: true,
               phone: true,
               isActive: true,
+              isConfirmed: true,
             },
           },
         },
@@ -179,6 +197,7 @@ export class PatientsService {
         dateOfBirth: p.dateOfBirth,
         nationalId: p.nationalId,
         isActive: p.user.isActive,
+        isConfirmed: p.user.isConfirmed,
         createdAt: p.createdAt,
       })),
       total,
@@ -293,9 +312,11 @@ export class PatientsService {
       where: { id },
       data: {
         ...(data.bloodType !== undefined ? { bloodType: data.bloodType } : {}),
-        ...(data.allergies !== undefined ? { allergies: data.allergies } : {}),
+        ...(data.allergies !== undefined
+          ? { allergies: normalizeList(data.allergies) }
+          : {}),
         ...(data.chronicConditions !== undefined
-          ? { chronicConditions: data.chronicConditions }
+          ? { chronicConditions: normalizeList(data.chronicConditions) }
           : {}),
         ...(data.clinicalNotes !== undefined
           ? { clinicalNotes: data.clinicalNotes }
@@ -321,6 +342,18 @@ export class PatientsService {
       `Patient ${id} ${isActive ? 'reactivated' : 'deactivated'} by ${actor.id}`,
     );
 
+    return this.buildDetail(id);
+  }
+
+  /**
+   * Resend the onboarding invitation — for when the original email never
+   * arrived or the link expired before the patient got to it.
+   */
+  async resendInvitation(id: string, actor: User): Promise<PatientDetailResponse> {
+    await this.getInstitutionPatient(id, actor);
+
+    await this.sendInvitationFor(id, actor);
+    this.logger.log(`Invitation resent for patient ${id} by ${actor.id}`);
     return this.buildDetail(id);
   }
 

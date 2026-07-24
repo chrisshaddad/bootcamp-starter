@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ForbiddenException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { PrismaService } from '../database/prisma.service';
 import { AuthService } from '../auth/auth.service';
@@ -15,6 +15,7 @@ describe('UsersService', () => {
       create: jest.Mock;
       update: jest.Mock;
     };
+    institution: { findUniqueOrThrow: jest.Mock };
   };
   let authService: {
     sendInvitation: jest.Mock;
@@ -38,6 +39,7 @@ describe('UsersService', () => {
         create: jest.fn(),
         update: jest.fn(),
       },
+      institution: { findUniqueOrThrow: jest.fn() },
     };
     authService = {
       sendInvitation: jest.fn(),
@@ -52,7 +54,6 @@ describe('UsersService', () => {
           useValue: {
             ...prisma,
             professionalProfile: { create: jest.fn(), update: jest.fn() },
-            institution: { findUniqueOrThrow: jest.fn() },
             $transaction: jest.fn(),
           },
         },
@@ -98,6 +99,39 @@ describe('UsersService', () => {
         where: { id: 'admin-2' },
         data: { isActive: false },
       });
+    });
+  });
+
+  describe('resendInvitation', () => {
+    it('resends the invitation for an existing managed user', async () => {
+      prisma.user.findFirst.mockResolvedValue({
+        id: 'staff-1',
+        role: 'STAFF',
+      });
+      prisma.user.findUniqueOrThrow.mockResolvedValue({
+        id: 'staff-1',
+        email: 'staff@example.com',
+      });
+      prisma.institution.findUniqueOrThrow.mockResolvedValue({
+        name: 'Acme Clinic',
+      });
+
+      await service.resendInvitation('staff-1', actor);
+
+      expect(authService.sendInvitation).toHaveBeenCalledWith(
+        { id: 'staff-1', email: 'staff@example.com' },
+        'Admin One',
+        'Acme Clinic',
+      );
+    });
+
+    it('throws NotFoundException for a user outside the institution', async () => {
+      prisma.user.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.resendInvitation('someone-else', actor),
+      ).rejects.toThrow(NotFoundException);
+      expect(authService.sendInvitation).not.toHaveBeenCalled();
     });
   });
 });

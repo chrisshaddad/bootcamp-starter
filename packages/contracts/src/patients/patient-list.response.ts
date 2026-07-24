@@ -12,6 +12,7 @@ export const patientListItemSchema = z.object({
   dateOfBirth: dateSchema.nullable(),
   nationalId: z.string().nullable(),
   isActive: z.boolean(),
+  isConfirmed: z.boolean(),
   createdAt: dateSchema,
 });
 export type PatientListItem = z.infer<typeof patientListItemSchema>;

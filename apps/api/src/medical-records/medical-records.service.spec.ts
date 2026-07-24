@@ -16,6 +16,7 @@ describe('MedicalRecordsService', () => {
       findUniqueOrThrow: jest.Mock;
       findMany: jest.Mock;
       update: jest.Mock;
+      count: jest.Mock;
     };
     labResultDetail: { update: jest.Mock };
     consultationDetail: { update: jest.Mock };
@@ -48,6 +49,7 @@ describe('MedicalRecordsService', () => {
         findUniqueOrThrow: jest.fn(),
         findMany: jest.fn(),
         update: jest.fn(),
+        count: jest.fn(),
       },
       labResultDetail: { update: jest.fn() },
       consultationDetail: { update: jest.fn() },
@@ -87,6 +89,36 @@ describe('MedicalRecordsService', () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  describe('findForPatient', () => {
+    it('paginates using skip/take derived from page and limit, excluding voided records', async () => {
+      prisma.patient.findFirst.mockResolvedValue({
+        id: 'patient-1',
+        institutionId: 'inst-1',
+        userId: 'patient-user-1',
+      });
+      prisma.assignment.findFirst.mockResolvedValue({ id: 'assign-1' });
+      prisma.medicalRecord.findMany.mockResolvedValue([]);
+      prisma.medicalRecord.count.mockResolvedValue(0);
+
+      await service.findForPatient(
+        'patient-1',
+        { page: 2, limit: 10 } as never,
+        professional,
+      );
+
+      expect(prisma.medicalRecord.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { patientId: 'patient-1', isVoid: false },
+          skip: 10,
+          take: 10,
+        }),
+      );
+      expect(prisma.medicalRecord.count).toHaveBeenCalledWith({
+        where: { patientId: 'patient-1', isVoid: false },
+      });
+    });
   });
 
   describe('update', () => {

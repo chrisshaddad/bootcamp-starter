@@ -98,4 +98,13 @@ export class PatientsController {
   ): Promise<PatientDetailResponse> {
     return this.patientsService.setStatus(id, body.isActive, user);
   }
+
+  @Post(':id/resend-invitation')
+  @Roles('INSTITUTION_ADMIN', 'STAFF')
+  async resendInvitation(
+    @Param('id') id: string,
+    @CurrentUser() user: User,
+  ): Promise<PatientDetailResponse> {
+    return this.patientsService.resendInvitation(id, user);
+  }
 }

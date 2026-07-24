@@ -18,5 +18,6 @@ export type RecordSummary = z.infer<typeof recordSummarySchema>;
 // Response from GET /patients/:patientId/records
 export const recordListResponseSchema = z.object({
   records: z.array(recordSummarySchema),
+  total: z.number(),
 });
 export type RecordListResponse = z.infer<typeof recordListResponseSchema>;

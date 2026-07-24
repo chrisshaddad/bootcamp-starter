@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import { Users as UsersIcon, Plus, Pencil } from 'lucide-react';
+import { Users as UsersIcon, Plus, Pencil, Mail } from 'lucide-react';
 import {
   userCreateRequestSchema,
   userUpdateRequestSchema,
@@ -20,6 +20,7 @@ import {
   useCreateUser,
   useUpdateUser,
   useSetUserStatus,
+  useResendUserInvitation,
 } from '@/hooks/use-users';
 import { ApiError } from '@/lib/api';
 import { ForbiddenPage } from '@/components/forbidden-page';
@@ -178,6 +179,14 @@ function CreateUserDialog() {
           )}
 
           <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? 'Creating...' : 'Create'}
             </Button>
@@ -271,6 +280,14 @@ function EditUserDialog({
             </>
           )}
           <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? 'Saving...' : 'Save'}
             </Button>
@@ -289,6 +306,8 @@ function UserRowActions({
   isSelf: boolean;
 }) {
   const [editOpen, setEditOpen] = useState(false);
+  const { resendInvitation } = useResendUserInvitation();
+  const [isResending, setIsResending] = useState(false);
 
   if (isSelf) {
     return (
@@ -311,8 +330,34 @@ function UserRowActions({
     );
   }
 
+  const onResend = async () => {
+    setIsResending(true);
+    try {
+      await resendInvitation(user.id);
+      toast.success('Invitation resent');
+    } catch (error) {
+      toast.error(
+        error instanceof ApiError ? error.message : 'Failed to resend invite',
+      );
+    } finally {
+      setIsResending(false);
+    }
+  };
+
   return (
     <>
+      {!user.isConfirmed && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={onResend}
+          disabled={isResending}
+          aria-label="Resend invitation"
+        >
+          <Mail className="h-4 w-4" />
+        </Button>
+      )}
       <Button
         variant="ghost"
         size="icon"
@@ -330,13 +375,23 @@ function UserRowActions({
 export default function UsersPage() {
   const { user, isLoading: userLoading } = useUser();
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
   const isAdmin = user?.role === 'INSTITUTION_ADMIN';
 
+  // Debounced so a full re-fetch (and skeleton-replacing-table flash) doesn't
+  // fire on every keystroke — same pattern as the care-team professional picker.
+  useEffect(() => {
+    const timeout = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timeout);
+  }, [search]);
+
   const { users, total, isLoading, error } = useUsers({
     role: roleFilter === 'all' ? undefined : roleFilter,
+    search: debouncedSearch || undefined,
     page,
     limit: pageSize,
     enabled: isAdmin,
@@ -373,6 +428,15 @@ export default function UsersPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-4">
+          <Input
+            placeholder="Search by name or email..."
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+            className="w-full sm:w-56"
+          />
           <Select
             value={roleFilter}
             onValueChange={(value) => {

@@ -291,6 +291,31 @@ export class UsersService {
     return this.findOne(id, actor.institutionId);
   }
 
+  /**
+   * Resend the onboarding invitation — for when the original email never
+   * arrived or the link expired before the invitee got to it. Not restricted
+   * to unconfirmed users: re-sending to an already-confirmed one is harmless
+   * (just mints a fresh magic link), so there's no need for a second guard on
+   * top of the existing role/institution scoping.
+   */
+  async resendInvitation(id: string, actor: User): Promise<UserDetailResponse> {
+    const existing = await this.prisma.user.findFirst({
+      where: {
+        id,
+        institutionId: actor.institutionId,
+        role: { in: MANAGED_ROLES },
+      },
+    });
+
+    if (!existing) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
+
+    await this.sendInvitationFor(id, actor);
+    this.logger.log(`Invitation resent for user ${id} by ${actor.id}`);
+    return this.findOne(id, actor.institutionId);
+  }
+
   private async sendInvitationFor(userId: string, actor: User): Promise<void> {
     const [user, institution] = await Promise.all([
       this.prisma.user.findUniqueOrThrow({

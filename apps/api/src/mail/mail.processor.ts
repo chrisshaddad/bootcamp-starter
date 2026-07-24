@@ -60,12 +60,12 @@ export class MailProcessor extends WorkerHost {
     const { email, magicLink, userName } = data;
 
     const greeting = userName ? `Hello ${userName},` : 'Hello,';
-    const text = `${greeting}\n\nClick the link below to sign in to your account:\n\n${magicLink}\n\nThis link will expire in 15 minutes.\n\nIf you didn't request this link, you can safely ignore this email.`;
+    const text = `${greeting}\n\nClick the link below to sign in to your MediLink account:\n\n${magicLink}\n\nThis link will expire in 15 minutes.\n\nIf you didn't request this, you can safely ignore this email — your account is still secure.\n\n— MediLink`;
 
     const success = await this.mailService.sendEmail({
       to: email,
-      from: 'no-reply@bootcamp-starter.local',
-      subject: 'Sign in to Bootcamp Starter',
+      from: 'no-reply@medilink.local',
+      subject: 'Sign in to MediLink',
       text,
     });
 
@@ -82,12 +82,12 @@ export class MailProcessor extends WorkerHost {
   ): Promise<void> {
     const { email, inviterName, institutionName, invitationLink } = data;
 
-    const text = `Hello,\n\n${inviterName} has invited you to join ${institutionName} on Bootcamp Starter.\n\nClick the link below to accept the invitation and create your account:\n\n${invitationLink}\n\nThis invitation will expire in 7 days.\n\nIf you weren't expecting this invitation, you can safely ignore this email.`;
+    const text = `Hello,\n\n${inviterName} has invited you to join ${institutionName} on MediLink.\n\nClick the link below to accept the invitation and set up your account:\n\n${invitationLink}\n\nThis invitation link will expire in 7 days.\n\nIf you weren't expecting this invitation, you can safely ignore this email.\n\n— MediLink`;
 
     const success = await this.mailService.sendEmail({
       to: email,
-      from: 'no-reply@bootcamp-starter.local',
-      subject: `You've been invited to join ${institutionName}`,
+      from: 'no-reply@medilink.local',
+      subject: `You've been invited to join ${institutionName} on MediLink`,
       text,
     });
 
@@ -108,12 +108,12 @@ export class MailProcessor extends WorkerHost {
       createdByName,
     } = data;
 
-    const text = `Hello,\n\n${createdByName} added a new ${newUserRoleLabel} (${newUserName}) to ${institutionName}.\n\nNo action is needed — this is just a heads-up.`;
+    const text = `Hello,\n\n${createdByName} added a new ${newUserRoleLabel} (${newUserName}) to ${institutionName} on MediLink.\n\nNo action is needed — this is just a heads-up.\n\n— MediLink`;
 
     for (const email of adminEmails) {
       const success = await this.mailService.sendEmail({
         to: email,
-        from: 'no-reply@bootcamp-starter.local',
+        from: 'no-reply@medilink.local',
         subject: `New ${newUserRoleLabel} added to ${institutionName}`,
         text,
       });

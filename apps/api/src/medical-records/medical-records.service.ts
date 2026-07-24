@@ -195,25 +195,34 @@ export class MedicalRecordsService {
 
     await this.assertCanViewPatient(patient, actor);
 
-    const records = await this.prisma.medicalRecord.findMany({
-      where: {
-        patientId,
-        isVoid: false,
-        ...(query.recordType?.length
-          ? { recordType: { in: query.recordType } }
-          : {}),
-      },
-      orderBy: { recordDate: 'desc' },
-      include: {
-        uploadedBy: { select: { fullName: true } },
-        _count: { select: { files: true } },
-        labResultDetail: { select: { testName: true } },
-        consultationDetail: { select: { chiefComplaint: true } },
-        scanDetail: { select: { modalityType: true, bodyPart: true } },
-        vaccinationDetail: { select: { vaccineName: true } },
-        prescription: { select: { _count: { select: { items: true } } } },
-      },
-    });
+    const { page, limit } = query;
+    const skip = (page - 1) * limit;
+    const where = {
+      patientId,
+      isVoid: false,
+      ...(query.recordType?.length
+        ? { recordType: { in: query.recordType } }
+        : {}),
+    };
+
+    const [records, total] = await Promise.all([
+      this.prisma.medicalRecord.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { recordDate: 'desc' },
+        include: {
+          uploadedBy: { select: { fullName: true } },
+          _count: { select: { files: true } },
+          labResultDetail: { select: { testName: true } },
+          consultationDetail: { select: { chiefComplaint: true } },
+          scanDetail: { select: { modalityType: true, bodyPart: true } },
+          vaccinationDetail: { select: { vaccineName: true } },
+          prescription: { select: { _count: { select: { items: true } } } },
+        },
+      }),
+      this.prisma.medicalRecord.count({ where }),
+    ]);
 
     return {
       records: records.map((r) => ({
@@ -225,6 +234,7 @@ export class MedicalRecordsService {
         fileCount: r._count.files,
         createdAt: r.createdAt,
       })),
+      total,
     };
   }
 

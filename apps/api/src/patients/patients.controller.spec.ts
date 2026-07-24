@@ -18,6 +18,7 @@ describe('PatientsController', () => {
             create: jest.fn(),
             updateAdmin: jest.fn(),
             updateClinical: jest.fn(),
+            resendInvitation: jest.fn(),
           },
         },
       ],

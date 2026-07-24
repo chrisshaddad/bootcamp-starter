@@ -106,6 +106,18 @@ export function useSetPatientStatus() {
   return { setPatientStatus };
 }
 
+export function useResendPatientInvitation() {
+  const resendInvitation = useCallback(async (id: string) => {
+    const result = await apiPost<PatientDetailResponse>(
+      `/patients/${id}/resend-invitation`,
+    );
+    invalidatePatientsList();
+    return result;
+  }, []);
+
+  return { resendInvitation };
+}
+
 export function usePatient(id: string, options: { enabled?: boolean } = {}) {
   const { enabled = true } = options;
   const {

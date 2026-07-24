@@ -403,7 +403,7 @@ export function CreatePatientDialog({ canEditClinical }: Props) {
           )}
 
           <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
-            <div>
+            <div className="flex gap-2">
               {step > 0 && (
                 <Button
                   type="button"
@@ -413,21 +413,25 @@ export function CreatePatientDialog({ canEditClinical }: Props) {
                   Back
                 </Button>
               )}
+              {/* Deliberately grouped with Back, away from Next/Create — this
+                  submits immediately, so it shouldn't sit right next to the
+                  button that just advances a step. */}
+              {step < lastStep && (
+                <Button
+                  type="submit"
+                  variant="ghost"
+                  className="text-muted-foreground"
+                  disabled={isSubmitting}
+                >
+                  Skip remaining &amp; create
+                </Button>
+              )}
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
               {step < lastStep ? (
-                <>
-                  <Button
-                    type="submit"
-                    variant="outline"
-                    disabled={isSubmitting}
-                  >
-                    Skip &amp; create
-                  </Button>
-                  <Button type="button" onClick={goNext}>
-                    Next
-                  </Button>
-                </>
+                <Button type="button" onClick={goNext}>
+                  Next
+                </Button>
               ) : (
                 <Button type="submit" disabled={isSubmitting}>
                   {isSubmitting ? 'Creating...' : 'Create'}

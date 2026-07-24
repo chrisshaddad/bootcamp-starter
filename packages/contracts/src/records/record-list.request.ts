@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { recordTypeSchema } from './record-type.schema';
+import { paginationQuerySchema } from '../common/pagination';
 
 // Query params for GET /patients/:patientId/records. `recordType` may be
 // repeated (?recordType=A&recordType=B) to filter by several types at once —
@@ -12,5 +13,6 @@ export const recordListQuerySchema = z.object({
     .transform((v) =>
       v === undefined ? undefined : Array.isArray(v) ? v : [v],
     ),
+  ...paginationQuerySchema.shape,
 });
 export type RecordListQuery = z.infer<typeof recordListQuerySchema>;
