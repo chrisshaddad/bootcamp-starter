@@ -85,6 +85,9 @@ export class SkillsService {
         ? {}
         : { organizationId: currentUser.organizationId as string }),
       ...(query.category ? { category: query.category } : {}),
+      ...(query.search
+        ? { name: { contains: query.search, mode: 'insensitive' } }
+        : {}),
     };
 
     const [skills, total] = await Promise.all([

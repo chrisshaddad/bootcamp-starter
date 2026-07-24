@@ -36,17 +36,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  ChevronLeft,
-  ChevronRight,
-  Pencil,
-  PauseCircle,
-  PlayCircle,
-  Plus,
-  Search,
-  UsersRound,
-} from 'lucide-react';
+import { Pencil, PauseCircle, PlayCircle, Plus, Search, UsersRound } from 'lucide-react';
 import type { UserAccountResponse, UserRole } from '@repo/contracts';
+import { Pagination } from '@/components/pagination';
 
 const PAGE_SIZE = 10;
 
@@ -56,89 +48,6 @@ const ROLE_LABELS: Record<string, string> = {
   HR: 'HR',
   EMPLOYEE: 'Employee',
 };
-
-/**
- * Windowed page numbers with ellipses so the control stays compact for large
- * page counts, e.g. 1 … 4 5 6 … 20. Always includes first and last page.
- */
-function getPageItems(current: number, count: number): (number | 'gap')[] {
-  if (count <= 7) {
-    return Array.from({ length: count }, (_, i) => i + 1);
-  }
-  const items: (number | 'gap')[] = [1];
-  const start = Math.max(2, current - 1);
-  const end = Math.min(count - 1, current + 1);
-  if (start > 2) items.push('gap');
-  for (let p = start; p <= end; p++) items.push(p);
-  if (end < count - 1) items.push('gap');
-  items.push(count);
-  return items;
-}
-
-function Pagination({
-  page,
-  pageCount,
-  total,
-  onPageChange,
-}: {
-  page: number;
-  pageCount: number;
-  total: number;
-  onPageChange: (page: number) => void;
-}) {
-  const from = (page - 1) * PAGE_SIZE + 1;
-  const to = Math.min(page * PAGE_SIZE, total);
-
-  return (
-    <div className="flex flex-col items-center justify-between gap-3 border-t border-border pt-4 sm:flex-row">
-      <p className="text-sm text-muted-foreground">
-        Showing <span className="font-medium text-foreground">{from}</span>–
-        <span className="font-medium text-foreground">{to}</span> of{' '}
-        <span className="font-medium text-foreground">{total}</span>
-      </p>
-      <div className="flex items-center gap-1">
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={page <= 1}
-          onClick={() => onPageChange(page - 1)}
-        >
-          <ChevronLeft className="h-4 w-4" />
-          Prev
-        </Button>
-        {getPageItems(page, pageCount).map((item, i) =>
-          item === 'gap' ? (
-            <span
-              key={`gap-${i}`}
-              className="px-1.5 text-sm text-muted-foreground"
-            >
-              …
-            </span>
-          ) : (
-            <Button
-              key={item}
-              variant={item === page ? 'default' : 'outline'}
-              size="sm"
-              className="min-w-9"
-              onClick={() => onPageChange(item)}
-            >
-              {item}
-            </Button>
-          ),
-        )}
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={page >= pageCount}
-          onClick={() => onPageChange(page + 1)}
-        >
-          Next
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-      </div>
-    </div>
-  );
-}
 
 function RoleBadge({ role }: { role: string }) {
   return <Badge tone="violet">{ROLE_LABELS[role] ?? role}</Badge>;
@@ -170,6 +79,8 @@ function UsersContent() {
   const searchParams = useSearchParams();
   const { user } = useUser();
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+  const isOrgAdmin = user?.role === 'ORG_ADMIN';
+  const canManageUsers = isSuperAdmin || isOrgAdmin;
 
   const [organizationFilter, setOrganizationFilter] = useState(
     searchParams.get('organizationId') ?? 'all',
@@ -221,13 +132,13 @@ function UsersContent() {
     search: search || undefined,
     page,
     limit: PAGE_SIZE,
-    enabled: isSuperAdmin,
+    enabled: canManageUsers,
   });
   const pageCount = total ? Math.ceil(total / PAGE_SIZE) : 0;
   const { deactivateUser, reactivateUser } = useUserMutations();
 
-  if (!isSuperAdmin) {
-    return <ForbiddenPage message="Only Super Admins can manage users." />;
+  if (!canManageUsers) {
+    return <ForbiddenPage message="Only admins can manage users." />;
   }
 
   const handleDeactivate = async () => {
@@ -265,7 +176,9 @@ function UsersContent() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Users</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Manage user accounts across all organizations
+            {isSuperAdmin
+              ? 'Manage user accounts across all organizations'
+              : 'Manage user accounts in your organization'}
           </p>
         </div>
         <div className="flex items-center gap-4">
@@ -279,22 +192,24 @@ function UsersContent() {
               className="h-10 w-64 pl-9"
             />
           </div>
-          <Select
-            value={organizationFilter}
-            onValueChange={handleOrganizationChange}
-          >
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Filter by organization" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Organizations</SelectItem>
-              {(organizations ?? []).map((org) => (
-                <SelectItem key={org.id} value={org.id}>
-                  {org.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {isSuperAdmin && (
+            <Select
+              value={organizationFilter}
+              onValueChange={handleOrganizationChange}
+            >
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Filter by organization" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Organizations</SelectItem>
+                {(organizations ?? []).map((org) => (
+                  <SelectItem key={org.id} value={org.id}>
+                    {org.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <Select
             value={roleFilter}
             onValueChange={(value) => handleRoleChange(value as 'all' | UserRole)}
@@ -355,7 +270,7 @@ function UsersContent() {
                 <TableRow>
                   <TableHead>User</TableHead>
                   <TableHead>Role</TableHead>
-                  <TableHead>Organization</TableHead>
+                  {isSuperAdmin && <TableHead>Organization</TableHead>}
                   <TableHead>Department</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -375,11 +290,13 @@ function UsersContent() {
                     <TableCell>
                       <RoleBadge role={u.role} />
                     </TableCell>
-                    <TableCell className="text-gray-600">
-                      {u.organization?.name ?? (
-                        <span className="text-gray-400">—</span>
-                      )}
-                    </TableCell>
+                    {isSuperAdmin && (
+                      <TableCell className="text-gray-600">
+                        {u.organization?.name ?? (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </TableCell>
+                    )}
                     <TableCell className="text-gray-600">
                       {u.department?.name ?? (
                         <span className="text-gray-400">—</span>
@@ -433,6 +350,7 @@ function UsersContent() {
                 page={page}
                 pageCount={pageCount}
                 total={total}
+                pageSize={PAGE_SIZE}
                 onPageChange={setPage}
               />
             </div>

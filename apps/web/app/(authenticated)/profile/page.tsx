@@ -22,6 +22,7 @@ import { toast } from 'sonner';
 import { useUser } from '@/hooks/use-auth';
 import { useEmployee } from '@/hooks/use-employee';
 import { useSkills } from '@/hooks/use-skills';
+import { useCareerPaths } from '@/hooks/use-career-paths';
 import { ApiError } from '@/lib/api';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -181,6 +182,7 @@ export default function ProfilePage() {
     user?.id,
   );
   const { skills: allSkills } = useSkills();
+  const { careerPaths } = useCareerPaths();
 
   const [editOpen, setEditOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -318,9 +320,27 @@ export default function ProfilePage() {
               Career Goals
             </h3>
           </div>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            {profile?.careerGoal || 'No career goals added yet.'}
-          </p>
+          {careerPaths && careerPaths.length > 0 ? (
+            <ul className="space-y-2">
+              {careerPaths.map((path) => (
+                <li
+                  key={path.id}
+                  className="flex items-baseline justify-between gap-3"
+                >
+                  <span className="text-sm font-medium text-foreground">
+                    {path.targetTitle}
+                  </span>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {path.timeframeMonths}-month plan
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              {profile?.careerGoal || 'No career goals added yet.'}
+            </p>
+          )}
         </div>
       </Card>
 

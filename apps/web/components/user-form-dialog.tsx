@@ -9,6 +9,7 @@ import { Loader2 } from 'lucide-react';
 import { userRoleSchema, type UserAccountResponse } from '@repo/contracts';
 import { useOrganizations } from '@/hooks/use-organizations';
 import { useDepartments } from '@/hooks/use-departments';
+import { useUser } from '@/hooks/use-auth';
 import { useUsers, useUserMutations } from '@/hooks/use-users';
 import { ApiError } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -69,7 +70,17 @@ export function UserFormDialog({
   defaultOrganizationId,
 }: UserFormDialogProps) {
   const isEdit = !!user;
-  const { organizations } = useOrganizations({ status: 'ACTIVE' });
+  const { user: currentUser } = useUser({ redirectOnUnauthenticated: false });
+  // An ORG_ADMIN manages only their own org, so the org is locked and platform
+  // admins can't be minted here; SUPER_ADMIN keeps the full org/role picker.
+  const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
+  const lockedOrganizationId = isSuperAdmin
+    ? undefined
+    : (currentUser?.organizationId ?? undefined);
+  const { organizations } = useOrganizations({
+    status: 'ACTIVE',
+    enabled: isSuperAdmin,
+  });
   const { createUser, updateUser } = useUserMutations();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -105,13 +116,16 @@ export function UserFormDialog({
       email: user?.email ?? '',
       role: user?.role ?? 'EMPLOYEE',
       organizationId:
-        user?.organization?.id ?? defaultOrganizationId ?? undefined,
+        user?.organization?.id ??
+        defaultOrganizationId ??
+        lockedOrganizationId ??
+        undefined,
       departmentId: user?.department?.id ?? NONE_VALUE,
       managerId: user?.manager?.id ?? NONE_VALUE,
       title: user?.title ?? '',
       level: user?.level != null ? String(user.level) : '',
     });
-  }, [open, user, defaultOrganizationId, reset]);
+  }, [open, user, defaultOrganizationId, lockedOrganizationId, reset]);
 
   const onSubmit = async (values: UserFormValues) => {
     const requiresOrg = values.role !== 'SUPER_ADMIN';
@@ -222,18 +236,22 @@ export function UserFormDialog({
                       <SelectValue placeholder="Select role" />
                     </SelectTrigger>
                     <SelectContent>
-                      {Object.entries(ROLE_LABELS).map(([value, label]) => (
-                        <SelectItem key={value} value={value}>
-                          {label}
-                        </SelectItem>
-                      ))}
+                      {Object.entries(ROLE_LABELS)
+                        .filter(
+                          ([value]) => isSuperAdmin || value !== 'SUPER_ADMIN',
+                        )
+                        .map(([value, label]) => (
+                          <SelectItem key={value} value={value}>
+                            {label}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 )}
               />
             </div>
 
-            {needsOrganization && (
+            {needsOrganization && isSuperAdmin && (
               <div className="space-y-2">
                 <Label htmlFor="organizationId">Organization</Label>
                 <Controller

@@ -1,7 +1,22 @@
 'use client';
 
-import useSWR from 'swr';
-import type { DepartmentListResponse } from '@repo/contracts';
+import useSWR, { mutate } from 'swr';
+import { useCallback } from 'react';
+import { apiPost, apiPatch, apiDelete } from '@/lib/api';
+import type {
+  DepartmentListResponse,
+  DepartmentResponse,
+  DepartmentCreateRequest,
+  DepartmentUpdateRequest,
+} from '@repo/contracts';
+
+function invalidateDepartments() {
+  mutate(
+    (key) => typeof key === 'string' && key.startsWith('/departments'),
+    undefined,
+    { revalidate: true },
+  );
+}
 
 interface UseDepartmentsOptions {
   organizationId?: string;
@@ -37,4 +52,49 @@ export function useDepartments(
     isLoading,
     error,
   };
+}
+
+interface UseDepartmentMutationsReturn {
+  createDepartment: (
+    data: DepartmentCreateRequest,
+  ) => Promise<DepartmentResponse>;
+  updateDepartment: (
+    id: string,
+    data: DepartmentUpdateRequest,
+  ) => Promise<DepartmentResponse>;
+  deleteDepartment: (id: string) => Promise<void>;
+}
+
+/**
+ * Create/update/delete departments (ORG_ADMIN only, enforced server-side).
+ * Revalidates every cached `/departments` list after each mutation.
+ */
+export function useDepartmentMutations(): UseDepartmentMutationsReturn {
+  const createDepartment = useCallback(
+    async (data: DepartmentCreateRequest) => {
+      const result = await apiPost<DepartmentResponse>('/departments', data);
+      invalidateDepartments();
+      return result;
+    },
+    [],
+  );
+
+  const updateDepartment = useCallback(
+    async (id: string, data: DepartmentUpdateRequest) => {
+      const result = await apiPatch<DepartmentResponse>(
+        `/departments/${id}`,
+        data,
+      );
+      invalidateDepartments();
+      return result;
+    },
+    [],
+  );
+
+  const deleteDepartment = useCallback(async (id: string) => {
+    await apiDelete(`/departments/${id}`);
+    invalidateDepartments();
+  }, []);
+
+  return { createDepartment, updateDepartment, deleteDepartment };
 }

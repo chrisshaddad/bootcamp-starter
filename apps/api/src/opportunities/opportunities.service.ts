@@ -80,21 +80,26 @@ export class OpportunitiesService {
     const skip = (query.page - 1) * query.limit;
     const organizationId = currentUser.organizationId;
 
-    const mineFilter = query.mine
-      ? await (async () => {
-          const managedDepartmentIds = await this.getManagedDepartmentIds(
-            currentUser.id,
-            organizationId ?? '',
-          );
+    // `mine` narrows to a manager's own department/hiring-manager openings.
+    // Admin roles (ORG_ADMIN/HR) instead manage the whole org, so the narrowing
+    // is skipped for them and `mine` just lifts the OPEN-only status filter.
+    const isAdmin = ADMIN_ROLES.includes(currentUser.role);
+    const mineFilter =
+      query.mine && !isAdmin
+        ? await (async () => {
+            const managedDepartmentIds = await this.getManagedDepartmentIds(
+              currentUser.id,
+              organizationId ?? '',
+            );
 
-          return {
-            OR: [
-              { departmentId: { in: managedDepartmentIds } },
-              { hiringManagerId: currentUser.id },
-            ],
-          };
-        })()
-      : {};
+            return {
+              OR: [
+                { departmentId: { in: managedDepartmentIds } },
+                { hiringManagerId: currentUser.id },
+              ],
+            };
+          })()
+        : {};
 
     const where: Prisma.OpportunityWhereInput = {
       ...(currentUser.role === 'SUPER_ADMIN'

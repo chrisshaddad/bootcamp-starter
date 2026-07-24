@@ -14,6 +14,7 @@ import {
   FolderKanban,
   LogOut,
   Building2,
+  Sparkles,
   Loader2,
 } from 'lucide-react';
 import { useAuth, useUser } from '@/hooks/use-auth';
@@ -75,6 +76,32 @@ const managerNavItems: NavItem[] = [
     title: 'Team Overview',
     url: '/team',
     icon: Users,
+  },
+  {
+    title: 'Manage Openings',
+    url: '/openings',
+    icon: FolderKanban,
+  },
+];
+
+// Org-administration nav for ORG_ADMIN - manages a single organization
+// (users, structure, skill catalog, and org-wide openings). Shown in addition
+// to the employee nav, mirroring how managers get an extra section.
+const orgAdminNavItems: NavItem[] = [
+  {
+    title: 'Users',
+    url: '/users',
+    icon: Users,
+  },
+  {
+    title: 'Departments',
+    url: '/departments',
+    icon: Building2,
+  },
+  {
+    title: 'Skills',
+    url: '/skills',
+    icon: Sparkles,
   },
   {
     title: 'Manage Openings',
@@ -159,7 +186,11 @@ export function AppSidebar() {
   };
 
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
-  const isManager = Boolean(user?.isManager) && !isSuperAdmin;
+  const isOrgAdmin = user?.role === 'ORG_ADMIN';
+  // Org admins get their own Administration section instead of the manager's
+  // team view, so don't also show them the Manager group.
+  const isManager =
+    Boolean(user?.isManager) && !isSuperAdmin && !isOrgAdmin;
 
   const isActive = (url: string) => {
     if (url === '/dashboard') {
@@ -173,7 +204,13 @@ export function AppSidebar() {
       <SidebarHeader className="px-5 py-6">
         {/* Logo */}
         <Link
-          href={isSuperAdmin ? '/organizations' : '/dashboard'}
+          href={
+            isSuperAdmin
+              ? '/organizations'
+              : isOrgAdmin
+                ? '/users'
+                : '/dashboard'
+          }
           className="flex items-center gap-2.5"
         >
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sidebar-primary">
@@ -186,7 +223,7 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="overflow-x-hidden px-3">
-        {!isSuperAdmin && (
+        {!isSuperAdmin && !isOrgAdmin && (
           <SidebarGroup>
             <SidebarGroupLabel className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-sidebar-foreground/60">
               Employee
@@ -210,6 +247,17 @@ export function AppSidebar() {
               </SidebarGroupContent>
             </SidebarGroup>
           </>
+        )}
+
+        {isOrgAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-sidebar-foreground/60">
+              Administration
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <NavItemsList items={orgAdminNavItems} isActive={isActive} />
+            </SidebarGroupContent>
+          </SidebarGroup>
         )}
 
         {isSuperAdmin && (
