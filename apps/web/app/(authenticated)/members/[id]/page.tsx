@@ -211,10 +211,7 @@ function MemberDetail() {
             </Button>
           )}
           {!member.user && (
-            <Button
-              variant="outline"
-              onClick={() => setClaimInviteOpen(true)}
-            >
+            <Button variant="outline" onClick={() => setClaimInviteOpen(true)}>
               <Mail className="h-4 w-4" />
               Send claim invite
             </Button>

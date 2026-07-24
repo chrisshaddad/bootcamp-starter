@@ -76,8 +76,8 @@ export function ClaimInviteDialog({
         <DialogHeader>
           <DialogTitle>Send claim invite</DialogTitle>
           <DialogDescription>
-            They&apos;ll receive an email to sign in and manage this
-            membership online.
+            They&apos;ll receive an email to sign in and manage this membership
+            online.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
