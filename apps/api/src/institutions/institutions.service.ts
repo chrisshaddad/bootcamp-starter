@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
+import { AuthService } from '../auth/auth.service';
 import { PLATFORM_INSTITUTION_ID, Prisma } from '@repo/db';
 import type {
   InstitutionListQuery,
@@ -12,13 +13,17 @@ import type {
   InstitutionDetailResponse,
   InstitutionCreateRequest,
   InstitutionUpdateRequest,
+  InstitutionAdminCreateRequest,
 } from '@repo/contracts';
 
 @Injectable()
 export class InstitutionsService {
   private readonly logger = new Logger(InstitutionsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly authService: AuthService,
+  ) {}
 
   private readonly detailSelect = {
     id: true,
@@ -32,6 +37,22 @@ export class InstitutionsService {
     createdAt: true,
     updatedAt: true,
     _count: { select: { users: true } },
+  } as const;
+
+  // Super-Admin-only view: also surfaces the institution's admin(s) so a
+  // botched email from institution set-up can be found and fixed. Not used
+  // by findMine/updateMine — Staff/Professional/Patient calling "my
+  // institution" have no business seeing another admin's email.
+  private readonly adminListSelect = {
+    where: { role: 'INSTITUTION_ADMIN' as const },
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      isActive: true,
+      isConfirmed: true,
+    },
+    orderBy: { createdAt: 'asc' as const },
   } as const;
 
   /**
@@ -80,14 +101,15 @@ export class InstitutionsService {
 
     const institution = await this.prisma.institution.findUnique({
       where: { id },
-      select: this.detailSelect,
+      select: { ...this.detailSelect, users: this.adminListSelect },
     });
 
     if (!institution) {
       throw new NotFoundException(`Institution with ID ${id} not found`);
     }
 
-    return institution;
+    const { users, ...rest } = institution;
+    return { ...rest, admins: users };
   }
 
   /**
@@ -182,6 +204,144 @@ export class InstitutionsService {
 
     this.logger.log(`Institution ${institution.id} created`);
     return this.findOne(institution.id);
+  }
+
+  /**
+   * Add another admin to an existing institution (Super Admin only) — for
+   * when a second admin is needed, or the institution somehow ended up with
+   * none left to log in and fix things themselves.
+   */
+  async addAdmin(
+    institutionId: string,
+    data: InstitutionAdminCreateRequest,
+    createdById: string,
+    inviterName: string,
+  ): Promise<InstitutionDetailResponse> {
+    await this.ensureExists(institutionId);
+
+    const normalizedEmail = data.email.toLowerCase();
+    let createdId: string;
+
+    try {
+      const created = await this.prisma.user.create({
+        data: {
+          fullName: data.fullName,
+          email: normalizedEmail,
+          phone: data.phone,
+          role: 'INSTITUTION_ADMIN',
+          institutionId,
+          createdById,
+        },
+      });
+      createdId = created.id;
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002' &&
+        (error.meta?.target as string[] | undefined)?.includes('email')
+      ) {
+        this.logger.warn(
+          `Admin creation rejected: email ${normalizedEmail} already in use`,
+        );
+        throw new ConflictException(
+          `A user with email ${normalizedEmail} already exists`,
+        );
+      }
+      throw error;
+    }
+
+    const institution = await this.prisma.institution.findUniqueOrThrow({
+      where: { id: institutionId },
+      select: { name: true },
+    });
+
+    try {
+      await this.authService.sendInvitation(
+        { id: createdId, email: normalizedEmail },
+        inviterName,
+        institution.name,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Admin ${createdId} created but invitation failed to send`,
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
+
+    this.logger.log(
+      `Admin ${createdId} added to institution ${institutionId}`,
+    );
+    return this.findOne(institutionId);
+  }
+
+  /**
+   * Fix a typo'd admin email from institution set-up (Super Admin only) —
+   * the one recovery path when the founding admin's invite never arrived
+   * and they have no way to log in and fix it themselves. Resets the
+   * account to unconfirmed and sends a fresh invitation to the corrected
+   * address.
+   */
+  async updateAdminEmail(
+    institutionId: string,
+    adminId: string,
+    email: string,
+    inviterName: string,
+  ): Promise<InstitutionDetailResponse> {
+    await this.ensureExists(institutionId);
+
+    const admin = await this.prisma.user.findFirst({
+      where: { id: adminId, institutionId, role: 'INSTITUTION_ADMIN' },
+    });
+
+    if (!admin) {
+      throw new NotFoundException(`Admin with ID ${adminId} not found`);
+    }
+
+    const normalizedEmail = email.toLowerCase();
+
+    try {
+      await this.prisma.user.update({
+        where: { id: adminId },
+        data: { email: normalizedEmail, isConfirmed: false },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002' &&
+        (error.meta?.target as string[] | undefined)?.includes('email')
+      ) {
+        this.logger.warn(
+          `Admin email update rejected: ${normalizedEmail} already in use`,
+        );
+        throw new ConflictException(
+          `A user with email ${normalizedEmail} already exists`,
+        );
+      }
+      throw error;
+    }
+
+    const institution = await this.prisma.institution.findUniqueOrThrow({
+      where: { id: institutionId },
+      select: { name: true },
+    });
+
+    try {
+      await this.authService.sendInvitation(
+        { id: adminId, email: normalizedEmail },
+        inviterName,
+        institution.name,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Admin ${adminId} email updated but invitation failed to send`,
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
+
+    this.logger.log(
+      `Admin ${adminId} email corrected for institution ${institutionId}`,
+    );
+    return this.findOne(institutionId);
   }
 
   /**

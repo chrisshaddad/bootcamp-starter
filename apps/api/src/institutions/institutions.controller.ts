@@ -14,9 +14,13 @@ import {
   institutionCreateRequestSchema,
   institutionListQuerySchema,
   institutionUpdateRequestSchema,
+  institutionAdminEmailUpdateRequestSchema,
+  institutionAdminCreateRequestSchema,
   type InstitutionCreateRequest,
   type InstitutionListQuery,
   type InstitutionUpdateRequest,
+  type InstitutionAdminEmailUpdateRequest,
+  type InstitutionAdminCreateRequest,
   type InstitutionListResponse,
   type InstitutionDetailResponse,
   type InstitutionActionResponse,
@@ -110,6 +114,47 @@ export class InstitutionsController {
     const institution = await this.institutionsService.reactivate(id);
     return {
       message: 'Institution reactivated successfully',
+      institution,
+    };
+  }
+
+  @Post(':id/admins')
+  @Roles('SUPER_ADMIN')
+  async addAdmin(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(institutionAdminCreateRequestSchema))
+    body: InstitutionAdminCreateRequest,
+    @CurrentUser() user: User,
+  ): Promise<InstitutionActionResponse> {
+    const institution = await this.institutionsService.addAdmin(
+      id,
+      body,
+      user.id,
+      user.fullName,
+    );
+    return {
+      message: 'Admin added and an invitation was sent',
+      institution,
+    };
+  }
+
+  @Patch(':id/admins/:adminId/email')
+  @Roles('SUPER_ADMIN')
+  async updateAdminEmail(
+    @Param('id') id: string,
+    @Param('adminId') adminId: string,
+    @Body(new ZodValidationPipe(institutionAdminEmailUpdateRequestSchema))
+    body: InstitutionAdminEmailUpdateRequest,
+    @CurrentUser() user: User,
+  ): Promise<InstitutionActionResponse> {
+    const institution = await this.institutionsService.updateAdminEmail(
+      id,
+      adminId,
+      body.email,
+      user.fullName,
+    );
+    return {
+      message: 'Admin email updated and a new invitation was sent',
       institution,
     };
   }

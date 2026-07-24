@@ -9,6 +9,7 @@ import {
   type InstitutionDetailResponse,
   type InstitutionActionResponse,
   type InstitutionCreateRequest,
+  type InstitutionAdminCreateRequest,
   type InstitutionStatus,
 } from '@repo/contracts';
 
@@ -78,6 +79,13 @@ interface UseInstitutionReturn {
   reject: () => Promise<InstitutionActionResponse>;
   suspend: () => Promise<InstitutionActionResponse>;
   reactivate: () => Promise<InstitutionActionResponse>;
+  updateAdminEmail: (
+    adminId: string,
+    email: string,
+  ) => Promise<InstitutionActionResponse>;
+  addAdmin: (
+    data: InstitutionAdminCreateRequest,
+  ) => Promise<InstitutionActionResponse>;
   mutate: () => void;
 }
 
@@ -134,6 +142,30 @@ export function useInstitution(
     return result;
   }, [id, invalidateAll]);
 
+  const updateAdminEmail = useCallback(
+    async (adminId: string, email: string) => {
+      const result = await apiPatch<InstitutionActionResponse>(
+        `/institutions/${id}/admins/${adminId}/email`,
+        { email },
+      );
+      invalidateAll();
+      return result;
+    },
+    [id, invalidateAll],
+  );
+
+  const addAdmin = useCallback(
+    async (data: InstitutionAdminCreateRequest) => {
+      const result = await apiPost<InstitutionActionResponse>(
+        `/institutions/${id}/admins`,
+        data,
+      );
+      invalidateAll();
+      return result;
+    },
+    [id, invalidateAll],
+  );
+
   return {
     institution: data,
     isLoading,
@@ -142,6 +174,8 @@ export function useInstitution(
     reject,
     suspend,
     reactivate,
+    updateAdminEmail,
+    addAdmin,
     mutate: swrMutate,
   };
 }

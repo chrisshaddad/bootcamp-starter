@@ -24,6 +24,12 @@ import {
 import { ApiError } from '@/lib/api';
 import { ForbiddenPage } from '@/components/forbidden-page';
 import { ActivationStatusBadge } from '@/components/activation-status-badge';
+import { StatusBadge } from '@/components/status-badge';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import {
   Table,
   TableBody,
@@ -275,8 +281,37 @@ function EditUserDialog({
   );
 }
 
-function UserRowActions({ user }: { user: UserListItem }) {
+function UserRowActions({
+  user,
+  isSelf,
+}: {
+  user: UserListItem;
+  isSelf: boolean;
+}) {
   const [editOpen, setEditOpen] = useState(false);
+
+  if (isSelf) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="inline-block" tabIndex={0}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              disabled
+              aria-label="Edit (manage your own account from Profile)"
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>
+          Manage your own account from Profile
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
 
   return (
     <>
@@ -402,59 +437,82 @@ export default function UsersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.map((u) => (
-                  <TableRow key={u.id}>
-                    <TableCell>
-                      <div className="font-medium text-foreground">
-                        {u.fullName}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {u.email}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {ROLE_LABELS[u.role] || u.role}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {u.specialty || (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <ActivationStatusBadge
-                        isActive={u.isActive}
-                        name={u.fullName}
-                        entityLabel={
-                          u.role === 'PROFESSIONAL'
-                            ? 'professional'
-                            : u.role === 'INSTITUTION_ADMIN'
-                              ? 'institution admin'
-                              : 'staff member'
-                        }
-                        onConfirm={async () => {
-                          try {
-                            await setUserStatus(u.id, !u.isActive);
-                            toast.success(
-                              u.isActive
-                                ? 'User deactivated'
-                                : 'User reactivated',
-                            );
-                          } catch (error) {
-                            toast.error(
-                              error instanceof ApiError
-                                ? error.message
-                                : 'Failed to update status',
-                            );
-                            throw error;
-                          }
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <UserRowActions user={u} />
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {users.map((u) => {
+                  const isSelf = u.id === user?.id;
+                  return (
+                    <TableRow key={u.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-2 font-medium text-foreground">
+                          {u.fullName}
+                          {isSelf && (
+                            <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground">
+                              You
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {u.email}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {ROLE_LABELS[u.role] || u.role}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {u.specialty || (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {isSelf ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-block">
+                                <StatusBadge
+                                  status={u.isActive ? 'ACTIVE' : 'INACTIVE'}
+                                />
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              Manage your own account from Profile
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          <ActivationStatusBadge
+                            isActive={u.isActive}
+                            name={u.fullName}
+                            entityLabel={
+                              u.role === 'PROFESSIONAL'
+                                ? 'professional'
+                                : u.role === 'INSTITUTION_ADMIN'
+                                  ? 'institution admin'
+                                  : 'staff member'
+                            }
+                            onConfirm={async () => {
+                              try {
+                                await setUserStatus(u.id, !u.isActive);
+                                toast.success(
+                                  u.isActive
+                                    ? 'User deactivated'
+                                    : 'User reactivated',
+                                );
+                              } catch (error) {
+                                toast.error(
+                                  error instanceof ApiError
+                                    ? error.message
+                                    : 'Failed to update status',
+                                );
+                                throw error;
+                              }
+                            }}
+                          />
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <UserRowActions user={u} isSelf={isSelf} />
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}
