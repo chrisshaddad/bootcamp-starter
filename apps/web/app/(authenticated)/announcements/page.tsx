@@ -12,12 +12,12 @@ import {
   type AnnouncementCreateRequest,
   type AnnouncementScope,
   type AnnouncementUpdateRequest,
+  type Group,
 } from '@repo/contracts';
 import { AnnouncementList } from '@/components/announcement-list';
 import { RichTextEditor } from '@/components/rich-text-editor';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -94,6 +94,179 @@ function hasBodyContent(bodyHtml: string | undefined) {
       .replace(/<[^>]*>/g, '')
       .replace(/&nbsp;/g, ' ')
       .trim().length > 0
+  );
+}
+
+interface GroupMultiSelectProps {
+  groups: Group[] | undefined;
+  selectedIds: string[];
+  isLoading: boolean;
+  onChange: (groupIds: string[]) => void;
+  idPrefix: string;
+}
+
+function GroupMultiSelect({
+  groups,
+  selectedIds,
+  isLoading,
+  onChange,
+  idPrefix,
+}: GroupMultiSelectProps) {
+  const [search, setSearch] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
+  const comboboxRef = useRef<HTMLDivElement>(null);
+  const filteredGroups = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) {
+      return groups;
+    }
+    return groups?.filter((group) => group.name.toLowerCase().includes(query));
+  }, [groups, search]);
+  const selectedGroups = useMemo(
+    () => groups?.filter((group) => selectedIds.includes(group.id)) ?? [],
+    [groups, selectedIds],
+  );
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (comboboxRef.current?.contains(event.target as Node)) {
+        return;
+      }
+      setIsOpen(false);
+      setSearch('');
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsOpen(false);
+        setSearch('');
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen]);
+
+  const selectionLabel =
+    selectedGroups.length === 1
+      ? selectedGroups[0]?.name
+      : selectedGroups.length > 1
+        ? `${selectedGroups.length} groups selected`
+        : selectedIds.length > 0
+          ? `${selectedIds.length} groups selected`
+          : 'Select groups';
+
+  return (
+    <div ref={comboboxRef} className="relative">
+      <Button
+        type="button"
+        variant="outline"
+        role="combobox"
+        aria-expanded={isOpen}
+        aria-controls={`${idPrefix}-options`}
+        className="h-9 w-full justify-between border-gray-300 bg-transparent px-3 text-left font-normal shadow-xs hover:bg-transparent"
+        onClick={() => {
+          setIsOpen((open) => !open);
+          if (isOpen) {
+            setSearch('');
+          }
+        }}
+      >
+        <span
+          className={
+            selectedIds.length > 0
+              ? 'truncate text-gray-900'
+              : 'truncate text-gray-500'
+          }
+        >
+          {isLoading ? 'Loading groups...' : selectionLabel}
+        </span>
+        <ChevronDown className="h-4 w-4 opacity-50" />
+      </Button>
+
+      {isOpen && (
+        <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-md border border-gray-200 bg-white shadow-md">
+          <div className="border-b border-gray-200 p-2">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search groups"
+                className="h-9 rounded-md py-2 pl-9 pr-3"
+              />
+            </div>
+          </div>
+          <div
+            id={`${idPrefix}-options`}
+            role="listbox"
+            aria-multiselectable="true"
+            className="max-h-64 overflow-y-auto p-1"
+          >
+            {isLoading && (
+              <div className="px-2 py-1.5 text-sm text-gray-500">
+                Loading groups...
+              </div>
+            )}
+            {filteredGroups?.map((group) => {
+              const isSelected = selectedIds.includes(group.id);
+              return (
+                <button
+                  key={group.id}
+                  type="button"
+                  role="option"
+                  aria-selected={isSelected}
+                  className={
+                    isSelected
+                      ? 'flex w-full items-center justify-between gap-2 rounded-sm bg-primary-100 px-2 py-1.5 text-left text-sm text-gray-900 outline-none'
+                      : 'flex w-full items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-left text-sm text-gray-900 outline-none hover:bg-gray-100 focus:bg-gray-100'
+                  }
+                  onClick={() =>
+                    onChange(
+                      isSelected
+                        ? selectedIds.filter((id) => id !== group.id)
+                        : [...selectedIds, group.id],
+                    )
+                  }
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate">{group.name}</span>
+                    <span className="block text-xs text-gray-500">
+                      {group.memberCount}{' '}
+                      {group.memberCount === 1 ? 'member' : 'members'}
+                    </span>
+                  </span>
+                  {isSelected && (
+                    <Check className="h-4 w-4 shrink-0 text-primary-base" />
+                  )}
+                </button>
+              );
+            })}
+            {!isLoading && groups?.length === 0 && (
+              <div className="px-2 py-1.5 text-sm text-gray-500">
+                Create a group before posting a targeted announcement.
+              </div>
+            )}
+            {!isLoading &&
+              groups?.length !== 0 &&
+              filteredGroups?.length === 0 && (
+                <div className="px-2 py-1.5 text-sm text-gray-500">
+                  No groups found
+                </div>
+              )}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -605,44 +778,18 @@ export default function AnnouncementsPage() {
               {scope === 'GROUP' && (
                 <div className="space-y-1.5">
                   <Label className="text-xs">Target groups</Label>
-                  <div className="grid max-h-52 gap-2 overflow-y-auto rounded-md border border-gray-200 p-3 sm:grid-cols-2">
-                    {groupsLoading && (
-                      <p className="text-sm text-gray-500">Loading groups...</p>
-                    )}
-                    {!groupsLoading && groups?.length === 0 && (
-                      <p className="text-sm text-gray-500">
-                        Create a group before posting a targeted announcement.
-                      </p>
-                    )}
-                    {groups?.map((group) => (
-                      <label
-                        key={group.id}
-                        className="flex cursor-pointer items-start gap-2 rounded-md p-2 hover:bg-gray-50"
-                      >
-                        <Checkbox
-                          checked={groupIds.includes(group.id)}
-                          onCheckedChange={(checked) =>
-                            setValue(
-                              'groupIds',
-                              checked
-                                ? [...new Set([...groupIds, group.id])]
-                                : groupIds.filter((id) => id !== group.id),
-                              { shouldDirty: true, shouldValidate: true },
-                            )
-                          }
-                        />
-                        <span className="min-w-0 text-sm">
-                          <span className="block truncate font-medium text-gray-900">
-                            {group.name}
-                          </span>
-                          <span className="text-xs text-gray-500">
-                            {group.memberCount}{' '}
-                            {group.memberCount === 1 ? 'member' : 'members'}
-                          </span>
-                        </span>
-                      </label>
-                    ))}
-                  </div>
+                  <GroupMultiSelect
+                    groups={groups}
+                    selectedIds={groupIds}
+                    isLoading={groupsLoading}
+                    onChange={(nextGroupIds) =>
+                      setValue('groupIds', nextGroupIds, {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      })
+                    }
+                    idPrefix="announcement-groups"
+                  />
                   {errors.groupIds && (
                     <p className="text-sm text-error">
                       {errors.groupIds.message}
@@ -736,33 +883,18 @@ export default function AnnouncementsPage() {
             {editingAnnouncement?.scope === 'GROUP' && (
               <div className="space-y-2">
                 <Label>Target groups</Label>
-                <div className="grid max-h-48 gap-2 overflow-y-auto rounded-md border border-gray-200 p-3 sm:grid-cols-2">
-                  {groupsLoading && (
-                    <p className="text-sm text-gray-500">Loading groups...</p>
-                  )}
-                  {groups?.map((group) => (
-                    <label
-                      key={group.id}
-                      className="flex cursor-pointer items-center gap-2 rounded-md p-2 hover:bg-gray-50"
-                    >
-                      <Checkbox
-                        checked={editGroupIds.includes(group.id)}
-                        onCheckedChange={(checked) =>
-                          setEditValue(
-                            'groupIds',
-                            checked
-                              ? [...new Set([...editGroupIds, group.id])]
-                              : editGroupIds.filter((id) => id !== group.id),
-                            { shouldDirty: true, shouldValidate: true },
-                          )
-                        }
-                      />
-                      <span className="truncate text-sm font-medium text-gray-900">
-                        {group.name}
-                      </span>
-                    </label>
-                  ))}
-                </div>
+                <GroupMultiSelect
+                  groups={groups}
+                  selectedIds={editGroupIds}
+                  isLoading={groupsLoading}
+                  onChange={(nextGroupIds) =>
+                    setEditValue('groupIds', nextGroupIds, {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    })
+                  }
+                  idPrefix="edit-announcement-groups"
+                />
                 {editErrors.groupIds && (
                   <p className="text-sm text-error">
                     {editErrors.groupIds.message}
