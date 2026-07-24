@@ -7,4 +7,5 @@ export * from './library-member-update.request';
 export * from './library-member-with-organization.response';
 export * from './library-member-with-organization-list.response';
 export * from './library-member-action.response';
+export * from './library-member-claim-invite.request';
 export * from './portal-membership-request.request';
