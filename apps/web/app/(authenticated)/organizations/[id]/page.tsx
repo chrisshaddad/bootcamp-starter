@@ -7,9 +7,11 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ForbiddenPage } from '@/components/forbidden-page';
 import { OrganizationFormDialog } from '@/components/organization-form-dialog';
+import { ORGANIZATION_STATUS_TONE } from '@/lib/labels';
 import {
   Dialog,
   DialogContent,
@@ -41,21 +43,14 @@ const STATUS_LABELS: Record<string, string> = {
   INACTIVE: 'Inactive',
 };
 
-const STATUS_COLORS: Record<string, string> = {
-  PENDING: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  ACTIVE: 'bg-green-100 text-green-800 border-green-200',
-  REJECTED: 'bg-red-100 text-red-800 border-red-200',
-  SUSPENDED: 'bg-orange-100 text-orange-800 border-orange-200',
-  INACTIVE: 'bg-gray-100 text-gray-800 border-gray-200',
-};
-
 function StatusBadge({ status }: { status: string }) {
   return (
-    <span
-      className={`inline-flex items-center rounded-full border px-3 py-1 text-sm font-medium ${STATUS_COLORS[status] || 'bg-gray-100 text-gray-800'}`}
+    <Badge
+      tone={ORGANIZATION_STATUS_TONE[status] ?? 'neutral'}
+      className="px-3 py-1 text-sm"
     >
       {STATUS_LABELS[status] || status}
-    </span>
+    </Badge>
   );
 }
 
@@ -189,7 +184,7 @@ export default function OrganizationDetailPage() {
   if (error) {
     return (
       <div className="py-10 text-center">
-        <div className="text-red-500 mb-4">Failed to load organization</div>
+        <div className="text-destructive mb-4">Failed to load organization</div>
         <Button variant="outline" onClick={() => router.back()}>
           Go Back
         </Button>
@@ -255,14 +250,14 @@ export default function OrganizationDetailPage() {
             <>
               <Button
                 variant="outline"
-                className="gap-2 text-red-600 border-red-200 hover:bg-red-50"
+                className="gap-2 text-destructive border-destructive/30 hover:bg-destructive/10"
                 onClick={() => setShowRejectDialog(true)}
               >
                 <XCircle className="h-4 w-4" />
                 Reject
               </Button>
               <Button
-                className="gap-2 bg-green-600 hover:bg-green-700"
+                className="gap-2 bg-success text-success-foreground hover:bg-success/90"
                 onClick={() => setShowApproveDialog(true)}
               >
                 <CheckCircle className="h-4 w-4" />
@@ -274,7 +269,7 @@ export default function OrganizationDetailPage() {
           {org.status === 'ACTIVE' && (
             <Button
               variant="outline"
-              className="gap-2 text-orange-600 border-orange-200 hover:bg-orange-50"
+              className="gap-2 text-warning-strong border-warning/30 hover:bg-warning/10"
               onClick={() => setShowSuspendDialog(true)}
             >
               <PauseCircle className="h-4 w-4" />
@@ -284,7 +279,7 @@ export default function OrganizationDetailPage() {
 
           {org.status === 'SUSPENDED' && (
             <Button
-              className="gap-2 bg-green-600 hover:bg-green-700"
+              className="gap-2 bg-success text-success-foreground hover:bg-success/90"
               onClick={() => setShowReactivateDialog(true)}
             >
               <PlayCircle className="h-4 w-4" />
@@ -320,7 +315,7 @@ export default function OrganizationDetailPage() {
                     href={org.website}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline"
+                    className="text-primary hover:underline"
                   >
                     {org.website}
                   </a>
@@ -383,8 +378,8 @@ export default function OrganizationDetailPage() {
 
               {/* Approved By (if applicable) */}
               {org.approvedBy ? (
-                <div className="p-4 bg-green-50 rounded-lg">
-                  <div className="text-xs text-green-600 uppercase tracking-wide mb-2">
+                <div className="p-4 bg-success/10 rounded-lg">
+                  <div className="text-xs text-success-strong uppercase tracking-wide mb-2">
                     Approved By
                   </div>
                   <div className="font-medium text-gray-900">
@@ -396,12 +391,12 @@ export default function OrganizationDetailPage() {
                   </div>
                 </div>
               ) : isPending ? (
-                <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                  <div className="flex items-center gap-2 text-yellow-700">
+                <div className="p-4 bg-warning/10 rounded-lg border border-warning/30">
+                  <div className="flex items-center gap-2 text-warning-strong">
                     <Clock className="h-5 w-5" />
                     <span className="font-medium">Awaiting Approval</span>
                   </div>
-                  <p className="mt-1 text-sm text-yellow-600">
+                  <p className="mt-1 text-sm text-warning-strong">
                     This organization is waiting for a super admin to review and
                     approve the registration.
                   </p>
@@ -432,7 +427,7 @@ export default function OrganizationDetailPage() {
               Cancel
             </Button>
             <Button
-              className="bg-green-600 hover:bg-green-700"
+              className="bg-success text-success-foreground hover:bg-success/90"
               onClick={handleApprove}
               disabled={isApproving}
             >
@@ -523,7 +518,7 @@ export default function OrganizationDetailPage() {
               Cancel
             </Button>
             <Button
-              className="bg-green-600 hover:bg-green-700"
+              className="bg-success text-success-foreground hover:bg-success/90"
               onClick={handleReactivate}
               disabled={isReactivating}
             >

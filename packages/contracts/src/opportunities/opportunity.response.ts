@@ -35,6 +35,11 @@ export const opportunityResponseSchema = z.object({
   hiringManager: opportunityHiringManagerSchema.nullable(),
   requiredSkills: z.array(opportunitySkillSchema),
   applicationCount: z.number(),
+  // Whether the requesting user has already applied - lets the UI hide/
+  // disable the Apply action instead of relying on the create endpoint's
+  // 409 to surface the duplicate after the fact.
+  hasApplied: z.boolean(),
+  myApplicationId: z.uuid().nullable(),
   createdAt: dateSchema,
   updatedAt: dateSchema,
 });

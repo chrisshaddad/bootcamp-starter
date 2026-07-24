@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { LucideIcon } from 'lucide-react';
@@ -14,6 +15,7 @@ import {
   Settings,
   LogOut,
   Building2,
+  Loader2,
 } from 'lucide-react';
 import { useAuth, useUser } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
@@ -154,6 +156,16 @@ export function AppSidebar() {
   const pathname = usePathname();
   const { logout } = useAuth();
   const { user } = useUser({ redirectOnUnauthenticated: false });
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await logout();
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
 
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   const isManager = Boolean(user?.isManager) && !isSuperAdmin;
@@ -239,11 +251,16 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
-              onClick={() => logout()}
-              className="h-11 gap-3 rounded-lg px-3 text-sm font-medium text-gray-600 transition-colors hover:bg-red-50 hover:text-red-600"
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className="h-11 gap-3 rounded-lg px-3 text-sm font-medium text-gray-600 transition-colors hover:bg-destructive/10 hover:text-destructive"
             >
-              <LogOut className="h-5 w-5 text-gray-500" />
-              <span>Logout</span>
+              {isLoggingOut ? (
+                <Loader2 className="h-5 w-5 animate-spin text-gray-500" />
+              ) : (
+                <LogOut className="h-5 w-5 text-gray-500" />
+              )}
+              <span>{isLoggingOut ? 'Logging out...' : 'Logout'}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

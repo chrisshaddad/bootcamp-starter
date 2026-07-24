@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Search, Settings, LogOut, ChevronDown } from 'lucide-react';
+import { Search, Settings, LogOut, ChevronDown, Loader2 } from 'lucide-react';
 import { useAuth, useUser } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +20,16 @@ export function TopNavbar() {
   const { user } = useUser({ redirectOnUnauthenticated: false });
   const { logout } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await logout();
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
 
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
 
@@ -90,11 +100,16 @@ export function TopNavbar() {
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              onClick={() => logout()}
-              className="flex items-center gap-2 text-red-600 focus:bg-red-50 focus:text-red-600"
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className="flex items-center gap-2 text-destructive focus:bg-destructive/10 focus:text-destructive"
             >
-              <LogOut className="h-4 w-4" />
-              <span>Logout</span>
+              {isLoggingOut ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <LogOut className="h-4 w-4" />
+              )}
+              <span>{isLoggingOut ? 'Logging out...' : 'Logout'}</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

@@ -2,16 +2,40 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Briefcase, Calendar, ListChecks, Search, Users } from 'lucide-react';
-import { useOpportunities } from '@/hooks/use-opportunities';
+import {
+  ArrowUpRight,
+  BadgeCheck,
+  Briefcase,
+  Building2,
+  Calendar,
+  ListChecks,
+  Search,
+  Users,
+} from 'lucide-react';
+import { useOpportunitiesInfinite } from '@/hooks/use-opportunities';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import type { OpportunityStatus } from '@repo/contracts';
+import {
+  OPPORTUNITY_STATUS_TONE,
+  OPPORTUNITY_TYPE_TONE,
+  toLabel,
+} from '@/lib/labels';
+import type { OpportunityStatus, OpportunityType } from '@repo/contracts';
 
 type StatusFilter = 'ALL' | OpportunityStatus;
+
+// Literal class strings (not built dynamically) so Tailwind's scanner picks
+// them up - mirrors OPPORTUNITY_TYPE_TONE's category coloring as a solid
+// header strip per card.
+const TYPE_ACCENT: Record<OpportunityType, string> = {
+  ROLE: 'bg-violet',
+  PROJECT: 'bg-warning',
+  ROTATION: 'bg-blush',
+};
 
 const STATUS_FILTERS: { label: string; value: StatusFilter }[] = [
   { label: 'Open', value: 'OPEN' },
@@ -19,20 +43,6 @@ const STATUS_FILTERS: { label: string; value: StatusFilter }[] = [
   { label: 'Filled', value: 'FILLED' },
   { label: 'All Status', value: 'ALL' },
 ];
-
-const STATUS_BADGE_COLORS: Record<OpportunityStatus, string> = {
-  OPEN: 'bg-green-100 text-green-700',
-  CLOSED: 'bg-gray-100 text-gray-600',
-  FILLED: 'bg-blue-100 text-blue-700',
-};
-
-function toLabel(value: string) {
-  return value
-    .toLowerCase()
-    .split('_')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-}
 
 function FilterButton({
   active,
@@ -46,14 +56,11 @@ function FilterButton({
   return (
     <Button
       type="button"
+      size="sm"
       variant={active ? 'default' : 'outline'}
+      aria-pressed={active}
       onClick={onClick}
-      className={cn(
-        'h-9 rounded-lg px-3.5 text-sm font-medium',
-        active
-          ? 'bg-primary-base text-white hover:bg-primary-base/90'
-          : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50',
-      )}
+      className={cn('h-9 rounded-lg px-3.5 text-sm font-medium')}
     >
       {children}
     </Button>
@@ -62,9 +69,9 @@ function FilterButton({
 
 function LoadingSkeleton() {
   return (
-    <div className="space-y-4">
-      {[...Array(3)].map((_, i) => (
-        <Skeleton key={i} className="h-40 w-full rounded-xl" />
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      {[...Array(6)].map((_, i) => (
+        <Skeleton key={i} className="h-52 w-full rounded-xl" />
       ))}
     </div>
   );
@@ -75,9 +82,10 @@ export default function OpportunitiesPage() {
   const [typeFilter, setTypeFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('OPEN');
 
-  const { opportunities, isLoading, error } = useOpportunities({
-    status: statusFilter === 'ALL' ? undefined : statusFilter,
-  });
+  const { opportunities, isLoading, hasMore, isLoadingMore, loadMore, error } =
+    useOpportunitiesInfinite({
+      status: statusFilter === 'ALL' ? undefined : statusFilter,
+    });
 
   const types = useMemo(() => {
     const unique = new Set((opportunities ?? []).map((o) => o.type));
@@ -99,135 +107,187 @@ export default function OpportunitiesPage() {
   }, [opportunities, typeFilter, search]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Opportunities</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <h1 className="text-2xl font-bold text-foreground">Opportunities</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Discover internal roles, projects, and rotations
         </p>
       </div>
 
       {/* Search + filters */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-56">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <Input
-            type="search"
-            placeholder="Search opportunities..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="h-10 rounded-lg border-gray-200 bg-white pl-10 text-sm"
-          />
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative min-w-56 flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Search opportunities..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              aria-label="Search opportunities"
+              className="h-10 rounded-lg pl-10 text-sm"
+            />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {STATUS_FILTERS.map((filter) => (
+              <FilterButton
+                key={filter.value}
+                active={statusFilter === filter.value}
+                onClick={() => setStatusFilter(filter.value)}
+              >
+                {filter.label}
+              </FilterButton>
+            ))}
+          </div>
         </div>
 
-        <FilterButton
-          active={typeFilter === 'ALL'}
-          onClick={() => setTypeFilter('ALL')}
-        >
-          All Types
-        </FilterButton>
-        {types.map((type) => (
-          <FilterButton
-            key={type}
-            active={typeFilter === type}
-            onClick={() => setTypeFilter(type)}
-          >
-            {toLabel(type)}
-          </FilterButton>
-        ))}
-
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          {STATUS_FILTERS.map((filter) => (
+        {types.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
             <FilterButton
-              key={filter.value}
-              active={statusFilter === filter.value}
-              onClick={() => setStatusFilter(filter.value)}
+              active={typeFilter === 'ALL'}
+              onClick={() => setTypeFilter('ALL')}
             >
-              {filter.label}
+              All Types
             </FilterButton>
-          ))}
-        </div>
+            {types.map((type) => (
+              <FilterButton
+                key={type}
+                active={typeFilter === type}
+                onClick={() => setTypeFilter(type)}
+              >
+                {toLabel(type)}
+              </FilterButton>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* List */}
+      {/* Results */}
       {isLoading ? (
         <LoadingSkeleton />
       ) : error ? (
-        <div className="py-10 text-center text-red-500">
-          Failed to load opportunities
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card py-20 text-center">
+          <Briefcase className="h-10 w-10 text-muted-foreground/50" />
+          <p className="mt-3 text-sm font-medium text-foreground">
+            Failed to load opportunities
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Please refresh the page or try again later.
+          </p>
         </div>
       ) : !filtered.length ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 bg-white py-20 text-center">
-          <Briefcase className="h-10 w-10 text-gray-300" />
-          <p className="mt-3 text-sm text-gray-500">
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card py-20 text-center">
+          <Briefcase className="h-10 w-10 text-muted-foreground/50" />
+          <p className="mt-3 text-sm font-medium text-foreground">
             No opportunities match your filters
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Try adjusting your search or status filters.
           </p>
         </div>
       ) : (
         <div className="space-y-4">
-          {filtered.map((opportunity) => (
-            <Link
-              key={opportunity.id}
-              href={`/opportunities/${opportunity.id}`}
-              className="block"
-            >
-              <Card className="gap-3 p-5 border-gray-200 shadow-sm transition-shadow hover:shadow-md">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="text-base font-semibold text-gray-900">
+          <p className="text-sm text-muted-foreground">
+            {filtered.length}{' '}
+            {filtered.length === 1 ? 'opportunity' : 'opportunities'}
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {filtered.map((opportunity) => (
+              <Link
+                key={opportunity.id}
+                href={`/opportunities/${opportunity.id}`}
+                className="group rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <Card className="h-full gap-0 overflow-hidden p-0 transition-shadow group-hover:shadow-md">
+                  {/* Category accent strip */}
+                  <div
+                    className={cn(
+                      'h-1.5 w-full',
+                      TYPE_ACCENT[opportunity.type],
+                    )}
+                  />
+
+                  <div className="flex h-full flex-col p-5">
+                    {/* Badges */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge tone={OPPORTUNITY_TYPE_TONE[opportunity.type]}>
+                        {toLabel(opportunity.type)}
+                      </Badge>
+                      <Badge tone={OPPORTUNITY_STATUS_TONE[opportunity.status]}>
+                        {toLabel(opportunity.status)}
+                      </Badge>
+                      {opportunity.hasApplied && (
+                        <Badge tone="success" className="gap-1">
+                          <BadgeCheck className="h-3 w-3" />
+                          Applied
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* Title */}
+                    <h2 className="mt-3 line-clamp-2 text-base font-semibold text-foreground">
                       {opportunity.title}
                     </h2>
-                    <span className="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-700">
-                      {toLabel(opportunity.type)}
-                    </span>
-                    <span
-                      className={cn(
-                        'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
-                        STATUS_BADGE_COLORS[opportunity.status],
+
+                    {/* Department / level */}
+                    {(opportunity.department || opportunity.requiredLevel) && (
+                      <p className="mt-1.5 flex items-center gap-1.5 text-sm text-muted-foreground">
+                        <Building2 className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate">
+                          {opportunity.department?.name}
+                          {opportunity.department && opportunity.requiredLevel
+                            ? ' · '
+                            : ''}
+                          {opportunity.requiredLevel
+                            ? `L${opportunity.requiredLevel}+`
+                            : ''}
+                        </span>
+                      </p>
+                    )}
+
+                    {/* Description */}
+                    <p className="mt-3 line-clamp-2 min-h-10 text-sm text-muted-foreground">
+                      {opportunity.description || 'No description provided.'}
+                    </p>
+
+                    {/* Meta footer — pinned to bottom for equal alignment */}
+                    <div className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-4 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1.5">
+                        <Users className="h-3.5 w-3.5" />
+                        {opportunity.applicationCount} applied
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <ListChecks className="h-3.5 w-3.5" />
+                        {opportunity.requiredSkills.length} skills
+                      </span>
+                      {opportunity.deadline && (
+                        <span className="flex items-center gap-1.5">
+                          <Calendar className="h-3.5 w-3.5" />
+                          {new Date(opportunity.deadline).toLocaleDateString()}
+                        </span>
                       )}
-                    >
-                      {toLabel(opportunity.status)}
-                    </span>
+                      <ArrowUpRight className="ml-auto h-4 w-4 text-muted-foreground/60 transition-colors group-hover:text-foreground" />
+                    </div>
                   </div>
-                </div>
+                </Card>
+              </Link>
+            ))}
+          </div>
 
-                {(opportunity.department || opportunity.requiredLevel) && (
-                  <p className="text-sm text-gray-500">
-                    {opportunity.department?.name}
-                    {opportunity.department && opportunity.requiredLevel
-                      ? ' · '
-                      : ''}
-                    {opportunity.requiredLevel
-                      ? `L${opportunity.requiredLevel}+`
-                      : ''}
-                  </p>
-                )}
-
-                {opportunity.description && (
-                  <p className="line-clamp-2 text-sm text-gray-600">
-                    {opportunity.description}
-                  </p>
-                )}
-
-                <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500">
-                  <span className="flex items-center gap-1.5">
-                    <Users className="h-3.5 w-3.5" />
-                    {opportunity.applicationCount} applied
-                  </span>
-                  {opportunity.deadline && (
-                    <span className="flex items-center gap-1.5">
-                      <Calendar className="h-3.5 w-3.5" />
-                      Due {new Date(opportunity.deadline).toLocaleDateString()}
-                    </span>
-                  )}
-                  <span className="flex items-center gap-1.5">
-                    <ListChecks className="h-3.5 w-3.5" />
-                    {opportunity.requiredSkills.length} required skills
-                  </span>
-                </div>
-              </Card>
-            </Link>
-          ))}
+          {hasMore && (
+            <div className="flex justify-center pt-2">
+              <Button
+                variant="outline"
+                onClick={loadMore}
+                disabled={isLoadingMore}
+                className="h-9 rounded-lg px-4 text-sm font-medium"
+              >
+                {isLoadingMore ? 'Loading...' : 'Load more'}
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>

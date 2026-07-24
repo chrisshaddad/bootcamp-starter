@@ -42,8 +42,10 @@ export default function DashboardLayout({
       <AppSidebar />
       <SidebarInset>
         <TopNavbar />
-        <main className="flex-1 bg-gray-50 p-6">
-          {isOutOfBounds ? null : children}
+        <main className="flex-1 bg-canvas px-4 py-6 sm:px-6 lg:px-8">
+          <div className="mx-auto w-full max-w-6xl">
+            {isOutOfBounds ? null : children}
+          </div>
         </main>
       </SidebarInset>
     </SidebarProvider>

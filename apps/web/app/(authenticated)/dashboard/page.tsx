@@ -1,5 +1,7 @@
 'use client';
 
+import { useMemo } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   ArrowRight,
@@ -15,24 +17,103 @@ import { useApplications } from '@/hooks/use-applications';
 import { useCareerPaths } from '@/hooks/use-career-paths';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { StatusBreakdownBar } from '@/components/charts/status-breakdown-bar';
+import {
+  ApplicationsTrendChart,
+  type TrendPoint,
+} from '@/components/charts/applications-trend-chart';
+import { OpportunityTypeBars } from '@/components/charts/opportunity-type-bars';
 import { cn } from '@/lib/utils';
-import type { ApplicationStatus } from '@repo/contracts';
+import { APPLICATION_STATUS_TONE, toLabel } from '@/lib/labels';
+import type {
+  ApplicationResponse,
+  ApplicationStatus,
+  OpportunityResponse,
+  OpportunityType,
+} from '@repo/contracts';
 
-const STATUS_BADGE_COLORS: Record<ApplicationStatus, string> = {
-  PENDING: 'bg-yellow-100 text-yellow-700',
-  ACCEPTED: 'bg-green-100 text-green-700',
-  REJECTED: 'bg-red-100 text-red-700',
-  WITHDRAWN: 'bg-gray-100 text-gray-600',
-};
+const APPLICATION_STATUS_LIST: ApplicationStatus[] = [
+  'PENDING',
+  'ACCEPTED',
+  'REJECTED',
+  'WITHDRAWN',
+];
 
-function toLabel(value: string) {
-  return value
-    .toLowerCase()
-    .split('_')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
+const OPPORTUNITY_TYPE_LIST: OpportunityType[] = [
+  'ROLE',
+  'PROJECT',
+  'ROTATION',
+];
+
+const TREND_WEEKS = 8;
+
+function buildStatusCounts(
+  applications: ApplicationResponse[] | undefined,
+): Record<ApplicationStatus, number> {
+  const counts = Object.fromEntries(
+    APPLICATION_STATUS_LIST.map((status) => [status, 0]),
+  ) as Record<ApplicationStatus, number>;
+  for (const application of applications ?? []) {
+    counts[application.status] += 1;
+  }
+  return counts;
 }
+
+function buildOpportunityTypeCounts(
+  opportunities: OpportunityResponse[] | undefined,
+): Record<OpportunityType, number> {
+  const counts = Object.fromEntries(
+    OPPORTUNITY_TYPE_LIST.map((type) => [type, 0]),
+  ) as Record<OpportunityType, number>;
+  for (const opportunity of opportunities ?? []) {
+    counts[opportunity.type] += 1;
+  }
+  return counts;
+}
+
+// Buckets applications into calendar weeks (Sun-Sat), oldest first, so the
+// trend chart reads left-to-right as "then -> now".
+function buildWeeklyTrend(
+  applications: ApplicationResponse[] | undefined,
+  weeks: number,
+): TrendPoint[] {
+  const startOfThisWeek = new Date();
+  startOfThisWeek.setHours(0, 0, 0, 0);
+  startOfThisWeek.setDate(startOfThisWeek.getDate() - startOfThisWeek.getDay());
+
+  const points: TrendPoint[] = [];
+  for (let i = weeks - 1; i >= 0; i--) {
+    const weekStart = new Date(startOfThisWeek);
+    weekStart.setDate(weekStart.getDate() - i * 7);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 7);
+
+    const value = (applications ?? []).filter((application) => {
+      const createdAt = new Date(application.createdAt);
+      return createdAt >= weekStart && createdAt < weekEnd;
+    }).length;
+
+    points.push({
+      label: weekStart.toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+      }),
+      value,
+    });
+  }
+  return points;
+}
+
+type StatTone = 'primary' | 'info' | 'success' | 'warning';
+
+const STAT_TONE_CLASSES: Record<StatTone, string> = {
+  primary: 'bg-primary/10 text-primary',
+  info: 'bg-info/12 text-info',
+  success: 'bg-success/15 text-success',
+  warning: 'bg-warning/18 text-warning',
+};
 
 interface StatCardProps {
   title: string;
@@ -40,37 +121,46 @@ interface StatCardProps {
   icon: React.ReactNode;
   href: string;
   loading: boolean;
+  tone: StatTone;
 }
 
-function StatCard({ title, value, icon, href, loading }: StatCardProps) {
-  const router = useRouter();
+function StatCard({ title, value, icon, href, loading, tone }: StatCardProps) {
   return (
-    <Card
-      className="flex items-center gap-4 p-5 border-gray-200 shadow-sm cursor-pointer transition-shadow hover:shadow-md"
-      onClick={() => router.push(href)}
+    <Link
+      href={href}
+      className="rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-base/10 text-primary-base">
-        {icon}
-      </div>
-      <div>
-        {loading ? (
-          <Skeleton className="h-7 w-12" />
-        ) : (
-          <p className="text-2xl font-bold text-gray-900">{value ?? 0}</p>
-        )}
-        <p className="text-xs text-gray-500">{title}</p>
-      </div>
-    </Card>
+      <Card className="h-full flex-row items-center gap-4 p-5 transition-shadow hover:shadow-md">
+        <div
+          className={cn(
+            'flex h-11 w-11 shrink-0 items-center justify-center rounded-lg',
+            STAT_TONE_CLASSES[tone],
+          )}
+        >
+          {icon}
+        </div>
+        <div className="min-w-0">
+          {loading ? (
+            <Skeleton className="h-8 w-12" />
+          ) : (
+            <p className="text-2xl font-bold tabular-nums leading-none text-foreground">
+              {value ?? 0}
+            </p>
+          )}
+          <p className="mt-1.5 text-xs text-muted-foreground">{title}</p>
+        </div>
+      </Card>
+    </Link>
   );
 }
 
 function DashboardSkeleton() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <Skeleton className="h-8 w-48" />
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {[...Array(4)].map((_, i) => (
-          <Skeleton key={i} className="h-24 rounded-xl" />
+          <Skeleton key={i} className="h-[92px] rounded-xl" />
         ))}
       </div>
       <Skeleton className="h-64 rounded-xl" />
@@ -88,6 +178,19 @@ export default function DashboardPage() {
   const { applications, isLoading: appsLoading } = useApplications();
   const { careerPaths, isLoading: pathsLoading } = useCareerPaths();
 
+  const statusCounts = useMemo(
+    () => buildStatusCounts(applications),
+    [applications],
+  );
+  const opportunityTypeCounts = useMemo(
+    () => buildOpportunityTypeCounts(opportunities),
+    [opportunities],
+  );
+  const weeklyTrend = useMemo(
+    () => buildWeeklyTrend(applications, TREND_WEEKS),
+    [applications],
+  );
+
   if (userLoading) {
     return <DashboardSkeleton />;
   }
@@ -95,13 +198,13 @@ export default function DashboardPage() {
   const recentApplications = (applications ?? []).slice(0, 3);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Welcome */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">
+        <h1 className="text-2xl font-bold text-foreground">
           Welcome back, {user?.name || user?.email?.split('@')[0] || 'there'}
         </h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <p className="mt-1 text-sm text-muted-foreground">
           Here&apos;s an overview of your career activity
         </p>
       </div>
@@ -114,6 +217,7 @@ export default function DashboardPage() {
           icon={<Briefcase className="h-5 w-5" />}
           href="/opportunities"
           loading={oppsLoading}
+          tone="primary"
         />
         <StatCard
           title="My Applications"
@@ -121,6 +225,7 @@ export default function DashboardPage() {
           icon={<FileText className="h-5 w-5" />}
           href="/applications"
           loading={appsLoading}
+          tone="info"
         />
         <StatCard
           title="Career Paths"
@@ -128,6 +233,7 @@ export default function DashboardPage() {
           icon={<TrendingUp className="h-5 w-5" />}
           href="/career-paths"
           loading={pathsLoading}
+          tone="success"
         />
         <StatCard
           title="Pending Applications"
@@ -135,82 +241,124 @@ export default function DashboardPage() {
           icon={<Layers className="h-5 w-5" />}
           href="/applications"
           loading={appsLoading}
+          tone="warning"
         />
       </div>
 
-      {/* Recent Applications */}
-      <div>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-gray-900">
-            Recent Applications
+      {/* Activity charts */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <Card className="gap-4 p-5 lg:col-span-2">
+          <div>
+            <h2 className="text-base font-semibold text-foreground">
+              Applications Over Time
+            </h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Last {TREND_WEEKS} weeks
+            </p>
+          </div>
+          {appsLoading ? (
+            <Skeleton className="h-[220px] w-full rounded-lg" />
+          ) : (
+            <ApplicationsTrendChart data={weeklyTrend} />
+          )}
+        </Card>
+
+        <Card className="gap-4 p-5">
+          <h2 className="text-base font-semibold text-foreground">
+            Applications by Status
           </h2>
-          {(applications?.length ?? 0) > 3 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => router.push('/applications')}
-              className="text-sm text-gray-500 hover:text-gray-700"
-            >
-              View all
-              <ArrowRight className="ml-1 h-4 w-4" />
-            </Button>
+          {appsLoading ? (
+            <Skeleton className="h-24 w-full rounded-lg" />
+          ) : (
+            <StatusBreakdownBar counts={statusCounts} />
+          )}
+        </Card>
+      </div>
+
+      {/* Recent Applications + open opportunities by type */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <Card className="gap-4 p-5">
+          <h2 className="text-base font-semibold text-foreground">
+            Open Opportunities
+          </h2>
+          {oppsLoading ? (
+            <Skeleton className="h-24 w-full rounded-lg" />
+          ) : (
+            <OpportunityTypeBars counts={opportunityTypeCounts} />
+          )}
+        </Card>
+
+        <div className="lg:col-span-2">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-base font-semibold text-foreground">
+              Recent Applications
+            </h2>
+            {(applications?.length ?? 0) > 3 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => router.push('/applications')}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                View all
+                <ArrowRight className="ml-1 h-4 w-4" />
+              </Button>
+            )}
+          </div>
+
+          {appsLoading ? (
+            <div className="space-y-3">
+              {[...Array(3)].map((_, i) => (
+                <Skeleton key={i} className="h-[76px] w-full rounded-xl" />
+              ))}
+            </div>
+          ) : recentApplications.length === 0 ? (
+            <Card className="items-center justify-center gap-0 border-dashed py-10 text-center">
+              <FileText className="h-8 w-8 text-muted-foreground/50" />
+              <p className="mt-3 text-sm font-medium text-foreground">
+                No applications yet
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Apply to an opportunity to start tracking it here.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-4"
+                onClick={() => router.push('/opportunities')}
+              >
+                Browse Opportunities
+              </Button>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {recentApplications.map((app) => (
+                <Link key={app.id} href={`/applications/${app.id}`}>
+                  <Card className="flex-row items-center justify-between gap-4 p-4 transition-shadow hover:shadow-md">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="truncate text-sm font-medium text-foreground">
+                          {app.opportunity.title}
+                        </p>
+                        <Badge tone="violet">
+                          {toLabel(app.opportunity.type)}
+                        </Badge>
+                        <Badge tone={APPLICATION_STATUS_TONE[app.status]}>
+                          {toLabel(app.status)}
+                        </Badge>
+                      </div>
+                      <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <Calendar className="h-3 w-3" />
+                        Applied {new Date(app.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground/50" />
+                  </Card>
+                </Link>
+              ))}
+            </div>
           )}
         </div>
-
-        {appsLoading ? (
-          <div className="space-y-3">
-            {[...Array(3)].map((_, i) => (
-              <Skeleton key={i} className="h-20 w-full rounded-xl" />
-            ))}
-          </div>
-        ) : recentApplications.length === 0 ? (
-          <Card className="flex flex-col items-center justify-center border-dashed border-gray-200 py-12 text-center">
-            <FileText className="h-8 w-8 text-gray-300" />
-            <p className="mt-2 text-sm text-gray-500">No applications yet</p>
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-3"
-              onClick={() => router.push('/opportunities')}
-            >
-              Browse Opportunities
-            </Button>
-          </Card>
-        ) : (
-          <div className="space-y-3">
-            {recentApplications.map((app) => (
-              <Card
-                key={app.id}
-                className="flex items-center justify-between gap-4 p-4 border-gray-200 shadow-sm cursor-pointer transition-shadow hover:shadow-md"
-                onClick={() => router.push(`/applications/${app.id}`)}
-              >
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-medium text-gray-900 truncate">
-                      {app.opportunity.title}
-                    </p>
-                    <span className="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700">
-                      {toLabel(app.opportunity.type)}
-                    </span>
-                    <span
-                      className={cn(
-                        'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
-                        STATUS_BADGE_COLORS[app.status],
-                      )}
-                    >
-                      {toLabel(app.status)}
-                    </span>
-                  </div>
-                  <p className="mt-1 flex items-center gap-1.5 text-xs text-gray-400">
-                    <Calendar className="h-3 w-3" />
-                    Applied {new Date(app.createdAt).toLocaleDateString()}
-                  </p>
-                </div>
-                <ArrowRight className="h-4 w-4 shrink-0 text-gray-300" />
-              </Card>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   );

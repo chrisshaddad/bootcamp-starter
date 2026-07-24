@@ -25,7 +25,7 @@ export function SkillRating({ level, onChange, className }: SkillRatingProps) {
           <span
             className={cn(
               'inline-block h-2.5 w-2.5 shrink-0 rounded-full',
-              filled ? 'bg-primary-base' : 'border border-gray-300 bg-white',
+              filled ? 'bg-primary' : 'border border-border bg-background',
             )}
           />
         );

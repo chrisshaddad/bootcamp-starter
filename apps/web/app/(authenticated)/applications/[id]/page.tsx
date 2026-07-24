@@ -4,13 +4,16 @@ import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
   ArrowLeft,
+  CheckCircle2,
   FileText,
   Loader2,
   MessageSquare,
   TrendingUp,
   ShieldCheck,
+  XCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useUser } from '@/hooks/use-auth';
 import {
   useApplication,
   useApplicationMutations,
@@ -18,6 +21,7 @@ import {
 import { ApiError } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog,
@@ -26,23 +30,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { cn } from '@/lib/utils';
-import type { ApplicationStatus } from '@repo/contracts';
-
-const STATUS_BADGE_COLORS: Record<ApplicationStatus, string> = {
-  PENDING: 'bg-yellow-100 text-yellow-700',
-  ACCEPTED: 'bg-green-100 text-green-700',
-  REJECTED: 'bg-red-100 text-red-700',
-  WITHDRAWN: 'bg-gray-100 text-gray-600',
-};
-
-function toLabel(value: string) {
-  return value
-    .toLowerCase()
-    .split('_')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-}
+import { APPLICATION_STATUS_TONE, toLabel } from '@/lib/labels';
 
 function InfoRow({
   label,
@@ -77,11 +65,17 @@ export default function ApplicationDetailPage() {
   const router = useRouter();
   const id = params.id as string;
 
+  const { user } = useUser();
   const { application, isLoading, error } = useApplication(id);
-  const { withdrawApplication } = useApplicationMutations();
+  const { withdrawApplication, reviewApplication } = useApplicationMutations();
 
   const [withdrawDialogOpen, setWithdrawDialogOpen] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const [reviewDialog, setReviewDialog] = useState<
+    'ACCEPTED' | 'REJECTED' | null
+  >(null);
+  const [reviewerNotes, setReviewerNotes] = useState('');
+  const [isReviewing, setIsReviewing] = useState(false);
 
   const handleWithdraw = async () => {
     setIsWithdrawing(true);
@@ -97,6 +91,29 @@ export default function ApplicationDetailPage() {
       }
     } finally {
       setIsWithdrawing(false);
+    }
+  };
+
+  const handleReview = async () => {
+    if (!reviewDialog) return;
+    setIsReviewing(true);
+    try {
+      await reviewApplication(id, reviewDialog, reviewerNotes.trim());
+      toast.success(
+        reviewDialog === 'ACCEPTED'
+          ? 'Application accepted'
+          : 'Application rejected',
+      );
+      setReviewDialog(null);
+      setReviewerNotes('');
+    } catch (err) {
+      if (err instanceof ApiError) {
+        toast.error(err.message);
+      } else {
+        toast.error('Failed to submit review. Please try again.');
+      }
+    } finally {
+      setIsReviewing(false);
     }
   };
 
@@ -123,7 +140,13 @@ export default function ApplicationDetailPage() {
     );
   }
 
-  const canWithdraw = application.status === 'PENDING';
+  const isOwnApplication = application.user.id === user?.id;
+  const canWithdraw = application.status === 'PENDING' && isOwnApplication;
+  // Non-owners only ever reach this page if they're allowed to see it - the
+  // API scopes that to the applicant's direct manager or HR/org admins (see
+  // ApplicationsService.findOne) - so anyone else viewing someone else's
+  // pending application is authorized to review it.
+  const canReview = application.status === 'PENDING' && !isOwnApplication;
 
   return (
     <div className="space-y-6">
@@ -143,17 +166,10 @@ export default function ApplicationDetailPage() {
             <h1 className="text-2xl font-bold text-gray-900">
               {application.opportunity.title}
             </h1>
-            <span className="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-700">
-              {toLabel(application.opportunity.type)}
-            </span>
-            <span
-              className={cn(
-                'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
-                STATUS_BADGE_COLORS[application.status],
-              )}
-            >
+            <Badge tone="violet">{toLabel(application.opportunity.type)}</Badge>
+            <Badge tone={APPLICATION_STATUS_TONE[application.status]}>
               {toLabel(application.status)}
-            </span>
+            </Badge>
           </div>
         </div>
 
@@ -161,10 +177,30 @@ export default function ApplicationDetailPage() {
           <Button
             variant="outline"
             onClick={() => setWithdrawDialogOpen(true)}
-            className="shrink-0 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+            className="shrink-0 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
           >
             Withdraw Application
           </Button>
+        )}
+
+        {canReview && (
+          <div className="flex shrink-0 gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setReviewDialog('REJECTED')}
+              className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+            >
+              <XCircle className="h-4 w-4" />
+              Reject
+            </Button>
+            <Button
+              onClick={() => setReviewDialog('ACCEPTED')}
+              className="bg-success text-success-foreground hover:bg-success/90"
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              Approve
+            </Button>
+          </div>
         )}
       </div>
 
@@ -263,6 +299,82 @@ export default function ApplicationDetailPage() {
                 </>
               ) : (
                 'Withdraw'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Approve/Reject confirmation dialog */}
+      <Dialog
+        open={!!reviewDialog}
+        onOpenChange={(open) => {
+          if (!open) {
+            setReviewDialog(null);
+            setReviewerNotes('');
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {reviewDialog === 'ACCEPTED'
+                ? 'Approve Application'
+                : 'Reject Application'}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-gray-600">
+            {reviewDialog === 'ACCEPTED' ? 'Approve' : 'Reject'}{' '}
+            <strong>{application.user.name}</strong>&apos;s application for{' '}
+            <strong>{application.opportunity.title}</strong>? This action cannot
+            be undone.
+          </p>
+          <div className="space-y-2">
+            <label
+              htmlFor="reviewerNotes"
+              className="text-sm font-medium text-gray-700"
+            >
+              Notes to applicant (optional)
+            </label>
+            <textarea
+              id="reviewerNotes"
+              value={reviewerNotes}
+              onChange={(e) => setReviewerNotes(e.target.value)}
+              placeholder="Share context or feedback..."
+              rows={4}
+              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm shadow-xs outline-none placeholder:text-gray-500 focus-visible:border-primary-base focus-visible:ring-[3px] focus-visible:ring-primary-base/20"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setReviewDialog(null);
+                setReviewerNotes('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleReview}
+              disabled={isReviewing}
+              variant={reviewDialog === 'REJECTED' ? 'destructive' : 'default'}
+              className={
+                reviewDialog === 'ACCEPTED'
+                  ? 'bg-success text-success-foreground hover:bg-success/90'
+                  : undefined
+              }
+            >
+              {isReviewing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Submitting...
+                </>
+              ) : reviewDialog === 'ACCEPTED' ? (
+                'Approve'
+              ) : (
+                'Reject'
               )}
             </Button>
           </DialogFooter>

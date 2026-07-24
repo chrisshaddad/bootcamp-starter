@@ -43,9 +43,9 @@ const TIMEFRAME_OPTIONS = [
 ];
 
 const TIMEFRAME_COLORS: Record<number, string> = {
-  6: 'bg-green-100 text-green-700',
-  12: 'bg-blue-100 text-blue-700',
-  24: 'bg-purple-100 text-purple-700',
+  6: 'bg-success/15 text-success ring-1 ring-inset ring-success/25',
+  12: 'bg-info/15 text-info ring-1 ring-inset ring-info/25',
+  24: 'bg-violet/15 text-violet ring-1 ring-inset ring-violet/25',
 };
 
 function LoadingSkeleton() {
@@ -142,7 +142,7 @@ export default function CareerPathsPage() {
       {isLoading ? (
         <LoadingSkeleton />
       ) : error ? (
-        <div className="py-10 text-center text-red-500">
+        <div className="py-10 text-center text-destructive">
           Failed to load career paths
         </div>
       ) : !careerPaths?.length ? (
@@ -169,7 +169,7 @@ export default function CareerPathsPage() {
                     className={cn(
                       'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
                       TIMEFRAME_COLORS[path.timeframeMonths] ??
-                        'bg-gray-100 text-gray-600',
+                        'bg-muted text-muted-foreground ring-1 ring-inset ring-border',
                     )}
                   >
                     {path.timeframeMonths} months
@@ -182,7 +182,7 @@ export default function CareerPathsPage() {
                     setSelectedPathId(path.id);
                     setDeleteDialogOpen(true);
                   }}
-                  className="h-8 w-8 p-0 text-gray-400 hover:text-red-500"
+                  className="h-8 w-8 p-0 text-gray-400 hover:text-destructive"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>

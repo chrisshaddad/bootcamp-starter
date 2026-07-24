@@ -311,9 +311,20 @@ export class ApplicationsService {
     let where: Prisma.ApplicationWhereInput = { id };
 
     if (currentUser.role === 'EMPLOYEE') {
+      // Employees can update their own application, and managers can update
+      // (review) applications submitted by their direct reports - mirrors
+      // the read-access scoping in findOne/findAll.
       where = {
         id,
-        userId: currentUser.id,
+        OR: [
+          { userId: currentUser.id },
+          {
+            user: {
+              managerId: currentUser.id,
+              organizationId: currentUser.organizationId as string,
+            },
+          },
+        ],
       };
     } else if (currentUser.role === 'HR' || currentUser.role === 'ORG_ADMIN') {
       where = {
@@ -334,19 +345,32 @@ export class ApplicationsService {
 
     // Validate permissions based on role
     if (currentUser.role === 'EMPLOYEE') {
-      // Employees can only withdraw their own applications
-      if (data.status && data.status !== 'WITHDRAWN') {
-        throw new ForbiddenException(
-          'Employees can only withdraw their applications',
-        );
-      }
-      if (
-        data.reviewerNotes !== undefined ||
-        data.managerApproved !== undefined
-      ) {
-        throw new ForbiddenException(
-          'Employees cannot update reviewer notes or manager approval',
-        );
+      const isOwnApplication = existing.userId === currentUser.id;
+
+      if (isOwnApplication) {
+        // Applicants may only withdraw their own application.
+        if (data.status && data.status !== 'WITHDRAWN') {
+          throw new ForbiddenException(
+            'You can only withdraw your own application',
+          );
+        }
+        if (
+          data.reviewerNotes !== undefined ||
+          data.managerApproved !== undefined
+        ) {
+          throw new ForbiddenException(
+            'You cannot set reviewer notes or manager approval on your own application',
+          );
+        }
+      } else {
+        // A direct report's application (guaranteed by the `where` scope
+        // above) - the manager may accept/reject and leave notes, but can't
+        // withdraw it on the applicant's behalf.
+        if (data.status && !['ACCEPTED', 'REJECTED'].includes(data.status)) {
+          throw new ForbiddenException(
+            "Managers can only accept or reject a direct report's application",
+          );
+        }
       }
     }
 

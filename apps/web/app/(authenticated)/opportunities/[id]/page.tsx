@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import {
   ArrowLeft,
@@ -10,6 +11,7 @@ import {
   CheckCircle2,
   XCircle,
   Info,
+  BadgeCheck,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
@@ -21,6 +23,7 @@ import { useSkillGap } from '@/hooks/use-skill-gaps';
 import { ApiError } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog,
@@ -30,17 +33,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { OPPORTUNITY_STATUS_TONE, toLabel } from '@/lib/labels';
 import {
   applicationCreateRequestSchema,
   type ApplicationCreateRequest,
-  type OpportunityStatus,
 } from '@repo/contracts';
-
-const STATUS_BADGE_COLORS: Record<OpportunityStatus, string> = {
-  OPEN: 'bg-green-100 text-green-700',
-  CLOSED: 'bg-gray-100 text-gray-600',
-  FILLED: 'bg-blue-100 text-blue-700',
-};
 
 const LEVEL_LABELS: Record<number, string> = {
   1: 'entry level',
@@ -49,14 +46,6 @@ const LEVEL_LABELS: Record<number, string> = {
   4: 'senior level',
   5: 'lead level',
 };
-
-function toLabel(value: string) {
-  return value
-    .toLowerCase()
-    .split('_')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-}
 
 function LoadingSkeleton() {
   return (
@@ -110,7 +99,14 @@ export default function OpportunityDetailPage() {
       form.reset();
     } catch (err) {
       if (err instanceof ApiError) {
-        toast.error(err.message);
+        // 409 = already applied (e.g. a stale cache let the dialog open
+        // again) - the opportunity refetch this triggers will flip
+        // hasApplied and swap the button for "View Application".
+        toast.error(
+          err.status === 409
+            ? "You've already applied to this opportunity."
+            : err.message,
+        );
       } else {
         toast.error('Failed to submit application. Please try again.');
       }
@@ -160,20 +156,13 @@ export default function OpportunityDetailPage() {
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold text-gray-900">
+            <h1 className="text-2xl font-bold text-foreground">
               {opportunity.title}
             </h1>
-            <span className="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-700">
-              {toLabel(opportunity.type)}
-            </span>
-            <span
-              className={cn(
-                'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
-                STATUS_BADGE_COLORS[opportunity.status],
-              )}
-            >
+            <Badge tone="violet">{toLabel(opportunity.type)}</Badge>
+            <Badge tone={OPPORTUNITY_STATUS_TONE[opportunity.status]}>
               {toLabel(opportunity.status)}
-            </span>
+            </Badge>
           </div>
 
           {/* Subtitle */}
@@ -200,14 +189,30 @@ export default function OpportunityDetailPage() {
           </div>
         </div>
 
-        {opportunity.status === 'OPEN' && (
-          <Button
-            onClick={() => setApplyDialogOpen(true)}
-            className="bg-primary-base hover:bg-primary-base/90 shrink-0"
-            size="lg"
-          >
-            Apply Now
-          </Button>
+        {opportunity.hasApplied ? (
+          <div className="flex shrink-0 flex-col items-end gap-2">
+            <Badge tone="success" className="gap-1.5">
+              <BadgeCheck className="h-3.5 w-3.5" />
+              Already Applied
+            </Badge>
+            {opportunity.myApplicationId && (
+              <Button asChild variant="outline" size="sm">
+                <Link href={`/applications/${opportunity.myApplicationId}`}>
+                  View Application
+                </Link>
+              </Button>
+            )}
+          </div>
+        ) : (
+          opportunity.status === 'OPEN' && (
+            <Button
+              onClick={() => setApplyDialogOpen(true)}
+              className="bg-primary-base hover:bg-primary-base/90 shrink-0"
+              size="lg"
+            >
+              Apply Now
+            </Button>
+          )
         )}
       </div>
 
@@ -272,23 +277,23 @@ export default function OpportunityDetailPage() {
                   className={cn(
                     'inline-flex items-center rounded-md border px-2.5 py-1 text-sm font-semibold',
                     skillGap.fitScore >= 70
-                      ? 'border-green-200 text-green-700 bg-green-50'
+                      ? 'border-success/30 text-success bg-success/10'
                       : skillGap.fitScore >= 40
-                        ? 'border-yellow-200 text-yellow-700 bg-yellow-50'
-                        : 'border-red-200 text-red-700 bg-red-50',
+                        ? 'border-warning/30 text-warning bg-warning/10'
+                        : 'border-destructive/30 text-destructive bg-destructive/10',
                   )}
                 >
                   {skillGap.fitScore}% fit
                 </span>
-                <div className="mt-2 h-2 w-full rounded-full bg-gray-100">
+                <div className="mt-2 h-2 w-full rounded-full bg-muted">
                   <div
                     className={cn(
                       'h-2 rounded-full transition-all',
                       skillGap.fitScore >= 70
-                        ? 'bg-green-500'
+                        ? 'bg-success'
                         : skillGap.fitScore >= 40
-                          ? 'bg-yellow-500'
-                          : 'bg-red-500',
+                          ? 'bg-warning'
+                          : 'bg-destructive',
                     )}
                     style={{ width: `${skillGap.fitScore}%` }}
                   />
@@ -307,7 +312,7 @@ export default function OpportunityDetailPage() {
                         key={skill.id}
                         className="flex items-center gap-2 text-sm"
                       >
-                        <CheckCircle2 className="h-4 w-4 shrink-0 text-green-500" />
+                        <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
                         <span className="text-gray-700">{skill.name}</span>
                         <span className="text-xs text-gray-400">
                           L{skill.proficiencyLevel}/L{skill.requiredLevel}
@@ -334,7 +339,7 @@ export default function OpportunityDetailPage() {
                         key={skill.id}
                         className="flex items-center gap-2 text-sm"
                       >
-                        <XCircle className="h-4 w-4 shrink-0 text-red-400" />
+                        <XCircle className="h-4 w-4 shrink-0 text-destructive" />
                         <span className="text-gray-700">{skill.name}</span>
                         <span className="text-xs text-gray-400">
                           L{skill.proficiencyLevel ?? 0}/L{skill.requiredLevel}
