@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import {
   ArrowLeft,
@@ -10,6 +11,7 @@ import {
   CheckCircle2,
   XCircle,
   Info,
+  BadgeCheck,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
@@ -97,7 +99,14 @@ export default function OpportunityDetailPage() {
       form.reset();
     } catch (err) {
       if (err instanceof ApiError) {
-        toast.error(err.message);
+        // 409 = already applied (e.g. a stale cache let the dialog open
+        // again) - the opportunity refetch this triggers will flip
+        // hasApplied and swap the button for "View Application".
+        toast.error(
+          err.status === 409
+            ? "You've already applied to this opportunity."
+            : err.message,
+        );
       } else {
         toast.error('Failed to submit application. Please try again.');
       }
@@ -180,14 +189,30 @@ export default function OpportunityDetailPage() {
           </div>
         </div>
 
-        {opportunity.status === 'OPEN' && (
-          <Button
-            onClick={() => setApplyDialogOpen(true)}
-            className="bg-primary-base hover:bg-primary-base/90 shrink-0"
-            size="lg"
-          >
-            Apply Now
-          </Button>
+        {opportunity.hasApplied ? (
+          <div className="flex shrink-0 flex-col items-end gap-2">
+            <Badge tone="success" className="gap-1.5">
+              <BadgeCheck className="h-3.5 w-3.5" />
+              Already Applied
+            </Badge>
+            {opportunity.myApplicationId && (
+              <Button asChild variant="outline" size="sm">
+                <Link href={`/applications/${opportunity.myApplicationId}`}>
+                  View Application
+                </Link>
+              </Button>
+            )}
+          </div>
+        ) : (
+          opportunity.status === 'OPEN' && (
+            <Button
+              onClick={() => setApplyDialogOpen(true)}
+              className="bg-primary-base hover:bg-primary-base/90 shrink-0"
+              size="lg"
+            >
+              Apply Now
+            </Button>
+          )
         )}
       </div>
 

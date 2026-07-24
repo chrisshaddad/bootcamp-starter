@@ -3,7 +3,7 @@
 import useSWR, { mutate } from 'swr';
 import useSWRInfinite from 'swr/infinite';
 import { useCallback, useEffect, useMemo } from 'react';
-import { apiPost, apiPatch } from '@/lib/api';
+import { apiPost, apiPatch, ApiError } from '@/lib/api';
 import type {
   ApplicationListResponse,
   ApplicationResponse,
@@ -175,6 +175,11 @@ interface UseApplicationMutationsReturn {
     data: ApplicationCreateRequest,
   ) => Promise<ApplicationResponse>;
   withdrawApplication: (id: string) => Promise<ApplicationResponse>;
+  reviewApplication: (
+    id: string,
+    decision: 'ACCEPTED' | 'REJECTED',
+    reviewerNotes?: string,
+  ) => Promise<ApplicationResponse>;
 }
 
 /**
@@ -198,9 +203,22 @@ export function useApplicationMutations(): UseApplicationMutationsReturn {
 
   const createApplication = useCallback(
     async (data: ApplicationCreateRequest) => {
-      const result = await apiPost<ApplicationResponse>('/applications', data);
-      invalidateAll();
-      return result;
+      try {
+        const result = await apiPost<ApplicationResponse>(
+          '/applications',
+          data,
+        );
+        invalidateAll();
+        return result;
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 409) {
+          // Already applied - refetch so the opportunity's `hasApplied`
+          // flips and the UI recovers (e.g. a stale cache let the apply
+          // dialog open again).
+          invalidateAll();
+        }
+        throw error;
+      }
     },
     [invalidateAll],
   );
@@ -217,5 +235,29 @@ export function useApplicationMutations(): UseApplicationMutationsReturn {
     [invalidateAll],
   );
 
-  return { createApplication, withdrawApplication };
+  const reviewApplication = useCallback(
+    async (
+      id: string,
+      decision: 'ACCEPTED' | 'REJECTED',
+      reviewerNotes?: string,
+    ) => {
+      const result = await apiPatch<ApplicationResponse>(
+        `/applications/${id}`,
+        {
+          status: decision,
+          managerApproved: decision === 'ACCEPTED',
+          reviewerNotes: reviewerNotes || undefined,
+        },
+      );
+      invalidateAll();
+      return result;
+    },
+    [invalidateAll],
+  );
+
+  return {
+    createApplication,
+    withdrawApplication,
+    reviewApplication,
+  };
 }

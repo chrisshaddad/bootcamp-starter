@@ -31,6 +31,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { SkillRating } from '@/components/skill-rating';
 import { SkillPickerDialog } from '@/components/skill-picker-dialog';
 import { EditProfileDialog } from '@/components/edit-profile-dialog';
+import {
+  categoryTone,
+  TONE_BORDER_CLASSES,
+  TONE_CHIP_CLASSES,
+  type Tone,
+} from '@/lib/labels';
+import { cn } from '@/lib/utils';
 
 const EMPLOYMENT_TYPE_LABELS = {
   FULL_TIME: 'Full-time',
@@ -109,22 +116,43 @@ function DetailItem({
   );
 }
 
-function SectionCard({
+function SectionIcon({
   icon: Icon,
+  tone = 'neutral',
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  tone?: Tone;
+}) {
+  return (
+    <span
+      className={cn(
+        'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
+        TONE_CHIP_CLASSES[tone],
+      )}
+    >
+      <Icon className="h-4 w-4" />
+    </span>
+  );
+}
+
+function SectionCard({
+  icon,
   title,
+  tone = 'neutral',
   action,
   children,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   title: string;
+  tone?: Tone;
   action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <Card className="gap-4 p-6">
       <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Icon className="h-4 w-4 text-muted-foreground" />
+        <div className="flex items-center gap-2.5">
+          <SectionIcon icon={icon} tone={tone} />
           <h3 className="text-sm font-semibold text-foreground">{title}</h3>
         </div>
         {action}
@@ -229,17 +257,19 @@ export default function ProfilePage() {
       </div>
 
       {/* Identity header */}
-      <Card className="gap-5 p-6 sm:flex-row sm:items-center">
-        <Avatar className="h-16 w-16 text-lg">
+      <Card className="relative gap-5 overflow-hidden p-6 sm:flex-row sm:items-center">
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/12 via-violet/6 to-blush/12" />
+
+        <Avatar className="relative h-16 w-16 text-lg ring-4 ring-background">
           {profile?.profilePictureUrl && (
             <AvatarImage src={profile.profilePictureUrl} alt={employee.name} />
           )}
-          <AvatarFallback className="bg-primary/10 font-semibold text-primary">
+          <AvatarFallback className="bg-gradient-to-br from-primary to-violet font-semibold text-primary-foreground">
             {initials(employee.name)}
           </AvatarFallback>
         </Avatar>
 
-        <div className="min-w-0 space-y-2">
+        <div className="relative min-w-0 space-y-2">
           <div>
             <h2 className="text-lg font-semibold text-foreground">
               {employee.name}
@@ -249,9 +279,9 @@ export default function ProfilePage() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {employee.level && <Badge tone="neutral">L{employee.level}</Badge>}
+            {employee.level && <Badge tone="violet">L{employee.level}</Badge>}
             {employee.department && (
-              <Badge tone="neutral">{employee.department.name}</Badge>
+              <Badge tone="blush">{employee.department.name}</Badge>
             )}
             {profile?.employmentType && (
               <Badge tone="primary">
@@ -272,18 +302,18 @@ export default function ProfilePage() {
 
       {/* About */}
       <Card className="grid grid-cols-1 gap-6 p-6 sm:grid-cols-2 sm:divide-x sm:divide-border">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <FileText className="h-4 w-4 text-muted-foreground" />
+        <div className="space-y-2.5">
+          <div className="flex items-center gap-2.5">
+            <SectionIcon icon={FileText} tone="violet" />
             <h3 className="text-sm font-semibold text-foreground">Bio</h3>
           </div>
           <p className="text-sm leading-relaxed text-muted-foreground">
             {profile?.bio || 'No bio added yet.'}
           </p>
         </div>
-        <div className="space-y-2 sm:pl-6">
-          <div className="flex items-center gap-2">
-            <Target className="h-4 w-4 text-muted-foreground" />
+        <div className="space-y-2.5 sm:pl-6">
+          <div className="flex items-center gap-2.5">
+            <SectionIcon icon={Target} tone="blush" />
             <h3 className="text-sm font-semibold text-foreground">
               Career Goals
             </h3>
@@ -296,7 +326,7 @@ export default function ProfilePage() {
 
       {/* Contact + Employment */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <SectionCard icon={UserRound} title="Contact Information">
+        <SectionCard icon={UserRound} title="Contact Information" tone="info">
           <dl className="grid gap-4 sm:grid-cols-2">
             <DetailItem icon={Mail} label="Email" value={employee.email} />
             <DetailItem
@@ -315,7 +345,7 @@ export default function ProfilePage() {
           </dl>
         </SectionCard>
 
-        <SectionCard icon={Briefcase} title="Employment Details">
+        <SectionCard icon={Briefcase} title="Employment Details" tone="primary">
           <dl className="grid gap-4 sm:grid-cols-2">
             <DetailItem
               icon={Building2}
@@ -363,6 +393,7 @@ export default function ProfilePage() {
       <SectionCard
         icon={Layers}
         title="Skills"
+        tone="warning"
         action={
           <Button
             type="button"
@@ -382,7 +413,10 @@ export default function ProfilePage() {
             {employee.skills.map((skill) => (
               <div
                 key={skill.id}
-                className="group flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2"
+                className={cn(
+                  'group flex items-center gap-2 rounded-lg border border-l-2 border-border bg-card px-3 py-2',
+                  TONE_BORDER_CLASSES[categoryTone(skill.category)],
+                )}
               >
                 <span className="text-sm font-medium text-foreground">
                   {skill.name}
