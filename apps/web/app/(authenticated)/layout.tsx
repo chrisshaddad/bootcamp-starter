@@ -11,7 +11,7 @@ import { useUser } from '@/hooks/use-auth';
 // organizations/users and their own settings. Everything else here is
 // employee/manager-facing (see app-sidebar.tsx's nav split) and out of
 // bounds for them.
-const SUPER_ADMIN_ALLOWED_PREFIXES = ['/organizations', '/users', '/settings'];
+const SUPER_ADMIN_ALLOWED_PREFIXES = ['/organizations', '/users'];
 
 function isAllowedForSuperAdmin(pathname: string) {
   return SUPER_ADMIN_ALLOWED_PREFIXES.some(

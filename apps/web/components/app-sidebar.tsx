@@ -12,7 +12,6 @@ import {
   User,
   Users,
   FolderKanban,
-  Settings,
   LogOut,
   Building2,
   Loader2,
@@ -85,7 +84,7 @@ const managerNavItems: NavItem[] = [
 ];
 
 // Navigation items for SUPER_ADMIN role - a platform-level admin, not an
-// employee, so this (plus Settings) is the entirety of their nav (see
+// employee, so this is the entirety of their nav (see
 // (authenticated)/layout.tsx, which enforces this the same way route-side).
 const superAdminNavItems: NavItem[] = [
   {
@@ -97,14 +96,6 @@ const superAdminNavItems: NavItem[] = [
     title: 'Users',
     url: '/users',
     icon: Users,
-  },
-];
-
-const superAdminSecondaryNavItems: NavItem[] = [
-  {
-    title: 'Settings',
-    url: '/settings',
-    icon: Settings,
   },
 ];
 
@@ -227,20 +218,6 @@ export function AppSidebar() {
               </SidebarGroupLabel>
               <SidebarGroupContent>
                 <NavItemsList items={superAdminNavItems} isActive={isActive} />
-              </SidebarGroupContent>
-            </SidebarGroup>
-
-            <SidebarSeparator className="my-4" />
-
-            <SidebarGroup>
-              <SidebarGroupLabel className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-gray-500">
-                Support
-              </SidebarGroupLabel>
-              <SidebarGroupContent>
-                <NavItemsList
-                  items={superAdminSecondaryNavItems}
-                  isActive={isActive}
-                />
               </SidebarGroupContent>
             </SidebarGroup>
           </>
