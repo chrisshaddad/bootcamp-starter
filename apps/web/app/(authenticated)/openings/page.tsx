@@ -6,7 +6,6 @@ import {
   FolderKanban,
   Pencil,
   Plus,
-  ShieldX,
   Trash2,
   Users,
 } from 'lucide-react';
@@ -14,13 +13,15 @@ import { toast } from 'sonner';
 import type { OpportunityResponse, OpportunityStatus } from '@repo/contracts';
 import { useUser } from '@/hooks/use-auth';
 import {
-  useOpportunities,
+  useOpportunitiesInfinite,
   useOpportunityMutations,
 } from '@/hooks/use-opportunities';
 import { ApiError } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ForbiddenPage } from '@/components/forbidden-page';
 import {
   Dialog,
   DialogContent,
@@ -37,24 +38,21 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { OpportunityFormDialog } from '@/components/opportunity-form-dialog';
+import {
+  OPPORTUNITY_STATUS_TONE,
+  OPPORTUNITY_TYPE_TONE,
+  toLabel,
+} from '@/lib/labels';
 import { cn } from '@/lib/utils';
+import type { OpportunityType } from '@repo/contracts';
 
-const TYPE_BADGE_COLORS: Record<string, string> = {
-  ROLE: 'bg-primary-100 text-primary-base',
-  PROJECT: 'bg-warning/20 text-warning-dark',
-  ROTATION: 'bg-secondary-200 text-gray-700',
-};
-
-const TYPE_LABELS: Record<string, string> = {
-  ROLE: 'Role',
-  PROJECT: 'Project',
-  ROTATION: 'Rotation',
-};
-
-const STATUS_BADGE_COLORS: Record<OpportunityStatus, string> = {
-  OPEN: 'bg-success/15 text-success',
-  CLOSED: 'bg-gray-100 text-gray-600',
-  FILLED: 'bg-primary-100 text-primary-base',
+// Literal class strings (not built dynamically) so Tailwind's scanner picks
+// them up - mirrors OPPORTUNITY_TYPE_TONE's category coloring as a left
+// border accent per row.
+const TYPE_BORDER_ACCENT: Record<OpportunityType, string> = {
+  ROLE: 'border-l-violet',
+  PROJECT: 'border-l-warning',
+  ROTATION: 'border-l-blush',
 };
 
 const STATUS_OPTIONS: { label: string; value: OpportunityStatus }[] = [
@@ -77,18 +75,6 @@ function formatDeadline(deadline: string | Date): string {
   return DEADLINE_FORMATTER.format(new Date(deadline));
 }
 
-function ForbiddenPage() {
-  return (
-    <div className="flex flex-col items-center justify-center py-20">
-      <ShieldX className="mb-4 h-16 w-16 text-destructive" />
-      <h1 className="mb-2 text-2xl font-bold text-gray-900">Access Denied</h1>
-      <p className="max-w-md text-center text-gray-500">
-        Only managers can manage openings for their team.
-      </p>
-    </div>
-  );
-}
-
 function LoadingSkeleton() {
   return (
     <div className="space-y-4">
@@ -101,7 +87,8 @@ function LoadingSkeleton() {
 
 export default function ManageOpeningsPage() {
   const { user, isLoading: isUserLoading } = useUser();
-  const { opportunities, isLoading, error } = useOpportunities({ mine: true });
+  const { opportunities, isLoading, hasMore, isLoadingMore, loadMore, error } =
+    useOpportunitiesInfinite({ mine: true });
   const { updateOpportunity, deleteOpportunity } = useOpportunityMutations();
 
   const [formOpen, setFormOpen] = useState(false);
@@ -118,7 +105,9 @@ export default function ManageOpeningsPage() {
   }
 
   if (!user?.isManager) {
-    return <ForbiddenPage />;
+    return (
+      <ForbiddenPage message="Only managers can manage openings for their team." />
+    );
   }
 
   const openCreateDialog = () => {
@@ -169,15 +158,14 @@ export default function ManageOpeningsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Manage Openings</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-foreground">
+            Manage Openings
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Create and manage internal openings for your team
           </p>
         </div>
-        <Button
-          onClick={openCreateDialog}
-          className="bg-primary-base hover:bg-primary-base/90"
-        >
+        <Button onClick={openCreateDialog}>
           <Plus className="h-4 w-4" />
           New Opening
         </Button>
@@ -190,9 +178,9 @@ export default function ManageOpeningsPage() {
           Failed to load openings
         </div>
       ) : !opportunities?.length ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 bg-white py-20 text-center">
-          <FolderKanban className="h-10 w-10 text-gray-300" />
-          <p className="mt-3 text-sm text-gray-500">
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card py-20 text-center">
+          <FolderKanban className="h-10 w-10 text-muted-foreground/50" />
+          <p className="mt-3 text-sm text-muted-foreground">
             You don&apos;t have any openings yet
           </p>
         </div>
@@ -201,32 +189,22 @@ export default function ManageOpeningsPage() {
           {opportunities.map((opportunity) => (
             <Card
               key={opportunity.id}
-              className="gap-3 border-gray-200 p-5 shadow-sm"
+              className={cn(
+                'gap-3 border-l-4 p-5 shadow-sm',
+                TYPE_BORDER_ACCENT[opportunity.type],
+              )}
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-base font-semibold text-gray-900">
+                  <h2 className="text-base font-semibold text-foreground">
                     {opportunity.title}
                   </h2>
-                  <span
-                    className={cn(
-                      'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
-                      TYPE_BADGE_COLORS[opportunity.type],
-                    )}
-                  >
-                    {TYPE_LABELS[opportunity.type]}
-                  </span>
-                  <span
-                    className={cn(
-                      'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
-                      STATUS_BADGE_COLORS[opportunity.status],
-                    )}
-                  >
-                    {
-                      STATUS_OPTIONS.find((s) => s.value === opportunity.status)
-                        ?.label
-                    }
-                  </span>
+                  <Badge tone={OPPORTUNITY_TYPE_TONE[opportunity.type]}>
+                    {toLabel(opportunity.type)}
+                  </Badge>
+                  <Badge tone={OPPORTUNITY_STATUS_TONE[opportunity.status]}>
+                    {toLabel(opportunity.status)}
+                  </Badge>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -239,7 +217,7 @@ export default function ManageOpeningsPage() {
                       )
                     }
                   >
-                    <SelectTrigger className="h-9 w-32 rounded-lg border-gray-200 bg-white text-sm">
+                    <SelectTrigger className="h-9 w-32 rounded-lg text-sm">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -257,7 +235,7 @@ export default function ManageOpeningsPage() {
                     onClick={() => openEditDialog(opportunity)}
                     aria-label="Edit opening"
                   >
-                    <Pencil className="h-4 w-4 text-gray-500" />
+                    <Pencil className="h-4 w-4 text-muted-foreground" />
                   </Button>
                   <Button
                     type="button"
@@ -266,24 +244,24 @@ export default function ManageOpeningsPage() {
                     onClick={() => setDeletingOpportunity(opportunity)}
                     aria-label="Delete opening"
                   >
-                    <Trash2 className="h-4 w-4 text-error" />
+                    <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
                 </div>
               </div>
 
               {opportunity.department && (
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-muted-foreground">
                   {opportunity.department.name}
                 </p>
               )}
 
               {opportunity.description && (
-                <p className="line-clamp-2 text-sm text-gray-600">
+                <p className="line-clamp-2 text-sm text-muted-foreground">
                   {opportunity.description}
                 </p>
               )}
 
-              <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500">
+              <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1.5">
                   <Users className="h-3.5 w-3.5" />
                   {opportunity.applicationCount} applicants
@@ -297,6 +275,19 @@ export default function ManageOpeningsPage() {
               </div>
             </Card>
           ))}
+
+          {hasMore && (
+            <div className="flex justify-center pt-2">
+              <Button
+                variant="outline"
+                onClick={loadMore}
+                disabled={isLoadingMore}
+                className="h-9 rounded-lg px-4 text-sm font-medium"
+              >
+                {isLoadingMore ? 'Loading...' : 'Load more'}
+              </Button>
+            </div>
+          )}
         </div>
       )}
 

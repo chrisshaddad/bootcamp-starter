@@ -89,6 +89,9 @@ a {
   --color-violet-foreground: var(--violet-foreground);
   --color-amber: var(--amber);
   --color-amber-foreground: var(--amber-foreground);
+  --color-blush: var(--blush);
+  --color-blush-foreground: var(--blush-foreground);
+  --color-blush-strong: var(--blush-strong);
 
   /* Chart roles */
   --color-chart-1: var(--chart-1);
@@ -96,6 +99,15 @@ a {
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+
+  /* Chart mark colors — validated categorical steps (see dataviz skill: fixed
+     hue order, lightness band, CVD ΔE, contrast). Distinct from the badge
+     violet/amber/blush above because a solid chart fill needs to clear 3:1
+     contrast against the chart surface, which the badge steps don't all do
+     (amber in particular is tuned for a soft wash, not a solid mark). */
+  --color-chart-cat-1: var(--chart-cat-1); /* violet */
+  --color-chart-cat-2: var(--chart-cat-2); /* amber */
+  --color-chart-cat-3: var(--chart-cat-3); /* blush */
 
   /* Sidebar roles */
   --color-sidebar: var(--sidebar);
@@ -217,6 +229,13 @@ a {
   --amber: oklch(0.78 0.15 60);
   --amber-foreground: oklch(0.22 0.05 60);
 
+  /* Blush — rose/magenta accent (from the Coolors reference palette:
+     English Violet/Blush/Pink/Mimi Pink/Thistle), rounds out the plum+amber
+     system with a warmer pink for a third category color. */
+  --blush: oklch(0.64 0.16 355);
+  --blush-foreground: oklch(0.985 0.01 60);
+  --blush-strong: oklch(0.44 0.16 355);
+
   --border: oklch(0.905 0.012 320);
   --input: oklch(0.905 0.012 320);
   --ring: oklch(0.78 0.15 60); /* amber focus */
@@ -226,6 +245,13 @@ a {
   --chart-3: oklch(0.48 0.18 305);
   --chart-4: oklch(0.68 0.14 155);
   --chart-5: oklch(0.55 0.13 260);
+
+  /* Chart mark categorical set — validated against the light card surface
+     (node scripts/validate_palette.js, dataviz skill): lightness band,
+     chroma floor, CVD ΔE, contrast all pass. */
+  --chart-cat-1: oklch(0.48 0.18 305); /* violet */
+  --chart-cat-2: oklch(0.6 0.15 60); /* amber, darker than --amber for 3:1 */
+  --chart-cat-3: oklch(0.64 0.16 355); /* blush */
 
   /* Sidebar — plum-tinted paper on light */
   --sidebar: oklch(0.975 0.012 320);
@@ -278,6 +304,10 @@ a {
   --amber: oklch(0.82 0.15 65);
   --amber-foreground: oklch(0.19 0.03 315);
 
+  --blush: oklch(0.72 0.16 355);
+  --blush-foreground: oklch(0.19 0.03 315);
+  --blush-strong: oklch(0.82 0.14 355);
+
   --border: oklch(1 0 0 / 9%);
   --input: oklch(1 0 0 / 12%);
   --ring: oklch(0.82 0.16 65);
@@ -287,6 +317,13 @@ a {
   --chart-3: oklch(0.68 0.18 305);
   --chart-4: oklch(0.74 0.14 155);
   --chart-5: oklch(0.72 0.12 260);
+
+  /* Chart mark categorical set — re-stepped for the dark surface (validated
+     separately; the light steps above are ~0.1 too light for the 0.48–0.67
+     dark band). */
+  --chart-cat-1: oklch(0.62 0.18 305); /* violet */
+  --chart-cat-2: oklch(0.65 0.15 60); /* amber */
+  --chart-cat-3: oklch(0.6 0.16 355); /* blush */
 
   --sidebar: oklch(0.14 0.025 315);
   --sidebar-foreground: oklch(0.88 0.01 60);

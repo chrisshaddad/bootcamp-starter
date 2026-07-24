@@ -21,6 +21,7 @@ const badgeVariants = cva(
         danger: 'bg-destructive/12 text-destructive-strong ring-destructive/25',
         info: 'bg-info/15 text-info ring-info/25',
         violet: 'bg-violet/15 text-violet ring-violet/25',
+        blush: 'bg-blush/15 text-blush-strong ring-blush/25',
       },
     },
     defaultVariants: {
