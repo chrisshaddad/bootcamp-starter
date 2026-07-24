@@ -253,14 +253,16 @@ a {
   --chart-cat-2: oklch(0.6 0.15 60); /* amber, darker than --amber for 3:1 */
   --chart-cat-3: oklch(0.64 0.16 355); /* blush */
 
-  /* Sidebar — plum-tinted paper on light */
-  --sidebar: oklch(0.975 0.012 320);
-  --sidebar-foreground: oklch(0.24 0.05 315);
-  --sidebar-primary: oklch(0.32 0.11 320);
-  --sidebar-primary-foreground: oklch(0.985 0.01 60);
-  --sidebar-accent: oklch(0.94 0.03 60); /* amber wash */
-  --sidebar-accent-foreground: oklch(0.32 0.11 320);
-  --sidebar-border: oklch(0.9 0.015 320);
+  /* Sidebar — deep editorial plum with amber active accents.
+     Background is the primary plum; foreground is a light lavender-white.
+     The "primary" role here is amber, used only to mark the active item. */
+  --sidebar: oklch(0.3 0.1 320); /* rich plum panel */
+  --sidebar-foreground: oklch(0.93 0.02 320); /* light lavender ink */
+  --sidebar-primary: oklch(0.78 0.15 60); /* amber — active item */
+  --sidebar-primary-foreground: oklch(0.22 0.05 60); /* dark ink on amber */
+  --sidebar-accent: oklch(1 0 0 / 0.08); /* subtle white hover wash */
+  --sidebar-accent-foreground: oklch(0.98 0.01 60);
+  --sidebar-border: oklch(1 0 0 / 0.1);
   --sidebar-ring: oklch(0.78 0.15 60);
 }
 
