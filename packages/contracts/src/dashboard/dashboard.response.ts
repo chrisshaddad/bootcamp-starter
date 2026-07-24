@@ -36,6 +36,53 @@ export const SuperAdminDashboardResponseSchema = z.object({
   recentActivity: z.array(DashboardActivitySchema),
 });
 
+export const TeacherDashboardSummarySchema = z.object({
+  activeCourses: z.number().int().nonnegative(),
+  totalStudents: z.number().int().nonnegative(),
+  pendingSubmissions: z.number().int().nonnegative(),
+  averageQuizScore: z.number().min(0).max(100),
+});
+
+export const TeacherDashboardDeadlineSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  courseTitle: z.string(),
+  dueAt: z.string(),
+  submittedCount: z.number().int().nonnegative(),
+  totalStudents: z.number().int().nonnegative(),
+  href: z.string(),
+});
+
+export const TeacherDashboardSubmissionSchema = z.object({
+  id: z.string(),
+  studentName: z.string(),
+  assignmentTitle: z.string(),
+  courseTitle: z.string(),
+  submittedAt: z.string(),
+  status: z.enum(['submitted', 'late', 'graded']),
+  href: z.string(),
+});
+
+export const TeacherDashboardPerformancePointSchema = z.object({
+  week: z.string(),
+  averageScore: z.number().min(0).max(100),
+  targetScore: z.number().min(0).max(100),
+});
+
+export const TeacherDashboardGradingProgressSchema = z.object({
+  gradedSubmissions: z.number().int().nonnegative(),
+  totalSubmissions: z.number().int().nonnegative(),
+  percentage: z.number().min(0).max(100),
+});
+
+export const TeacherDashboardResponseSchema = z.object({
+  summary: TeacherDashboardSummarySchema,
+  upcomingDeadlines: z.array(TeacherDashboardDeadlineSchema),
+  recentSubmissions: z.array(TeacherDashboardSubmissionSchema),
+  performance: z.array(TeacherDashboardPerformancePointSchema),
+  gradingProgress: TeacherDashboardGradingProgressSchema,
+});
+
 export type DashboardSummary = z.infer<typeof DashboardSummarySchema>;
 
 export type DashboardGrowthPoint = z.infer<typeof DashboardGrowthPointSchema>;
@@ -46,4 +93,28 @@ export type DashboardActivity = z.infer<typeof DashboardActivitySchema>;
 
 export type SuperAdminDashboardResponse = z.infer<
   typeof SuperAdminDashboardResponseSchema
+>;
+
+export type TeacherDashboardSummary = z.infer<
+  typeof TeacherDashboardSummarySchema
+>;
+
+export type TeacherDashboardDeadline = z.infer<
+  typeof TeacherDashboardDeadlineSchema
+>;
+
+export type TeacherDashboardSubmission = z.infer<
+  typeof TeacherDashboardSubmissionSchema
+>;
+
+export type TeacherDashboardPerformancePoint = z.infer<
+  typeof TeacherDashboardPerformancePointSchema
+>;
+
+export type TeacherDashboardGradingProgress = z.infer<
+  typeof TeacherDashboardGradingProgressSchema
+>;
+
+export type TeacherDashboardResponse = z.infer<
+  typeof TeacherDashboardResponseSchema
 >;

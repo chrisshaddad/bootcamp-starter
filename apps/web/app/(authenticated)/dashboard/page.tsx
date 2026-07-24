@@ -3,10 +3,14 @@
 import { useEffect, useState } from 'react';
 
 import { SuperAdminDashboard } from '@/components/dashboard/super-admin-dashboard';
+import { TeacherDashboard } from '@/components/dashboard/teacher-dashboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUser } from '@/hooks/use-auth';
-import { useSuperAdminDashboard } from '@/hooks/use-dashboard';
+import {
+  useSuperAdminDashboard,
+  useTeacherDashboard,
+} from '@/hooks/use-dashboard';
 
 export default function DashboardPage() {
   const { user, isLoading: isUserLoading } = useUser();
@@ -17,14 +21,24 @@ export default function DashboardPage() {
   }, []);
 
   const isSuperAdmin = hasMounted && user?.role === 'SUPER_ADMIN';
+  const isTeacher = hasMounted && user?.role === 'ORG_ADMIN';
 
   const {
-    dashboard,
-    error: dashboardError,
-    isLoading: isDashboardLoading,
-    mutate: refreshDashboard,
+    dashboard: superAdminDashboard,
+    error: superAdminDashboardError,
+    isLoading: isSuperAdminDashboardLoading,
+    mutate: refreshSuperAdminDashboard,
   } = useSuperAdminDashboard({
     enabled: isSuperAdmin,
+  });
+
+  const {
+    dashboard: teacherDashboard,
+    error: teacherDashboardError,
+    isLoading: isTeacherDashboardLoading,
+    mutate: refreshTeacherDashboard,
+  } = useTeacherDashboard({
+    enabled: isTeacher,
   });
 
   const displayName =
@@ -37,65 +51,121 @@ export default function DashboardPage() {
     return <DashboardLoading />;
   }
 
-  return (
-    <div className="space-y-5">
-      <header>
-        <h1 className="text-xl font-bold tracking-tight text-[#17223b] sm:text-2xl">
-          Welcome, {isSuperAdmin ? 'Super Admin' : displayName}!
-        </h1>
+  if (isSuperAdmin) {
+    return (
+      <div className="space-y-5">
+        <DashboardHeader
+          title="Welcome, Super Admin!"
+          description="You're signed in. Start building your project."
+        />
 
-        <p className="mt-1 text-[11px] text-[#6d778c] sm:text-xs">
-          You&apos;re signed in. Start building your project.
-        </p>
-      </header>
+        {isSuperAdminDashboardLoading && <SuperAdminDashboardLoading />}
 
-      {isSuperAdmin ? (
-        <>
-          {isDashboardLoading && <DashboardContentLoading />}
+        {!isSuperAdminDashboardLoading && superAdminDashboardError && (
+          <DashboardError
+            message={superAdminDashboardError.message}
+            onRetry={() => {
+              void refreshSuperAdminDashboard();
+            }}
+          />
+        )}
 
-          {!isDashboardLoading && dashboardError && (
+        {!isSuperAdminDashboardLoading &&
+          !superAdminDashboardError &&
+          superAdminDashboard && (
+            <SuperAdminDashboard dashboard={superAdminDashboard} />
+          )}
+      </div>
+    );
+  }
+
+  if (isTeacher) {
+    return (
+      <>
+        {isTeacherDashboardLoading && <TeacherDashboardLoading />}
+
+        {!isTeacherDashboardLoading && teacherDashboardError && (
+          <div className="space-y-5">
+            <DashboardHeader
+              title={`Welcome back, ${displayName}!`}
+              description="Here's what's happening across your courses today."
+            />
+
             <DashboardError
-              message={dashboardError.message}
+              message={teacherDashboardError.message}
               onRetry={() => {
-                void refreshDashboard();
+                void refreshTeacherDashboard();
               }}
             />
+          </div>
+        )}
+
+        {!isTeacherDashboardLoading &&
+          !teacherDashboardError &&
+          teacherDashboard && (
+            <TeacherDashboard
+              dashboard={teacherDashboard}
+              teacherName={displayName}
+            />
           )}
+      </>
+    );
+  }
 
-          {!isDashboardLoading && !dashboardError && dashboard && (
-            <SuperAdminDashboard dashboard={dashboard} />
-          )}
-        </>
-      ) : (
-        user && (
-          <Card className="border-[#dfe3ed] bg-white shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold text-[#17223b]">
-                Your Profile
-              </CardTitle>
-            </CardHeader>
+  return (
+    <div className="space-y-5">
+      <DashboardHeader
+        title={`Welcome, ${displayName}!`}
+        description="You're signed in. Start building your project."
+      />
 
-            <CardContent>
-              <dl className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <dt className="text-xs font-medium text-[#7b8598]">Email</dt>
+      {user && (
+        <Card className="border-[#dfe3ed] bg-white shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold text-[#17223b]">
+              Your Profile
+            </CardTitle>
+          </CardHeader>
 
-                  <dd className="mt-1 text-sm text-[#17223b]">{user.email}</dd>
-                </div>
+          <CardContent>
+            <dl className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <dt className="text-xs font-medium text-[#7b8598]">Email</dt>
 
-                <div>
-                  <dt className="text-xs font-medium text-[#7b8598]">Role</dt>
+                <dd className="mt-1 text-sm text-[#17223b]">{user.email}</dd>
+              </div>
 
-                  <dd className="mt-1 text-sm capitalize text-[#17223b]">
-                    {user.role.toLowerCase().replaceAll('_', ' ')}
-                  </dd>
-                </div>
-              </dl>
-            </CardContent>
-          </Card>
-        )
+              <div>
+                <dt className="text-xs font-medium text-[#7b8598]">Role</dt>
+
+                <dd className="mt-1 text-sm capitalize text-[#17223b]">
+                  {user.role.toLowerCase().replaceAll('_', ' ')}
+                </dd>
+              </div>
+            </dl>
+          </CardContent>
+        </Card>
       )}
     </div>
+  );
+}
+
+interface DashboardHeaderProps {
+  title: string;
+  description: string;
+}
+
+function DashboardHeader({ title, description }: DashboardHeaderProps) {
+  return (
+    <header>
+      <h1 className="text-xl font-bold tracking-tight text-[#17223b] sm:text-2xl">
+        {title}
+      </h1>
+
+      <p className="mt-1 text-[11px] text-[#6d778c] sm:text-xs">
+        {description}
+      </p>
+    </header>
   );
 }
 
@@ -107,12 +177,12 @@ function DashboardLoading() {
         <Skeleton className="h-4 w-72 max-w-full" />
       </div>
 
-      <DashboardContentLoading />
+      <SuperAdminDashboardLoading />
     </div>
   );
 }
 
-function DashboardContentLoading() {
+function SuperAdminDashboardLoading() {
   return (
     <div className="space-y-4">
       <div className="grid gap-4 lg:grid-cols-2">
@@ -126,6 +196,41 @@ function DashboardContentLoading() {
       <div className="grid gap-4 lg:grid-cols-[0.8fr_1.7fr]">
         <Skeleton className="h-[180px] rounded-lg" />
         <Skeleton className="h-[180px] rounded-lg" />
+      </div>
+    </div>
+  );
+}
+
+function TeacherDashboardLoading() {
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="space-y-2">
+          <Skeleton className="h-7 w-64 max-w-full" />
+          <Skeleton className="h-4 w-80 max-w-full" />
+        </div>
+
+        <div className="flex gap-2">
+          <Skeleton className="h-9 w-36" />
+          <Skeleton className="h-9 w-32" />
+        </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <Skeleton className="h-28 rounded-lg" />
+        <Skeleton className="h-28 rounded-lg" />
+        <Skeleton className="h-28 rounded-lg" />
+        <Skeleton className="h-28 rounded-lg" />
+      </div>
+
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_310px]">
+        <Skeleton className="h-[330px] rounded-lg" />
+        <Skeleton className="h-[330px] rounded-lg" />
+      </div>
+
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_310px]">
+        <Skeleton className="h-[310px] rounded-lg" />
+        <Skeleton className="h-[310px] rounded-lg" />
       </div>
     </div>
   );
