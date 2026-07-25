@@ -26,6 +26,7 @@ import { ApiError } from '@/lib/api';
 import { RequireRole } from '@/components/require-role';
 import { TablePagination } from '@/components/table-pagination';
 import { MultiSelect } from '@/components/multi-select';
+import { Combobox } from '@/components/combobox';
 import { BookCover } from '@/components/book-cover';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -49,13 +50,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   Form,
   FormControl,
   FormField,
@@ -65,7 +59,6 @@ import {
 } from '@/components/ui/form';
 
 const PAGE_SIZE = 20;
-const NO_PUBLISHER = '__none__';
 
 // z.coerce.date() makes the schema's input type diverge from its output type,
 // so the form is typed with the input while submit receives the parsed output.
@@ -341,10 +334,37 @@ function BookDialog({
   onCreate,
   onUpdate,
 }: BookDialogProps) {
-  // Option lists for the publisher select + author/category multi-selects.
-  const { authors } = useAuthors({ limit: 1000, enabled: open });
-  const { categories } = useCategories({ limit: 1000, enabled: open });
-  const { publishers } = usePublishers({ limit: 1000, enabled: open });
+  // Option lists for the publisher combobox + author/category multi-selects.
+  const { authors, create: createAuthor } = useAuthors({
+    limit: 1000,
+    enabled: open,
+  });
+  const { categories, create: createCategory } = useCategories({
+    limit: 1000,
+    enabled: open,
+  });
+  const { publishers, create: createPublisher } = usePublishers({
+    limit: 1000,
+    enabled: open,
+  });
+
+  // Lets staff add a missing author/category/publisher without leaving the
+  // book form - a name is all any of the three require to exist.
+  const quickCreate = async (
+    create: (body: { name: string }) => Promise<{ id: string; name: string }>,
+    name: string,
+    label: string,
+  ) => {
+    try {
+      const created = await create({ name });
+      return { value: created.id, label: created.name };
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : `Failed to create ${label}`,
+      );
+      throw err;
+    }
+  };
 
   const form = useForm<BookFormInput, unknown, BookCreateRequest>({
     resolver: zodResolver(bookCreateRequestSchema),
@@ -534,26 +554,20 @@ function BookDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Publisher</FormLabel>
-                  <Select
-                    value={field.value ?? NO_PUBLISHER}
-                    onValueChange={(value) =>
-                      field.onChange(value === NO_PUBLISHER ? undefined : value)
+                  <Combobox
+                    options={(publishers ?? []).map((p) => ({
+                      value: p.id,
+                      label: p.name,
+                    }))}
+                    value={field.value ?? null}
+                    onChange={(value) => field.onChange(value ?? undefined)}
+                    onCreate={(name) =>
+                      quickCreate(createPublisher, name, 'publisher')
                     }
-                  >
-                    <FormControl>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select a publisher" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value={NO_PUBLISHER}>No publisher</SelectItem>
-                      {publishers?.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    clearable
+                    placeholder="Select a publisher"
+                    searchPlaceholder="Search publishers…"
+                  />
                   <FormMessage />
                 </FormItem>
               )}
@@ -571,6 +585,9 @@ function BookDialog({
                     }))}
                     selected={field.value ?? []}
                     onChange={field.onChange}
+                    onCreate={(name) =>
+                      quickCreate(createAuthor, name, 'author')
+                    }
                     placeholder="Select authors…"
                     searchPlaceholder="Search authors…"
                   />
@@ -591,6 +608,9 @@ function BookDialog({
                     }))}
                     selected={field.value ?? []}
                     onChange={field.onChange}
+                    onCreate={(name) =>
+                      quickCreate(createCategory, name, 'category')
+                    }
                     placeholder="Select categories…"
                     searchPlaceholder="Search categories…"
                   />
