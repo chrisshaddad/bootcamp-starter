@@ -341,14 +341,17 @@ export default function DashboardPage() {
   const { user, isLoading } = useUser();
   const role = user?.role;
 
-  // Patients have no use for this dashboard — their home is My Health.
+  // Some roles have no use for this dashboard and get sent to their real home:
+  // patients to My Health, super admins to the combined Institutions page.
   useEffect(() => {
     if (role === 'PATIENT') {
       router.replace('/my-health');
+    } else if (role === 'SUPER_ADMIN') {
+      router.replace('/institutions');
     }
   }, [role, router]);
 
-  if (isLoading || role === 'PATIENT') {
+  if (isLoading || role === 'PATIENT' || role === 'SUPER_ADMIN') {
     return (
       <div className="space-y-6">
         <Skeleton className="h-8 w-48" />

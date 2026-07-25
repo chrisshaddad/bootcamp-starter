@@ -5,8 +5,9 @@ import { useUser } from '@/hooks/use-auth';
 import {
   useInstitutions,
   useCreateInstitution,
+  useInstitutionActions,
 } from '@/hooks/use-institutions';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
@@ -40,7 +41,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Building2, Plus } from 'lucide-react';
+import {
+  Building2,
+  Plus,
+  Clock,
+  CheckCircle,
+  XCircle,
+  Ban,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import {
   institutionCreateRequestSchema,
@@ -50,6 +58,7 @@ import {
 } from '@repo/contracts';
 import { ApiError } from '@/lib/api';
 import { StatusBadge } from '@/components/status-badge';
+import { StatTile } from '@/components/stat-tile';
 import { ForbiddenPage } from '@/components/forbidden-page';
 
 type StatusFilter =
@@ -59,6 +68,21 @@ type StatusFilter =
   | 'REJECTED'
   | 'SUSPENDED'
   | 'INACTIVE';
+
+const STATUS_FILTERS: StatusFilter[] = [
+  'all',
+  'PENDING',
+  'ACTIVE',
+  'REJECTED',
+  'SUSPENDED',
+  'INACTIVE',
+];
+
+function parseStatusFilter(value: string | null): StatusFilter {
+  return STATUS_FILTERS.includes(value as StatusFilter)
+    ? (value as StatusFilter)
+    : 'all';
+}
 
 function LoadingSkeleton() {
   return (
@@ -196,10 +220,160 @@ function CreateInstitutionDialog() {
   );
 }
 
+/**
+ * Headline counts across every institution. Each tile is its own filtered
+ * count query (the list endpoint returns a `total` per status filter), so a
+ * shrinking limit keeps the payloads tiny — we only need the totals.
+ */
+function InstitutionStats({ enabled }: { enabled: boolean }) {
+  const all = useInstitutions({ limit: 1, enabled });
+  const pending = useInstitutions({ status: 'PENDING', limit: 1, enabled });
+  const active = useInstitutions({ status: 'ACTIVE', limit: 1, enabled });
+  const suspended = useInstitutions({ status: 'SUSPENDED', limit: 1, enabled });
+
+  const isLoading =
+    all.isLoading ||
+    pending.isLoading ||
+    active.isLoading ||
+    suspended.isLoading;
+
+  if (isLoading) {
+    return (
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {[...Array(4)].map((_, i) => (
+          <Skeleton key={i} className="h-24 rounded-xl" />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <StatTile
+        label="Total institutions"
+        value={all.total ?? 0}
+        icon={Building2}
+      />
+      <StatTile
+        label="Pending approval"
+        value={pending.total ?? 0}
+        icon={Clock}
+      />
+      <StatTile label="Active" value={active.total ?? 0} icon={CheckCircle} />
+      <StatTile label="Suspended" value={suspended.total ?? 0} icon={Ban} />
+    </div>
+  );
+}
+
+/**
+ * A work queue of institutions awaiting review, with inline approve/reject.
+ * Renders nothing when there's nothing pending, so it stays out of the way.
+ */
+function PendingApprovals({ enabled }: { enabled: boolean }) {
+  const { institutions, isLoading, mutate } = useInstitutions({
+    status: 'PENDING',
+    limit: 100,
+    enabled,
+  });
+  const { approve, reject } = useInstitutionActions();
+  // id currently being acted on, so we can disable just that row's buttons
+  const [pendingId, setPendingId] = useState<string | null>(null);
+
+  const handleAction = async (
+    id: string,
+    name: string,
+    action: 'approve' | 'reject',
+  ) => {
+    setPendingId(id);
+    try {
+      await (action === 'approve' ? approve(id) : reject(id));
+      toast.success(
+        action === 'approve' ? `${name} approved` : `${name} rejected`,
+      );
+      mutate();
+    } catch (error) {
+      toast.error(
+        error instanceof ApiError
+          ? error.message
+          : `Failed to ${action} institution`,
+      );
+    } finally {
+      setPendingId(null);
+    }
+  };
+
+  if (isLoading || !institutions?.length) return null;
+
+  return (
+    <Card className="border-warning">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-warning-dark">
+          <Clock className="h-5 w-5" />
+          Pending approval
+          <span className="text-sm font-normal text-muted-foreground">
+            ({institutions.length})
+          </span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ul className="divide-y divide-border">
+          {institutions.map((institution) => (
+            <li
+              key={institution.id}
+              className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div className="min-w-0">
+                <Link
+                  href={`/institutions/${institution.id}`}
+                  className="font-medium text-foreground hover:underline"
+                >
+                  {institution.name}
+                </Link>
+                <div className="text-sm text-muted-foreground">
+                  {institution.type} · Registered{' '}
+                  {new Date(institution.createdAt).toLocaleDateString()}
+                </div>
+              </div>
+              <div className="flex shrink-0 gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 text-error border-error-light hover:bg-error-light"
+                  disabled={pendingId === institution.id}
+                  onClick={() =>
+                    handleAction(institution.id, institution.name, 'reject')
+                  }
+                >
+                  <XCircle className="h-4 w-4" />
+                  Reject
+                </Button>
+                <Button
+                  size="sm"
+                  className="gap-2 bg-success hover:bg-success-dark"
+                  disabled={pendingId === institution.id}
+                  onClick={() =>
+                    handleAction(institution.id, institution.name, 'approve')
+                  }
+                >
+                  <CheckCircle className="h-4 w-4" />
+                  Approve
+                </Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function InstitutionsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, isLoading: userLoading } = useUser();
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(() =>
+    parseStatusFilter(searchParams.get('status')),
+  );
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
@@ -270,6 +444,12 @@ export default function InstitutionsPage() {
           <CreateInstitutionDialog />
         </div>
       </div>
+
+      {/* Summary stats across all institutions */}
+      <InstitutionStats enabled={isSuperAdmin} />
+
+      {/* Work queue: institutions awaiting review */}
+      <PendingApprovals enabled={isSuperAdmin} />
 
       {/* Institutions Table */}
       <Card>
