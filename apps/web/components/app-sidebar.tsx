@@ -58,6 +58,10 @@ interface NavGroup {
 // SUPER_ADMIN: platform administration.
 const superAdminNavGroups: NavGroup[] = [
   {
+    label: 'Main',
+    items: [{ title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard }],
+  },
+  {
     label: 'Administration',
     items: [
       { title: 'Organizations', url: '/organizations', icon: Building2 },
