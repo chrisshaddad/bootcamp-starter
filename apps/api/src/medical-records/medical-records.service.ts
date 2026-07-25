@@ -366,8 +366,12 @@ export class MedicalRecordsService {
     }
 
     await this.prisma.$transaction(async (tx) => {
-      await tx.medicalRecord.update({
-        where: { id: recordId },
+      // getAccessibleRecord already checked institution scoping, but the
+      // mutation itself must not rely on that earlier check alone — fold
+      // institutionId directly into the update so a cross-tenant id can
+      // never be written to, structurally, not just by convention.
+      const { count } = await tx.medicalRecord.updateMany({
+        where: { id: recordId, institutionId: actor.institutionId },
         data: {
           recordDate: new Date(data.recordDate),
           institutionOfOrigin: data.institutionOfOrigin ?? null,
@@ -375,6 +379,10 @@ export class MedicalRecordsService {
           notes: data.notes ?? null,
         },
       });
+
+      if (count === 0) {
+        throw new NotFoundException(`Record with ID ${recordId} not found`);
+      }
 
       switch (data.recordType) {
         case 'LAB_RESULT':
@@ -473,10 +481,14 @@ export class MedicalRecordsService {
 
     await this.getAccessibleRecord(recordId, actor);
 
-    await this.prisma.medicalRecord.update({
-      where: { id: recordId },
+    const { count } = await this.prisma.medicalRecord.updateMany({
+      where: { id: recordId, institutionId: actor.institutionId },
       data: { isVoid: true },
     });
+
+    if (count === 0) {
+      throw new NotFoundException(`Record with ID ${recordId} not found`);
+    }
 
     this.logger.log(`Record ${recordId} deleted (soft) by ${actor.id}`);
   }

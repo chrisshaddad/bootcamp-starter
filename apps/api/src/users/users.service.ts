@@ -259,37 +259,71 @@ export class UsersService {
       throw new ForbiddenException('You cannot change your own status');
     }
 
-    const existing = await this.prisma.user.findFirst({
-      where: {
-        id,
-        institutionId: actor.institutionId,
-        role: { in: MANAGED_ROLES },
-      },
-    });
+    await this.applyStatusChange(id, isActive, actor);
 
-    if (!existing) {
-      throw new NotFoundException(`User with ID ${id} not found`);
-    }
-
-    if (existing.role === 'INSTITUTION_ADMIN' && !isActive) {
-      const activeAdminCount = await this.prisma.user.count({
-        where: {
-          institutionId: actor.institutionId,
-          role: 'INSTITUTION_ADMIN',
-          isActive: true,
-        },
-      });
-
-      if (activeAdminCount <= 1) {
-        throw new ForbiddenException(
-          'Cannot deactivate the last active institution admin',
-        );
-      }
-    }
-
-    await this.prisma.user.update({ where: { id }, data: { isActive } });
     this.logger.log(`User ${id} ${isActive ? 'reactivated' : 'deactivated'}`);
     return this.findOne(id, actor.institutionId);
+  }
+
+  /**
+   * Counting active admins and flipping isActive used to be two separate
+   * Prisma calls, which let two concurrent deactivation requests both read
+   * "2 active admins" and both proceed, leaving zero. A Serializable
+   * transaction makes Postgres detect that write-skew and abort one side
+   * with a P2034 conflict; we retry it once (the retry re-reads the count
+   * post-commit and correctly hits the "last admin" guard).
+   */
+  private async applyStatusChange(
+    id: string,
+    isActive: boolean,
+    actor: User,
+    attempt = 0,
+  ): Promise<void> {
+    try {
+      await this.prisma.$transaction(
+        async (tx) => {
+          const existing = await tx.user.findFirst({
+            where: {
+              id,
+              institutionId: actor.institutionId,
+              role: { in: MANAGED_ROLES },
+            },
+          });
+
+          if (!existing) {
+            throw new NotFoundException(`User with ID ${id} not found`);
+          }
+
+          if (existing.role === 'INSTITUTION_ADMIN' && !isActive) {
+            const activeAdminCount = await tx.user.count({
+              where: {
+                institutionId: actor.institutionId,
+                role: 'INSTITUTION_ADMIN',
+                isActive: true,
+              },
+            });
+
+            if (activeAdminCount <= 1) {
+              throw new ForbiddenException(
+                'Cannot deactivate the last active institution admin',
+              );
+            }
+          }
+
+          await tx.user.update({ where: { id }, data: { isActive } });
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      );
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2034' &&
+        attempt === 0
+      ) {
+        return this.applyStatusChange(id, isActive, actor, attempt + 1);
+      }
+      throw error;
+    }
   }
 
   /**

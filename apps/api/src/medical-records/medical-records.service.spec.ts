@@ -16,6 +16,7 @@ describe('MedicalRecordsService', () => {
       findUniqueOrThrow: jest.Mock;
       findMany: jest.Mock;
       update: jest.Mock;
+      updateMany: jest.Mock;
       count: jest.Mock;
     };
     labResultDetail: { update: jest.Mock };
@@ -53,6 +54,7 @@ describe('MedicalRecordsService', () => {
         findUniqueOrThrow: jest.fn(),
         findMany: jest.fn(),
         update: jest.fn(),
+        updateMany: jest.fn(),
         count: jest.fn(),
       },
       labResultDetail: { update: jest.fn() },
@@ -148,12 +150,13 @@ describe('MedicalRecordsService', () => {
           professional,
         ),
       ).rejects.toThrow(ForbiddenException);
-      expect(prisma.medicalRecord.update).not.toHaveBeenCalled();
+      expect(prisma.medicalRecord.updateMany).not.toHaveBeenCalled();
     });
 
     it('updates the base record and the matching detail table', async () => {
       prisma.medicalRecord.findFirst.mockResolvedValue(accessibleRecordRow);
       prisma.assignment.findFirst.mockResolvedValue({ id: 'assign-1' });
+      prisma.medicalRecord.updateMany.mockResolvedValue({ count: 1 });
       prisma.medicalRecord.findUniqueOrThrow.mockResolvedValue({
         id: 'rec-1',
         patientId: 'patient-1',
@@ -188,8 +191,8 @@ describe('MedicalRecordsService', () => {
         professional,
       );
 
-      expect(prisma.medicalRecord.update).toHaveBeenCalledWith({
-        where: { id: 'rec-1' },
+      expect(prisma.medicalRecord.updateMany).toHaveBeenCalledWith({
+        where: { id: 'rec-1', institutionId: 'inst-1' },
         data: {
           recordDate: new Date('2026-01-05'),
           institutionOfOrigin: null,
@@ -213,17 +216,18 @@ describe('MedicalRecordsService', () => {
       await expect(service.remove('rec-1', patient)).rejects.toThrow(
         ForbiddenException,
       );
-      expect(prisma.medicalRecord.update).not.toHaveBeenCalled();
+      expect(prisma.medicalRecord.updateMany).not.toHaveBeenCalled();
     });
 
     it('soft-deletes by flipping isVoid, leaving the row and files in place', async () => {
       prisma.medicalRecord.findFirst.mockResolvedValue(accessibleRecordRow);
       prisma.assignment.findFirst.mockResolvedValue({ id: 'assign-1' });
+      prisma.medicalRecord.updateMany.mockResolvedValue({ count: 1 });
 
       await service.remove('rec-1', professional);
 
-      expect(prisma.medicalRecord.update).toHaveBeenCalledWith({
-        where: { id: 'rec-1' },
+      expect(prisma.medicalRecord.updateMany).toHaveBeenCalledWith({
+        where: { id: 'rec-1', institutionId: 'inst-1' },
         data: { isVoid: true },
       });
       expect(prisma.recordFile.findFirst).not.toHaveBeenCalled();

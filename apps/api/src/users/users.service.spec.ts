@@ -54,7 +54,12 @@ describe('UsersService', () => {
           useValue: {
             ...prisma,
             professionalProfile: { create: jest.fn(), update: jest.fn() },
-            $transaction: jest.fn(),
+            $transaction: jest.fn((callback: (tx: unknown) => unknown) =>
+              callback({
+                user: prisma.user,
+                professionalProfile: { create: jest.fn(), update: jest.fn() },
+              }),
+            ),
           },
         },
         {

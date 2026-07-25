@@ -50,13 +50,22 @@ export const prescriptionDetailInputSchema = z
   })
   .refine(
     (data) => {
-      const names = data.items.map((item) =>
-        item.medicationName.trim().toLowerCase(),
+      // Keyed on medication + route + dosage, not medication name alone —
+      // the same drug legitimately appears more than once in a tapering
+      // schedule (different dosage) or as both an oral and topical order
+      // (different route).
+      const keys = data.items.map((item) =>
+        [
+          item.medicationName.trim().toLowerCase(),
+          item.route,
+          item.dosage.trim().toLowerCase(),
+        ].join('|'),
       );
-      return new Set(names).size === names.length;
+      return new Set(keys).size === keys.length;
     },
     {
-      message: 'Each medication can only appear once in a prescription',
+      message:
+        'Each medication + route + dosage combination can only appear once in a prescription',
       path: ['items'],
     },
   );

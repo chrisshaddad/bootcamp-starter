@@ -70,10 +70,10 @@ export class MailProcessor extends WorkerHost {
     });
 
     if (success) {
-      this.logger.log(`Magic link email sent successfully to ${email}`);
+      this.logger.log('Magic link email sent successfully');
     } else {
-      this.logger.error(`Failed to send magic link email to ${email}`);
-      throw new Error(`Failed to send email to ${email}`);
+      this.logger.error('Failed to send magic link email');
+      throw new Error('Failed to send magic link email');
     }
   }
 
@@ -92,10 +92,10 @@ export class MailProcessor extends WorkerHost {
     });
 
     if (success) {
-      this.logger.log(`Invitation email sent successfully to ${email}`);
+      this.logger.log('Invitation email sent successfully');
     } else {
-      this.logger.error(`Failed to send invitation email to ${email}`);
-      throw new Error(`Failed to send email to ${email}`);
+      this.logger.error('Failed to send invitation email');
+      throw new Error('Failed to send invitation email');
     }
   }
 
@@ -110,6 +110,8 @@ export class MailProcessor extends WorkerHost {
 
     const text = `Hello,\n\n${createdByName} added a new ${newUserRoleLabel} (${newUserName}) to ${institutionName} on MediLink.\n\nNo action is needed — this is just a heads-up.\n\n— MediLink`;
 
+    let sent = 0;
+    let failed = 0;
     for (const email of adminEmails) {
       const success = await this.mailService.sendEmail({
         to: email,
@@ -119,10 +121,14 @@ export class MailProcessor extends WorkerHost {
       });
 
       if (success) {
-        this.logger.log(`New-user notification sent successfully to ${email}`);
+        sent++;
       } else {
-        this.logger.error(`Failed to send new-user notification to ${email}`);
+        failed++;
       }
     }
+
+    this.logger.log(
+      `New-user notification: ${sent} sent, ${failed} failed (institution ${institutionName})`,
+    );
   }
 }

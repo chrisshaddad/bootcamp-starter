@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { AuthService } from '../auth/auth.service';
+import { SessionService } from '../auth/session.service';
 import { PLATFORM_INSTITUTION_ID, Prisma } from '@repo/db';
 import type {
   InstitutionListQuery,
@@ -23,6 +24,7 @@ export class InstitutionsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly authService: AuthService,
+    private readonly sessionService: SessionService,
   ) {}
 
   private readonly detailSelect = {
@@ -193,7 +195,7 @@ export class InstitutionsService {
         (error.meta?.target as string[] | undefined)?.includes('email')
       ) {
         this.logger.warn(
-          `Institution creation rejected: admin email ${data.admin.email} already in use`,
+          'Institution creation rejected: admin email already in use',
         );
         throw new ConflictException(
           `A user with email ${data.admin.email} already exists`,
@@ -241,7 +243,7 @@ export class InstitutionsService {
         (error.meta?.target as string[] | undefined)?.includes('email')
       ) {
         this.logger.warn(
-          `Admin creation rejected: email ${normalizedEmail} already in use`,
+          `Admin creation rejected for institution ${institutionId}: email already in use`,
         );
         throw new ConflictException(
           `A user with email ${normalizedEmail} already exists`,
@@ -309,7 +311,7 @@ export class InstitutionsService {
         (error.meta?.target as string[] | undefined)?.includes('email')
       ) {
         this.logger.warn(
-          `Admin email update rejected: ${normalizedEmail} already in use`,
+          `Admin email update rejected for admin ${adminId}: email already in use`,
         );
         throw new ConflictException(
           `A user with email ${normalizedEmail} already exists`,
@@ -317,6 +319,10 @@ export class InstitutionsService {
       }
       throw error;
     }
+
+    // The corrected email is a new identity for this account — any session
+    // opened under the old address must not silently carry over.
+    await this.sessionService.deleteAllUserSessions(adminId);
 
     const institution = await this.prisma.institution.findUniqueOrThrow({
       where: { id: institutionId },

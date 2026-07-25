@@ -20,7 +20,7 @@ describe('AuthService', () => {
   };
   let sessionService: { createSession: jest.Mock };
   let mailQueue: { add: jest.Mock };
-  let redis: { incr: jest.Mock; expire: jest.Mock };
+  let redis: { eval: jest.Mock };
 
   beforeEach(async () => {
     prisma = {
@@ -35,7 +35,7 @@ describe('AuthService', () => {
     };
     sessionService = { createSession: jest.fn() };
     mailQueue = { add: jest.fn() };
-    redis = { incr: jest.fn().mockResolvedValue(1), expire: jest.fn() };
+    redis = { eval: jest.fn().mockResolvedValue(1) };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -130,33 +130,27 @@ describe('AuthService', () => {
       expect(prisma.magicLink.create).not.toHaveBeenCalled();
     });
 
-    it('sets an expiry on the rate-limit counter the first time an email is seen', async () => {
-      redis.incr.mockResolvedValue(1);
+    it('runs the rate limit as a single atomic script, keyed per email with the rolling window', async () => {
+      redis.eval.mockResolvedValue(1);
       prisma.user.findUnique.mockResolvedValue(null);
 
       await expect(
         service.requestMagicLink('nobody@example.com'),
       ).rejects.toThrow(NotFoundException);
 
-      expect(redis.expire).toHaveBeenCalledWith(
+      // INCR and EXPIRE must run inside one EVAL — two separate Redis round
+      // trips would leave a window where a crash between them drops the TTL
+      // and turns the counter into a permanent block for that email.
+      expect(redis.eval).toHaveBeenCalledWith(
+        expect.any(String),
+        1,
         'magic-link-rate-limit:nobody@example.com',
         15 * 60,
       );
     });
 
-    it('does not re-set the expiry on subsequent requests within the window', async () => {
-      redis.incr.mockResolvedValue(2);
-      prisma.user.findUnique.mockResolvedValue(null);
-
-      await expect(
-        service.requestMagicLink('nobody@example.com'),
-      ).rejects.toThrow(NotFoundException);
-
-      expect(redis.expire).not.toHaveBeenCalled();
-    });
-
     it('throws ForbiddenException once the per-email cap is exceeded, before ever touching the database', async () => {
-      redis.incr.mockResolvedValue(6); // cap is 5
+      redis.eval.mockResolvedValue(6); // cap is 5
 
       await expect(
         service.requestMagicLink('victim@example.com'),

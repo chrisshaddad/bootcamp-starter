@@ -4,6 +4,7 @@ import { Prisma } from '@repo/db';
 import { InstitutionsService } from './institutions.service';
 import { PrismaService } from '../database/prisma.service';
 import { AuthService } from '../auth/auth.service';
+import { SessionService } from '../auth/session.service';
 
 describe('InstitutionsService', () => {
   let service: InstitutionsService;
@@ -23,6 +24,7 @@ describe('InstitutionsService', () => {
     };
   };
   let authService: { sendInvitation: jest.Mock };
+  let sessionService: { deleteAllUserSessions: jest.Mock };
 
   beforeEach(async () => {
     prisma = {
@@ -41,6 +43,7 @@ describe('InstitutionsService', () => {
       },
     };
     authService = { sendInvitation: jest.fn() };
+    sessionService = { deleteAllUserSessions: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -52,6 +55,10 @@ describe('InstitutionsService', () => {
         {
           provide: AuthService,
           useValue: authService,
+        },
+        {
+          provide: SessionService,
+          useValue: sessionService,
         },
       ],
     }).compile();
@@ -312,6 +319,9 @@ describe('InstitutionsService', () => {
         where: { id: 'admin-1' },
         data: { email: 'fixed@example.com', isConfirmed: false },
       });
+      expect(sessionService.deleteAllUserSessions).toHaveBeenCalledWith(
+        'admin-1',
+      );
       expect(authService.sendInvitation).toHaveBeenCalledWith(
         { id: 'admin-1', email: 'fixed@example.com' },
         'Super Admin',
@@ -356,6 +366,7 @@ describe('InstitutionsService', () => {
           'Super Admin',
         ),
       ).rejects.toThrow(ConflictException);
+      expect(sessionService.deleteAllUserSessions).not.toHaveBeenCalled();
       expect(authService.sendInvitation).not.toHaveBeenCalled();
     });
   });

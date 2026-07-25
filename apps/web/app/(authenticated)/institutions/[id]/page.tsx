@@ -586,8 +586,20 @@ export default function InstitutionDetailPage() {
                       </div>
                       <div className="flex shrink-0 items-center gap-2">
                         <StatusBadge
-                          status={admin.isConfirmed ? 'ACTIVE' : 'PENDING'}
-                          label={admin.isConfirmed ? 'Confirmed' : 'Pending'}
+                          status={
+                            !admin.isActive
+                              ? 'INACTIVE'
+                              : admin.isConfirmed
+                                ? 'ACTIVE'
+                                : 'PENDING'
+                          }
+                          label={
+                            !admin.isActive
+                              ? 'Deactivated'
+                              : admin.isConfirmed
+                                ? 'Confirmed'
+                                : 'Pending'
+                          }
                         />
                         <Button
                           variant="ghost"

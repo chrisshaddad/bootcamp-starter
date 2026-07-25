@@ -96,23 +96,36 @@ export class AuthService {
     return token;
   }
 
+  // INCR and EXPIRE run as one Lua script on the Redis server, so there's no
+  // window between them where a crash/disconnect could leave the key
+  // incremented but without a TTL — which would otherwise turn into a
+  // permanent block for that email instead of a bounded one.
+  private static readonly RATE_LIMIT_SCRIPT = `
+    local attempts = redis.call("INCR", KEYS[1])
+    if tonumber(attempts) == 1 then
+      redis.call("EXPIRE", KEYS[1], ARGV[1])
+    end
+    return attempts
+  `;
+
   /**
-   * Counts requests per email in a rolling window (Redis `INCR` + `EXPIRE`
-   * on the first hit) and rejects once the cap is exceeded. Keyed by email,
-   * not IP — this bounds the damage from someone spamming a known victim's
-   * address to a limited window, rather than stopping it outright (we can't
-   * tell the real owner's request from an attacker's by email alone).
+   * Counts requests per email in a rolling window and rejects once the cap
+   * is exceeded. Keyed by email, not IP — this bounds the damage from
+   * someone spamming a known victim's address to a limited window, rather
+   * than stopping it outright (we can't tell the real owner's request from
+   * an attacker's by email alone).
    */
   private async enforceMagicLinkRateLimit(email: string): Promise<void> {
     const key = `magic-link-rate-limit:${email}`;
-    const attempts = await this.redis.incr(key);
+    const attempts = await this.redis.eval(
+      AuthService.RATE_LIMIT_SCRIPT,
+      1,
+      key,
+      MAGIC_LINK_RATE_LIMIT_WINDOW_SECONDS,
+    );
 
-    if (attempts === 1) {
-      await this.redis.expire(key, MAGIC_LINK_RATE_LIMIT_WINDOW_SECONDS);
-    }
-
-    if (attempts > MAGIC_LINK_RATE_LIMIT_MAX) {
-      this.logger.warn(`Magic link rate limit exceeded for ${email}`);
+    if (Number(attempts) > MAGIC_LINK_RATE_LIMIT_MAX) {
+      this.logger.warn('Magic link rate limit exceeded');
       throw new ForbiddenException(RATE_LIMIT_MESSAGE);
     }
   }
