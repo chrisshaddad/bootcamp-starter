@@ -82,7 +82,13 @@ export function useAuth() {
   );
 
   const logout = useCallback(async () => {
-    await apiPost<{ success: boolean }>('/auth/logout');
+    try {
+      await apiPost<{ success: boolean }>('/auth/logout');
+    } catch {
+      // Logging out should never fail from the UI's perspective - even if
+      // this request itself errors, mutate() below re-checks /auth/me and
+      // the app treats a 401 there as logged-out regardless.
+    }
     mutate();
   }, [mutate]);
 

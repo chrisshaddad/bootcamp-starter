@@ -32,8 +32,6 @@ import {
 import type { User } from '@repo/db';
 import { ZodValidationPipe } from '../common/pipes';
 
-const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
-
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -68,25 +66,35 @@ export class AuthController {
       body.token,
     );
 
-    // Set session cookie
+    // Set session cookie - deliberately no maxAge/expires, so it's a
+    // browser-session cookie the browser discards when it fully closes.
+    // The 7-day TTL still backstops it server-side (see SessionService).
     response.cookie(SESSION_COOKIE_NAME, sessionId, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: SESSION_MAX_AGE_MS,
       path: '/',
     });
 
     return { user };
   }
 
+  // Public - logging out must succeed even when the session is already
+  // missing/stale/expired (AuthGuard would otherwise 401 before this handler
+  // ever runs, which is backwards for an endpoint whose whole job is to end
+  // a session). Read the cookie directly rather than request.sessionId,
+  // which only AuthGuard's validation path (skipped here) would populate -
+  // SessionService.deleteSession() is already a safe no-op on a bad id.
+  @Public()
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   async logout(
     @Req() request: AuthenticatedRequest,
     @Res({ passthrough: true }) response: Response,
   ) {
-    const sessionId = request.sessionId;
+    const sessionId = request.cookies?.[SESSION_COOKIE_NAME] as
+      | string
+      | undefined;
 
     if (sessionId) {
       await this.authService.logout(sessionId);
