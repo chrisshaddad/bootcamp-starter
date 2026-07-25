@@ -13,6 +13,7 @@ import type {
   LibraryMemberStatus,
   LibraryMembershipType,
   LibraryMemberActionResponse,
+  LibraryMemberClaimInviteRequest,
 } from '@repo/contracts';
 
 const PREFIX = '/library-members';
@@ -92,6 +93,18 @@ export function useLibraryMembers(options: UseLibraryMembersOptions = {}) {
     await invalidateByPrefix(PREFIX);
   }, []);
 
+  const sendClaimInvite = useCallback(
+    async (id: string, body: LibraryMemberClaimInviteRequest) => {
+      const res = await apiPost<LibraryMemberActionResponse>(
+        `${PREFIX}/${id}/claim-invite`,
+        body,
+      );
+      await invalidateByPrefix(PREFIX);
+      return res.libraryMember;
+    },
+    [],
+  );
+
   return {
     members: data?.libraryMembers,
     total: data?.total,
@@ -103,6 +116,7 @@ export function useLibraryMembers(options: UseLibraryMembersOptions = {}) {
     approve,
     reject,
     remove,
+    sendClaimInvite,
   };
 }
 

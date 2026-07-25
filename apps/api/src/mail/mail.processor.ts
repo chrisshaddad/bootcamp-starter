@@ -3,7 +3,12 @@ import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { MailService } from './mail.service';
 import { MAIL_QUEUE, MAIL_JOBS } from './mail.constants';
-import { magicLinkEmail, invitationEmail, dueReminderEmail } from './templates';
+import {
+  magicLinkEmail,
+  invitationEmail,
+  dueReminderEmail,
+  membershipClaimEmail,
+} from './templates';
 
 interface SendMagicLinkJobData {
   email: string;
@@ -28,10 +33,19 @@ interface SendDueReminderJobData {
   reminderType: 'DUE_IN_5_DAYS' | 'DUE_TOMORROW' | 'DUE_TODAY';
 }
 
+interface SendMembershipClaimJobData {
+  email: string;
+  patronName: string;
+  organizationName: string;
+  libraryCardNumber: string;
+  claimLink: string;
+}
+
 type MailJobData =
   | SendMagicLinkJobData
   | SendInvitationJobData
-  | SendDueReminderJobData;
+  | SendDueReminderJobData
+  | SendMembershipClaimJobData;
 
 const FROM_ADDRESS = 'no-reply@nextshelf.local';
 
@@ -55,6 +69,11 @@ export class MailProcessor extends WorkerHost {
         break;
       case MAIL_JOBS.SEND_DUE_REMINDER:
         await this.handleSendDueReminder(job.data as SendDueReminderJobData);
+        break;
+      case MAIL_JOBS.SEND_MEMBERSHIP_CLAIM:
+        await this.handleSendMembershipClaim(
+          job.data as SendMembershipClaimJobData,
+        );
         break;
       default:
         this.logger.warn(`Unknown job type: ${job.name}`);
@@ -134,6 +153,39 @@ export class MailProcessor extends WorkerHost {
       this.logger.log(`Due reminder email sent successfully to ${email}`);
     } else {
       this.logger.error(`Failed to send due reminder email to ${email}`);
+      throw new Error(`Failed to send email to ${email}`);
+    }
+  }
+
+  private async handleSendMembershipClaim(
+    data: SendMembershipClaimJobData,
+  ): Promise<void> {
+    const {
+      email,
+      patronName,
+      organizationName,
+      libraryCardNumber,
+      claimLink,
+    } = data;
+    const { subject, text, html } = membershipClaimEmail({
+      patronName,
+      organizationName,
+      libraryCardNumber,
+      claimLink,
+    });
+
+    const success = await this.mailService.sendEmail({
+      to: email,
+      from: FROM_ADDRESS,
+      subject,
+      text,
+      html,
+    });
+
+    if (success) {
+      this.logger.log(`Membership claim email sent successfully to ${email}`);
+    } else {
+      this.logger.error(`Failed to send membership claim email to ${email}`);
       throw new Error(`Failed to send email to ${email}`);
     }
   }

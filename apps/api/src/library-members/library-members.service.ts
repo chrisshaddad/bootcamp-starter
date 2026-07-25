@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@repo/db';
 import { PrismaService } from '../database/prisma.service';
+import { AuthService } from '../auth/auth.service';
 import type {
   LibraryMemberResponse,
   LibraryMemberListResponse,
@@ -15,6 +16,8 @@ import type {
   LibraryMembershipType,
   LibraryMemberWithOrganizationResponse,
   LibraryMemberWithOrganizationListResponse,
+  LibraryMemberActionResponse,
+  LibraryMemberClaimInviteRequest,
   PortalMembershipRequest,
 } from '@repo/contracts';
 
@@ -31,7 +34,10 @@ const CARD_NUMBER_GENERATION_ATTEMPTS = 5;
 
 @Injectable()
 export class LibraryMembersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly authService: AuthService,
+  ) {}
 
   /**
    * List library members for an organization, optionally filtered by status or type
@@ -425,6 +431,82 @@ export class LibraryMembersService {
     }
 
     await this.prisma.libraryMember.delete({ where: { id } });
+  }
+
+  /**
+   * Link a walk-in member (userId: null) to a User account and email them a
+   * sign-in link, so they can start using the patron portal. Reuses an
+   * existing MEMBER-role user by email (lets one login hold cards at
+   * multiple libraries) or creates a new one. Linking happens immediately,
+   * before the email is even sent - mirrors StaffService.invite().
+   */
+  async sendClaimInvite(
+    organizationId: string,
+    id: string,
+    data: LibraryMemberClaimInviteRequest,
+  ): Promise<LibraryMemberActionResponse> {
+    const existing = await this.prisma.libraryMember.findFirst({
+      where: { id, organizationId },
+    });
+
+    if (!existing) {
+      throw new NotFoundException(`Library member with ID ${id} not found`);
+    }
+
+    if (existing.userId) {
+      throw new ConflictException(
+        'This membership is already linked to an account',
+      );
+    }
+
+    let user = await this.prisma.user.findUnique({
+      where: { email: data.email },
+    });
+
+    if (user) {
+      await this.validateMemberUser(user.id);
+    } else {
+      user = await this.prisma.user.create({
+        data: { email: data.email, name: data.name, role: 'MEMBER' },
+      });
+    }
+
+    // updateMany + count guard (not a plain update) closes the double-submit
+    // race: two concurrent claim-invite calls for the same walk-in can't
+    // both succeed. Also catches the (organizationId, userId) unique
+    // constraint if this user already holds a different membership here.
+    let count: number;
+    try {
+      ({ count } = await this.prisma.libraryMember.updateMany({
+        where: { id, organizationId, userId: null },
+        data: { userId: user.id },
+      }));
+    } catch (error) {
+      throw this.mapConflictError(error, existing.libraryCardNumber);
+    }
+
+    if (count === 0) {
+      throw new ConflictException(
+        'This membership is already linked to an account',
+      );
+    }
+
+    const libraryMember = await this.prisma.libraryMember.findFirstOrThrow({
+      where: { id, organizationId },
+      include: libraryMemberWithOrganizationInclude,
+    });
+
+    await this.authService.sendMembershipClaimInvitation(
+      // user.name (never data.name) once an existing account is reused - the
+      // email must greet them by their real stored name.
+      { id: user.id, email: user.email, name: user.name },
+      {
+        organizationName: libraryMember.organization.name,
+        libraryCardNumber: libraryMember.libraryCardNumber,
+      },
+    );
+
+    return { message: `Claim invite sent to ${user.email}`, libraryMember };
   }
 
   // User.organizationId is null for MEMBER-role users (their org affiliation
