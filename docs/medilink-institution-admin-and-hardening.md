@@ -6,21 +6,21 @@ A running audit-and-fix pass, done incrementally: a full institution-admin-lifec
 
 ## What changed, at a glance
 
-| Area                                 | Before                                                                                       | After                                                                                                                             |
-| ------------------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Institution admin visibility          | Super Admin's institution page showed only a member count — no way to see who the admin(s) are | New **Admins** tab lists every admin with email and a Confirmed/Pending badge                                                       |
-| Fixing a typo'd admin email           | No recovery path — a wrong address at set-up meant the account was stuck forever               | Super Admin edits the email; the account resets to pending and a fresh invite goes to the corrected address                        |
-| Adding an institution admin           | Only ever created once, at institution creation                                                | Super Admin can add another admin any time (`POST /institutions/:id/admins`); an existing Institution Admin can also add one via `/users` |
-| Deactivating the last admin           | Allowed — would lock the whole institution out                                                 | Blocked with a clear error once it's the last active admin                                                                          |
-| Institution status (Approve/Reject)   | Cosmetic — changed a label, nothing else checked it                                             | Enforced at login: a non-ACTIVE institution's users can't request or use a magic link; **Suspend/Reactivate** added alongside Approve/Reject |
-| Institution-admin invite email        | Sent at institution **creation** — a dead link if clicked before approval                       | Sent at **approval** time instead, the first point the account is actually usable                                                  |
-| Invitation link expiry                | Email said "7 days," the token actually died in 15 minutes                                       | Invitations really last 7 days now; sign-in links are unchanged at 15 minutes                                                       |
-| Magic-link request abuse              | No rate limit — repeatedly requesting a link for someone else's email kept invalidating theirs  | Capped at 5 requests per email per 15 minutes                                                                                       |
-| New-user creation                     | Only the invitee was told a user was created                                                    | Other active admins in the institution also get a heads-up email                                                                    |
-| Wrong medical record data             | Permanent — no way to correct or remove a mistaken entry                                        | An assigned professional can edit any field, or soft-delete the record entirely                                                     |
-| Notifications list                    | Hard-capped at the 50 most recent, nothing older reachable                                       | Fully paginated, same pattern as the Users/Institutions/Patients lists                                                              |
-| Viewing yourself in the Users list    | Clicking your own status badge opened a confirm dialog that always failed server-side           | Your own row shows a "You" tag; Edit and the status toggle are disabled with a tooltip instead                                      |
-| Email branding                        | All three email templates said "Bootcamp Starter," sent from `no-reply@bootcamp-starter.local`  | Sign-in, invitation, and new-user emails all say "MediLink," sent from `no-reply@medilink.local`, each closing with a "— MediLink" signature |
+| Area                                | Before                                                                                         | After                                                                                                                                        |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Institution admin visibility        | Super Admin's institution page showed only a member count — no way to see who the admin(s) are | New **Admins** tab lists every admin with email and a Confirmed/Pending badge                                                                |
+| Fixing a typo'd admin email         | No recovery path — a wrong address at set-up meant the account was stuck forever               | Super Admin edits the email; the account resets to pending and a fresh invite goes to the corrected address                                  |
+| Adding an institution admin         | Only ever created once, at institution creation                                                | Super Admin can add another admin any time (`POST /institutions/:id/admins`); an existing Institution Admin can also add one via `/users`    |
+| Deactivating the last admin         | Allowed — would lock the whole institution out                                                 | Blocked with a clear error once it's the last active admin                                                                                   |
+| Institution status (Approve/Reject) | Cosmetic — changed a label, nothing else checked it                                            | Enforced at login: a non-ACTIVE institution's users can't request or use a magic link; **Suspend/Reactivate** added alongside Approve/Reject |
+| Institution-admin invite email      | Sent at institution **creation** — a dead link if clicked before approval                      | Sent at **approval** time instead, the first point the account is actually usable                                                            |
+| Invitation link expiry              | Email said "7 days," the token actually died in 15 minutes                                     | Invitations really last 7 days now; sign-in links are unchanged at 15 minutes                                                                |
+| Magic-link request abuse            | No rate limit — repeatedly requesting a link for someone else's email kept invalidating theirs | Capped at 5 requests per email per 15 minutes                                                                                                |
+| New-user creation                   | Only the invitee was told a user was created                                                   | Other active admins in the institution also get a heads-up email                                                                             |
+| Wrong medical record data           | Permanent — no way to correct or remove a mistaken entry                                       | An assigned professional can edit any field, or soft-delete the record entirely                                                              |
+| Notifications list                  | Hard-capped at the 50 most recent, nothing older reachable                                     | Fully paginated, same pattern as the Users/Institutions/Patients lists                                                                       |
+| Viewing yourself in the Users list  | Clicking your own status badge opened a confirm dialog that always failed server-side          | Your own row shows a "You" tag; Edit and the status toggle are disabled with a tooltip instead                                               |
+| Email branding                      | All three email templates said "Bootcamp Starter," sent from `no-reply@bootcamp-starter.local` | Sign-in, invitation, and new-user emails all say "MediLink," sent from `no-reply@medilink.local`, each closing with a "— MediLink" signature |
 
 ## Design decisions worth knowing
 
@@ -70,7 +70,7 @@ A running audit-and-fix pass, done incrementally: a full institution-admin-lifec
 2. Edit an admin's email — confirm it resets to Pending and a new invite appears in Mailpit at the corrected address; the old address can no longer request a link.
 3. Add a new admin from the same tab — confirm it appears as Pending and gets an invite.
 4. Try deactivating admins one by one from `/users` down to the last one — confirm the last one is blocked with a specific error, not a generic failure.
-5. Suspend an ACTIVE institution — confirm a user from that institution is blocked from requesting *or* using a magic link, with a clear message. Reactivate — confirm they can log in again.
+5. Suspend an ACTIVE institution — confirm a user from that institution is blocked from requesting _or_ using a magic link, with a clear message. Reactivate — confirm they can log in again.
 6. Create a fresh institution, approve it — confirm the invite email arrives only at approval, not at creation.
 7. Create any user while a second Institution Admin exists — confirm that second admin gets a "New \_\_\_ added" email, but the admin who did the creating does not.
 8. Check an invitation email in Mailpit — confirm it still works well after 15 minutes (the old bug: dead by then despite the email promising 7 days).
@@ -79,14 +79,3 @@ A running audit-and-fix pass, done incrementally: a full institution-admin-lifec
 11. On `/notifications`, confirm pagination controls appear once you have more than one page's worth, and that the unread navbar badge stays accurate regardless of which page you're on.
 12. On `/users`, confirm your own row has a "You" tag and both actions are inert with a tooltip, while every other row works normally.
 13. In Mailpit, check all three email types (sign-in link, invitation, new-user heads-up) — confirm each says "MediLink," not "Bootcamp Starter," and is sent from `no-reply@medilink.local`.
-
-## Still missing / follow-up
-
-Explicitly deferred from the same audit pass, not fixed here:
-
-- Deactivating a professional doesn't cascade to their active care-team assignments — they still show as "active" on a patient's care team, and access is silently restored if reactivated. Left as-is by direct decision.
-- File uploads on medical records trust the client-supplied MIME type only, no content sniffing. Left as-is by direct decision.
-- No de-duplication check on patient registration (`nationalId` isn't unique). Skipped for now.
-- Notifications still don't deep-link to the patient/record they're about — clicking one only marks it read. Skipped for now.
-- Email uniqueness is still global, not per-institution — a cross-institution email collision gets the same generic conflict error as a same-institution one. Not yet started.
-- `reactivate()` on a **REJECTED** institution doesn't re-invite its admin, unlike `approve()` — a rejected institution's admin never got an invite in the first place (reject happens instead of approve), so reactivating one today still leaves them without a way in. Low-likelihood path, not fixed.

@@ -109,6 +109,7 @@ export class UsersService {
         isActive: user.isActive,
         isConfirmed: user.isConfirmed,
         specialty: user.professionalProfile?.specialty ?? null,
+        bio: user.professionalProfile?.bio ?? null,
         createdAt: user.createdAt,
       })),
       total,

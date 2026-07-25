@@ -10,7 +10,7 @@ interface SuperAdminSeed {
 const SUPER_ADMINS: SuperAdminSeed[] = [
   {
     email: 'admin@medilink.local',
-    fullName: 'Hoda Faour',
+    fullName: 'Hoda Jad Jean-luc',
     phone: '+10000000000',
   },
   // Add more super admins as needed

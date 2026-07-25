@@ -36,10 +36,7 @@ export const vaccinationDetailInputSchema = z.object({
 
 export const prescriptionItemInputSchema = z.object({
   medicationName: z.string().min(1),
-  dosage: z
-    .string()
-    .min(1)
-    .regex(/\d/, 'Dosage should include a number (e.g. 500mg, 2 tablets)'),
+  dosage: z.string().min(1),
   frequency: z.string().min(1),
   duration: z.string().optional(),
   route: prescriptionRouteSchema,

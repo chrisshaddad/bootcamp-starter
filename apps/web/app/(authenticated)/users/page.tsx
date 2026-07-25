@@ -222,6 +222,7 @@ function EditUserDialog({
       fullName: user.fullName,
       phone: user.phone,
       specialty: user.specialty ?? undefined,
+      bio: user.bio ?? undefined,
     },
   });
 

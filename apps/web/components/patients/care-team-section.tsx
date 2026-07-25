@@ -339,9 +339,9 @@ export function CareTeamSection({ patient, canManage, onChange }: Props) {
             <DialogTitle>Remove from Care Team</DialogTitle>
             <DialogDescription>
               Are you sure you want to remove{' '}
-              <strong>{pendingRemoval?.fullName}</strong> from this patient's
-              care team? They will immediately lose access to this patient's
-              records.
+              <strong>{pendingRemoval?.fullName}</strong> from this
+              patient&apos;s care team? They will immediately lose access to
+              this patient&apos;s records.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

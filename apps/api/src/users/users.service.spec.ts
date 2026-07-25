@@ -102,6 +102,29 @@ describe('UsersService', () => {
     });
   });
 
+  describe('findAll', () => {
+    it("includes a professional's bio in the mapped list item", async () => {
+      prisma.user.findMany.mockResolvedValue([
+        {
+          id: 'prof-1',
+          fullName: 'Dr. One',
+          email: 'dr.one@example.com',
+          phone: '+1',
+          role: 'PROFESSIONAL',
+          isActive: true,
+          isConfirmed: true,
+          createdAt: new Date(),
+          professionalProfile: { specialty: 'Cardiology', bio: 'Heart stuff' },
+        },
+      ]);
+      prisma.user.count.mockResolvedValue(1);
+
+      const result = await service.findAll({ page: 1, limit: 10 } as never, actor);
+
+      expect(result.users[0].bio).toBe('Heart stuff');
+    });
+  });
+
   describe('resendInvitation', () => {
     it('resends the invitation for an existing managed user', async () => {
       prisma.user.findFirst.mockResolvedValue({

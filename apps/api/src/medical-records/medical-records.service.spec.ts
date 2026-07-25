@@ -28,7 +28,11 @@ describe('MedicalRecordsService', () => {
     $transaction: jest.Mock;
   };
 
-  const professional = { id: 'prof-1', role: 'PROFESSIONAL' } as never;
+  const professional = {
+    id: 'prof-1',
+    institutionId: 'inst-1',
+    role: 'PROFESSIONAL',
+  } as never;
   const patient = { id: 'patient-user-1', role: 'PATIENT' } as never;
 
   const accessibleRecordRow = {

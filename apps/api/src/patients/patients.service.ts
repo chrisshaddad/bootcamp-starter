@@ -349,7 +349,10 @@ export class PatientsService {
    * Resend the onboarding invitation — for when the original email never
    * arrived or the link expired before the patient got to it.
    */
-  async resendInvitation(id: string, actor: User): Promise<PatientDetailResponse> {
+  async resendInvitation(
+    id: string,
+    actor: User,
+  ): Promise<PatientDetailResponse> {
     await this.getInstitutionPatient(id, actor);
 
     await this.sendInvitationFor(id, actor);
