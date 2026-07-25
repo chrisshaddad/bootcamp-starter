@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import { ArrowRight, Building2, Loader2, Mail, Sparkles } from 'lucide-react';
+import { Building2, Loader2, Mail, Sparkles } from 'lucide-react';
 import Image from 'next/image';
 import { magicLinkRequestSchema, type MagicLinkRequest } from '@repo/contracts';
 import { useAuth } from '@/hooks/use-auth';
@@ -44,7 +44,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-dvh bg-library-paper">
+    <div className="flex h-dvh overflow-hidden bg-library-paper">
       {/* Left Panel - Hero Section */}
       <div className="relative hidden w-1/2 overflow-hidden bg-library-ink lg:flex lg:flex-col lg:justify-end">
         {/* Background Image + warm duotone wash, so the photo reads as part
@@ -91,25 +91,13 @@ export default function LoginPage() {
             Sign in to manage your catalog, members, and loans - all in one
             warm, well-organized place.
           </p>
-
-          {/* Secondary CTA - running a library is a distinct path from
-              signing in, so it gets its own visible button here rather than
-              being buried as fine print. */}
-          <a
-            href="/register"
-            className="group inline-flex w-fit items-center gap-2 rounded-full bg-library-accent-500 px-5 py-2.5 text-sm font-semibold text-library-ink shadow-lg shadow-library-accent-500/30 transition hover:bg-library-accent-400 hover:shadow-xl hover:shadow-library-accent-500/40"
-          >
-            <Building2 className="h-4 w-4" />
-            Register your organization
-            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-          </a>
         </div>
       </div>
 
       {/* Right Panel - Login Form */}
       <div className="relative flex w-full flex-col justify-between bg-linear-to-br from-library-paper via-library-primary-50 to-library-accent-50 lg:w-1/2">
         {/* Form Section */}
-        <div className="flex flex-1 items-center justify-center px-6 py-12">
+        <div className="flex flex-1 flex-col items-center justify-center gap-6 px-6 py-12">
           <div className="w-full max-w-120 rounded-3xl border border-library-primary-100 bg-white/80 p-8 shadow-xl shadow-library-primary-900/5 backdrop-blur-sm sm:p-10">
             <div className="flex flex-col items-center gap-8">
               {/* Icon badge */}
@@ -195,12 +183,9 @@ export default function LoginPage() {
               </p>
             </div>
           </div>
-        </div>
 
-        {/* Footer */}
-        <footer className="flex flex-col items-center gap-4 px-6 py-6">
-          {/* Own screen real estate (not just fine print) so it's just as
-              noticeable on mobile, where the hero panel's CTA is hidden. */}
+          {/* Own a library CTA - sits right under the sign-in card so the
+              registration path is close at hand, not buried in the footer. */}
           <a
             href="/register"
             className="inline-flex items-center gap-1.5 rounded-full bg-library-accent-300 px-4 py-1.5 text-sm font-semibold text-library-ink shadow-md shadow-library-accent-500/20 transition hover:bg-library-accent-400"
@@ -208,6 +193,10 @@ export default function LoginPage() {
             <Building2 className="h-3.5 w-3.5" />
             Own a library? Register your organization
           </a>
+        </div>
+
+        {/* Footer */}
+        <footer className="flex flex-col items-center gap-4 px-6 py-6">
           <div className="flex flex-wrap items-center justify-center gap-2.5 text-sm font-medium leading-[1.6]">
             <span className="text-muted-foreground">
               © {new Date().getFullYear()} NextShelf. All rights reserved.
