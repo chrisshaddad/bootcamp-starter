@@ -52,3 +52,11 @@ export const RESERVATION_STATUS_COLORS: Record<string, string> = {
   EXPIRED: 'bg-muted text-muted-foreground',
   CANCELLED: 'bg-error-light text-error',
 };
+
+export const ORGANIZATION_STATUS_LABELS: Record<string, string> = {
+  PENDING: 'Pending',
+  ACTIVE: 'Active',
+  REJECTED: 'Rejected',
+  SUSPENDED: 'Suspended',
+  INACTIVE: 'Inactive',
+};

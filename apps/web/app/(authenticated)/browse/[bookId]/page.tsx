@@ -335,8 +335,7 @@ export default function BookDetailPage() {
                 {isPlacingHold ? 'Placing Hold...' : 'Reserve a Copy'}
               </Button>
               <p className="text-center text-xs text-muted-foreground">
-                Borrowing is free - you&apos;ll only be charged if a book is
-                returned late. We&apos;ll notify you when a copy is ready for
+                Free to borrow. We&apos;ll notify you when a copy is ready for
                 pickup.
               </p>
             </CardContent>

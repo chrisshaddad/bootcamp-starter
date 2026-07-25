@@ -3,9 +3,9 @@ import { bookCopyConditionSchema } from '../book-copies';
 
 const amount = z.string().regex(/^\d+(\.\d{1,2})?$/, 'Must be a valid amount');
 
-// One rate-card row on the way in (create/update) - a row's existence means
-// "this book is for sale in this condition at buyPrice." Borrowing is free
-// (patrons only ever pay overdue/lost fines), so there is no rent price.
+// One rate-card row on the way in (create/update). A row's existence means
+// "this book is for sale in this condition" — borrowing is free (patrons only
+// pay fines), so there's only a buy price.
 export const bookConditionPriceInputSchema = z.object({
   condition: bookCopyConditionSchema,
   buyPrice: amount,

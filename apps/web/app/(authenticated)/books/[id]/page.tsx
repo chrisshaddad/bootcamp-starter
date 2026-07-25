@@ -246,10 +246,10 @@ function BookDetail() {
             </div>
           )}
           <div className="pt-3">
-            <span className="text-sm text-muted-foreground">Pricing</span>
+            <span className="text-sm text-muted-foreground">Sale price</span>
             {book.conditionPrices.length === 0 ? (
               <p className="mt-1 text-sm font-medium text-foreground">
-                Not priced
+                Not for sale
               </p>
             ) : (
               <div className="mt-1 space-y-1">

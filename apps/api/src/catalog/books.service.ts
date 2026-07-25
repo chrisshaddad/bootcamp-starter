@@ -103,6 +103,7 @@ export class BooksService {
       authorIds: rawAuthorIds = [],
       categoryIds: rawCategoryIds = [],
       conditionPrices = [],
+      addCopies = [],
       ...bookFields
     } = data;
 
@@ -151,6 +152,8 @@ export class BooksService {
         });
       }
 
+      await this.addBookCopies(tx, organizationId, book.id, addCopies);
+
       return book.id;
     });
 
@@ -175,7 +178,13 @@ export class BooksService {
       throw new NotFoundException(`Book with ID ${id} not found`);
     }
 
-    const { authorIds, categoryIds, conditionPrices, ...bookFields } = data;
+    const {
+      authorIds,
+      categoryIds,
+      conditionPrices,
+      addCopies,
+      ...bookFields
+    } = data;
 
     await this.validateRelatedEntities(organizationId, {
       publisherId: bookFields.publisherId,
@@ -234,6 +243,10 @@ export class BooksService {
             })),
           });
         }
+      }
+
+      if (addCopies !== undefined) {
+        await this.addBookCopies(tx, organizationId, id, addCopies);
       }
     });
 
@@ -345,5 +358,88 @@ export class BooksService {
         );
       }
     }
+  }
+
+  // Adds N new copies per condition to a book (create or update - always
+  // additive, never removes/replaces existing copies). Barcodes are
+  // auto-generated.
+  private async addBookCopies(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    bookId: string,
+    addCopies: NonNullable<BookCreateRequest['addCopies']>,
+  ): Promise<void> {
+    const total = addCopies.reduce((sum, row) => sum + row.quantity, 0);
+    if (total === 0) return;
+
+    const barcodes = await this.generateBarcodes(tx, organizationId, total);
+
+    let cursor = 0;
+    await tx.bookCopy.createMany({
+      data: addCopies.flatMap((row) =>
+        Array.from({ length: row.quantity }, () => ({
+          organizationId,
+          bookId,
+          barcode: barcodes[cursor++]!,
+          condition: row.condition,
+        })),
+      ),
+    });
+  }
+
+  // Auto-issue barcodes for a book's initial copies, same prefix+sequence
+  // convention as LibraryMembersService.generateCardNumber(). Runs inside
+  // the caller's transaction so in-flight (uncommitted) barcodes from this
+  // same request are already visible and can't collide with each other.
+  private async generateBarcodes(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    count: number,
+  ): Promise<string[]> {
+    const org = await tx.organization.findUnique({
+      where: { id: organizationId },
+      select: { slug: true },
+    });
+
+    const prefix =
+      org?.slug
+        .split('-')
+        .map((part) => part[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 3) || 'LIB';
+
+    const existingCount = await tx.bookCopy.count({
+      where: { organizationId },
+    });
+
+    const barcodes: string[] = [];
+    let seq = existingCount + 1;
+
+    // Bounded search with a per-barcode retry budget; any slots still unfilled
+    // after that (pathological amounts of collisions) fall back to a
+    // timestamp suffix, which guarantees termination and uniqueness.
+    for (
+      let attempts = 0;
+      barcodes.length < count && attempts < count * 20 + 100;
+      attempts++
+    ) {
+      const candidate = `${prefix}-${String(seq).padStart(6, '0')}`;
+      const existing = await tx.bookCopy.findFirst({
+        where: { organizationId, barcode: candidate },
+        select: { id: true },
+      });
+
+      if (!existing) {
+        barcodes.push(candidate);
+      }
+      seq++;
+    }
+
+    while (barcodes.length < count) {
+      barcodes.push(`${prefix}-${Date.now()}-${barcodes.length}`);
+    }
+
+    return barcodes;
   }
 }

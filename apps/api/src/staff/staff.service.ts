@@ -73,6 +73,7 @@ export class StaffService {
   async invite(
     organizationId: string,
     data: StaffInviteRequest,
+    inviterName: string,
   ): Promise<StaffResponse> {
     const existing = await this.prisma.user.findUnique({
       where: { email: data.email },
@@ -94,8 +95,18 @@ export class StaffService {
       select: staffSelect,
     });
 
-    // Reuse the shared magic-link flow (token + Mailpit); confirms on verify.
-    await this.authService.requestMagicLink(data.email);
+    const organization = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { name: true },
+    });
+
+    // Send a dedicated invitation email (names the inviter + library) with a
+    // sign-in link; confirms the account on verify.
+    await this.authService.sendStaffInvitation(
+      data.email,
+      inviterName,
+      organization?.name ?? 'the library',
+    );
 
     return user as StaffResponse;
   }

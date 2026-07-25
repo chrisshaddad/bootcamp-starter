@@ -73,16 +73,21 @@ type BookFormInput = z.input<typeof bookCreateRequestSchema>;
 
 // Buy price per condition ('' = not for sale in that condition). Borrowing is
 // free, so there's no rent price.
-interface PriceRow {
-  buyPrice: string;
-}
-
-type PriceRows = Record<BookCopyCondition, PriceRow>;
+type PriceRows = Record<BookCopyCondition, string>;
 
 function emptyPriceRows(): PriceRows {
+  return Object.fromEntries(CONDITION_ORDER.map((c) => [c, ''])) as PriceRows;
+}
+
+// Starting stock per condition, create-only ('' = no copies to add right
+// away). Ongoing stock changes go through the book detail page's copy
+// management, which handles individual barcodes.
+type QuantityRows = Record<BookCopyCondition, string>;
+
+function emptyQuantityRows(): QuantityRows {
   return Object.fromEntries(
-    CONDITION_ORDER.map((c) => [c, { buyPrice: '' }]),
-  ) as PriceRows;
+    CONDITION_ORDER.map((c) => [c, '']),
+  ) as QuantityRows;
 }
 
 function toDateInput(value: unknown): string {
@@ -372,6 +377,8 @@ function BookDialog({
   // one-row-per-condition grid (rather than a dynamic add/remove list) can't
   // produce duplicate or invalid rows - simpler than useFieldArray for this.
   const [priceRows, setPriceRows] = useState<PriceRows>(emptyPriceRows);
+  const [quantityRows, setQuantityRows] =
+    useState<QuantityRows>(emptyQuantityRows);
 
   useEffect(() => {
     if (!open) return;
@@ -393,15 +400,38 @@ function BookDialog({
 
     const rows = emptyPriceRows();
     for (const cp of book?.conditionPrices ?? []) {
-      rows[cp.condition] = { buyPrice: cp.buyPrice };
+      rows[cp.condition] = cp.buyPrice;
     }
     setPriceRows(rows);
+    // Always blank - this input means "add N more copies", never "set stock
+    // to N", so it starts empty even when editing a book that already has
+    // copies.
+    setQuantityRows(emptyQuantityRows());
   }, [open, book, form]);
 
   const onSubmit = async (values: BookCreateRequest) => {
-    const conditionPrices: BookConditionPriceInput[] = CONDITION_ORDER.map(
-      (condition) => ({ condition, ...priceRows[condition] }),
-    ).filter((r) => r.buyPrice.trim() !== '');
+    const conditionPrices: BookConditionPriceInput[] = CONDITION_ORDER.filter(
+      (condition) => priceRows[condition].trim() !== '',
+    ).map((condition) => ({
+      condition,
+      buyPrice: priceRows[condition].trim(),
+    }));
+
+    const addCopies = CONDITION_ORDER.filter(
+      (condition) => quantityRows[condition].trim() !== '',
+    ).map((condition) => ({
+      condition,
+      quantity: Number(quantityRows[condition]),
+    }));
+
+    if (
+      addCopies.some(
+        (row) => !Number.isInteger(row.quantity) || row.quantity < 1,
+      )
+    ) {
+      toast.error('Stock to add must be a whole number of 1 or more');
+      return;
+    }
 
     const payload: BookCreateRequest = {
       title: values.title.trim(),
@@ -411,15 +441,13 @@ function BookDialog({
       language: values.language?.trim() || undefined,
       pageCount: values.pageCount,
       coverUrl: values.coverUrl?.trim() || undefined,
-      conditionPrices: conditionPrices.map((r) => ({
-        condition: r.condition,
-        buyPrice: r.buyPrice.trim(),
-      })),
+      conditionPrices,
       edition: values.edition?.trim() || undefined,
       publisherId: values.publisherId || undefined,
       // Always send the arrays so associations are replaced on edit.
       authorIds: values.authorIds ?? [],
       categoryIds: values.categoryIds ?? [],
+      ...(addCopies.length ? { addCopies } : {}),
     };
 
     try {
@@ -637,17 +665,29 @@ function BookDialog({
               )}
             />
             <FormItem>
-              <FormLabel>Pricing by condition</FormLabel>
+              <FormLabel>Sale price by condition</FormLabel>
               <p className="text-sm text-muted-foreground">
-                Set a buy price for each condition you offer this book in.
-                Borrowing is always free - patrons only ever pay late fees.
-                Leave blank to skip a condition.
+                Set a buy price for each condition you sell this book in. Leave
+                blank if it isn&apos;t for sale in that condition. Borrowing is
+                free — patrons only pay overdue or lost fines.{' '}
+                {book
+                  ? 'Add stock to create more copies (auto-barcoded) - this never removes existing copies; manage those individually from this book’s detail page.'
+                  : 'Optionally add starting stock - copies get auto-generated barcodes; edit them anytime from the book’s detail page.'}
               </p>
               <div className="space-y-2 rounded-md border border-border p-3">
+                <div className="grid grid-cols-3 gap-3 px-0.5">
+                  <span />
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Buy price
+                  </span>
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {book ? 'Add stock' : 'Starting stock'}
+                  </span>
+                </div>
                 {CONDITION_ORDER.map((condition) => (
                   <div
                     key={condition}
-                    className="grid grid-cols-2 items-center gap-3"
+                    className="grid grid-cols-3 items-center gap-3"
                   >
                     <span className="text-sm text-foreground">
                       {CONDITION_LABELS[condition]}
@@ -655,14 +695,25 @@ function BookDialog({
                     <Input
                       placeholder="Buy price"
                       aria-label={`${CONDITION_LABELS[condition]} buy price`}
-                      value={priceRows[condition].buyPrice}
+                      value={priceRows[condition]}
                       onChange={(e) =>
                         setPriceRows((prev) => ({
                           ...prev,
-                          [condition]: {
-                            ...prev[condition],
-                            buyPrice: e.target.value,
-                          },
+                          [condition]: e.target.value,
+                        }))
+                      }
+                    />
+                    <Input
+                      type="number"
+                      min={0}
+                      step={1}
+                      placeholder={book ? 'Add qty' : 'Quantity'}
+                      aria-label={`${CONDITION_LABELS[condition]} ${book ? 'add stock' : 'starting stock'}`}
+                      value={quantityRows[condition]}
+                      onChange={(e) =>
+                        setQuantityRows((prev) => ({
+                          ...prev,
+                          [condition]: e.target.value,
                         }))
                       }
                     />
