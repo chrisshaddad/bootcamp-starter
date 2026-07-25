@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Pagination } from '@/components/pagination';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,9 +41,10 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Building2, Plus } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   institutionCreateRequestSchema,
+  DEFAULT_PAGE_SIZE,
   type InstitutionCreateRequest,
   type InstitutionStatus,
 } from '@repo/contracts';
@@ -176,6 +178,14 @@ function CreateInstitutionDialog() {
           </div>
 
           <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? 'Creating...' : 'Create'}
             </Button>
@@ -190,6 +200,8 @@ export default function InstitutionsPage() {
   const router = useRouter();
   const { user, isLoading: userLoading } = useUser();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
 
@@ -201,8 +213,18 @@ export default function InstitutionsPage() {
   } = useInstitutions({
     status:
       statusFilter === 'all' ? undefined : (statusFilter as InstitutionStatus),
+    page,
+    limit: pageSize,
     enabled: isSuperAdmin,
   });
+
+  // Clamp back to the last valid page if a filter/pageSize change or a
+  // background revalidation shrinks `total` out from under the current page.
+  useEffect(() => {
+    if (total === undefined) return;
+    const maxPage = Math.max(1, Math.ceil(total / pageSize));
+    if (page > maxPage) setPage(maxPage);
+  }, [total, pageSize, page]);
 
   if (userLoading) {
     return <LoadingSkeleton />;
@@ -218,17 +240,20 @@ export default function InstitutionsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Institutions</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Manage institution registrations and approvals
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4">
           <Select
             value={statusFilter}
-            onValueChange={(value) => setStatusFilter(value as StatusFilter)}
+            onValueChange={(value) => {
+              setStatusFilter(value as StatusFilter);
+              setPage(1);
+            }}
           >
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Filter by status" />
@@ -324,6 +349,18 @@ export default function InstitutionsPage() {
                 ))}
               </TableBody>
             </Table>
+          )}
+          {total !== undefined && (
+            <Pagination
+              page={page}
+              pageSize={pageSize}
+              total={total}
+              onPageChange={setPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size);
+                setPage(1);
+              }}
+            />
           )}
         </CardContent>
       </Card>

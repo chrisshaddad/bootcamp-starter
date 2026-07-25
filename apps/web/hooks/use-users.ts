@@ -3,19 +3,22 @@
 import useSWR, { mutate } from 'swr';
 import { useCallback } from 'react';
 import { apiPatch, apiPost } from '@/lib/api';
-import type {
-  UserListResponse,
-  UserDetailResponse,
-  UserCreateRequest,
-  UserUpdateRequest,
-  UserStatusRequest,
-  StaffRole,
+import {
+  DEFAULT_PAGE_SIZE,
+  type UserListResponse,
+  type UserDetailResponse,
+  type UserCreateRequest,
+  type UserUpdateRequest,
+  type UserStatusRequest,
+  type StaffRole,
 } from '@repo/contracts';
 
 interface UseUsersOptions {
   role?: StaffRole;
   isActive?: boolean;
   search?: string;
+  page?: number;
+  limit?: number;
   enabled?: boolean;
 }
 
@@ -25,6 +28,10 @@ function buildUsersKey(options: UseUsersOptions): string {
   if (options.isActive !== undefined)
     params.set('isActive', String(options.isActive));
   if (options.search) params.set('search', options.search);
+  if (options.page && options.page > 1)
+    params.set('page', String(options.page));
+  if (options.limit && options.limit !== DEFAULT_PAGE_SIZE)
+    params.set('limit', String(options.limit));
   const qs = params.toString();
   return qs ? `/users?${qs}` : '/users';
 }
@@ -90,4 +97,16 @@ export function useSetUserStatus() {
   }, []);
 
   return { setUserStatus };
+}
+
+export function useResendUserInvitation() {
+  const resendInvitation = useCallback(async (id: string) => {
+    const result = await apiPost<UserDetailResponse>(
+      `/users/${id}/resend-invitation`,
+    );
+    invalidateUsersList();
+    return result;
+  }, []);
+
+  return { resendInvitation };
 }

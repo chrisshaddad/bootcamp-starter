@@ -3,18 +3,21 @@
 import useSWR, { mutate } from 'swr';
 import { useCallback } from 'react';
 import { apiPatch, apiPost } from '@/lib/api';
-import type {
-  PatientListResponse,
-  PatientDetailResponse,
-  PatientCreateRequest,
-  PatientAdminUpdateRequest,
-  PatientClinicalUpdateRequest,
-  UserStatusRequest,
+import {
+  DEFAULT_PAGE_SIZE,
+  type PatientListResponse,
+  type PatientDetailResponse,
+  type PatientCreateRequest,
+  type PatientAdminUpdateRequest,
+  type PatientClinicalUpdateRequest,
+  type UserStatusRequest,
 } from '@repo/contracts';
 
 interface UsePatientsOptions {
   search?: string;
   unassigned?: boolean;
+  page?: number;
+  limit?: number;
   enabled?: boolean;
 }
 
@@ -22,6 +25,10 @@ function buildPatientsKey(options: UsePatientsOptions): string {
   const params = new URLSearchParams();
   if (options.search) params.set('search', options.search);
   if (options.unassigned) params.set('unassigned', 'true');
+  if (options.page && options.page > 1)
+    params.set('page', String(options.page));
+  if (options.limit && options.limit !== DEFAULT_PAGE_SIZE)
+    params.set('limit', String(options.limit));
   const qs = params.toString();
   return qs ? `/patients?${qs}` : '/patients';
 }
@@ -62,6 +69,26 @@ export function useCreatePatient() {
   return { createPatient };
 }
 
+/**
+ * Standalone clinical update — used at patient-creation time (the stepper's
+ * optional Clinical step) where there is no per-id `usePatient` hook yet.
+ */
+export function useUpdatePatientClinical() {
+  const updatePatientClinical = useCallback(
+    async (id: string, payload: PatientClinicalUpdateRequest) => {
+      const result = await apiPatch<PatientDetailResponse>(
+        `/patients/${id}/clinical`,
+        payload,
+      );
+      invalidatePatientsList();
+      return result;
+    },
+    [],
+  );
+
+  return { updatePatientClinical };
+}
+
 export function useSetPatientStatus() {
   const setPatientStatus = useCallback(
     async (id: string, isActive: boolean) => {
@@ -77,6 +104,18 @@ export function useSetPatientStatus() {
   );
 
   return { setPatientStatus };
+}
+
+export function useResendPatientInvitation() {
+  const resendInvitation = useCallback(async (id: string) => {
+    const result = await apiPost<PatientDetailResponse>(
+      `/patients/${id}/resend-invitation`,
+    );
+    invalidatePatientsList();
+    return result;
+  }, []);
+
+  return { resendInvitation };
 }
 
 export function usePatient(id: string, options: { enabled?: boolean } = {}) {

@@ -1,10 +1,10 @@
 import { z } from 'zod';
 import { institutionStatusSchema } from './institution-status.schema';
+import { paginationQuerySchema } from '../common/pagination';
 
 // Query params for GET /institutions
 export const institutionListQuerySchema = z.object({
   status: institutionStatusSchema.optional(),
-  page: z.coerce.number().int().min(1).optional().default(1),
-  limit: z.coerce.number().int().min(1).max(100).optional().default(20),
+  ...paginationQuerySchema.shape,
 });
 export type InstitutionListQuery = z.infer<typeof institutionListQuerySchema>;

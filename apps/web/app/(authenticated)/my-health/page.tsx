@@ -52,7 +52,7 @@ export default function MyHealthPage() {
       </div>
 
       <Tabs defaultValue="clinical">
-        <TabsList>
+        <TabsList className="flex w-full max-w-full overflow-x-auto">
           <TabsTrigger value="clinical">Clinical</TabsTrigger>
           <TabsTrigger value="care-team">Care Team</TabsTrigger>
           <TabsTrigger value="records">Records</TabsTrigger>

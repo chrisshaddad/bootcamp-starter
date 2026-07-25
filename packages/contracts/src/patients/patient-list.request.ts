@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { paginationQuerySchema } from '../common/pagination';
 
 // Query params for GET /patients
 export const patientListQuerySchema = z.object({
@@ -7,7 +8,6 @@ export const patientListQuerySchema = z.object({
     .enum(['true', 'false'])
     .optional()
     .transform((v) => (v === undefined ? undefined : v === 'true')),
-  page: z.coerce.number().int().min(1).optional().default(1),
-  limit: z.coerce.number().int().min(1).max(100).optional().default(20),
+  ...paginationQuerySchema.shape,
 });
 export type PatientListQuery = z.infer<typeof patientListQuerySchema>;

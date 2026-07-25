@@ -35,7 +35,7 @@ export class MailService {
       if (this.mailpit && !this.isProduction) {
         await this.mailpit.sendMessage({
           To: [{ Email: params.to }],
-          From: { Email: params.from || 'no-reply@bootcamp-starter.local' },
+          From: { Email: params.from || 'no-reply@medilink.local' },
           Subject: params.subject,
           Text: params.text || '',
           HTML: params.html || '',

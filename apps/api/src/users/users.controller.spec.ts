@@ -17,6 +17,7 @@ describe('UsersController', () => {
             create: jest.fn(),
             update: jest.fn(),
             setStatus: jest.fn(),
+            resendInvitation: jest.fn(),
           },
         },
       ],

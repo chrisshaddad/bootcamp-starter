@@ -17,7 +17,20 @@ import type {
 } from '@repo/contracts';
 
 // Roles this module manages. PATIENT lives in the Patients module.
-const MANAGED_ROLES: UserRole[] = ['STAFF', 'PROFESSIONAL'];
+const MANAGED_ROLES: UserRole[] = [
+  'STAFF',
+  'PROFESSIONAL',
+  'INSTITUTION_ADMIN',
+];
+
+// Human-readable labels for the admin-notification email.
+const ROLE_LABELS: Record<UserRole, string> = {
+  STAFF: 'staff member',
+  PROFESSIONAL: 'professional',
+  INSTITUTION_ADMIN: 'institution admin',
+  SUPER_ADMIN: 'super admin',
+  PATIENT: 'patient',
+};
 
 const withProfile = {
   professionalProfile: { select: { specialty: true, bio: true } },
@@ -96,6 +109,7 @@ export class UsersService {
         isActive: user.isActive,
         isConfirmed: user.isConfirmed,
         specialty: user.professionalProfile?.specialty ?? null,
+        bio: user.professionalProfile?.bio ?? null,
         createdAt: user.createdAt,
       })),
       total,
@@ -175,6 +189,21 @@ export class UsersService {
       );
     }
 
+    try {
+      await this.authService.notifyAdminsOfNewUser({
+        institutionId: actor.institutionId,
+        excludeUserId: actor.id,
+        newUserName: data.fullName,
+        newUserRoleLabel: ROLE_LABELS[data.role],
+        createdByName: actor.fullName,
+      });
+    } catch (error) {
+      this.logger.error(
+        `User ${createdId} created but admin notification failed to send`,
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
+
     this.logger.log(`User ${createdId} created by ${actor.id}`);
     return this.findOne(createdId, actor.institutionId);
   }
@@ -230,6 +259,81 @@ export class UsersService {
       throw new ForbiddenException('You cannot change your own status');
     }
 
+    await this.applyStatusChange(id, isActive, actor);
+
+    this.logger.log(`User ${id} ${isActive ? 'reactivated' : 'deactivated'}`);
+    return this.findOne(id, actor.institutionId);
+  }
+
+  /**
+   * Counting active admins and flipping isActive used to be two separate
+   * Prisma calls, which let two concurrent deactivation requests both read
+   * "2 active admins" and both proceed, leaving zero. A Serializable
+   * transaction makes Postgres detect that write-skew and abort one side
+   * with a P2034 conflict; we retry it once (the retry re-reads the count
+   * post-commit and correctly hits the "last admin" guard).
+   */
+  private async applyStatusChange(
+    id: string,
+    isActive: boolean,
+    actor: User,
+    attempt = 0,
+  ): Promise<void> {
+    try {
+      await this.prisma.$transaction(
+        async (tx) => {
+          const existing = await tx.user.findFirst({
+            where: {
+              id,
+              institutionId: actor.institutionId,
+              role: { in: MANAGED_ROLES },
+            },
+          });
+
+          if (!existing) {
+            throw new NotFoundException(`User with ID ${id} not found`);
+          }
+
+          if (existing.role === 'INSTITUTION_ADMIN' && !isActive) {
+            const activeAdminCount = await tx.user.count({
+              where: {
+                institutionId: actor.institutionId,
+                role: 'INSTITUTION_ADMIN',
+                isActive: true,
+              },
+            });
+
+            if (activeAdminCount <= 1) {
+              throw new ForbiddenException(
+                'Cannot deactivate the last active institution admin',
+              );
+            }
+          }
+
+          await tx.user.update({ where: { id }, data: { isActive } });
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      );
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2034' &&
+        attempt === 0
+      ) {
+        return this.applyStatusChange(id, isActive, actor, attempt + 1);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Resend the onboarding invitation — for when the original email never
+   * arrived or the link expired before the invitee got to it. Not restricted
+   * to unconfirmed users: re-sending to an already-confirmed one is harmless
+   * (just mints a fresh magic link), so there's no need for a second guard on
+   * top of the existing role/institution scoping.
+   */
+  async resendInvitation(id: string, actor: User): Promise<UserDetailResponse> {
     const existing = await this.prisma.user.findFirst({
       where: {
         id,
@@ -242,8 +346,8 @@ export class UsersService {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
 
-    await this.prisma.user.update({ where: { id }, data: { isActive } });
-    this.logger.log(`User ${id} ${isActive ? 'reactivated' : 'deactivated'}`);
+    await this.sendInvitationFor(id, actor);
+    this.logger.log(`Invitation resent for user ${id} by ${actor.id}`);
     return this.findOne(id, actor.institutionId);
   }
 

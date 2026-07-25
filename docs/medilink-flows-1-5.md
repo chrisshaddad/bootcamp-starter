@@ -106,8 +106,10 @@ unchanged.
 | Method & path                             | Roles                                   | Notes                                                                                                                                                                                       |
 | ----------------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `POST /patients/:patientId/records`       | Professional (assigned)                 | Body is a **zod discriminated union on `recordType`**; creates the record + matching detail row (+ Prescription/items) in a transaction; links the active assignment; notifies the patient. |
-| `GET /patients/:patientId/records`        | Professional (assigned), Patient (self) | Summaries sorted by `recordDate desc`; optional `recordType` filter. Neither STAFF nor INSTITUTION_ADMIN can view clinical records.                                                         |
+| `GET /patients/:patientId/records`        | Professional (assigned), Patient (self) | Summaries sorted by `recordDate desc`; optional `recordType` filter. Neither STAFF nor INSTITUTION_ADMIN can view clinical records. Excludes soft-deleted (`isVoid`) records.               |
 | `GET /records/:id`                        | Professional (assigned), Patient (self) | Full record + typed detail + attachments.                                                                                                                                                   |
+| `PATCH /records/:id`                      | Professional (assigned)                 | Corrects any field, including type-specific ones; `recordType` itself is immutable (a new type is a new record, not an edit). See `medilink-institution-admin-and-hardening.md`.            |
+| `DELETE /records/:id`                     | Professional (assigned)                 | **Soft** delete — flips `isVoid`; every read path already filters it out, row/files stay in place, no migration.                                                                            |
 | `POST /records/:id/files`                 | Professional (assigned)                 | `multipart/form-data` (`file`); stored on local disk; creates `RecordFile`.                                                                                                                 |
 | `GET /records/:id/files/:fileId/download` | Professional (assigned), Patient (self) | Access-controlled stream (never a public static URL).                                                                                                                                       |
 
@@ -131,7 +133,7 @@ clinical files respect patient-access rules.
 
 - **Invitations** — `AuthService.sendInvitation()` mints a magic link and queues the existing (previously unwired) `SEND_INVITATION` mail job. Called after creating any Staff / Professional / Patient. In dev, links appear in Mailpit (`:8025`).
 - **Inactive-user gate** — `AuthGuard` now rejects deactivated accounts (deactivated users are logged out and cannot act).
-- **Notifications (partial Flow 6)** — `NotificationsModule`: `NotificationsService.create()` emits system notifications (used by Assignments → professional, Records → patient); `GET /notifications`, `PATCH /notifications/:id/read`, `PATCH /notifications/read-all`. Frontend: navbar bell with unread badge + `app/(authenticated)/notifications/page.tsx`.
+- **Notifications (partial Flow 6)** — `NotificationsModule`: `NotificationsService.create()` emits system notifications (used by Assignments → professional, Records → patient); `GET /notifications` (paginated — `page`/`limit`, same pattern as Users/Institutions/Patients), `PATCH /notifications/:id/read`, `PATCH /notifications/read-all`. Frontend: navbar bell with unread badge + `app/(authenticated)/notifications/page.tsx`.
 - **Shared frontend** — `components/forbidden-page.tsx` and `components/status-badge.tsx` (extracted from the two institutions pages, which now import them); `apiUpload()` in `lib/api.ts`; `components/app-sidebar.tsx` reworked to a `NAV_ITEMS_BY_ROLE` map covering all five roles.
 
 ---
@@ -172,7 +174,7 @@ Verification status at implementation time:
 
 **Flow 6 — Notifications (only a minimal slice built)**
 
-- Emission + list + mark-read + navbar bell exist. No email delivery of notifications, no pagination, no per-type icons/deep-links, and triggers are limited to "care team assignment" and "new record" (no lab-result-specific differentiation beyond the title).
+- Emission + list + mark-read + navbar bell + pagination exist (see `medilink-institution-admin-and-hardening.md`). Still missing: no email delivery of the notifications themselves (a separate, new "admin gets emailed when a user is created" notification does exist — that's a one-off, not general notification-to-email delivery), no per-type icons/deep-links, and triggers are limited to "care team assignment" and "new record" (no lab-result-specific differentiation beyond the title).
 
 **Flow 7 — Medical Timeline**
 

@@ -1,25 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import { UsersRound, Plus } from 'lucide-react';
-import {
-  patientCreateRequestSchema,
-  type PatientCreateRequest,
-} from '@repo/contracts';
+import { UsersRound } from 'lucide-react';
+import { DEFAULT_PAGE_SIZE } from '@repo/contracts';
 import { useUser } from '@/hooks/use-auth';
-import {
-  usePatients,
-  useCreatePatient,
-  useSetPatientStatus,
-} from '@/hooks/use-patients';
+import { usePatients, useSetPatientStatus } from '@/hooks/use-patients';
 import { ApiError } from '@/lib/api';
 import { ForbiddenPage } from '@/components/forbidden-page';
 import { StatusBadge } from '@/components/status-badge';
 import { ActivationStatusBadge } from '@/components/activation-status-badge';
+import { CreatePatientDialog } from '@/components/patients/create-patient-dialog';
 import {
   Table,
   TableBody,
@@ -29,20 +21,11 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Pagination } from '@/components/pagination';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
 
 const ALLOWED_ROLES = ['INSTITUTION_ADMIN', 'STAFF', 'PROFESSIONAL'];
 
@@ -51,119 +34,13 @@ function formatDate(value: string | Date | null): string {
   return new Date(value).toLocaleDateString();
 }
 
-function CreatePatientDialog() {
-  const [open, setOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const { createPatient } = useCreatePatient();
-
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<PatientCreateRequest>({
-    resolver: zodResolver(patientCreateRequestSchema),
-  });
-
-  const onSubmit = async (data: PatientCreateRequest) => {
-    setIsSubmitting(true);
-    try {
-      await createPatient(data);
-      toast.success('Patient registered — an invitation email has been sent');
-      reset();
-      setOpen(false);
-    } catch (error) {
-      toast.error(
-        error instanceof ApiError
-          ? error.message
-          : 'Something went wrong. Please try again.',
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button className="gap-2">
-          <Plus className="h-4 w-4" />
-          Add Patient
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Register Patient</DialogTitle>
-          <DialogDescription>
-            Creates the patient account and emails them an invitation. You can
-            complete the rest of their profile afterwards.
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="fullName">Full Name</Label>
-            <Input id="fullName" {...register('fullName')} />
-            {errors.fullName && (
-              <p className="text-sm text-error">{errors.fullName.message}</p>
-            )}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" {...register('email')} />
-            {errors.email && (
-              <p className="text-sm text-error">{errors.email.message}</p>
-            )}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="phone">Phone</Label>
-            <Input id="phone" {...register('phone')} />
-            {errors.phone && (
-              <p className="text-sm text-error">{errors.phone.message}</p>
-            )}
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="dateOfBirth">Date of Birth</Label>
-              <Input
-                id="dateOfBirth"
-                type="date"
-                {...register('dateOfBirth')}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="gender">Gender</Label>
-              <select
-                id="gender"
-                className="h-10 w-full rounded-md border border-border bg-card px-3 text-sm"
-                {...register('gender')}
-              >
-                <option value="">—</option>
-                <option value="MALE">Male</option>
-                <option value="FEMALE">Female</option>
-                <option value="OTHER">Other</option>
-              </select>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="nationalId">National ID</Label>
-            <Input id="nationalId" {...register('nationalId')} />
-          </div>
-          <DialogFooter>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Creating...' : 'Create'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 export default function PatientsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isLoading: userLoading } = useUser();
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const unassignedOnly = searchParams.get('unassigned') === 'true';
 
   const role = user?.role;
@@ -174,11 +51,22 @@ export default function PatientsPage() {
   const { patients, total, isLoading, error } = usePatients({
     search: search || undefined,
     unassigned: unassignedOnly || undefined,
+    page,
+    limit: pageSize,
     enabled: canAccess,
   });
   const { setPatientStatus } = useSetPatientStatus();
 
+  // Clamp back to the last valid page if a filter/pageSize change or a
+  // background revalidation shrinks `total` out from under the current page.
+  useEffect(() => {
+    if (total === undefined) return;
+    const maxPage = Math.max(1, Math.ceil(total / pageSize));
+    if (page > maxPage) setPage(maxPage);
+  }, [total, pageSize, page]);
+
   const toggleUnassignedOnly = (checked: boolean) => {
+    setPage(1);
     const params = new URLSearchParams(searchParams.toString());
     if (checked) {
       params.set('unassigned', 'true');
@@ -201,7 +89,7 @@ export default function PatientsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">
             {isProfessional ? 'My Patients' : 'Patients'}
@@ -212,7 +100,7 @@ export default function PatientsPage() {
               : 'Manage patient records and care teams'}
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center">
           {!isProfessional && (
             <div className="flex items-center gap-2">
               <Checkbox
@@ -233,10 +121,17 @@ export default function PatientsPage() {
           <Input
             placeholder="Search patients..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-56"
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+            className="w-full sm:w-56"
           />
-          {canCreate && <CreatePatientDialog />}
+          {canCreate && (
+            <CreatePatientDialog
+              canEditClinical={role === 'INSTITUTION_ADMIN'}
+            />
+          )}
         </div>
       </div>
 
@@ -334,6 +229,18 @@ export default function PatientsPage() {
                 ))}
               </TableBody>
             </Table>
+          )}
+          {total !== undefined && (
+            <Pagination
+              page={page}
+              pageSize={pageSize}
+              total={total}
+              onPageChange={setPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size);
+                setPage(1);
+              }}
+            />
           )}
         </CardContent>
       </Card>

@@ -43,10 +43,32 @@ export const prescriptionItemInputSchema = z.object({
   notes: z.string().optional(),
 });
 
-export const prescriptionDetailInputSchema = z.object({
-  prescriptionDate: z.string(),
-  items: z.array(prescriptionItemInputSchema).min(1),
-});
+export const prescriptionDetailInputSchema = z
+  .object({
+    prescriptionDate: z.string(),
+    items: z.array(prescriptionItemInputSchema).min(1),
+  })
+  .refine(
+    (data) => {
+      // Keyed on medication + route + dosage, not medication name alone —
+      // the same drug legitimately appears more than once in a tapering
+      // schedule (different dosage) or as both an oral and topical order
+      // (different route).
+      const keys = data.items.map((item) =>
+        [
+          item.medicationName.trim().toLowerCase(),
+          item.route,
+          item.dosage.trim().toLowerCase(),
+        ].join('|'),
+      );
+      return new Set(keys).size === keys.length;
+    },
+    {
+      message:
+        'Each medication + route + dosage combination can only appear once in a prescription',
+      path: ['items'],
+    },
+  );
 
 // ---- Common base fields shared by every record type -------------------
 

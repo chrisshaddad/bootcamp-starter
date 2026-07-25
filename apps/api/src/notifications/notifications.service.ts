@@ -1,7 +1,10 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import type { LinkedEntityType } from '@repo/db';
-import type { NotificationListResponse } from '@repo/contracts';
+import type {
+  NotificationListQuery,
+  NotificationListResponse,
+} from '@repo/contracts';
 
 interface CreateNotificationInput {
   recipientId: string;
@@ -11,8 +14,6 @@ interface CreateNotificationInput {
   linkedEntityType?: LinkedEntityType | null;
   linkedEntityId?: string | null;
 }
-
-const MAX_NOTIFICATIONS = 50;
 
 @Injectable()
 export class NotificationsService {
@@ -42,14 +43,23 @@ export class NotificationsService {
   }
 
   /**
-   * List the caller's own notifications (most recent first) plus an unread count.
+   * List the caller's own notifications (most recent first) plus an unread
+   * count. Paginated — previously hard-capped at 50 with no way to see
+   * anything older.
    */
-  async findForUser(userId: string): Promise<NotificationListResponse> {
+  async findForUser(
+    userId: string,
+    query: NotificationListQuery,
+  ): Promise<NotificationListResponse> {
+    const { page, limit } = query;
+    const skip = (page - 1) * limit;
+
     const [notifications, total, unreadCount] = await Promise.all([
       this.prisma.notification.findMany({
         where: { recipientId: userId },
         orderBy: { createdAt: 'desc' },
-        take: MAX_NOTIFICATIONS,
+        skip,
+        take: limit,
         select: {
           id: true,
           title: true,

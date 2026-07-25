@@ -2,23 +2,31 @@
 
 import useSWR, { mutate as globalMutate } from 'swr';
 import { useCallback } from 'react';
-import { apiPost, apiUpload, API_URL } from '@/lib/api';
-import type {
-  RecordListResponse,
-  RecordDetailResponse,
-  RecordFileResponse,
-  RecordCreateRequest,
-  RecordType,
+import { apiDelete, apiPatch, apiPost, apiUpload, API_URL } from '@/lib/api';
+import {
+  DEFAULT_PAGE_SIZE,
+  type RecordListResponse,
+  type RecordDetailResponse,
+  type RecordFileResponse,
+  type RecordCreateRequest,
+  type RecordType,
 } from '@repo/contracts';
 
 /** Records timeline for a patient. */
 export function useRecords(
   patientId: string,
-  options: { recordTypes?: RecordType[]; enabled?: boolean } = {},
+  options: {
+    recordTypes?: RecordType[];
+    page?: number;
+    limit?: number;
+    enabled?: boolean;
+  } = {},
 ) {
-  const { recordTypes, enabled = true } = options;
+  const { recordTypes, page, limit, enabled = true } = options;
   const params = new URLSearchParams();
   recordTypes?.forEach((type) => params.append('recordType', type));
+  if (page && page > 1) params.set('page', String(page));
+  if (limit && limit !== DEFAULT_PAGE_SIZE) params.set('limit', String(limit));
   const qs = params.toString();
   const key = qs
     ? `/patients/${patientId}/records?${qs}`
@@ -42,6 +50,7 @@ export function useRecords(
 
   return {
     records: data?.records,
+    total: data?.total,
     isLoading,
     error,
     createRecord,
@@ -82,11 +91,48 @@ export function useRecord(
     [id, mutate, data?.patientId],
   );
 
+  const updateRecord = useCallback(
+    async (payload: RecordCreateRequest) => {
+      if (!id) throw new Error('No record selected');
+      const result = await apiPatch<RecordDetailResponse>(
+        `/records/${id}`,
+        payload,
+      );
+      mutate();
+      // Also refresh the patient's records list so its title/type isn't stale.
+      if (data?.patientId) {
+        globalMutate(
+          (key) =>
+            typeof key === 'string' &&
+            key.startsWith(`/patients/${data.patientId}/records`),
+        );
+      }
+      return result;
+    },
+    [id, mutate, data?.patientId],
+  );
+
+  const deleteRecord = useCallback(async () => {
+    if (!id) throw new Error('No record selected');
+    await apiDelete(`/records/${id}`);
+    // No mutate() on the (now-deleted) record itself — the caller closes the
+    // detail view. Just refresh the patient's records list so it disappears.
+    if (data?.patientId) {
+      globalMutate(
+        (key) =>
+          typeof key === 'string' &&
+          key.startsWith(`/patients/${data.patientId}/records`),
+      );
+    }
+  }, [id, data?.patientId]);
+
   return {
     record: data,
     isLoading,
     error,
     uploadFile,
+    updateRecord,
+    deleteRecord,
     mutate,
   };
 }

@@ -17,7 +17,18 @@ interface SendInvitationJobData {
   invitationLink: string;
 }
 
-type MailJobData = SendMagicLinkJobData | SendInvitationJobData;
+interface NotifyNewUserJobData {
+  adminEmails: string[];
+  newUserName: string;
+  newUserRoleLabel: string;
+  institutionName: string;
+  createdByName: string;
+}
+
+type MailJobData =
+  | SendMagicLinkJobData
+  | SendInvitationJobData
+  | NotifyNewUserJobData;
 
 @Processor(MAIL_QUEUE)
 export class MailProcessor extends WorkerHost {
@@ -37,6 +48,9 @@ export class MailProcessor extends WorkerHost {
       case MAIL_JOBS.SEND_INVITATION:
         await this.handleSendInvitation(job.data as SendInvitationJobData);
         break;
+      case MAIL_JOBS.NOTIFY_NEW_USER:
+        await this.handleNotifyNewUser(job.data as NotifyNewUserJobData);
+        break;
       default:
         this.logger.warn(`Unknown job type: ${job.name}`);
     }
@@ -46,20 +60,20 @@ export class MailProcessor extends WorkerHost {
     const { email, magicLink, userName } = data;
 
     const greeting = userName ? `Hello ${userName},` : 'Hello,';
-    const text = `${greeting}\n\nClick the link below to sign in to your account:\n\n${magicLink}\n\nThis link will expire in 15 minutes.\n\nIf you didn't request this link, you can safely ignore this email.`;
+    const text = `${greeting}\n\nClick the link below to sign in to your MediLink account:\n\n${magicLink}\n\nThis link will expire in 15 minutes.\n\nIf you didn't request this, you can safely ignore this email — your account is still secure.\n\n— MediLink`;
 
     const success = await this.mailService.sendEmail({
       to: email,
-      from: 'no-reply@bootcamp-starter.local',
-      subject: 'Sign in to Bootcamp Starter',
+      from: 'no-reply@medilink.local',
+      subject: 'Sign in to MediLink',
       text,
     });
 
     if (success) {
-      this.logger.log(`Magic link email sent successfully to ${email}`);
+      this.logger.log('Magic link email sent successfully');
     } else {
-      this.logger.error(`Failed to send magic link email to ${email}`);
-      throw new Error(`Failed to send email to ${email}`);
+      this.logger.error('Failed to send magic link email');
+      throw new Error('Failed to send magic link email');
     }
   }
 
@@ -68,20 +82,53 @@ export class MailProcessor extends WorkerHost {
   ): Promise<void> {
     const { email, inviterName, institutionName, invitationLink } = data;
 
-    const text = `Hello,\n\n${inviterName} has invited you to join ${institutionName} on Bootcamp Starter.\n\nClick the link below to accept the invitation and create your account:\n\n${invitationLink}\n\nThis invitation will expire in 7 days.\n\nIf you weren't expecting this invitation, you can safely ignore this email.`;
+    const text = `Hello,\n\n${inviterName} has invited you to join ${institutionName} on MediLink.\n\nClick the link below to accept the invitation and set up your account:\n\n${invitationLink}\n\nThis invitation link will expire in 7 days.\n\nIf you weren't expecting this invitation, you can safely ignore this email.\n\n— MediLink`;
 
     const success = await this.mailService.sendEmail({
       to: email,
-      from: 'no-reply@bootcamp-starter.local',
-      subject: `You've been invited to join ${institutionName}`,
+      from: 'no-reply@medilink.local',
+      subject: `You've been invited to join ${institutionName} on MediLink`,
       text,
     });
 
     if (success) {
-      this.logger.log(`Invitation email sent successfully to ${email}`);
+      this.logger.log('Invitation email sent successfully');
     } else {
-      this.logger.error(`Failed to send invitation email to ${email}`);
-      throw new Error(`Failed to send email to ${email}`);
+      this.logger.error('Failed to send invitation email');
+      throw new Error('Failed to send invitation email');
     }
+  }
+
+  private async handleNotifyNewUser(data: NotifyNewUserJobData): Promise<void> {
+    const {
+      adminEmails,
+      newUserName,
+      newUserRoleLabel,
+      institutionName,
+      createdByName,
+    } = data;
+
+    const text = `Hello,\n\n${createdByName} added a new ${newUserRoleLabel} (${newUserName}) to ${institutionName} on MediLink.\n\nNo action is needed — this is just a heads-up.\n\n— MediLink`;
+
+    let sent = 0;
+    let failed = 0;
+    for (const email of adminEmails) {
+      const success = await this.mailService.sendEmail({
+        to: email,
+        from: 'no-reply@medilink.local',
+        subject: `New ${newUserRoleLabel} added to ${institutionName}`,
+        text,
+      });
+
+      if (success) {
+        sent++;
+      } else {
+        failed++;
+      }
+    }
+
+    this.logger.log(
+      `New-user notification: ${sent} sent, ${failed} failed (institution ${institutionName})`,
+    );
   }
 }

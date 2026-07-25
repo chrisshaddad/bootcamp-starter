@@ -10,6 +10,9 @@ import type { User } from '@repo/db';
 import { SessionService } from '../session.service';
 import { IS_PUBLIC_KEY } from '../decorators';
 
+const INACTIVE_INSTITUTION_MESSAGE =
+  'Your institution is not currently active. Please contact platform support.';
+
 const SESSION_COOKIE_NAME = 'bootcamp_starter_session';
 
 export interface AuthenticatedRequest extends Request {
@@ -51,6 +54,12 @@ export class AuthGuard implements CanActivate {
     // Deactivated accounts are never deleted, but must not be able to act.
     if (!user.isActive) {
       throw new UnauthorizedException('Account is deactivated');
+    }
+
+    // Only an ACTIVE institution's users may act — covers SUSPENDED (a
+    // super admin action), REJECTED, and never-approved PENDING alike.
+    if (user.institution.status !== 'ACTIVE') {
+      throw new UnauthorizedException(INACTIVE_INSTITUTION_MESSAGE);
     }
 
     // Attach user and session ID to request for later use

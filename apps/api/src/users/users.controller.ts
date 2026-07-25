@@ -80,4 +80,13 @@ export class UsersController {
   ): Promise<UserDetailResponse> {
     return this.usersService.setStatus(id, body.isActive, user);
   }
+
+  @Post(':id/resend-invitation')
+  @Roles('INSTITUTION_ADMIN')
+  async resendInvitation(
+    @Param('id') id: string,
+    @CurrentUser() user: User,
+  ): Promise<UserDetailResponse> {
+    return this.usersService.resendInvitation(id, user);
+  }
 }

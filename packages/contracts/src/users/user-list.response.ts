@@ -11,6 +11,7 @@ export const userListItemSchema = z.object({
   isActive: z.boolean(),
   isConfirmed: z.boolean(),
   specialty: z.string().nullable(),
+  bio: z.string().nullable(),
   createdAt: dateSchema,
 });
 export type UserListItem = z.infer<typeof userListItemSchema>;

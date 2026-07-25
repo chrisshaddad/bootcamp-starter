@@ -14,9 +14,13 @@ import {
   institutionCreateRequestSchema,
   institutionListQuerySchema,
   institutionUpdateRequestSchema,
+  institutionAdminEmailUpdateRequestSchema,
+  institutionAdminCreateRequestSchema,
   type InstitutionCreateRequest,
   type InstitutionListQuery,
   type InstitutionUpdateRequest,
+  type InstitutionAdminEmailUpdateRequest,
+  type InstitutionAdminCreateRequest,
   type InstitutionListResponse,
   type InstitutionDetailResponse,
   type InstitutionActionResponse,
@@ -74,8 +78,14 @@ export class InstitutionsController {
 
   @Patch(':id/approve')
   @Roles('SUPER_ADMIN')
-  async approve(@Param('id') id: string): Promise<InstitutionActionResponse> {
-    const institution = await this.institutionsService.approve(id);
+  async approve(
+    @Param('id') id: string,
+    @CurrentUser() user: User,
+  ): Promise<InstitutionActionResponse> {
+    const institution = await this.institutionsService.approve(
+      id,
+      user.fullName,
+    );
     return {
       message: 'Institution approved successfully',
       institution,
@@ -88,6 +98,69 @@ export class InstitutionsController {
     const institution = await this.institutionsService.reject(id);
     return {
       message: 'Institution rejected successfully',
+      institution,
+    };
+  }
+
+  @Patch(':id/suspend')
+  @Roles('SUPER_ADMIN')
+  async suspend(@Param('id') id: string): Promise<InstitutionActionResponse> {
+    const institution = await this.institutionsService.suspend(id);
+    return {
+      message: 'Institution suspended successfully',
+      institution,
+    };
+  }
+
+  @Patch(':id/reactivate')
+  @Roles('SUPER_ADMIN')
+  async reactivate(
+    @Param('id') id: string,
+  ): Promise<InstitutionActionResponse> {
+    const institution = await this.institutionsService.reactivate(id);
+    return {
+      message: 'Institution reactivated successfully',
+      institution,
+    };
+  }
+
+  @Post(':id/admins')
+  @Roles('SUPER_ADMIN')
+  async addAdmin(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(institutionAdminCreateRequestSchema))
+    body: InstitutionAdminCreateRequest,
+    @CurrentUser() user: User,
+  ): Promise<InstitutionActionResponse> {
+    const institution = await this.institutionsService.addAdmin(
+      id,
+      body,
+      user.id,
+      user.fullName,
+    );
+    return {
+      message: 'Admin added and an invitation was sent',
+      institution,
+    };
+  }
+
+  @Patch(':id/admins/:adminId/email')
+  @Roles('SUPER_ADMIN')
+  async updateAdminEmail(
+    @Param('id') id: string,
+    @Param('adminId') adminId: string,
+    @Body(new ZodValidationPipe(institutionAdminEmailUpdateRequestSchema))
+    body: InstitutionAdminEmailUpdateRequest,
+    @CurrentUser() user: User,
+  ): Promise<InstitutionActionResponse> {
+    const institution = await this.institutionsService.updateAdminEmail(
+      id,
+      adminId,
+      body.email,
+      user.fullName,
+    );
+    return {
+      message: 'Admin email updated and a new invitation was sent',
       institution,
     };
   }

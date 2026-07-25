@@ -3,10 +3,26 @@
 import useSWR from 'swr';
 import { useCallback } from 'react';
 import { apiPatch } from '@/lib/api';
-import type { NotificationListResponse } from '@repo/contracts';
+import {
+  DEFAULT_PAGE_SIZE,
+  type NotificationListResponse,
+} from '@repo/contracts';
 
 interface UseNotificationsOptions {
   enabled?: boolean;
+  page?: number;
+  limit?: number;
+}
+
+function buildNotificationsKey(options: UseNotificationsOptions): string {
+  const params = new URLSearchParams();
+  if (options.page && options.page > 1)
+    params.set('page', String(options.page));
+  if (options.limit && options.limit !== DEFAULT_PAGE_SIZE) {
+    params.set('limit', String(options.limit));
+  }
+  const qs = params.toString();
+  return qs ? `/notifications?${qs}` : '/notifications';
 }
 
 /**
@@ -17,7 +33,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
   const { enabled = true } = options;
 
   const { data, error, isLoading, mutate } = useSWR<NotificationListResponse>(
-    enabled ? '/notifications' : null,
+    enabled ? buildNotificationsKey(options) : null,
     { refreshInterval: 30000 },
   );
 

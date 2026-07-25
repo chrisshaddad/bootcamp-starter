@@ -1,8 +1,9 @@
 import { z } from 'zod';
 import { staffRoleSchema } from './staff-role.schema';
 
-// Request for POST /users — Institution Admin creates a Staff or Professional.
-// Professionals require a specialty (which seeds their ProfessionalProfile).
+// Request for POST /users — Institution Admin creates a Staff member,
+// Professional, or another Institution Admin. Professionals require a
+// specialty (which seeds their ProfessionalProfile).
 export const userCreateRequestSchema = z
   .object({
     fullName: z.string().min(1),

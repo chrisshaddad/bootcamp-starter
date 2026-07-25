@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -257,15 +258,24 @@ export function CareTeamSection({ patient, canManage, onChange }: Props) {
     enabled: false,
     onChange,
   });
+  const [pendingRemoval, setPendingRemoval] = useState<CareTeamMember | null>(
+    null,
+  );
+  const [isRemoving, setIsRemoving] = useState(false);
 
-  const onRemove = async (assignmentId: string) => {
+  const onRemove = async () => {
+    if (!pendingRemoval) return;
+    setIsRemoving(true);
     try {
-      await removeAssignment(assignmentId);
+      await removeAssignment(pendingRemoval.assignmentId);
       toast.success('Professional removed from care team');
+      setPendingRemoval(null);
     } catch (error) {
       toast.error(
         error instanceof ApiError ? error.message : 'Failed to remove',
       );
+    } finally {
+      setIsRemoving(false);
     }
   };
 
@@ -307,7 +317,8 @@ export function CareTeamSection({ patient, canManage, onChange }: Props) {
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8 text-muted-foreground hover:text-error"
-                      onClick={() => onRemove(member.assignmentId)}
+                      onClick={() => setPendingRemoval(member)}
+                      aria-label={`Remove ${member.fullName} from care team`}
                     >
                       <X className="h-4 w-4" />
                     </Button>
@@ -318,6 +329,39 @@ export function CareTeamSection({ patient, canManage, onChange }: Props) {
           </ul>
         )}
       </CardContent>
+
+      <Dialog
+        open={!!pendingRemoval}
+        onOpenChange={(open) => !open && setPendingRemoval(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove from Care Team</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to remove{' '}
+              <strong>{pendingRemoval?.fullName}</strong> from this
+              patient&apos;s care team? They will immediately lose access to
+              this patient&apos;s records.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setPendingRemoval(null)}
+              disabled={isRemoving}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={onRemove}
+              disabled={isRemoving}
+            >
+              {isRemoving ? 'Removing...' : 'Remove'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

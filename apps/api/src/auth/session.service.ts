@@ -2,7 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { randomBytes } from 'crypto';
 import Redis from 'ioredis';
 import { PrismaService } from '../database/prisma.service';
-import { User } from '@repo/db';
+import { User, type InstitutionStatus } from '@repo/db';
 
 const SESSION_PREFIX = 'session:';
 const SESSION_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days
@@ -11,6 +11,12 @@ export interface SessionData {
   userId: string;
   expiresAt: Date;
 }
+
+// The user as returned by validateSession — includes the institution's
+// status so AuthGuard/AuthService can gate on it without a second query.
+export type SessionUser = User & {
+  institution: { status: InstitutionStatus };
+};
 
 @Injectable()
 export class SessionService {
@@ -50,10 +56,11 @@ export class SessionService {
   }
 
   /**
-   * Validates a session and returns the user if valid
-   * Checks Redis first, falls back to DB on cache miss
+   * Validates a session and returns the user (with their institution's
+   * status, so callers can gate on it) if valid. Checks Redis first, falls
+   * back to DB on cache miss.
    */
-  async validateSession(sessionId: string): Promise<User | null> {
+  async validateSession(sessionId: string): Promise<SessionUser | null> {
     // Try Redis first (fast path)
     const cachedSession = await this.redis.get(`${SESSION_PREFIX}${sessionId}`);
 
@@ -69,13 +76,16 @@ export class SessionService {
       // Get user from database
       return this.prisma.user.findUnique({
         where: { id: sessionData.userId },
+        include: { institution: { select: { status: true } } },
       });
     }
 
     // Cache miss - check database
     const dbSession = await this.prisma.session.findUnique({
       where: { id: sessionId },
-      include: { user: true },
+      include: {
+        user: { include: { institution: { select: { status: true } } } },
+      },
     });
 
     if (!dbSession) {
