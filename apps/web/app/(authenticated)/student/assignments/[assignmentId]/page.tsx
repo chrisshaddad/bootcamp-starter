@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import type {
@@ -86,7 +86,7 @@ export default function StudentAssignmentDetailPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function loadAssignment() {
+  const loadAssignment = useCallback(async () => {
     try {
       setError(null);
 
@@ -104,13 +104,13 @@ export default function StudentAssignmentDetailPage() {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [assignmentId]);
 
   useEffect(() => {
     if (assignmentId) {
       void loadAssignment();
     }
-  }, [assignmentId]);
+  }, [assignmentId, loadAssignment]);
 
   function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
