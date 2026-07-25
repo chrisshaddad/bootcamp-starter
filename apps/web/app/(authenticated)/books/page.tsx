@@ -71,17 +71,12 @@ const NO_PUBLISHER = '__none__';
 // so the form is typed with the input while submit receives the parsed output.
 type BookFormInput = z.input<typeof bookCreateRequestSchema>;
 
-interface PriceRow {
-  rentPrice: string;
-  buyPrice: string;
-}
-
-type PriceRows = Record<BookCopyCondition, PriceRow>;
+// Buy price per condition ('' = not for sale in that condition). Borrowing is
+// free, so there's no rent price.
+type PriceRows = Record<BookCopyCondition, string>;
 
 function emptyPriceRows(): PriceRows {
-  return Object.fromEntries(
-    CONDITION_ORDER.map((c) => [c, { rentPrice: '', buyPrice: '' }]),
-  ) as PriceRows;
+  return Object.fromEntries(CONDITION_ORDER.map((c) => [c, ''])) as PriceRows;
 }
 
 function toDateInput(value: unknown): string {
@@ -392,22 +387,18 @@ function BookDialog({
 
     const rows = emptyPriceRows();
     for (const cp of book?.conditionPrices ?? []) {
-      rows[cp.condition] = { rentPrice: cp.rentPrice, buyPrice: cp.buyPrice };
+      rows[cp.condition] = cp.buyPrice;
     }
     setPriceRows(rows);
   }, [open, book, form]);
 
   const onSubmit = async (values: BookCreateRequest) => {
-    const conditionPrices: BookConditionPriceInput[] = CONDITION_ORDER.map(
-      (condition) => ({ condition, ...priceRows[condition] }),
-    ).filter((r) => r.rentPrice.trim() !== '' || r.buyPrice.trim() !== '');
-
-    if (
-      conditionPrices.some((r) => !r.rentPrice.trim() || !r.buyPrice.trim())
-    ) {
-      toast.error('Each priced condition needs both a rent and a buy price');
-      return;
-    }
+    const conditionPrices: BookConditionPriceInput[] = CONDITION_ORDER.filter(
+      (condition) => priceRows[condition].trim() !== '',
+    ).map((condition) => ({
+      condition,
+      buyPrice: priceRows[condition].trim(),
+    }));
 
     const payload: BookCreateRequest = {
       title: values.title.trim(),
@@ -417,11 +408,7 @@ function BookDialog({
       language: values.language?.trim() || undefined,
       pageCount: values.pageCount,
       coverUrl: values.coverUrl?.trim() || undefined,
-      conditionPrices: conditionPrices.map((r) => ({
-        condition: r.condition,
-        rentPrice: r.rentPrice.trim(),
-        buyPrice: r.buyPrice.trim(),
-      })),
+      conditionPrices,
       edition: values.edition?.trim() || undefined,
       publisherId: values.publisherId || undefined,
       // Always send the arrays so associations are replaced on edit.
@@ -644,45 +631,29 @@ function BookDialog({
               )}
             />
             <FormItem>
-              <FormLabel>Pricing by condition</FormLabel>
+              <FormLabel>Sale price by condition</FormLabel>
               <p className="text-sm text-muted-foreground">
-                Set a rent and buy price for each condition you offer this book
-                in. Leave both blank to skip a condition.
+                Set a buy price for each condition you sell this book in. Leave
+                blank if it isn&apos;t for sale in that condition. Borrowing is
+                free — patrons only pay overdue or lost fines.
               </p>
               <div className="space-y-2 rounded-md border border-border p-3">
                 {CONDITION_ORDER.map((condition) => (
                   <div
                     key={condition}
-                    className="grid grid-cols-3 items-center gap-3"
+                    className="grid grid-cols-2 items-center gap-3"
                   >
                     <span className="text-sm text-foreground">
                       {CONDITION_LABELS[condition]}
                     </span>
                     <Input
-                      placeholder="Rent price"
-                      aria-label={`${CONDITION_LABELS[condition]} rent price`}
-                      value={priceRows[condition].rentPrice}
-                      onChange={(e) =>
-                        setPriceRows((prev) => ({
-                          ...prev,
-                          [condition]: {
-                            ...prev[condition],
-                            rentPrice: e.target.value,
-                          },
-                        }))
-                      }
-                    />
-                    <Input
                       placeholder="Buy price"
                       aria-label={`${CONDITION_LABELS[condition]} buy price`}
-                      value={priceRows[condition].buyPrice}
+                      value={priceRows[condition]}
                       onChange={(e) =>
                         setPriceRows((prev) => ({
                           ...prev,
-                          [condition]: {
-                            ...prev[condition],
-                            buyPrice: e.target.value,
-                          },
+                          [condition]: e.target.value,
                         }))
                       }
                     />

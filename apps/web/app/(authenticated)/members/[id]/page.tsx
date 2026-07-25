@@ -3,7 +3,13 @@
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { ArrowLeft, BookMarked, CalendarClock, Check } from 'lucide-react';
+import {
+  ArrowLeft,
+  BookMarked,
+  CalendarClock,
+  Check,
+  ShoppingBag,
+} from 'lucide-react';
 
 import {
   useLibraryMember,
@@ -11,6 +17,7 @@ import {
 } from '@/hooks/use-library-members';
 import { useRentals } from '@/hooks/use-rentals';
 import { useReservations } from '@/hooks/use-reservations';
+import { usePurchases } from '@/hooks/use-purchases';
 import { ApiError } from '@/lib/api';
 import {
   MEMBER_STATUS_LABELS,
@@ -21,6 +28,7 @@ import {
   RESERVATION_STATUS_LABELS,
   RESERVATION_STATUS_COLORS,
 } from '@/lib/status-maps';
+import { CONDITION_LABELS } from '@/lib/book-condition';
 import { RequireRole } from '@/components/require-role';
 import { StatusBadge } from '@/components/status-badge';
 import { TablePagination } from '@/components/table-pagination';
@@ -87,10 +95,16 @@ function MemberDetail() {
     total: reservationTotal,
     isLoading: reservationsLoading,
   } = useReservations({ memberId, limit: HISTORY_LIMIT });
+  const {
+    purchases,
+    total: purchaseTotal,
+    isLoading: purchasesLoading,
+  } = usePurchases({ memberId, limit: HISTORY_LIMIT });
 
   const [isApproving, setIsApproving] = useState(false);
   const [rentalPage, setRentalPage] = useState(1);
   const [reservationPage, setReservationPage] = useState(1);
+  const [purchasePage, setPurchasePage] = useState(1);
 
   const handleApprove = async () => {
     setIsApproving(true);
@@ -152,6 +166,11 @@ function MemberDetail() {
     reservations?.slice(
       (reservationPage - 1) * HISTORY_PAGE_SIZE,
       reservationPage * HISTORY_PAGE_SIZE,
+    ) ?? [];
+  const pagedPurchases =
+    purchases?.slice(
+      (purchasePage - 1) * HISTORY_PAGE_SIZE,
+      purchasePage * HISTORY_PAGE_SIZE,
     ) ?? [];
 
   return (
@@ -229,6 +248,7 @@ function MemberDetail() {
             />
             <InfoRow label="Total rentals" value={rentalTotal ?? 0} />
             <InfoRow label="Total reservations" value={reservationTotal ?? 0} />
+            <InfoRow label="Total purchases" value={purchaseTotal ?? 0} />
           </CardContent>
         </Card>
       </div>
@@ -367,6 +387,65 @@ function MemberDetail() {
                 total={reservations?.length ?? 0}
                 limit={HISTORY_PAGE_SIZE}
                 onPageChange={setReservationPage}
+              />
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ShoppingBag className="h-5 w-5" />
+            Purchase history
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {purchasesLoading ? (
+            <div className="space-y-2">
+              {[...Array(3)].map((_, i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))}
+            </div>
+          ) : !purchases?.length ? (
+            <div className="py-8 text-center text-muted-foreground">
+              No purchases yet
+            </div>
+          ) : (
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Title</TableHead>
+                    <TableHead>Condition</TableHead>
+                    <TableHead>Price</TableHead>
+                    <TableHead>Purchased</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pagedPurchases.map((purchase) => (
+                    <TableRow key={purchase.id}>
+                      <TableCell className="font-medium text-foreground">
+                        {purchase.bookCopy.book.title}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {CONDITION_LABELS[purchase.bookCopy.condition]}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        ${purchase.price}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {fmtDate(purchase.purchasedAt)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <TablePagination
+                page={purchasePage}
+                total={purchases?.length ?? 0}
+                limit={HISTORY_PAGE_SIZE}
+                onPageChange={setPurchasePage}
               />
             </>
           )}
