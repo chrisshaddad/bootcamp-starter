@@ -6,7 +6,16 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { Users, Plus, Search, Pencil, Trash2, Check, X } from 'lucide-react';
+import {
+  Users,
+  Plus,
+  Search,
+  Pencil,
+  Trash2,
+  Check,
+  X,
+  Mail,
+} from 'lucide-react';
 
 import { libraryMemberCreateRequestSchema } from '@repo/contracts';
 import type {
@@ -26,6 +35,7 @@ import {
 import { RequireRole } from '@/components/require-role';
 import { StatusBadge } from '@/components/status-badge';
 import { TablePagination } from '@/components/table-pagination';
+import { ClaimInviteDialog } from '@/components/claim-invite-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -112,6 +122,8 @@ function MembersManager() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [claimInviteFor, setClaimInviteFor] =
+    useState<LibraryMemberResponse | null>(null);
 
   const {
     members,
@@ -123,6 +135,7 @@ function MembersManager() {
     approve,
     reject,
     remove,
+    sendClaimInvite,
   } = useLibraryMembers({
     page,
     search: debouncedSearch,
@@ -348,6 +361,16 @@ function MembersManager() {
                               </Button>
                             </>
                           )}
+                          {!member.user && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label={`Send claim invite to ${member.libraryCardNumber}`}
+                              onClick={() => setClaimInviteFor(member)}
+                            >
+                              <Mail className="h-4 w-4" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"
@@ -387,6 +410,13 @@ function MembersManager() {
         member={editing}
         onCreate={create}
         onUpdate={update}
+      />
+
+      <ClaimInviteDialog
+        open={!!claimInviteFor}
+        onOpenChange={(open) => !open && setClaimInviteFor(null)}
+        member={claimInviteFor}
+        onInvite={sendClaimInvite}
       />
 
       <Dialog

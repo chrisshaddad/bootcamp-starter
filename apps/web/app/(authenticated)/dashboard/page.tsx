@@ -1,98 +1,94 @@
 'use client';
 
-import Link from 'next/link';
-import { CalendarClock } from 'lucide-react';
 import { useUser } from '@/hooks/use-auth';
-import { useCurrentOrg } from '@/hooks/use-current-org';
-import { useRentals } from '@/hooks/use-rentals';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  useDashboardSummary,
+  usePortalDashboardSummary,
+  useOrganizationSummary,
+} from '@/hooks/use-dashboard';
+import { StaffDashboard } from '@/components/dashboard/staff-dashboard';
+import { PatronDashboard } from '@/components/dashboard/patron-dashboard';
+import { SuperAdminDashboard } from '@/components/dashboard/super-admin-dashboard';
 import { Skeleton } from '@/components/ui/skeleton';
+import type { UserResponse } from '@repo/contracts';
 
-function OverdueWidget() {
-  const { isStaff } = useCurrentOrg();
-  const { total } = useRentals({ overdue: true, limit: 1, enabled: isStaff });
-
-  if (!isStaff) return null;
-
+function LoadingSkeleton() {
   return (
-    <Link href="/circulation/overdue" className="block">
-      <Card className="border-border bg-card shadow-sm transition-colors hover:bg-library-primary-50">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            Overdue loans
-          </CardTitle>
-          <CalendarClock className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-3xl font-bold text-foreground">
-            {total ?? '—'}
-          </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            past due and not returned
-          </p>
-        </CardContent>
-      </Card>
-    </Link>
+    <div className="space-y-6">
+      <Skeleton className="h-8 w-48" />
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-28 rounded-xl" />
+        ))}
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Skeleton className="h-64 rounded-xl" />
+        <Skeleton className="h-64 rounded-xl" />
+      </div>
+    </div>
+  );
+}
+
+function greetingName(user: UserResponse): string {
+  return (
+    user.profile?.firstName || user.name || user.email?.split('@')[0] || 'User'
   );
 }
 
 export default function DashboardPage() {
-  const { user, isLoading } = useUser();
+  const { user, isLoading: userLoading } = useUser();
+  const staff = useDashboardSummary();
+  const patron = usePortalDashboardSummary();
+  const superAdmin = useOrganizationSummary();
 
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-32 rounded-xl" />
-      </div>
-    );
+  if (userLoading || !user) {
+    return <LoadingSkeleton />;
   }
+
+  const body = (() => {
+    if (user.role === 'ORG_ADMIN' || user.role === 'LIBRARIAN') {
+      return staff.summary ? (
+        <StaffDashboard summary={staff.summary} />
+      ) : (
+        <LoadingSkeleton />
+      );
+    }
+    if (user.role === 'MEMBER') {
+      if (patron.error?.status === 400) {
+        return (
+          <p className="text-sm text-muted-foreground">
+            Select a library from My Libraries to see your activity here.
+          </p>
+        );
+      }
+      return patron.summary ? (
+        <PatronDashboard summary={patron.summary} />
+      ) : (
+        <LoadingSkeleton />
+      );
+    }
+    if (user.role === 'SUPER_ADMIN') {
+      return superAdmin.summary ? (
+        <SuperAdminDashboard summary={superAdmin.summary} />
+      ) : (
+        <LoadingSkeleton />
+      );
+    }
+    return null;
+  })();
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">
-          Welcome,{' '}
-          {user?.profile?.firstName ||
-            user?.name ||
-            user?.email?.split('@')[0] ||
-            'User'}
-          !
+          Welcome, {greetingName(user)}!
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
           You&apos;re signed in to NextShelf.
         </p>
       </div>
 
-      <OverdueWidget />
-
-      {user && (
-        <Card className="border-border bg-card shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold text-foreground">
-              Your Profile
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <dl className="grid gap-4 sm:grid-cols-3">
-              <div>
-                <dt className="text-sm font-medium text-muted-foreground">
-                  Email
-                </dt>
-                <dd className="mt-1 text-sm text-foreground">{user.email}</dd>
-              </div>
-              <div>
-                <dt className="text-sm font-medium text-muted-foreground">
-                  Role
-                </dt>
-                <dd className="mt-1 text-sm capitalize text-foreground">
-                  {user.role.toLowerCase().replace('_', ' ')}
-                </dd>
-              </div>
-            </dl>
-          </CardContent>
-        </Card>
-      )}
+      {body}
     </div>
   );
 }

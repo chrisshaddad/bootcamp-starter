@@ -38,10 +38,11 @@ export class StaffController {
   @Post()
   async invite(
     @OrganizationId() organizationId: string,
+    @CurrentUser() user: User,
     @Body(new ZodValidationPipe(staffInviteRequestSchema))
     body: StaffInviteRequest,
   ): Promise<StaffResponse> {
-    return this.staffService.invite(organizationId, body);
+    return this.staffService.invite(organizationId, body, user.name);
   }
 
   @Patch(':id/role')

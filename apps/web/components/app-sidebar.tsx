@@ -40,6 +40,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarSeparator,
+  useSidebar,
 } from '@/components/ui/sidebar';
 
 interface NavItem {
@@ -60,7 +61,7 @@ const superAdminNavGroups: NavGroup[] = [
     label: 'Administration',
     items: [
       { title: 'Organizations', url: '/organizations', icon: Building2 },
-      { title: 'Users', url: '/users', icon: Users, disabled: true },
+      { title: 'Users', url: '/users', icon: Users },
     ],
   },
 ];
@@ -101,6 +102,11 @@ const staffNavGroups: NavGroup[] = [
         title: 'Check-in',
         url: '/circulation/check-in',
         icon: BookDown,
+      },
+      {
+        title: 'Reservations',
+        url: '/circulation/reservations',
+        icon: Bookmark,
       },
       {
         title: 'Overdue',
@@ -164,8 +170,16 @@ export function AppSidebar() {
   const pathname = usePathname();
   const { logout } = useAuth();
   const { user } = useUser({ redirectOnUnauthenticated: false });
+  const { isMobile, setOpenMobile } = useSidebar();
 
   const navGroups = navGroupsForRole(user?.role);
+
+  // On mobile the nav lives in a Sheet overlay - selecting a page (or logging
+  // out) should close it immediately rather than leaving it open on top of
+  // the new page until the user taps the scrim or hits Escape.
+  const closeMobileNav = () => {
+    if (isMobile) setOpenMobile(false);
+  };
 
   const isActive = (url: string) => {
     if (url === '/dashboard') {
@@ -197,7 +211,7 @@ export function AppSidebar() {
             </span>
           </div>
         ) : (
-          <Link href={item.url}>
+          <Link href={item.url} onClick={closeMobileNav}>
             <item.icon className="h-5 w-5" />
             <span>{item.title}</span>
           </Link>
@@ -210,7 +224,11 @@ export function AppSidebar() {
     <Sidebar className="border-r border-sidebar-border bg-sidebar">
       <SidebarHeader className="px-5 py-6">
         {/* Logo */}
-        <Link href="/dashboard" className="flex items-center gap-2.5">
+        <Link
+          href="/dashboard"
+          onClick={closeMobileNav}
+          className="flex items-center gap-2.5"
+        >
           <Image
             src="/nextshelf-icon.svg"
             alt="NextShelf"
@@ -254,7 +272,10 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
-              onClick={() => logout()}
+              onClick={() => {
+                closeMobileNav();
+                logout();
+              }}
               className="h-11 gap-3 rounded-lg px-3 text-sm font-medium text-sidebar-foreground/70 transition-colors hover:bg-error-light hover:text-error"
             >
               <LogOut className="h-5 w-5" />

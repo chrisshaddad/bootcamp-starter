@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { bookConditionPriceInputSchema } from './book-condition-price.schema';
+import { bookCopyConditionSchema } from '../book-copies';
 
 // Request for POST /books
 export const bookCreateRequestSchema = z.object({
@@ -29,5 +30,22 @@ export const bookCreateRequestSchema = z.object({
   // from "field sent as []" (explicitly clear associations).
   authorIds: z.array(z.uuid()).optional(),
   categoryIds: z.array(z.uuid()).optional(),
+  // How many new physical copies to add at each condition - on create, this
+  // stocks the book immediately; on update, it tops up whatever copies
+  // already exist (it never removes/replaces copies - that stays a
+  // per-barcode action on the book-copies management UI). Barcodes are
+  // auto-generated (see BooksService).
+  addCopies: z
+    .array(
+      z.object({
+        condition: bookCopyConditionSchema,
+        quantity: z.number().int().min(1).max(500),
+      }),
+    )
+    .refine(
+      (rows) => new Set(rows.map((r) => r.condition)).size === rows.length,
+      'Each condition can appear at most once',
+    )
+    .optional(),
 });
 export type BookCreateRequest = z.infer<typeof bookCreateRequestSchema>;

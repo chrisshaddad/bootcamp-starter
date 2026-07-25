@@ -49,14 +49,6 @@ export function getBuyPriceRange(
   return { min: Math.min(...values), max: Math.max(...values) };
 }
 
-export function getRentPriceRange(
-  rows: BookConditionPriceResponse[],
-): PriceRange | null {
-  if (rows.length === 0) return null;
-  const values = rows.map((r) => Number(r.rentPrice));
-  return { min: Math.min(...values), max: Math.max(...values) };
-}
-
 export function formatPriceRange(range: PriceRange | null): string {
   if (!range) return '—';
   return range.min === range.max

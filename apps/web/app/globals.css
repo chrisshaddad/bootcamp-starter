@@ -201,6 +201,19 @@ a {
   --chart-3: #a86215;
   --chart-4: #e3b06a;
   --chart-5: #4a3218;
+
+  /* Dataviz categorical palette (validated: worst adjacent CVD ΔE 9.1 light /
+     8.4 dark). Fixed order, never cycled - the library brand ramp alone
+     fails the colorblind-safety validator for 5-way categorical breakdowns
+     (too narrow a hue range), so multi-category charts use this palette
+     instead of --chart-1..5, which stay reserved for single-series charts. */
+  --viz-cat-1: #2a78d6;
+  --viz-cat-2: #eb6834;
+  --viz-cat-3: #1baf7a;
+  --viz-cat-4: #eda100;
+  --viz-cat-5: #e87ba4;
+  --viz-muted: #898781;
+  --viz-grid: #e1e0d9;
   --sidebar: #fbf7f0;
   --sidebar-foreground: #4a3218;
   --sidebar-primary: #c4761a;
@@ -235,6 +248,16 @@ a {
   --chart-3: #a86215;
   --chart-4: #e3b06a;
   --chart-5: #4a3218;
+
+  /* Dataviz categorical palette, dark-surface steps (same 5 hues, re-stepped
+     for the dark chart surface - see the :root block above). */
+  --viz-cat-1: #3987e5;
+  --viz-cat-2: #d95926;
+  --viz-cat-3: #199e70;
+  --viz-cat-4: #c98500;
+  --viz-cat-5: #d55181;
+  --viz-muted: #898781;
+  --viz-grid: #2c2c2a;
   --sidebar: #1f2937;
   --sidebar-foreground: #fafafa;
   --sidebar-primary: #c4761a;
