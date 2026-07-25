@@ -6,16 +6,24 @@ import {
 } from '@nestjs/common';
 import type {
   StartQuizAttemptResponse,
+  StudentAssignmentAvailability,
+  StudentAssignmentListResponse,
+  StudentAssignmentResponse,
   StudentQuizAttemptStatus,
   StudentQuizAvailability,
   StudentQuizListResponse,
   StudentQuizOptionResponse,
   StudentQuizResponse,
+  SubmitAssignmentRequest,
+  SubmitAssignmentResponse,
   SubmitQuizAttemptRequest,
   SubmitQuizAttemptResponse,
+  UploadAssignmentFileResponse,
 } from '@repo/contracts';
 import { PrismaService } from '../database/prisma.service';
-
+import { randomUUID } from 'node:crypto';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { extname, join } from 'node:path';
 interface StoredQuizOption {
   id: string;
   text: string;
@@ -581,6 +589,420 @@ export class StudentService {
       status: 'submitted',
     };
   }
+  async findMyAssignments(
+    studentId: string,
+  ): Promise<StudentAssignmentListResponse> {
+    const now = new Date();
+
+    const assignments = await this.prisma.assignment.findMany({
+      where: {
+        type: 'assignment',
+        status: 'published',
+        course: {
+          status: 'published',
+          enrollments: {
+            some: {
+              studentId,
+              status: 'active',
+            },
+          },
+        },
+      },
+      orderBy: [
+        {
+          dueAt: 'asc',
+        },
+        {
+          createdAt: 'desc',
+        },
+      ],
+      select: {
+        id: true,
+        courseId: true,
+        title: true,
+        instructions: true,
+        maxScore: true,
+        startsAt: true,
+        dueAt: true,
+        endsAt: true,
+
+        course: {
+          select: {
+            id: true,
+            title: true,
+          },
+        },
+
+        submissions: {
+          where: {
+            studentId,
+          },
+          take: 1,
+          select: {
+            id: true,
+            submittedAt: true,
+            status: true,
+
+            grade: {
+              select: {
+                score: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return assignments.map((assignment) => {
+      const submission = assignment.submissions[0] ?? null;
+
+      return {
+        id: assignment.id,
+        courseId: assignment.courseId,
+        type: 'assignment',
+        title: assignment.title,
+        instructions: assignment.instructions,
+        maxScore: assignment.maxScore.toNumber(),
+        startsAt: assignment.startsAt?.toISOString() ?? null,
+        dueAt: assignment.dueAt?.toISOString() ?? null,
+        endsAt: assignment.endsAt?.toISOString() ?? null,
+        availability: this.getAssignmentAvailability(
+          now,
+          assignment.startsAt,
+          assignment.endsAt,
+        ),
+        course: assignment.course,
+        submission: submission
+          ? {
+              id: submission.id,
+              submittedAt: submission.submittedAt.toISOString(),
+              status: submission.status,
+              score: submission.grade
+                ? submission.grade.score.toNumber()
+                : null,
+            }
+          : null,
+      };
+    });
+  }
+
+  async findAssignmentById(
+    studentId: string,
+    assignmentId: string,
+  ): Promise<StudentAssignmentResponse> {
+    const now = new Date();
+
+    const assignment = await this.prisma.assignment.findFirst({
+      where: {
+        id: assignmentId,
+        type: 'assignment',
+        status: 'published',
+        course: {
+          status: 'published',
+          enrollments: {
+            some: {
+              studentId,
+              status: 'active',
+            },
+          },
+        },
+      },
+      select: {
+        id: true,
+        courseId: true,
+        title: true,
+        instructions: true,
+        noteToStudents: true,
+        maxScore: true,
+        startsAt: true,
+        dueAt: true,
+        endsAt: true,
+
+        course: {
+          select: {
+            id: true,
+            title: true,
+          },
+        },
+
+        submissions: {
+          where: {
+            studentId,
+          },
+          take: 1,
+          select: {
+            id: true,
+            contentText: true,
+            fileUrl: true,
+            submittedAt: true,
+            status: true,
+            teacherNote: true,
+
+            grade: {
+              select: {
+                id: true,
+                score: true,
+                feedbackText: true,
+                gradedAt: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!assignment) {
+      throw new NotFoundException(
+        `Assignment with ID ${assignmentId} was not found`,
+      );
+    }
+
+    const submission = assignment.submissions[0] ?? null;
+
+    return {
+      id: assignment.id,
+      courseId: assignment.courseId,
+      type: 'assignment',
+      title: assignment.title,
+      instructions: assignment.instructions,
+      noteToStudents: assignment.noteToStudents,
+      maxScore: assignment.maxScore.toNumber(),
+      startsAt: assignment.startsAt?.toISOString() ?? null,
+      dueAt: assignment.dueAt?.toISOString() ?? null,
+      endsAt: assignment.endsAt?.toISOString() ?? null,
+      availability: this.getAssignmentAvailability(
+        now,
+        assignment.startsAt,
+        assignment.endsAt,
+      ),
+      course: assignment.course,
+      submission: submission
+        ? {
+            id: submission.id,
+            contentText: submission.contentText,
+            fileUrl: submission.fileUrl,
+            submittedAt: submission.submittedAt.toISOString(),
+            status: submission.status,
+            teacherNote: submission.teacherNote,
+            grade: submission.grade
+              ? {
+                  id: submission.grade.id,
+                  score: submission.grade.score.toNumber(),
+                  feedbackText: submission.grade.feedbackText,
+                  gradedAt: submission.grade.gradedAt.toISOString(),
+                }
+              : null,
+          }
+        : null,
+    };
+  }
+
+  async submitAssignment(
+    studentId: string,
+    assignmentId: string,
+    input: SubmitAssignmentRequest,
+  ): Promise<SubmitAssignmentResponse> {
+    const now = new Date();
+
+    const assignment = await this.prisma.assignment.findFirst({
+      where: {
+        id: assignmentId,
+        type: 'assignment',
+        status: 'published',
+        course: {
+          status: 'published',
+          enrollments: {
+            some: {
+              studentId,
+              status: 'active',
+            },
+          },
+        },
+      },
+      select: {
+        id: true,
+        startsAt: true,
+        dueAt: true,
+        endsAt: true,
+      },
+    });
+
+    if (!assignment) {
+      throw new NotFoundException(
+        `Assignment with ID ${assignmentId} was not found`,
+      );
+    }
+
+    const availability = this.getAssignmentAvailability(
+      now,
+      assignment.startsAt,
+      assignment.endsAt,
+    );
+
+    if (availability === 'upcoming') {
+      throw new ConflictException('This assignment has not started yet');
+    }
+
+    if (availability === 'closed') {
+      throw new ConflictException('This assignment is already closed');
+    }
+
+    const existingSubmission = await this.prisma.submission.findUnique({
+      where: {
+        assignmentId_studentId: {
+          assignmentId,
+          studentId,
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (existingSubmission) {
+      throw new ConflictException('You have already submitted this assignment');
+    }
+
+    const contentText = input.contentText?.trim() || null;
+    const fileUrl = input.fileUrl?.trim() || null;
+
+    if (!contentText && !fileUrl) {
+      throw new BadRequestException('Provide a written response or a file URL');
+    }
+
+    const status =
+      assignment.dueAt && now > assignment.dueAt ? 'late' : 'submitted';
+
+    const submission = await this.prisma.submission.create({
+      data: {
+        assignmentId,
+        studentId,
+        contentText,
+        fileUrl,
+        submittedAt: now,
+        status,
+      },
+      select: {
+        id: true,
+        assignmentId: true,
+        studentId: true,
+        contentText: true,
+        fileUrl: true,
+        submittedAt: true,
+        status: true,
+      },
+    });
+
+    return {
+      ...submission,
+      submittedAt: submission.submittedAt.toISOString(),
+    };
+  }
+
+  async uploadAssignmentFile(
+    studentId: string,
+    assignmentId: string,
+    file: Express.Multer.File,
+  ): Promise<UploadAssignmentFileResponse> {
+    const now = new Date();
+
+    const assignment = await this.prisma.assignment.findFirst({
+      where: {
+        id: assignmentId,
+        type: 'assignment',
+        status: 'published',
+        course: {
+          status: 'published',
+          enrollments: {
+            some: {
+              studentId,
+              status: 'active',
+            },
+          },
+        },
+      },
+      select: {
+        id: true,
+        startsAt: true,
+        endsAt: true,
+        submissions: {
+          where: {
+            studentId,
+          },
+          take: 1,
+          select: {
+            id: true,
+          },
+        },
+      },
+    });
+
+    if (!assignment) {
+      throw new NotFoundException(
+        `Assignment with ID ${assignmentId} was not found`,
+      );
+    }
+
+    const availability = this.getAssignmentAvailability(
+      now,
+      assignment.startsAt,
+      assignment.endsAt,
+    );
+
+    if (availability === 'upcoming') {
+      throw new ConflictException('This assignment has not started yet');
+    }
+
+    if (availability === 'closed') {
+      throw new ConflictException('This assignment is already closed');
+    }
+
+    if (assignment.submissions.length > 0) {
+      throw new ConflictException('You have already submitted this assignment');
+    }
+
+    const extension = extname(file.originalname).toLowerCase();
+
+    const allowedExtensions = new Set([
+      '.pdf',
+      '.docx',
+      '.jpg',
+      '.jpeg',
+      '.png',
+      '.gif',
+      '.webp',
+    ]);
+
+    if (!allowedExtensions.has(extension)) {
+      throw new BadRequestException(
+        'Only PDF, DOCX, JPG, JPEG, PNG, GIF, and WEBP files are allowed',
+      );
+    }
+
+    const uploadDirectory = join(
+      process.cwd(),
+      'uploads',
+      'assignments',
+      assignmentId,
+    );
+
+    await mkdir(uploadDirectory, {
+      recursive: true,
+    });
+
+    const storedFileName = `${randomUUID()}${extension}`;
+    const filePath = join(uploadDirectory, storedFileName);
+
+    await writeFile(filePath, file.buffer);
+
+    return {
+      fileUrl: `http://localhost:3001/uploads/assignments/${assignmentId}/${storedFileName}`,
+      originalName: file.originalname,
+      mimeType: file.mimetype,
+      size: file.size,
+    };
+  }
+
   private parseCorrectOptionId(value: unknown): string | null {
     if (
       typeof value !== 'object' ||
@@ -592,6 +1014,21 @@ export class StudentService {
     }
 
     return value.optionId;
+  }
+  private getAssignmentAvailability(
+    now: Date,
+    startsAt: Date | null,
+    endsAt: Date | null,
+  ): StudentAssignmentAvailability {
+    if (startsAt && now < startsAt) {
+      return 'upcoming';
+    }
+
+    if (endsAt && now > endsAt) {
+      return 'closed';
+    }
+
+    return 'open';
   }
   private getAvailability(
     now: Date,

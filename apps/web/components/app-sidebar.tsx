@@ -51,6 +51,11 @@ const studentNavItems: NavItem[] = [
     url: '/student/quizzes',
     icon: FileQuestion,
   },
+  {
+    title: 'Assignments',
+    url: '/student/assignments',
+    icon: ClipboardList,
+  },
 ];
 
 const organizationNavItems: NavItem[] = [

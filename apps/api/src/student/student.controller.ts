@@ -1,28 +1,65 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
   Param,
   ParseUUIDPipe,
   Post,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
-import type {
-  StartQuizAttemptResponse,
-  StudentQuizListResponse,
-  StudentQuizResponse,
-  SubmitQuizAttemptRequest,
-  SubmitQuizAttemptResponse,
+import {
+  submitAssignmentRequestSchema,
+  submitQuizAttemptRequestSchema,
+  type StartQuizAttemptResponse,
+  type StudentAssignmentListResponse,
+  type StudentAssignmentResponse,
+  type StudentQuizListResponse,
+  type StudentQuizResponse,
+  type SubmitAssignmentRequest,
+  type SubmitAssignmentResponse,
+  type SubmitQuizAttemptRequest,
+  type SubmitQuizAttemptResponse,
+  type UploadAssignmentFileResponse,
 } from '@repo/contracts';
-
-import { submitQuizAttemptRequestSchema } from '@repo/contracts';
-import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import { CurrentUser, Roles } from '../auth/decorators';
+import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { StudentService } from './student.service';
 
 @Controller('student')
 @Roles('MEMBER')
 export class StudentController {
   constructor(private readonly studentService: StudentService) {}
+
+  @Get('assignments')
+  async findMyAssignments(
+    @CurrentUser('id') studentId: string,
+  ): Promise<StudentAssignmentListResponse> {
+    return this.studentService.findMyAssignments(studentId);
+  }
+
+  @Get('assignments/:assignmentId')
+  async findAssignmentById(
+    @CurrentUser('id') studentId: string,
+    @Param('assignmentId', new ParseUUIDPipe({ version: '4' }))
+    assignmentId: string,
+  ): Promise<StudentAssignmentResponse> {
+    return this.studentService.findAssignmentById(studentId, assignmentId);
+  }
+
+  @Post('assignments/:assignmentId/submit')
+  async submitAssignment(
+    @CurrentUser('id') studentId: string,
+    @Param('assignmentId', new ParseUUIDPipe({ version: '4' }))
+    assignmentId: string,
+    @Body(new ZodValidationPipe(submitAssignmentRequestSchema))
+    input: SubmitAssignmentRequest,
+  ): Promise<SubmitAssignmentResponse> {
+    return this.studentService.submitAssignment(studentId, assignmentId, input);
+  }
 
   @Get('quizzes')
   async findMyQuizzes(
@@ -48,6 +85,56 @@ export class StudentController {
   ): Promise<StartQuizAttemptResponse> {
     return this.studentService.startQuizAttempt(studentId, quizId);
   }
+
+  @Post('assignments/:assignmentId/upload')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: {
+        fileSize: 10 * 1024 * 1024,
+      },
+      fileFilter: (_request, file, callback) => {
+        const allowedMimeTypes = new Set([
+          'application/pdf',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'image/jpeg',
+          'image/png',
+          'image/gif',
+          'image/webp',
+        ]);
+
+        if (!allowedMimeTypes.has(file.mimetype)) {
+          callback(
+            new BadRequestException(
+              'Only PDF, DOCX, JPG, JPEG, PNG, GIF, and WEBP files are allowed',
+            ),
+            false,
+          );
+
+          return;
+        }
+
+        callback(null, true);
+      },
+    }),
+  )
+  async uploadAssignmentFile(
+    @CurrentUser('id') studentId: string,
+    @Param('assignmentId', new ParseUUIDPipe({ version: '4' }))
+    assignmentId: string,
+    @UploadedFile() file?: Express.Multer.File,
+  ): Promise<UploadAssignmentFileResponse> {
+    if (!file) {
+      throw new BadRequestException('Select a file to upload');
+    }
+
+    return this.studentService.uploadAssignmentFile(
+      studentId,
+      assignmentId,
+      file,
+    );
+  }
+
   @Post('quizzes/:quizId/submit')
   async submitQuizAttempt(
     @CurrentUser('id') studentId: string,
