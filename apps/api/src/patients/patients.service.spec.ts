@@ -35,7 +35,10 @@ describe('PatientsService', () => {
   } as never;
 
   // Shape returned by patient.findUniqueOrThrow inside buildDetail().
-  const fullPatientRow = (id: string, overrides: Record<string, unknown> = {}) => ({
+  const fullPatientRow = (
+    id: string,
+    overrides: Record<string, unknown> = {},
+  ) => ({
     id,
     userId: 'user-1',
     institutionId: 'inst-1',
@@ -244,7 +247,9 @@ describe('PatientsService', () => {
 
       const [{ where }] = prisma.patient.findMany.mock.calls[0];
       expect(where.AND).toEqual([
-        { assignments: { some: { professionalId: 'prof-1', status: 'ACTIVE' } } },
+        {
+          assignments: { some: { professionalId: 'prof-1', status: 'ACTIVE' } },
+        },
       ]);
     });
 

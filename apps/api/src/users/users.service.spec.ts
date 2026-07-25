@@ -119,7 +119,10 @@ describe('UsersService', () => {
       ]);
       prisma.user.count.mockResolvedValue(1);
 
-      const result = await service.findAll({ page: 1, limit: 10 } as never, actor);
+      const result = await service.findAll(
+        { page: 1, limit: 10 } as never,
+        actor,
+      );
 
       expect(result.users[0].bio).toBe('Heart stuff');
     });
