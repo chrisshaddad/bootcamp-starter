@@ -71,7 +71,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-library-paper">
+    <div className="flex min-h-dvh bg-library-paper">
       {/* Left Panel - Hero Section */}
       <div className="relative hidden w-1/2 overflow-hidden bg-library-ink lg:flex lg:flex-col lg:justify-end">
         {/* Background Image + warm duotone wash, so the photo reads as part

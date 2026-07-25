@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Check, ChevronsUpDown, X } from 'lucide-react';
+import { Check, ChevronsUpDown, Loader2, Plus, X } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +29,14 @@ interface MultiSelectProps {
   options: MultiSelectOption[];
   selected: string[];
   onChange: (values: string[]) => void;
+  /**
+   * When provided, typing a name with no exact match offers a "Create ..."
+   * row that calls this and adds the result to the selection. The caller
+   * owns persisting the new row; this component only needs the created
+   * `{ value, label }` back, without waiting on the option list (owned by
+   * the caller) to catch up.
+   */
+  onCreate?: (query: string) => Promise<MultiSelectOption>;
   placeholder?: string;
   searchPlaceholder?: string;
   emptyText?: string;
@@ -45,6 +53,7 @@ export function MultiSelect({
   options,
   selected,
   onChange,
+  onCreate,
   placeholder = 'Select…',
   searchPlaceholder = 'Search…',
   emptyText = 'No results found.',
@@ -52,6 +61,11 @@ export function MultiSelect({
   className,
 }: MultiSelectProps) {
   const [open, setOpen] = React.useState(false);
+  const [search, setSearch] = React.useState('');
+  const [creating, setCreating] = React.useState(false);
+  // Newly-created options, held locally until the caller's option list
+  // (fetched elsewhere) catches up and includes them too.
+  const [pending, setPending] = React.useState<MultiSelectOption[]>([]);
 
   const toggle = (value: string) => {
     onChange(
@@ -61,10 +75,45 @@ export function MultiSelect({
     );
   };
 
-  const selectedOptions = options.filter((o) => selected.includes(o.value));
+  const allOptions = React.useMemo(() => {
+    const known = new Set(options.map((o) => o.value));
+    return [...options, ...pending.filter((o) => !known.has(o.value))];
+  }, [options, pending]);
+
+  const trimmedSearch = search.trim();
+  const hasExactMatch = allOptions.some(
+    (o) => o.label.toLowerCase() === trimmedSearch.toLowerCase(),
+  );
+  const canCreate = !!onCreate && trimmedSearch.length > 0 && !hasExactMatch;
+  const createLabel = `Create "${trimmedSearch}"`;
+
+  const handleCreate = async () => {
+    if (!onCreate || creating) return;
+    setCreating(true);
+    try {
+      const created = await onCreate(trimmedSearch);
+      setPending((prev) => [...prev, created]);
+      onChange([...selected, created.value]);
+      setSearch('');
+    } catch {
+      // The caller's onCreate is responsible for surfacing the error (e.g. a
+      // toast) - swallow here so the popover just stays open for a retry
+      // instead of throwing an unhandled rejection out of cmdk's onSelect.
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const selectedOptions = allOptions.filter((o) => selected.includes(o.value));
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) setSearch('');
+      }}
+    >
       <PopoverTrigger asChild>
         <Button
           type="button"
@@ -107,11 +156,14 @@ export function MultiSelect({
         align="start"
       >
         <Command>
-          <CommandInput placeholder={searchPlaceholder} />
+          <CommandInput
+            placeholder={searchPlaceholder}
+            onValueChange={setSearch}
+          />
           <CommandList>
-            <CommandEmpty>{emptyText}</CommandEmpty>
+            {!canCreate && <CommandEmpty>{emptyText}</CommandEmpty>}
             <CommandGroup>
-              {options.map((option) => {
+              {allOptions.map((option) => {
                 const isSelected = selected.includes(option.value);
                 return (
                   <CommandItem
@@ -129,6 +181,20 @@ export function MultiSelect({
                   </CommandItem>
                 );
               })}
+              {canCreate && (
+                <CommandItem
+                  value={createLabel}
+                  disabled={creating}
+                  onSelect={handleCreate}
+                >
+                  {creating ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Plus className="mr-2 h-4 w-4" />
+                  )}
+                  {createLabel}
+                </CommandItem>
+              )}
             </CommandGroup>
           </CommandList>
         </Command>
