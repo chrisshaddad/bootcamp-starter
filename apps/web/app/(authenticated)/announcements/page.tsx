@@ -38,7 +38,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAnnouncements } from '@/hooks/use-announcements';
 import { useEvents } from '@/hooks/use-events';
-import { useGroups } from '@/hooks/use-groups';
+import { useGroupOptions } from '@/hooks/use-groups';
 import { useUser } from '@/hooks/use-auth';
 import { ApiError } from '@/lib/api';
 import {
@@ -100,19 +100,28 @@ function hasBodyContent(bodyHtml: string | undefined) {
 interface GroupMultiSelectProps {
   groups: Group[] | undefined;
   selectedIds: string[];
+  search: string;
   isLoading: boolean;
+  isLoadingMore: boolean;
+  hasMore: boolean;
   onChange: (groupIds: string[]) => void;
+  onSearchChange: (search: string) => void;
+  onLoadMore: () => void;
   idPrefix: string;
 }
 
 function GroupMultiSelect({
   groups,
   selectedIds,
+  search,
   isLoading,
+  isLoadingMore,
+  hasMore,
   onChange,
+  onSearchChange,
+  onLoadMore,
   idPrefix,
 }: GroupMultiSelectProps) {
-  const [search, setSearch] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const comboboxRef = useRef<HTMLDivElement>(null);
   const filteredGroups = useMemo(() => {
@@ -137,13 +146,13 @@ function GroupMultiSelect({
         return;
       }
       setIsOpen(false);
-      setSearch('');
+      onSearchChange('');
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setIsOpen(false);
-        setSearch('');
+        onSearchChange('');
       }
     };
 
@@ -154,7 +163,7 @@ function GroupMultiSelect({
       document.removeEventListener('mousedown', handlePointerDown);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen]);
+  }, [isOpen, onSearchChange]);
 
   const selectionLabel =
     selectedGroups.length === 1
@@ -177,7 +186,7 @@ function GroupMultiSelect({
         onClick={() => {
           setIsOpen((open) => !open);
           if (isOpen) {
-            setSearch('');
+            onSearchChange('');
           }
         }}
       >
@@ -200,7 +209,7 @@ function GroupMultiSelect({
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <Input
                 value={search}
-                onChange={(event) => setSearch(event.target.value)}
+                onChange={(event) => onSearchChange(event.target.value)}
                 placeholder="Search groups"
                 className="h-9 rounded-md py-2 pl-9 pr-3"
               />
@@ -251,19 +260,33 @@ function GroupMultiSelect({
                 </button>
               );
             })}
-            {!isLoading && groups?.length === 0 && (
+            {!isLoading && groups?.length === 0 && !search.trim() && (
               <div className="px-2 py-1.5 text-sm text-gray-500">
                 Create a group before posting a targeted announcement.
               </div>
             )}
             {!isLoading &&
-              groups?.length !== 0 &&
+              (groups?.length !== 0 || search.trim()) &&
               filteredGroups?.length === 0 && (
                 <div className="px-2 py-1.5 text-sm text-gray-500">
                   No groups found
                 </div>
               )}
           </div>
+          {hasMore && (
+            <div className="border-t border-gray-200 p-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="w-full"
+                disabled={isLoadingMore}
+                onClick={onLoadMore}
+              >
+                {isLoadingMore ? 'Loading more...' : 'Load more groups'}
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -279,6 +302,8 @@ export default function AnnouncementsPage() {
     user?.role === 'MEMBER' && user?.memberRole === 'PRESENTER';
   const canCreate = isSuperAdmin || isOrgAdmin || isPresenter;
   const [eventSearch, setEventSearch] = useState('');
+  const [groupSearch, setGroupSearch] = useState('');
+  const [editGroupSearch, setEditGroupSearch] = useState('');
   const [eventDropdownOpen, setEventDropdownOpen] = useState(false);
   const eventComboboxRef = useRef<HTMLDivElement>(null);
   const [editingAnnouncement, setEditingAnnouncement] =
@@ -352,11 +377,25 @@ export default function AnnouncementsPage() {
     upcoming: true,
     ...(isPresenter ? { hostedByMe: true } : {}),
   });
-  const { groups, isLoading: groupsLoading } = useGroups({
-    enabled:
-      isOrgAdmin &&
-      (scope === 'GROUP' || editingAnnouncement?.scope === 'GROUP'),
-    limit: 100,
+  const {
+    groups,
+    isLoading: groupsLoading,
+    isLoadingMore: groupsLoadingMore,
+    hasMore: hasMoreGroups,
+    loadMore: loadMoreGroups,
+  } = useGroupOptions({
+    enabled: isOrgAdmin && scope === 'GROUP',
+    search: groupSearch,
+  });
+  const {
+    groups: editGroups,
+    isLoading: editGroupsLoading,
+    isLoadingMore: editGroupsLoadingMore,
+    hasMore: hasMoreEditGroups,
+    loadMore: loadMoreEditGroups,
+  } = useGroupOptions({
+    enabled: isOrgAdmin && editingAnnouncement?.scope === 'GROUP',
+    search: editGroupSearch,
   });
   const filteredEvents = useMemo(() => {
     const query = eventSearch.trim().toLowerCase();
@@ -403,6 +442,7 @@ export default function AnnouncementsPage() {
         { shouldValidate: true },
       );
       setEventSearch('');
+      setGroupSearch('');
       setEventDropdownOpen(false);
     }
   }, [scope, scopeOptions, setValue]);
@@ -455,6 +495,7 @@ export default function AnnouncementsPage() {
         groupIds: data.scope === 'GROUP' ? data.groupIds : undefined,
       });
       setEventSearch('');
+      setGroupSearch('');
       setEventDropdownOpen(false);
     } catch (err) {
       if (err instanceof ApiError) {
@@ -492,6 +533,7 @@ export default function AnnouncementsPage() {
   };
 
   const openEditDialog = (announcement: Announcement) => {
+    setEditGroupSearch('');
     setEditingAnnouncement(announcement);
     resetEdit({
       title: announcement.title,
@@ -511,6 +553,7 @@ export default function AnnouncementsPage() {
     try {
       await update(editingAnnouncement.id, data);
       toast.success('Announcement updated');
+      setEditGroupSearch('');
       setEditingAnnouncement(null);
     } catch (err) {
       if (err instanceof ApiError) {
@@ -615,6 +658,7 @@ export default function AnnouncementsPage() {
                         { shouldValidate: true },
                       );
                       setEventSearch('');
+                      setGroupSearch('');
                       setEventDropdownOpen(false);
                     }}
                   >
@@ -781,13 +825,18 @@ export default function AnnouncementsPage() {
                   <GroupMultiSelect
                     groups={groups}
                     selectedIds={groupIds}
+                    search={groupSearch}
                     isLoading={groupsLoading}
+                    isLoadingMore={groupsLoadingMore}
+                    hasMore={hasMoreGroups}
                     onChange={(nextGroupIds) =>
                       setValue('groupIds', nextGroupIds, {
                         shouldDirty: true,
                         shouldValidate: true,
                       })
                     }
+                    onSearchChange={setGroupSearch}
+                    onLoadMore={loadMoreGroups}
                     idPrefix="announcement-groups"
                   />
                   {errors.groupIds && (
@@ -842,6 +891,7 @@ export default function AnnouncementsPage() {
         open={!!editingAnnouncement}
         onOpenChange={(open) => {
           if (!open) {
+            setEditGroupSearch('');
             setEditingAnnouncement(null);
           }
         }}
@@ -884,15 +934,20 @@ export default function AnnouncementsPage() {
               <div className="space-y-2">
                 <Label>Target groups</Label>
                 <GroupMultiSelect
-                  groups={groups}
+                  groups={editGroups}
                   selectedIds={editGroupIds}
-                  isLoading={groupsLoading}
+                  search={editGroupSearch}
+                  isLoading={editGroupsLoading}
+                  isLoadingMore={editGroupsLoadingMore}
+                  hasMore={hasMoreEditGroups}
                   onChange={(nextGroupIds) =>
                     setEditValue('groupIds', nextGroupIds, {
                       shouldDirty: true,
                       shouldValidate: true,
                     })
                   }
+                  onSearchChange={setEditGroupSearch}
+                  onLoadMore={loadMoreEditGroups}
                   idPrefix="edit-announcement-groups"
                 />
                 {editErrors.groupIds && (
@@ -906,7 +961,10 @@ export default function AnnouncementsPage() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setEditingAnnouncement(null)}
+                onClick={() => {
+                  setEditGroupSearch('');
+                  setEditingAnnouncement(null);
+                }}
               >
                 Cancel
               </Button>

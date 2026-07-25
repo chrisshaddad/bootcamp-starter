@@ -541,7 +541,13 @@ export class AnnouncementsService {
       bodyHtml: this.sanitizeBody(body.bodyHtml),
     };
 
-    if (body.groupIds) {
+    if (body.groupIds !== undefined) {
+      if (body.groupIds.length === 0) {
+        throw new BadRequestException(
+          'Group announcements require at least one group',
+        );
+      }
+
       if (
         existing.scope !== 'GROUP' ||
         !existing.organizationId ||

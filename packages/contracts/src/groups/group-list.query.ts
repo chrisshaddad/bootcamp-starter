@@ -4,5 +4,6 @@ export const groupListQuerySchema = z.object({
   page: z.coerce.number().int().min(1).optional().default(1),
   limit: z.coerce.number().int().min(1).max(100).optional().default(20),
   organizationId: z.uuid().optional(),
+  search: z.string().trim().min(1).max(120).optional(),
 });
 export type GroupListQuery = z.infer<typeof groupListQuerySchema>;
