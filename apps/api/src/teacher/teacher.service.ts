@@ -253,6 +253,7 @@ export class TeacherService {
           position: question.position,
         };
       }),
+      attempts: [],
     };
   }
 
@@ -604,12 +605,37 @@ export class TeacherService {
             position: true,
           },
         },
+
+        quizAttempts: {
+          orderBy: {
+            startedAt: 'desc',
+          },
+          select: {
+            id: true,
+            studentId: true,
+            startedAt: true,
+            submittedAt: true,
+            autoScore: true,
+            totalPoints: true,
+
+            student: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
+        },
       },
     });
 
     if (!quiz || quiz.durationMinutes === null) {
       throw new NotFoundException(`Quiz with ID ${quizId} was not found`);
     }
+
+    const durationMinutes = quiz.durationMinutes;
+    const now = new Date();
 
     return {
       id: quiz.id,
@@ -622,7 +648,7 @@ export class TeacherService {
       startsAt: quiz.startsAt?.toISOString() ?? null,
       dueAt: quiz.dueAt?.toISOString() ?? null,
       endsAt: quiz.endsAt?.toISOString() ?? null,
-      durationMinutes: quiz.durationMinutes,
+      durationMinutes,
       noteToStudents: quiz.noteToStudents,
       status: quiz.status,
       createdAt: quiz.createdAt.toISOString(),
@@ -645,9 +671,37 @@ export class TeacherService {
           position: question.position,
         };
       }),
+
+      attempts: quiz.quizAttempts.map((attempt) => {
+        const expiresAt = new Date(
+          attempt.startedAt.getTime() + durationMinutes * 60_000,
+        );
+
+        const status =
+          attempt.submittedAt !== null
+            ? ('submitted' as const)
+            : now >= expiresAt
+              ? ('expired' as const)
+              : ('in_progress' as const);
+
+        return {
+          id: attempt.id,
+          studentId: attempt.studentId,
+          student: attempt.student,
+          startedAt: attempt.startedAt.toISOString(),
+          submittedAt: attempt.submittedAt?.toISOString() ?? null,
+          expiresAt: expiresAt.toISOString(),
+          autoScore:
+            attempt.autoScore === null ? null : attempt.autoScore.toNumber(),
+          totalPoints:
+            attempt.totalPoints === null
+              ? null
+              : attempt.totalPoints.toNumber(),
+          status,
+        };
+      }),
     };
   }
-
   async createAssignment(
     teacherId: string,
     organizationId: string | null,

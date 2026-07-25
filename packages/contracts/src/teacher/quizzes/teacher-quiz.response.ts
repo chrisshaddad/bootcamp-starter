@@ -12,6 +12,26 @@ export const teacherQuizQuestionResponseSchema = z.object({
   position: z.number(),
 });
 
+export const teacherQuizAttemptResponseSchema = z.object({
+  id: z.string(),
+  studentId: z.string(),
+
+  student: z.object({
+    id: z.string(),
+    name: z.string(),
+    email: z.string(),
+  }),
+
+  startedAt: z.iso.datetime(),
+  submittedAt: z.iso.datetime().nullable(),
+  expiresAt: z.iso.datetime(),
+
+  autoScore: z.number().nullable(),
+  totalPoints: z.number().nullable(),
+
+  status: z.enum(['in_progress', 'expired', 'submitted']),
+});
+
 export const teacherQuizResponseSchema = z.object({
   id: z.string(),
   courseId: z.string(),
@@ -35,10 +55,15 @@ export const teacherQuizResponseSchema = z.object({
   }),
 
   questions: z.array(teacherQuizQuestionResponseSchema),
+  attempts: z.array(teacherQuizAttemptResponseSchema),
 });
 
 export type TeacherQuizQuestionResponse = z.infer<
   typeof teacherQuizQuestionResponseSchema
+>;
+
+export type TeacherQuizAttemptResponse = z.infer<
+  typeof teacherQuizAttemptResponseSchema
 >;
 
 export type TeacherQuizResponse = z.infer<typeof teacherQuizResponseSchema>;

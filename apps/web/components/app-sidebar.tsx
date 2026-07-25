@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { LucideIcon } from 'lucide-react';
@@ -31,8 +32,6 @@ import {
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
 
-import { useEffect, useState } from 'react';
-
 interface NavItem {
   title: string;
   url: string;
@@ -40,6 +39,19 @@ interface NavItem {
   disabled?: boolean;
   badge?: string;
 }
+
+const studentNavItems: NavItem[] = [
+  {
+    title: 'Dashboard',
+    url: '/dashboard',
+    icon: LayoutDashboard,
+  },
+  {
+    title: 'Quizzes',
+    url: '/student/quizzes',
+    icon: FileQuestion,
+  },
+];
 
 const organizationNavItems: NavItem[] = [
   {
@@ -74,6 +86,14 @@ const superAdminNavItems: NavItem[] = [
   },
 ];
 
+const studentSupportItems: NavItem[] = [
+  {
+    title: 'Settings',
+    url: '/settings',
+    icon: Settings,
+  },
+];
+
 const organizationSupportItems: NavItem[] = [
   {
     title: 'Settings',
@@ -103,7 +123,7 @@ const superAdminSupportItems: NavItem[] = [
 export function AppSidebar() {
   const pathname = usePathname();
   const { logout } = useAuth();
-  const { user } = useUser({
+  const { user, isLoading } = useUser({
     redirectOnUnauthenticated: false,
   });
 
@@ -113,13 +133,33 @@ export function AppSidebar() {
     setHasMounted(true);
   }, []);
 
-  const isSuperAdmin = hasMounted && user?.role === 'SUPER_ADMIN';
+  const role = hasMounted ? user?.role : undefined;
 
-  const mainNavItems = isSuperAdmin ? superAdminNavItems : organizationNavItems;
+  const isStudent = role === 'MEMBER';
+  const isOrganizationAdmin = role === 'ORG_ADMIN';
+  const isSuperAdmin = role === 'SUPER_ADMIN';
 
-  const supportItems = isSuperAdmin
-    ? superAdminSupportItems
-    : organizationSupportItems;
+  let mainNavItems: NavItem[] = [];
+  let supportItems: NavItem[] = [];
+  let navigationLabel = 'Main';
+  let workspaceLabel = 'Workspace';
+
+  if (isStudent) {
+    mainNavItems = studentNavItems;
+    supportItems = studentSupportItems;
+    navigationLabel = 'Learning';
+    workspaceLabel = 'Student';
+  } else if (isOrganizationAdmin) {
+    mainNavItems = organizationNavItems;
+    supportItems = organizationSupportItems;
+    navigationLabel = 'Main';
+    workspaceLabel = 'Administration';
+  } else if (isSuperAdmin) {
+    mainNavItems = superAdminNavItems;
+    supportItems = superAdminSupportItems;
+    navigationLabel = 'Administration';
+    workspaceLabel = 'Super Admin';
+  }
 
   const isActive = (url: string) => {
     if (url === '/dashboard') {
@@ -203,36 +243,40 @@ export function AppSidebar() {
             </p>
 
             <p className="truncate text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7c879d]">
-              Administration
+              {isLoading || !hasMounted ? 'Loading' : workspaceLabel}
             </p>
           </div>
         </Link>
       </SidebarHeader>
 
       <SidebarContent className="bg-white px-2 py-4">
-        <SidebarGroup className="p-0">
-          <SidebarGroupLabel className="mb-2 h-auto px-3 text-[9px] font-bold uppercase tracking-[0.12em] text-[#8a93a7] group-data-[collapsible=icon]:hidden">
-            {isSuperAdmin ? 'Administration' : 'Main'}
-          </SidebarGroupLabel>
+        {!isLoading && role && (
+          <>
+            <SidebarGroup className="p-0">
+              <SidebarGroupLabel className="mb-2 h-auto px-3 text-[9px] font-bold uppercase tracking-[0.12em] text-[#8a93a7] group-data-[collapsible=icon]:hidden">
+                {navigationLabel}
+              </SidebarGroupLabel>
 
-          <SidebarGroupContent>
-            <SidebarMenu className="gap-1">
-              {mainNavItems.map(renderNavigationItem)}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+              <SidebarGroupContent>
+                <SidebarMenu className="gap-1">
+                  {mainNavItems.map(renderNavigationItem)}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
 
-        <SidebarGroup className="mt-6 p-0">
-          <SidebarGroupLabel className="mb-2 h-auto px-3 text-[9px] font-bold uppercase tracking-[0.12em] text-[#8a93a7] group-data-[collapsible=icon]:hidden">
-            Support
-          </SidebarGroupLabel>
+            <SidebarGroup className="mt-6 p-0">
+              <SidebarGroupLabel className="mb-2 h-auto px-3 text-[9px] font-bold uppercase tracking-[0.12em] text-[#8a93a7] group-data-[collapsible=icon]:hidden">
+                Support
+              </SidebarGroupLabel>
 
-          <SidebarGroupContent>
-            <SidebarMenu className="gap-1">
-              {supportItems.map(renderNavigationItem)}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+              <SidebarGroupContent>
+                <SidebarMenu className="gap-1">
+                  {supportItems.map(renderNavigationItem)}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
+        )}
       </SidebarContent>
 
       <SidebarFooter className="border-t border-[#e3e6ed] bg-white p-3">

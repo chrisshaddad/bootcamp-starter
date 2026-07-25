@@ -13,7 +13,7 @@ import { StudentsModule } from './students/students.module';
 import { TeachersModule } from './teachers/teachers.module';
 import { CoursesModule } from './courses/courses.module';
 import { DashboardModule } from './dashboard/dashboard.module';
-
+import { StudentModule } from './student/student.module';
 @Module({
   imports: [
     ConfigModule.forRoot(),
@@ -29,6 +29,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     UsersModule,
     TeacherModule,
     StudentsModule,
+    StudentModule,
     TeachersModule,
     CoursesModule,
     DashboardModule,
