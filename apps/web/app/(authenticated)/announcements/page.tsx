@@ -12,6 +12,7 @@ import {
   type AnnouncementCreateRequest,
   type AnnouncementScope,
   type AnnouncementUpdateRequest,
+  type Group,
 } from '@repo/contracts';
 import { AnnouncementList } from '@/components/announcement-list';
 import { RichTextEditor } from '@/components/rich-text-editor';
@@ -37,6 +38,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAnnouncements } from '@/hooks/use-announcements';
 import { useEvents } from '@/hooks/use-events';
+import { useGroupOptions } from '@/hooks/use-groups';
 import { useUser } from '@/hooks/use-auth';
 import { ApiError } from '@/lib/api';
 import {
@@ -49,12 +51,14 @@ import {
   Megaphone,
   Search,
   ShieldX,
+  UsersRound,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 const scopeIcons: Record<AnnouncementScope, LucideIcon> = {
   SITE: Megaphone,
   ORG: Globe,
+  GROUP: UsersRound,
   EVENT: Calendar,
 };
 
@@ -93,6 +97,202 @@ function hasBodyContent(bodyHtml: string | undefined) {
   );
 }
 
+interface GroupMultiSelectProps {
+  groups: Group[] | undefined;
+  selectedIds: string[];
+  search: string;
+  isLoading: boolean;
+  isLoadingMore: boolean;
+  hasMore: boolean;
+  onChange: (groupIds: string[]) => void;
+  onSearchChange: (search: string) => void;
+  onLoadMore: () => void;
+  idPrefix: string;
+}
+
+function GroupMultiSelect({
+  groups,
+  selectedIds,
+  search,
+  isLoading,
+  isLoadingMore,
+  hasMore,
+  onChange,
+  onSearchChange,
+  onLoadMore,
+  idPrefix,
+}: GroupMultiSelectProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const comboboxRef = useRef<HTMLDivElement>(null);
+  const filteredGroups = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) {
+      return groups;
+    }
+    return groups?.filter((group) => group.name.toLowerCase().includes(query));
+  }, [groups, search]);
+  const selectedGroups = useMemo(
+    () => groups?.filter((group) => selectedIds.includes(group.id)) ?? [],
+    [groups, selectedIds],
+  );
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (comboboxRef.current?.contains(event.target as Node)) {
+        return;
+      }
+      setIsOpen(false);
+      onSearchChange('');
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsOpen(false);
+        onSearchChange('');
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onSearchChange]);
+
+  const selectionLabel =
+    selectedGroups.length === 1
+      ? selectedGroups[0]?.name
+      : selectedGroups.length > 1
+        ? `${selectedGroups.length} groups selected`
+        : selectedIds.length > 0
+          ? `${selectedIds.length} groups selected`
+          : 'Select groups';
+
+  return (
+    <div ref={comboboxRef} className="relative">
+      <Button
+        type="button"
+        variant="outline"
+        role="combobox"
+        aria-expanded={isOpen}
+        aria-controls={`${idPrefix}-options`}
+        className="h-9 w-full justify-between border-gray-300 bg-transparent px-3 text-left font-normal shadow-xs hover:bg-transparent"
+        onClick={() => {
+          setIsOpen((open) => !open);
+          if (isOpen) {
+            onSearchChange('');
+          }
+        }}
+      >
+        <span
+          className={
+            selectedIds.length > 0
+              ? 'truncate text-gray-900'
+              : 'truncate text-gray-500'
+          }
+        >
+          {isLoading ? 'Loading groups...' : selectionLabel}
+        </span>
+        <ChevronDown className="h-4 w-4 opacity-50" />
+      </Button>
+
+      {isOpen && (
+        <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-md border border-gray-200 bg-white shadow-md">
+          <div className="border-b border-gray-200 p-2">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Input
+                value={search}
+                onChange={(event) => onSearchChange(event.target.value)}
+                placeholder="Search groups"
+                className="h-9 rounded-md py-2 pl-9 pr-3"
+              />
+            </div>
+          </div>
+          <div
+            id={`${idPrefix}-options`}
+            role="listbox"
+            aria-multiselectable="true"
+            className="max-h-64 overflow-y-auto p-1"
+          >
+            {isLoading && (
+              <div className="px-2 py-1.5 text-sm text-gray-500">
+                Loading groups...
+              </div>
+            )}
+            {filteredGroups?.map((group) => {
+              const isSelected = selectedIds.includes(group.id);
+              return (
+                <button
+                  key={group.id}
+                  type="button"
+                  role="option"
+                  aria-selected={isSelected}
+                  className={
+                    isSelected
+                      ? 'flex w-full items-center justify-between gap-2 rounded-sm bg-primary-100 px-2 py-1.5 text-left text-sm text-gray-900 outline-none'
+                      : 'flex w-full items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-left text-sm text-gray-900 outline-none hover:bg-gray-100 focus:bg-gray-100'
+                  }
+                  onClick={() =>
+                    onChange(
+                      isSelected
+                        ? selectedIds.filter((id) => id !== group.id)
+                        : [...selectedIds, group.id],
+                    )
+                  }
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate">{group.name}</span>
+                    <span className="block text-xs text-gray-500">
+                      {group.memberCount}{' '}
+                      {group.memberCount === 1 ? 'member' : 'members'}
+                    </span>
+                  </span>
+                  {isSelected && (
+                    <Check className="h-4 w-4 shrink-0 text-primary-base" />
+                  )}
+                </button>
+              );
+            })}
+            {!isLoading && groups?.length === 0 && !search.trim() && (
+              <div className="px-2 py-1.5 text-sm text-gray-500">
+                Create a group before posting a targeted announcement.
+              </div>
+            )}
+            {!isLoading &&
+              (groups?.length !== 0 || search.trim()) &&
+              filteredGroups?.length === 0 && (
+                <div className="px-2 py-1.5 text-sm text-gray-500">
+                  No groups found
+                </div>
+              )}
+          </div>
+          {hasMore && (
+            <div className="border-t border-gray-200 p-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="w-full"
+                disabled={isLoadingMore}
+                onClick={onLoadMore}
+              >
+                {isLoadingMore ? 'Loading more...' : 'Load more groups'}
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AnnouncementsPage() {
   const { user, isLoading: userLoading } = useUser();
   const canAccess = canAccessAnnouncements(user?.role);
@@ -102,6 +302,8 @@ export default function AnnouncementsPage() {
     user?.role === 'MEMBER' && user?.memberRole === 'PRESENTER';
   const canCreate = isSuperAdmin || isOrgAdmin || isPresenter;
   const [eventSearch, setEventSearch] = useState('');
+  const [groupSearch, setGroupSearch] = useState('');
+  const [editGroupSearch, setEditGroupSearch] = useState('');
   const [eventDropdownOpen, setEventDropdownOpen] = useState(false);
   const eventComboboxRef = useRef<HTMLDivElement>(null);
   const [editingAnnouncement, setEditingAnnouncement] =
@@ -124,18 +326,21 @@ export default function AnnouncementsPage() {
       scope: 'EVENT',
       audience: 'EVENT_ATTENDEES',
       eventId: undefined,
+      groupIds: undefined,
     },
   });
   const scope = watch('scope');
   const title = watch('title');
   const bodyHtml = watch('bodyHtml');
   const eventId = watch('eventId');
+  const groupIds = watch('groupIds') ?? [];
   const audience = watch('audience') ?? 'EVENT_ATTENDEES';
   const isFormIncomplete =
     !title?.trim() ||
     !scope ||
     !hasBodyContent(bodyHtml) ||
-    (scope === 'EVENT' && (!audience || !eventId));
+    (scope === 'EVENT' && (!audience || !eventId)) ||
+    (scope === 'GROUP' && groupIds.length === 0);
   const {
     register: registerEdit,
     handleSubmit: handleEditSubmit,
@@ -152,7 +357,11 @@ export default function AnnouncementsPage() {
   });
   const editTitle = watchEdit('title');
   const editBodyHtml = watchEdit('bodyHtml');
-  const isEditIncomplete = !editTitle?.trim() || !hasBodyContent(editBodyHtml);
+  const editGroupIds = watchEdit('groupIds') ?? [];
+  const isEditIncomplete =
+    !editTitle?.trim() ||
+    !hasBodyContent(editBodyHtml) ||
+    (editingAnnouncement?.scope === 'GROUP' && editGroupIds.length === 0);
 
   const {
     announcements,
@@ -167,6 +376,26 @@ export default function AnnouncementsPage() {
     enabled: canCreate && scope === 'EVENT',
     upcoming: true,
     ...(isPresenter ? { hostedByMe: true } : {}),
+  });
+  const {
+    groups,
+    isLoading: groupsLoading,
+    isLoadingMore: groupsLoadingMore,
+    hasMore: hasMoreGroups,
+    loadMore: loadMoreGroups,
+  } = useGroupOptions({
+    enabled: isOrgAdmin && scope === 'GROUP',
+    search: groupSearch,
+  });
+  const {
+    groups: editGroups,
+    isLoading: editGroupsLoading,
+    isLoadingMore: editGroupsLoadingMore,
+    hasMore: hasMoreEditGroups,
+    loadMore: loadMoreEditGroups,
+  } = useGroupOptions({
+    enabled: isOrgAdmin && editingAnnouncement?.scope === 'GROUP',
+    search: editGroupSearch,
   });
   const filteredEvents = useMemo(() => {
     const query = eventSearch.trim().toLowerCase();
@@ -189,6 +418,7 @@ export default function AnnouncementsPage() {
     }
     if (isOrgAdmin) {
       options.push({ value: 'ORG', label: 'Org-wide' });
+      options.push({ value: 'GROUP', label: 'Selected groups' });
       options.push({ value: 'EVENT', label: 'Event-related' });
     }
     if (isPresenter) {
@@ -205,12 +435,14 @@ export default function AnnouncementsPage() {
     ) {
       setValue('scope', fallbackScope, { shouldValidate: true });
       setValue('eventId', undefined, { shouldValidate: true });
+      setValue('groupIds', undefined, { shouldValidate: true });
       setValue(
         'audience',
         fallbackScope === 'EVENT' ? 'EVENT_ATTENDEES' : undefined,
         { shouldValidate: true },
       );
       setEventSearch('');
+      setGroupSearch('');
       setEventDropdownOpen(false);
     }
   }, [scope, scopeOptions, setValue]);
@@ -251,6 +483,7 @@ export default function AnnouncementsPage() {
         ...(data.scope === 'EVENT'
           ? { audience: data.audience, eventId: data.eventId }
           : {}),
+        ...(data.scope === 'GROUP' ? { groupIds: data.groupIds } : {}),
       });
       toast.success('Announcement posted');
       reset({
@@ -259,8 +492,10 @@ export default function AnnouncementsPage() {
         scope: data.scope,
         audience: data.scope === 'EVENT' ? data.audience : undefined,
         eventId: data.scope === 'EVENT' ? data.eventId : undefined,
+        groupIds: data.scope === 'GROUP' ? data.groupIds : undefined,
       });
       setEventSearch('');
+      setGroupSearch('');
       setEventDropdownOpen(false);
     } catch (err) {
       if (err instanceof ApiError) {
@@ -282,7 +517,9 @@ export default function AnnouncementsPage() {
 
     if (user.role === 'ORG_ADMIN') {
       return (
-        (announcement.scope === 'ORG' || announcement.scope === 'EVENT') &&
+        (announcement.scope === 'ORG' ||
+          announcement.scope === 'GROUP' ||
+          announcement.scope === 'EVENT') &&
         announcement.organizationId === user.organizationId
       );
     }
@@ -296,10 +533,15 @@ export default function AnnouncementsPage() {
   };
 
   const openEditDialog = (announcement: Announcement) => {
+    setEditGroupSearch('');
     setEditingAnnouncement(announcement);
     resetEdit({
       title: announcement.title,
       bodyHtml: announcement.bodyHtml,
+      groupIds:
+        announcement.scope === 'GROUP'
+          ? announcement.targetGroups.map((group) => group.id)
+          : undefined,
     });
   };
 
@@ -311,6 +553,7 @@ export default function AnnouncementsPage() {
     try {
       await update(editingAnnouncement.id, data);
       toast.success('Announcement updated');
+      setEditGroupSearch('');
       setEditingAnnouncement(null);
     } catch (err) {
       if (err instanceof ApiError) {
@@ -363,7 +606,7 @@ export default function AnnouncementsPage() {
             Announcements
           </h1>
           <p className="mt-1 text-sm text-gray-500">
-            Updates for the platform, your organization, and events.
+            Updates for the platform, your organization, groups, and events.
           </p>
         </div>
         {total !== undefined && (
@@ -406,12 +649,16 @@ export default function AnnouncementsPage() {
                         shouldValidate: true,
                       });
                       setValue('eventId', undefined, { shouldValidate: true });
+                      setValue('groupIds', undefined, {
+                        shouldValidate: true,
+                      });
                       setValue(
                         'audience',
                         nextScope === 'EVENT' ? 'EVENT_ATTENDEES' : undefined,
                         { shouldValidate: true },
                       );
                       setEventSearch('');
+                      setGroupSearch('');
                       setEventDropdownOpen(false);
                     }}
                   >
@@ -572,6 +819,34 @@ export default function AnnouncementsPage() {
                 </div>
               )}
 
+              {scope === 'GROUP' && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Target groups</Label>
+                  <GroupMultiSelect
+                    groups={groups}
+                    selectedIds={groupIds}
+                    search={groupSearch}
+                    isLoading={groupsLoading}
+                    isLoadingMore={groupsLoadingMore}
+                    hasMore={hasMoreGroups}
+                    onChange={(nextGroupIds) =>
+                      setValue('groupIds', nextGroupIds, {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      })
+                    }
+                    onSearchChange={setGroupSearch}
+                    onLoadMore={loadMoreGroups}
+                    idPrefix="announcement-groups"
+                  />
+                  {errors.groupIds && (
+                    <p className="text-sm text-error">
+                      {errors.groupIds.message}
+                    </p>
+                  )}
+                </div>
+              )}
+
               <div className="space-y-1.5">
                 <Label className="text-xs">Message</Label>
                 <RichTextEditor
@@ -616,6 +891,7 @@ export default function AnnouncementsPage() {
         open={!!editingAnnouncement}
         onOpenChange={(open) => {
           if (!open) {
+            setEditGroupSearch('');
             setEditingAnnouncement(null);
           }
         }}
@@ -654,11 +930,41 @@ export default function AnnouncementsPage() {
                 </p>
               )}
             </div>
+            {editingAnnouncement?.scope === 'GROUP' && (
+              <div className="space-y-2">
+                <Label>Target groups</Label>
+                <GroupMultiSelect
+                  groups={editGroups}
+                  selectedIds={editGroupIds}
+                  search={editGroupSearch}
+                  isLoading={editGroupsLoading}
+                  isLoadingMore={editGroupsLoadingMore}
+                  hasMore={hasMoreEditGroups}
+                  onChange={(nextGroupIds) =>
+                    setEditValue('groupIds', nextGroupIds, {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    })
+                  }
+                  onSearchChange={setEditGroupSearch}
+                  onLoadMore={loadMoreEditGroups}
+                  idPrefix="edit-announcement-groups"
+                />
+                {editErrors.groupIds && (
+                  <p className="text-sm text-error">
+                    {editErrors.groupIds.message}
+                  </p>
+                )}
+              </div>
+            )}
             <DialogFooter>
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setEditingAnnouncement(null)}
+                onClick={() => {
+                  setEditGroupSearch('');
+                  setEditingAnnouncement(null);
+                }}
               >
                 Cancel
               </Button>

@@ -37,6 +37,12 @@ interface AnnouncementRow {
   event: {
     eventName: string;
   } | null;
+  groupTargets: Array<{
+    group: {
+      id: string;
+      name: string;
+    };
+  }>;
 }
 
 @Injectable()
@@ -67,6 +73,21 @@ export class AnnouncementsService {
         eventName: true,
       },
     },
+    groupTargets: {
+      orderBy: {
+        group: {
+          name: 'asc',
+        },
+      },
+      select: {
+        group: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    },
   } as const;
 
   private toAnnouncement(announcement: AnnouncementRow): Announcement {
@@ -81,6 +102,7 @@ export class AnnouncementsService {
       authorId: announcement.authorId,
       authorName: announcement.author.name || announcement.author.email,
       eventName: announcement.event?.eventName ?? null,
+      targetGroups: announcement.groupTargets.map(({ group }) => group),
       createdAt: announcement.createdAt,
       updatedAt: announcement.updatedAt,
     };
@@ -115,6 +137,7 @@ export class AnnouncementsService {
         OR: [
           { scope: 'SITE' },
           { scope: 'ORG', organizationId },
+          { scope: 'GROUP', organizationId },
           { scope: 'EVENT', organizationId },
         ],
       };
@@ -124,6 +147,26 @@ export class AnnouncementsService {
       OR: [
         { scope: 'SITE' },
         { scope: 'ORG', organizationId },
+        {
+          scope: 'GROUP',
+          organizationId,
+          groupTargets: {
+            some: {
+              organizationId,
+              group: {
+                organizationId,
+                memberships: {
+                  some: {
+                    member: {
+                      userId: user.id,
+                      organizationId,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
         {
           scope: 'EVENT',
           organizationId,
@@ -209,6 +252,16 @@ export class AnnouncementsService {
       );
     }
 
+    if (announcement.scope === 'GROUP') {
+      if (user.role === 'ORG_ADMIN') {
+        return;
+      }
+
+      throw new ForbiddenException(
+        'Only organization admins can manage group announcements',
+      );
+    }
+
     if (!announcement.eventId) {
       throw new BadRequestException('Event announcement is missing an event');
     }
@@ -253,6 +306,28 @@ export class AnnouncementsService {
         'Presenters can only manage announcements for events they host',
       );
     }
+  }
+
+  private async resolveTargetGroupIds(
+    groupIds: string[],
+    organizationId: string,
+  ): Promise<string[]> {
+    const uniqueIds = [...new Set(groupIds)];
+    const groups = await this.prisma.group.findMany({
+      where: {
+        id: { in: uniqueIds },
+        organizationId,
+      },
+      select: { id: true },
+    });
+
+    if (groups.length !== uniqueIds.length) {
+      throw new BadRequestException(
+        'All target groups must belong to your organization',
+      );
+    }
+
+    return uniqueIds;
   }
 
   async findAll(
@@ -326,6 +401,11 @@ export class AnnouncementsService {
     }
 
     const organizationId = resolveOrganizationScope(user);
+    if (!organizationId) {
+      throw new BadRequestException(
+        'An organization is required to create this announcement',
+      );
+    }
 
     if (body.scope === 'ORG') {
       if (user.role !== 'ORG_ADMIN') {
@@ -346,6 +426,46 @@ export class AnnouncementsService {
       });
 
       this.logger.log(`Created org announcement ${announcement.id}`);
+      return this.toAnnouncement(announcement);
+    }
+
+    if (body.scope === 'GROUP') {
+      if (user.role !== 'ORG_ADMIN') {
+        throw new ForbiddenException(
+          'Only organization admins can create group announcements',
+        );
+      }
+
+      if (!body.groupIds?.length) {
+        throw new BadRequestException(
+          'Group announcements require at least one group',
+        );
+      }
+
+      const groupIds = await this.resolveTargetGroupIds(
+        body.groupIds,
+        organizationId,
+      );
+      const announcement = await this.prisma.announcement.create({
+        data: {
+          title: body.title,
+          bodyHtml,
+          scope: 'GROUP',
+          organizationId,
+          authorId: user.id,
+          groupTargets: {
+            create: groupIds.map((groupId) => ({
+              organization: { connect: { id: organizationId } },
+              group: { connect: { id: groupId } },
+            })),
+          },
+        },
+        select: this.announcementSelect,
+      });
+
+      this.logger.log(
+        `Created group announcement ${announcement.id} for ${groupIds.length} groups`,
+      );
       return this.toAnnouncement(announcement);
     }
 
@@ -416,12 +536,46 @@ export class AnnouncementsService {
     const existing = await this.findVisibleAnnouncement(id, user);
     await this.assertCanManage(existing, user);
 
+    const data: Prisma.AnnouncementUpdateInput = {
+      title: body.title,
+      bodyHtml: this.sanitizeBody(body.bodyHtml),
+    };
+
+    if (body.groupIds !== undefined) {
+      if (body.groupIds.length === 0) {
+        throw new BadRequestException(
+          'Group announcements require at least one group',
+        );
+      }
+
+      if (
+        existing.scope !== 'GROUP' ||
+        !existing.organizationId ||
+        user.role !== 'ORG_ADMIN'
+      ) {
+        throw new BadRequestException(
+          'Only group announcements can update target groups',
+        );
+      }
+
+      const groupIds = await this.resolveTargetGroupIds(
+        body.groupIds,
+        existing.organizationId,
+      );
+      data.groupTargets = {
+        deleteMany: {
+          organizationId: existing.organizationId,
+        },
+        create: groupIds.map((groupId) => ({
+          organization: { connect: { id: existing.organizationId! } },
+          group: { connect: { id: groupId } },
+        })),
+      };
+    }
+
     const announcement = await this.prisma.announcement.update({
       where: { id: existing.id },
-      data: {
-        title: body.title,
-        bodyHtml: this.sanitizeBody(body.bodyHtml),
-      },
+      data,
       select: this.announcementSelect,
     });
 

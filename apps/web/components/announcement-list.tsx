@@ -30,6 +30,7 @@ import {
   MoreVertical,
   Pencil,
   Trash2,
+  UsersRound,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -77,12 +78,14 @@ function PublishedTime({ value, now }: { value: string | Date; now: number }) {
 const scopeIcons: Record<Announcement['scope'], LucideIcon> = {
   SITE: Megaphone,
   ORG: Globe,
+  GROUP: UsersRound,
   EVENT: Calendar,
 };
 
 const scopeLabels: Record<Announcement['scope'], string> = {
   SITE: 'Site-wide',
   ORG: 'Org-wide',
+  GROUP: 'Selected groups',
   EVENT: 'Event-related',
 };
 
@@ -235,6 +238,16 @@ export function AnnouncementList({
                     <span>{announcement.eventName}</span>
                   </>
                 )}
+                {announcement.targetGroups.length > 0 && (
+                  <>
+                    <span>•</span>
+                    <span>
+                      {announcement.targetGroups
+                        .map((group) => group.name)
+                        .join(', ')}
+                    </span>
+                  </>
+                )}
                 <span>•</span>
                 <span>
                   {announcement.authorId === user?.id
@@ -321,6 +334,14 @@ export function AnnouncementList({
                     {audienceLabels[announcement.audience]}
                   </span>
                 )}
+                {announcement.targetGroups.length > 0 && (
+                  <span className="rounded-full bg-primary-100 px-2 py-1 font-medium text-primary-base">
+                    {announcement.targetGroups.length}{' '}
+                    {announcement.targetGroups.length === 1
+                      ? 'group'
+                      : 'groups'}
+                  </span>
+                )}
               </div>
               <h3 className="break-words text-base font-semibold leading-snug text-gray-900">
                 {announcement.title}
@@ -387,6 +408,16 @@ export function AnnouncementList({
                 ) : (
                   <span className="truncate">{announcement.eventName}</span>
                 )}
+              </div>
+            )}
+            {announcement.targetGroups.length > 0 && (
+              <div className="flex min-w-0 items-start gap-1.5">
+                <UsersRound className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <span className="line-clamp-2">
+                  {announcement.targetGroups
+                    .map((group) => group.name)
+                    .join(', ')}
+                </span>
               </div>
             )}
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">

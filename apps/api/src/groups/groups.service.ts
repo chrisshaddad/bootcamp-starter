@@ -103,12 +103,25 @@ export class GroupsService {
    * Lists groups visible in the caller's organization scope.
    */
   async findAll(query: GroupListQuery, user: User): Promise<GroupListResponse> {
-    const { page = 1, limit = 20, organizationId: requestedOrgId } = query;
+    const {
+      page = 1,
+      limit = 20,
+      organizationId: requestedOrgId,
+      search,
+    } = query;
     const skip = (page - 1) * limit;
     const organizationId = resolveOrganizationScope(user, requestedOrgId);
 
     const where: Prisma.GroupWhereInput = {
       ...(organizationId ? { organizationId } : {}),
+      ...(search
+        ? {
+            name: {
+              contains: search,
+              mode: 'insensitive',
+            },
+          }
+        : {}),
     };
 
     const [rows, total] = await Promise.all([

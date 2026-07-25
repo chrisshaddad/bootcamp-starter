@@ -11,7 +11,7 @@ Instructions for AI coding assistants (Claude Code, Cursor, Codex, Aider, etc.) 
 
 **Coordly** — member and event management for organizations. Built on the Bootcamp Starter Turborepo stack.
 
-Multi-tenant auth (orgs + auth roles) is pre-wired. Phase 1 includes Coordly domain models (`Member`, `Event`, `EventAttendee`, `Group`, `GroupMember`), role-based portals, event detail pages, auth-member event sign-up, and org-scoped groups. Announcement targeting by group and full attendance history are planned next.
+Multi-tenant auth (orgs + auth roles) is pre-wired. Phase 1 includes Coordly domain models (`Member`, `Event`, `EventAttendee`, `Group`, `GroupMember`, `Announcement`, `AnnouncementGroup`), role-based portals, event detail pages, auth-member event sign-up, org-scoped groups, and group-targeted announcements. Full attendance history is planned next.
 
 Human-facing setup and sign-in steps live in [`README.md`](README.md).
 
@@ -83,6 +83,8 @@ Contracts: `userRoleSchema` vs `memberRoleSchema`. Never reuse one enum for the 
 - **`GroupMember`** — `groupId`, `memberId`; `@@unique([groupId, memberId])` (links to Coordly `Member`)
 - **`Event`** — `eventName`, `startsAt`, `presenterId` (→ `Member`, `onDelete: SetNull`), `organizationId`
 - **`EventAttendee`** — `eventId`, `userId`, `organizationId`; `@@unique([eventId, userId])`
+- **`Announcement`** — site/org/group/event update; group scope targets one or more groups through `AnnouncementGroup`
+- **`AnnouncementGroup`** — announcement-to-group target; `@@unique([announcementId, groupId])`
 
 All index `organizationId`. On attendee create, set `organizationId` from the event (same org as `@CurrentUser()`). Seed data: `packages/database/prisma/seeders/seedCoordly.ts` (events include relative `startsAt` dates).
 
@@ -95,6 +97,7 @@ All index `organizationId`. On attendee create, set `organizationId` from the ev
 | `/groups`        | `SUPER_ADMIN`, `ORG_ADMIN`           | List/create/edit groups; assign Coordly members  |
 | `/events`        | `SUPER_ADMIN`, `ORG_ADMIN`, `MEMBER` | List with All / Upcoming / Past filter           |
 | `/events/[id]`   | `SUPER_ADMIN`, `ORG_ADMIN`, `MEMBER` | Detail; sign-up button for eligible auth members |
+| `/announcements` | `SUPER_ADMIN`, `ORG_ADMIN`, `MEMBER` | Visible site/org/group/event announcements       |
 | `/organizations` | `SUPER_ADMIN`                        | Platform org management                          |
 | `/dashboard`     | org users                            | Super admins redirect to `/admin`                |
 
@@ -109,6 +112,7 @@ Sidebar: org admins see **Members**, **Groups**, + **Events**; auth **MEMBER** u
 | `GET /events`               | `apps/api/src/events/`        | `SUPER_ADMIN`, `ORG_ADMIN`, `MEMBER` | Query: `upcoming=true\|false`, `page`, `limit`          |
 | `GET /events/:id`           | `apps/api/src/events/`        | `SUPER_ADMIN`, `ORG_ADMIN`, `MEMBER` | Includes `canRegister`, `isRegistered`, `attendeeCount` |
 | `POST /events/:id/register` | `apps/api/src/events/`        | `SUPER_ADMIN`, `ORG_ADMIN`, `MEMBER` | Upcoming events in caller's org; see registration rules |
+| `GET/POST /announcements` … | `apps/api/src/announcements/` | `SUPER_ADMIN`, `ORG_ADMIN`, `MEMBER` | Role-managed announcements with group visibility rules  |
 | `GET /organizations`        | `apps/api/src/organizations/` | `SUPER_ADMIN`                        |                                                         |
 
 List/detail query validation via `ZodValidationPipe` + schemas from `@repo/contracts`.
@@ -134,7 +138,7 @@ Event registration rules (enforced in `EventsService.register`):
 
 ### Planned (out of scope)
 
-Announcement targeting by group, nested groups, event invite-by-group, attendance history views.
+Nested groups, event invite-by-group, attendance history views.
 
 ## Conventions (read before editing)
 

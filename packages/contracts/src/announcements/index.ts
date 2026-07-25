@@ -3,5 +3,6 @@ export * from './announcement-create.request';
 export * from './announcement-list.query';
 export * from './announcement-list.response';
 export * from './announcement-scope.schema';
+export * from './announcement-target-group.response';
 export * from './announcement-update.request';
 export * from './announcement.response';
