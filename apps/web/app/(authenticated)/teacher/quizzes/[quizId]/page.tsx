@@ -6,19 +6,27 @@ import { useParams, useRouter } from 'next/navigation';
 import type { TeacherQuizResponse } from '@repo/contracts';
 import { ArrowLeft, Clock3, Edit, Loader2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ApiError, apiDelete, fetcher } from '@/lib/api';
+
+function formatDate(value: string): string {
+  return new Intl.DateTimeFormat('en', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value));
+}
 
 export default function TeacherQuizDetailPage() {
   const params = useParams<{ quizId: string }>();
   const router = useRouter();
 
+  const quizId = params.quizId;
+
   const [quiz, setQuiz] = useState<TeacherQuizResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  const quizId = params.quizId;
 
   useEffect(() => {
     async function loadQuiz() {
@@ -155,6 +163,7 @@ export default function TeacherQuizDetailPage() {
 
           <div>
             <p className="text-sm text-gray-500">Duration</p>
+
             <p className="mt-1 inline-flex items-center gap-1.5 font-medium">
               <Clock3 className="h-4 w-4" />
               {quiz.durationMinutes} minutes
@@ -185,6 +194,7 @@ export default function TeacherQuizDetailPage() {
                 <p className="text-sm font-medium text-gray-700">
                   Instructions
                 </p>
+
                 <p className="mt-1 whitespace-pre-wrap text-sm text-gray-600">
                   {quiz.instructions}
                 </p>
@@ -196,6 +206,7 @@ export default function TeacherQuizDetailPage() {
                 <p className="text-sm font-medium text-gray-700">
                   Note to students
                 </p>
+
                 <p className="mt-1 whitespace-pre-wrap text-sm text-gray-600">
                   {quiz.noteToStudents}
                 </p>
@@ -217,7 +228,7 @@ export default function TeacherQuizDetailPage() {
                 </CardTitle>
 
                 <span className="text-sm font-medium text-gray-500">
-                  {question.points} points
+                  {question.points} {question.points === 1 ? 'point' : 'points'}
                 </span>
               </div>
             </CardHeader>
@@ -262,10 +273,88 @@ export default function TeacherQuizDetailPage() {
         </CardHeader>
 
         <CardContent>
-          <p className="text-sm text-gray-500">
-            Attempts and grades will appear here after the student quiz-taking
-            flow is implemented.
-          </p>
+          {quiz.attempts.length === 0 ? (
+            <p className="text-sm text-gray-500">
+              No students have attempted this quiz yet.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[760px] text-left text-sm">
+                <thead>
+                  <tr className="border-b text-gray-500">
+                    <th className="px-3 py-3 font-medium">Student</th>
+                    <th className="px-3 py-3 font-medium">Status</th>
+                    <th className="px-3 py-3 font-medium">Started</th>
+                    <th className="px-3 py-3 font-medium">Submitted</th>
+                    <th className="px-3 py-3 font-medium">Score</th>
+                    <th className="px-3 py-3 font-medium">Percentage</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {quiz.attempts.map((attempt) => {
+                    const percentage =
+                      attempt.autoScore !== null &&
+                      attempt.totalPoints !== null &&
+                      attempt.totalPoints > 0
+                        ? Math.round(
+                            (attempt.autoScore / attempt.totalPoints) * 100,
+                          )
+                        : null;
+
+                    return (
+                      <tr key={attempt.id} className="border-b last:border-b-0">
+                        <td className="px-3 py-4">
+                          <p className="font-medium text-gray-900">
+                            {attempt.student.name}
+                          </p>
+
+                          <p className="mt-1 text-xs text-gray-500">
+                            {attempt.student.email}
+                          </p>
+                        </td>
+
+                        <td className="px-3 py-4">
+                          <span
+                            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium capitalize ${
+                              attempt.status === 'submitted'
+                                ? 'bg-green-100 text-green-700'
+                                : attempt.status === 'expired'
+                                  ? 'bg-red-100 text-red-700'
+                                  : 'bg-amber-100 text-amber-700'
+                            }`}
+                          >
+                            {attempt.status.replace('_', ' ')}
+                          </span>
+                        </td>
+
+                        <td className="px-3 py-4 text-gray-600">
+                          {formatDate(attempt.startedAt)}
+                        </td>
+
+                        <td className="px-3 py-4 text-gray-600">
+                          {attempt.submittedAt
+                            ? formatDate(attempt.submittedAt)
+                            : 'Not submitted'}
+                        </td>
+
+                        <td className="px-3 py-4 font-medium text-gray-900">
+                          {attempt.autoScore !== null &&
+                          attempt.totalPoints !== null
+                            ? `${attempt.autoScore} / ${attempt.totalPoints}`
+                            : 'Pending'}
+                        </td>
+
+                        <td className="px-3 py-4 font-medium text-gray-900">
+                          {percentage === null ? 'Pending' : `${percentage}%`}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
