@@ -23,6 +23,7 @@ import {
   type OrganizationActionResponse,
   type OrganizationRegisterResponse,
   type OrganizationDirectoryResponse,
+  type OrganizationSummaryResponse,
 } from '@repo/contracts';
 
 @Controller('organizations')
@@ -50,6 +51,13 @@ export class OrganizationsController {
       page: page ? parseInt(page, 10) : 1,
       limit: limit ? parseInt(limit, 10) : 20,
     });
+  }
+
+  // Must be registered before @Get(':id') so "summary" isn't captured as an id param.
+  @Get('summary')
+  @Roles('SUPER_ADMIN')
+  async summary(): Promise<OrganizationSummaryResponse> {
+    return this.organizationsService.summary();
   }
 
   @Get()

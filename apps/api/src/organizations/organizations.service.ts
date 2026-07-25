@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { AuthService } from '../auth/auth.service';
+import { bucketByDay } from '../dashboard/dashboard.service';
 import type { OrganizationStatus, Prisma } from '@repo/db';
 import type {
   CreateOrganizationRequest,
@@ -14,7 +15,10 @@ import type {
   OrganizationDetailResponse,
   OrganizationRegisterResponse,
   OrganizationDirectoryResponse,
+  OrganizationSummaryResponse,
 } from '@repo/contracts';
+
+const TREND_DAYS = 14;
 
 @Injectable()
 export class OrganizationsService {
@@ -127,6 +131,50 @@ export class OrganizationsService {
     ]);
 
     return { organizations, total };
+  }
+
+  /**
+   * SUPER_ADMIN platform-wide at-a-glance summary: library approvals queue,
+   * total user base, and status/signup trends across every organization.
+   */
+  async summary(): Promise<OrganizationSummaryResponse> {
+    const trendStart = new Date();
+    trendStart.setDate(trendStart.getDate() - (TREND_DAYS - 1));
+    trendStart.setHours(0, 0, 0, 0);
+
+    const [
+      totalOrganizations,
+      pendingApprovals,
+      totalUsers,
+      statusGroups,
+      recentOrganizations,
+    ] = await Promise.all([
+      this.prisma.organization.count(),
+      this.prisma.organization.count({ where: { status: 'PENDING' } }),
+      this.prisma.user.count(),
+      this.prisma.organization.groupBy({
+        by: ['status'],
+        _count: true,
+      }),
+      this.prisma.organization.findMany({
+        where: { createdAt: { gte: trendStart } },
+        select: { createdAt: true },
+      }),
+    ]);
+
+    return {
+      totalOrganizations,
+      pendingApprovals,
+      totalUsers,
+      statusBreakdown: statusGroups.map((g) => ({
+        status: g.status,
+        count: g._count,
+      })),
+      organizationsPerDay: bucketByDay(
+        recentOrganizations.map((o) => o.createdAt),
+        TREND_DAYS,
+      ),
+    };
   }
 
   /**

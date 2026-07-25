@@ -6,3 +6,4 @@ export * from './organization-list.response';
 export * from './organization-detail.response';
 export * from './organization-action.response';
 export * from './organization-directory.response';
+export * from './organization-summary.response';
