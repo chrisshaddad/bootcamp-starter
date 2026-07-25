@@ -13,6 +13,7 @@ import { PortalCartController } from './portal-cart.controller';
 import { PortalCategoriesController } from './portal-categories.controller';
 import { PortalAuthorsController } from './portal-authors.controller';
 import { PortalChatController } from './portal-chat.controller';
+import { PortalDashboardController } from './portal-dashboard.controller';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { PortalChatController } from './portal-chat.controller';
     PortalCategoriesController,
     PortalAuthorsController,
     PortalChatController,
+    PortalDashboardController,
   ],
 })
 export class PortalModule {}
