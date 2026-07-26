@@ -282,9 +282,10 @@ function InstitutionStats({ enabled }: { enabled: boolean }) {
  * Renders nothing when there's nothing pending, so it stays out of the way.
  */
 function PendingApprovals({ enabled }: { enabled: boolean }) {
-  const { institutions, isLoading } = useInstitutions({
+  const PENDING_QUEUE_LIMIT = 100;
+  const { institutions, total, isLoading } = useInstitutions({
     status: 'PENDING',
-    limit: 100,
+    limit: PENDING_QUEUE_LIMIT,
     enabled,
   });
   const { approve, reject } = useInstitutionActions();
@@ -323,7 +324,7 @@ function PendingApprovals({ enabled }: { enabled: boolean }) {
           <Clock className="h-5 w-5" />
           Pending approval
           <span className="text-sm font-normal text-muted-foreground">
-            ({institutions.length})
+            ({total ?? institutions.length})
           </span>
         </CardTitle>
       </CardHeader>
@@ -374,6 +375,17 @@ function PendingApprovals({ enabled }: { enabled: boolean }) {
             </li>
           ))}
         </ul>
+        {total !== undefined && total > institutions.length && (
+          <div className="pt-3 text-sm text-muted-foreground">
+            Showing the first {institutions.length} of {total} pending.{' '}
+            <Link
+              href="/institutions?status=PENDING"
+              className="font-medium text-primary-base hover:underline"
+            >
+              View all pending
+            </Link>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -383,19 +395,29 @@ export default function InstitutionsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isLoading: userLoading } = useUser();
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>(() =>
-    parseStatusFilter(searchParams.get('status')),
-  );
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
-  // Deep-links (e.g. the stat tiles) change only the query string, which does
-  // not remount this page, so keep the filter in sync with `?status=`.
-  const statusParam = parseStatusFilter(searchParams.get('status'));
+  // The URL is the single source of truth for the status filter: the dropdown,
+  // the stat-tile deep-links, and back/forward all flow through `?status=`.
+  const statusFilter = parseStatusFilter(searchParams.get('status'));
+
+  const setStatusFilter = (value: StatusFilter) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (value === 'all') {
+      params.delete('status');
+    } else {
+      params.set('status', value);
+    }
+    const qs = params.toString();
+    router.push(qs ? `/institutions?${qs}` : '/institutions');
+  };
+
+  // Reset to the first page whenever the active filter changes, whatever the
+  // source (dropdown or deep-link).
   useEffect(() => {
-    setStatusFilter(statusParam);
     setPage(1);
-  }, [statusParam]);
+  }, [statusFilter]);
 
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
 
@@ -444,10 +466,7 @@ export default function InstitutionsPage() {
         <div className="flex flex-wrap items-center gap-4">
           <Select
             value={statusFilter}
-            onValueChange={(value) => {
-              setStatusFilter(value as StatusFilter);
-              setPage(1);
-            }}
+            onValueChange={(value) => setStatusFilter(value as StatusFilter)}
           >
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Filter by status" />
