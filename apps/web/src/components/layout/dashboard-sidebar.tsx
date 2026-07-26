@@ -23,6 +23,7 @@ import {
   LifeBuoy,
   ScrollText,
   Bell,
+  Wallet,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -134,6 +135,13 @@ function buildNavItems(
       icon: FileText,
       href: `/${locale}/dashboard/invoices`,
       areaKey: 'invoices',
+    },
+    {
+      key: 'rentPayments',
+      label: dict.nav.rentPayments,
+      icon: Wallet,
+      href: `/${locale}/dashboard/rent-payments`,
+      areaKey: 'rentPayments',
     },
     {
       key: 'billing',

@@ -55,7 +55,12 @@ const SESSION_COOKIE_NAMES = [
 // guard remains the authoritative gate).
 // ---------------------------------------------------------------------------
 
-const SUBAREA_ALIASES: Record<string, DashboardArea> = { renters: 'buildings' };
+const SUBAREA_ALIASES: Record<string, DashboardArea> = {
+  renters: 'buildings',
+  // kebab-case path → camelCase area key; without this the edge would treat
+  // `rent-payments` as an unknown area and skip layer #1.5 entirely.
+  'rent-payments': 'rentPayments',
+};
 const KNOWN_AREAS = new Set<string>(Object.keys(PERMISSION_MATRIX.org_admin));
 
 function roleCanAccessArea(role: Role, subArea: string): boolean {

@@ -20,6 +20,7 @@
     "tasks": "المهام",
     "expenses": "المصاريف",
     "invoices": "الفواتير",
+    "rentPayments": "مدفوعات الإيجار",
     "support": "الدعم",
     "notifications": "الإشعارات",
     "language": "اللغة",
@@ -1003,6 +1004,7 @@
       "readOnly": "للقراءة فقط",
       "newInvoice": "فاتورة جديدة",
       "view": "عرض",
+      "recordPayment": "تسجيل دفعة",
       "actionsLabel": "إجراءات الفاتورة",
       "loadError": "تعذّر تحميل الفواتير. يرجى المحاولة مجدداً.",
       "empty": "لا توجد فواتير مسجّلة بعد.",
@@ -1153,6 +1155,94 @@
           "success": "تم حذف الدفعة.",
           "error": "تعذّر حذف الدفعة. يرجى المحاولة مجدداً."
         }
+      }
+    }
+  },
+  "rentPayments": {
+    "title": "مدفوعات الإيجار",
+    "subtitle": "جميع مدفوعات الإيجار المستلمة من المستأجرين. سجّل دفعة على فاتورة غير مسددة.",
+    "readOnly": "للعرض فقط",
+    "recordButton": "تسجيل دفعة",
+    "kpi": {
+      "collected": "المبلغ المحصّل",
+      "collectedHint": "مطابق للفلاتر أدناه",
+      "mtd": "المحصّل هذا الشهر",
+      "mtdHint": "{count} دفعة",
+      "mtdHintOne": "دفعة واحدة",
+      "outstanding": "المتبقي غير المسدَّد",
+      "outstandingHint": "{count} فاتورة غير مسددة",
+      "outstandingHintOne": "فاتورة واحدة غير مسددة",
+      "byMethod": "حسب طريقة الدفع"
+    },
+    "filters": {
+      "buildingLabel": "المبنى",
+      "allBuildings": "كل المباني",
+      "methodLabel": "طريقة الدفع",
+      "allMethods": "كل الطرق",
+      "fromLabel": "مدفوع من",
+      "toLabel": "مدفوع إلى",
+      "searchLabel": "بحث",
+      "searchPlaceholder": "المستأجر أو الوحدة أو الملاحظة",
+      "clear": "مسح الفلاتر"
+    },
+    "table": {
+      "renter": "المستأجر",
+      "unit": "الوحدة",
+      "building": "المبنى",
+      "amount": "المبلغ",
+      "method": "طريقة الدفع",
+      "paidAt": "تاريخ الدفع",
+      "invoice": "الفاتورة",
+      "notes": "ملاحظات",
+      "viewInvoice": "عرض الفاتورة",
+      "actionsLabel": "إجراءات",
+      "deleteAriaLabel": "حذف الدفعة"
+    },
+    "empty": "لم يتم تسجيل أي مدفوعات إيجار بعد.",
+    "emptyWrite": "لا توجد مدفوعات إيجار بعد — سجّل الدفعة الأولى.",
+    "noMatch": "لا توجد مدفوعات مطابقة لهذه الفلاتر.",
+    "loadError": "تعذّر تحميل مدفوعات الإيجار.",
+    "pagination": {
+      "showing": "{from}–{to} من {total}",
+      "previous": "السابق",
+      "next": "التالي"
+    },
+    "dialog": {
+      "record": {
+        "title": "تسجيل دفعة إيجار",
+        "description": "اختر الفاتورة التي تسدّدها هذه الدفعة.",
+        "invoiceLabel": "الفاتورة",
+        "selectInvoice": "اختر فاتورة",
+        "invoiceOption": "{renter} · {unit} — الاستحقاق {due}",
+        "invoiceBalance": "المبلغ المتبقي: {balance}",
+        "noOpenInvoices": "جميع الفواتير مسددة بالكامل — أنشئ فاتورة أولاً.",
+        "amountLabel": "المبلغ",
+        "amountPlaceholder": "0.00",
+        "fillBalance": "استخدام المبلغ المتبقي ({balance})",
+        "methodLabel": "طريقة الدفع",
+        "selectMethod": "اختر طريقة الدفع",
+        "paidAtLabel": "تاريخ الدفع",
+        "notesLabel": "ملاحظات",
+        "notesPlaceholder": "رقم المرجع أو رقم الشيك…",
+        "optional": "(اختياري)",
+        "submit": "تسجيل الدفعة",
+        "submitting": "جارٍ التسجيل…",
+        "success": "تم تسجيل الدفعة.",
+        "error": "تعذّر تسجيل الدفعة.",
+        "errors": {
+          "invoiceRequired": "اختر فاتورة.",
+          "amountRequired": "المبلغ مطلوب.",
+          "amountPositive": "يجب أن يكون المبلغ أكبر من 0.",
+          "paidAtRequired": "تاريخ الدفع مطلوب."
+        }
+      },
+      "delete": {
+        "title": "حذف الدفعة",
+        "confirmPrefix": "سيتم حذف دفعة بمبلغ",
+        "confirmSuffix": "؟ سيُعاد احتساب رصيد الفاتورة.",
+        "confirming": "جارٍ الحذف…",
+        "success": "تم حذف الدفعة.",
+        "error": "تعذّر حذف الدفعة."
       }
     }
   },

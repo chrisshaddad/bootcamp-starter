@@ -15,6 +15,7 @@ import {
   TrashIcon,
   XIcon,
   RefreshCwIcon,
+  WalletIcon,
 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
@@ -897,6 +898,18 @@ export function InvoicesPage({ canWrite, locale, dict }: InvoicesPageProps) {
                             <PencilIcon className="size-3.5 mr-1.5" />
                             {dict.common.edit}
                           </DropdownMenuItem>
+                          {invoice.status !== 'paid' && (
+                            <DropdownMenuItem
+                              onClick={() =>
+                                router.push(
+                                  `/${locale}/dashboard/rent-payments?recordFor=${encodeURIComponent(invoice.id)}`,
+                                )
+                              }
+                            >
+                              <WalletIcon className="size-3.5 mr-1.5" />
+                              {t.list.recordPayment}
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             variant="destructive"

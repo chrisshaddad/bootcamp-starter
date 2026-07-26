@@ -20,6 +20,7 @@
     "tasks": "Tasks",
     "expenses": "Expenses",
     "invoices": "Invoices",
+    "rentPayments": "Rent Payments",
     "support": "Support",
     "notifications": "Notifications",
     "language": "Language",
@@ -1003,6 +1004,7 @@
       "readOnly": "Read-only",
       "newInvoice": "New invoice",
       "view": "View",
+      "recordPayment": "Record payment",
       "actionsLabel": "Invoice actions",
       "loadError": "Failed to load invoices. Please try again.",
       "empty": "No invoices recorded yet.",
@@ -1153,6 +1155,94 @@
           "success": "Payment deleted.",
           "error": "Failed to delete payment. Please try again."
         }
+      }
+    }
+  },
+  "rentPayments": {
+    "title": "Rent Payments",
+    "subtitle": "Every rent payment received from tenants. Record a payment against an open invoice.",
+    "readOnly": "Read-only",
+    "recordButton": "Record payment",
+    "kpi": {
+      "collected": "Collected",
+      "collectedHint": "Matches the filters below",
+      "mtd": "Collected this month",
+      "mtdHint": "{count} payments",
+      "mtdHintOne": "1 payment",
+      "outstanding": "Still outstanding",
+      "outstandingHint": "{count} unpaid invoices",
+      "outstandingHintOne": "1 unpaid invoice",
+      "byMethod": "By method"
+    },
+    "filters": {
+      "buildingLabel": "Building",
+      "allBuildings": "All buildings",
+      "methodLabel": "Method",
+      "allMethods": "All methods",
+      "fromLabel": "Paid from",
+      "toLabel": "Paid to",
+      "searchLabel": "Search",
+      "searchPlaceholder": "Renter, unit or note",
+      "clear": "Clear filters"
+    },
+    "table": {
+      "renter": "Renter",
+      "unit": "Unit",
+      "building": "Building",
+      "amount": "Amount",
+      "method": "Method",
+      "paidAt": "Paid on",
+      "invoice": "Invoice",
+      "notes": "Notes",
+      "viewInvoice": "View invoice",
+      "actionsLabel": "Actions",
+      "deleteAriaLabel": "Delete payment"
+    },
+    "empty": "No rent payments have been recorded yet.",
+    "emptyWrite": "No rent payments yet — record the first one.",
+    "noMatch": "No payments match these filters.",
+    "loadError": "Could not load rent payments.",
+    "pagination": {
+      "showing": "{from}–{to} of {total}",
+      "previous": "Previous",
+      "next": "Next"
+    },
+    "dialog": {
+      "record": {
+        "title": "Record a rent payment",
+        "description": "Pick the invoice this money settles.",
+        "invoiceLabel": "Invoice",
+        "selectInvoice": "Select an invoice",
+        "invoiceOption": "{renter} · {unit} — due {due}",
+        "invoiceBalance": "Remaining balance: {balance}",
+        "noOpenInvoices": "Every invoice is fully paid — create an invoice first.",
+        "amountLabel": "Amount",
+        "amountPlaceholder": "0.00",
+        "fillBalance": "Use remaining balance ({balance})",
+        "methodLabel": "Method",
+        "selectMethod": "Select a method",
+        "paidAtLabel": "Paid on",
+        "notesLabel": "Notes",
+        "notesPlaceholder": "Reference number, cheque no., …",
+        "optional": "(optional)",
+        "submit": "Record payment",
+        "submitting": "Recording…",
+        "success": "Payment recorded.",
+        "error": "Could not record the payment.",
+        "errors": {
+          "invoiceRequired": "Pick an invoice.",
+          "amountRequired": "Amount is required.",
+          "amountPositive": "Amount must be greater than 0.",
+          "paidAtRequired": "Payment date is required."
+        }
+      },
+      "delete": {
+        "title": "Delete payment",
+        "confirmPrefix": "Delete the payment of",
+        "confirmSuffix": "? The invoice balance will be restored.",
+        "confirming": "Deleting…",
+        "success": "Payment deleted.",
+        "error": "Could not delete the payment."
       }
     }
   },
