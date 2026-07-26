@@ -118,3 +118,96 @@ describe('WebhooksService.handleCheckoutCompleted (atomic activation)', () => {
     );
   });
 });
+
+/**
+ * currentPeriodEnd mapping (customer.subscription.created/updated).
+ * In Stripe's basil API `current_period_end` moved from the Subscription to the
+ * subscription ITEM. The old code fell back to `billing_cycle_anchor` (the period
+ * START), storing a period end ≈ now. These guard the correct item-level read.
+ */
+const ANCHOR = 1735689600; // 2025-01-01T00:00:00Z — period START (must NOT be used)
+const ITEM_END = 1738368000; // 2025-02-01T00:00:00Z — real period END (must be used)
+
+function subscriptionEvent(sub: Record<string, unknown>): Stripe.Event {
+  return {
+    id: 'evt_sub_1',
+    type: 'customer.subscription.updated',
+    data: { object: sub },
+  } as unknown as Stripe.Event;
+}
+
+describe('WebhooksService.handleSubscriptionUpsert (currentPeriodEnd)', () => {
+  it('reads current_period_end from the subscription ITEM, never billing_cycle_anchor', async () => {
+    const { service, prisma } = makeService();
+    prisma.organization.findFirst.mockResolvedValue({ id: 'org-1' });
+
+    await service.handleEvent(
+      subscriptionEvent({
+        id: 'sub_1',
+        status: 'active',
+        customer: 'cus_1',
+        billing_cycle_anchor: ANCHOR,
+        items: {
+          data: [{ price: { id: 'price_1' }, current_period_end: ITEM_END }],
+        },
+      }),
+    );
+
+    expect(prisma.subscription.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { orgId: 'org-1' },
+        create: expect.objectContaining({
+          currentPeriodEnd: new Date(ITEM_END * 1000),
+        }),
+        update: expect.objectContaining({
+          currentPeriodEnd: new Date(ITEM_END * 1000),
+        }),
+      }),
+    );
+  });
+
+  it('prefers a legacy top-level current_period_end when present', async () => {
+    const { service, prisma } = makeService();
+    prisma.organization.findFirst.mockResolvedValue({ id: 'org-1' });
+
+    await service.handleEvent(
+      subscriptionEvent({
+        id: 'sub_1',
+        status: 'active',
+        customer: 'cus_1',
+        current_period_end: ITEM_END,
+        billing_cycle_anchor: ANCHOR,
+        items: { data: [{ price: { id: 'price_1' } }] },
+      }),
+    );
+
+    expect(prisma.subscription.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          currentPeriodEnd: new Date(ITEM_END * 1000),
+        }),
+      }),
+    );
+  });
+
+  it('stores null when no period end is available (never the anchor)', async () => {
+    const { service, prisma } = makeService();
+    prisma.organization.findFirst.mockResolvedValue({ id: 'org-1' });
+
+    await service.handleEvent(
+      subscriptionEvent({
+        id: 'sub_1',
+        status: 'active',
+        customer: 'cus_1',
+        billing_cycle_anchor: ANCHOR,
+        items: { data: [{ price: { id: 'price_1' } }] },
+      }),
+    );
+
+    expect(prisma.subscription.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({ currentPeriodEnd: null }),
+      }),
+    );
+  });
+});
