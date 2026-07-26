@@ -253,14 +253,26 @@ function InstitutionStats({ enabled }: { enabled: boolean }) {
         label="Total institutions"
         value={all.total ?? 0}
         icon={Building2}
+        href="/institutions"
       />
       <StatTile
         label="Pending approval"
         value={pending.total ?? 0}
         icon={Clock}
+        href="/institutions?status=PENDING"
       />
-      <StatTile label="Active" value={active.total ?? 0} icon={CheckCircle} />
-      <StatTile label="Suspended" value={suspended.total ?? 0} icon={Ban} />
+      <StatTile
+        label="Active"
+        value={active.total ?? 0}
+        icon={CheckCircle}
+        href="/institutions?status=ACTIVE"
+      />
+      <StatTile
+        label="Suspended"
+        value={suspended.total ?? 0}
+        icon={Ban}
+        href="/institutions?status=SUSPENDED"
+      />
     </div>
   );
 }
@@ -270,13 +282,14 @@ function InstitutionStats({ enabled }: { enabled: boolean }) {
  * Renders nothing when there's nothing pending, so it stays out of the way.
  */
 function PendingApprovals({ enabled }: { enabled: boolean }) {
-  const { institutions, isLoading, mutate } = useInstitutions({
+  const { institutions, isLoading } = useInstitutions({
     status: 'PENDING',
     limit: 100,
     enabled,
   });
   const { approve, reject } = useInstitutionActions();
-  // id currently being acted on, so we can disable just that row's buttons
+  // id currently being acted on; while set, every row's buttons are disabled
+  // so a second action can't start before the first settles.
   const [pendingId, setPendingId] = useState<string | null>(null);
 
   const handleAction = async (
@@ -290,7 +303,6 @@ function PendingApprovals({ enabled }: { enabled: boolean }) {
       toast.success(
         action === 'approve' ? `${name} approved` : `${name} rejected`,
       );
-      mutate();
     } catch (error) {
       toast.error(
         error instanceof ApiError
@@ -339,7 +351,7 @@ function PendingApprovals({ enabled }: { enabled: boolean }) {
                   variant="outline"
                   size="sm"
                   className="gap-2 text-error border-error-light hover:bg-error-light"
-                  disabled={pendingId === institution.id}
+                  disabled={pendingId !== null}
                   onClick={() =>
                     handleAction(institution.id, institution.name, 'reject')
                   }
@@ -350,7 +362,7 @@ function PendingApprovals({ enabled }: { enabled: boolean }) {
                 <Button
                   size="sm"
                   className="gap-2 bg-success hover:bg-success-dark"
-                  disabled={pendingId === institution.id}
+                  disabled={pendingId !== null}
                   onClick={() =>
                     handleAction(institution.id, institution.name, 'approve')
                   }
@@ -376,6 +388,14 @@ export default function InstitutionsPage() {
   );
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+
+  // Deep-links (e.g. the stat tiles) change only the query string, which does
+  // not remount this page, so keep the filter in sync with `?status=`.
+  const statusParam = parseStatusFilter(searchParams.get('status'));
+  useEffect(() => {
+    setStatusFilter(statusParam);
+    setPage(1);
+  }, [statusParam]);
 
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
 
