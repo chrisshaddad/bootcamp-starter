@@ -84,7 +84,7 @@ CI (`.github/workflows/ci.yml`, on PR + push to `main`) runs **lint + check-type
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **bootcamp-starter** (3700 symbols, 7360 relationships, 139 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **bootcamp-starter** (4026 symbols, 7977 relationships, 149 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

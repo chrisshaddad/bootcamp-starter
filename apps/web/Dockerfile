@@ -12,7 +12,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY . .
-RUN npm ci
+# npm intermittently skips platform-specific OPTIONAL deps (npm/cli#4828), which
+# silently drops Tailwind v4's native oxide engine and makes `next build` fail with
+# "Cannot find native binding". This layer re-runs on every source change, so the
+# bug is hit repeatedly. Verify the binding resolves and repair it if missing —
+# the target is pinned (node:22-slim = linux/glibc, amd64), so the package name is
+# deterministic and the version is read from the lockfile's own resolution.
+RUN npm ci && \
+    node -e "require('@tailwindcss/oxide')" 2>/dev/null || { \
+      echo "oxide native binding missing after npm ci — repairing"; \
+      npm install --no-save --include=optional \
+        "@tailwindcss/oxide-linux-x64-gnu@$(node -p "require('./node_modules/@tailwindcss/oxide/package.json').version")"; \
+      node -e "require('@tailwindcss/oxide')"; \
+    }
 # NEXT_PUBLIC_* are inlined into the client bundle at build time — must be present now.
 ARG NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 ENV NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=$NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
