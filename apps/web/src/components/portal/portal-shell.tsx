@@ -41,7 +41,10 @@ type Props = {
   children: ReactNode;
 };
 
-function buildNavItems(locale: string, t: ReturnType<typeof getPortalDict>): NavItem[] {
+function buildNavItems(
+  locale: string,
+  t: ReturnType<typeof getPortalDict>,
+): NavItem[] {
   const base = `/${locale}/portal`;
   return [
     { key: 'home', label: t.nav.home, href: base, icon: HomeIcon },

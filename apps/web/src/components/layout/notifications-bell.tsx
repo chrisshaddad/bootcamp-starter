@@ -57,7 +57,8 @@ function useRelativeTime(locale: string) {
       if (absSec < 60) return rtf.format(Math.round(diffSec), 'second');
       if (absSec < 3600) return rtf.format(Math.round(diffSec / 60), 'minute');
       if (absSec < 86400) return rtf.format(Math.round(diffSec / 3600), 'hour');
-      if (absSec < 604800) return rtf.format(Math.round(diffSec / 86400), 'day');
+      if (absSec < 604800)
+        return rtf.format(Math.round(diffSec / 86400), 'day');
       return abs.format(new Date(iso));
     };
   }, [locale]);
@@ -95,9 +96,7 @@ export function NotificationsBell({
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger
-        render={
-          <Button variant="ghost" size="icon-sm" className="relative" />
-        }
+        render={<Button variant="ghost" size="icon-sm" className="relative" />}
         aria-label={t.a11yOpen}
       >
         <Bell className="size-4" />

@@ -42,7 +42,8 @@ function useRelativeTime(locale: string) {
       if (absSec < 60) return rtf.format(Math.round(diffSec), 'second');
       if (absSec < 3600) return rtf.format(Math.round(diffSec / 60), 'minute');
       if (absSec < 86400) return rtf.format(Math.round(diffSec / 3600), 'hour');
-      if (absSec < 604800) return rtf.format(Math.round(diffSec / 86400), 'day');
+      if (absSec < 604800)
+        return rtf.format(Math.round(diffSec / 86400), 'day');
       return abs.format(new Date(iso));
     };
   }, [locale]);

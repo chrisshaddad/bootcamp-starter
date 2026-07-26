@@ -57,7 +57,12 @@ describe('TenantService', () => {
     return { service, prisma, timeline, notifications, orgRecipients };
   }
 
-  const renter = { id: 'renter-1', fullName: 'Jane Doe', email: null, phone: null };
+  const renter = {
+    id: 'renter-1',
+    fullName: 'Jane Doe',
+    email: null,
+    phone: null,
+  };
 
   const leaseRow = (overrides: Record<string, unknown> = {}) => ({
     id: 'lease-1',
@@ -181,9 +186,7 @@ describe('TenantService', () => {
         renter: { findFirst: jest.fn().mockResolvedValue(renter) },
         // Prisma orders by startDate desc, so the mock returns newest first.
         lease: {
-          findMany: jest
-            .fn()
-            .mockResolvedValue([currentLease, olderLease]),
+          findMany: jest.fn().mockResolvedValue([currentLease, olderLease]),
         },
       });
 

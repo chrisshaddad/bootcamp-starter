@@ -140,10 +140,7 @@ export class NotificationsService {
     return { data: this.format(updated) };
   }
 
-  async markAllRead(
-    orgId: string,
-    userId: string,
-  ): Promise<{ count: number }> {
+  async markAllRead(orgId: string, userId: string): Promise<{ count: number }> {
     const result = await this.prisma.notification.updateMany({
       where: { orgId, userId, readAt: null },
       data: { readAt: new Date() },
