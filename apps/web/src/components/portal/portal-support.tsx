@@ -80,7 +80,15 @@ type Props = { locale: string; dict: Dictionary };
 
 export function PortalSupport({ locale, dict }: Props) {
   const t = getPortalDict(dict, locale).support;
-  const { data: overview, isLoading, isError } = useGetTenantOverviewQuery();
+  // Poll while this page is open: staff change a request's status from the
+  // admin Tasks page, and without this the tenant sits on a stale badge with no
+  // idea their request has moved. Paired with the notification the API now
+  // sends on every status transition.
+  const {
+    data: overview,
+    isLoading,
+    isError,
+  } = useGetTenantOverviewQuery(undefined, { pollingInterval: 30_000 });
   const [createRequest, { isLoading: creating }] =
     useCreateTenantMaintenanceRequestMutation();
   const [createOpen, setCreateOpen] = useState(false);
@@ -95,6 +103,18 @@ export function PortalSupport({ locale, dict }: Props) {
     [locale],
   );
   const fmtDate = (iso: string) => dateFmt.format(new Date(iso));
+
+  const dateTimeFmt = useMemo(
+    () =>
+      new Intl.DateTimeFormat(locale, {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+      }),
+    [locale],
+  );
+  const fmtDateTime = (iso: string) => dateTimeFmt.format(new Date(iso));
 
   const schema = useMemo(
     () =>
@@ -215,6 +235,16 @@ export function PortalSupport({ locale, dict }: Props) {
                       {r.description}
                     </p>
                   )}
+                  {/* Progress signal: only shown once staff have actually
+                      touched the request (updatedAt drifts past createdAt), so
+                      an untouched request stays visually quiet. */}
+                  {new Date(r.updatedAt).getTime() -
+                    new Date(r.createdAt).getTime() >
+                    1000 && (
+                    <p className="text-xs text-muted-foreground">
+                      {t.updated} {fmtDateTime(r.updatedAt)}
+                    </p>
+                  )}
                 </CardContent>
               </Card>
             </li>
@@ -228,7 +258,10 @@ export function PortalSupport({ locale, dict }: Props) {
           <DialogHeader>
             <DialogTitle>{t.form.title}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            className="flex flex-col gap-4"
+          >
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="psr-title">
                 {t.form.titleLabel} <span className="text-destructive">*</span>

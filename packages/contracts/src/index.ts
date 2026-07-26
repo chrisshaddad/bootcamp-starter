@@ -912,6 +912,77 @@ export type DeleteInvoicePaymentResult = {
   invoice: InvoiceSummarySnapshot;
 };
 
+/**
+ * A rent-payment row enriched for the org-wide register (/dashboard/rent-payments).
+ * Superset of {@link InvoicePaymentResponse}: the extra fields are all joined
+ * server-side for display (renter / unit / building / parent-invoice state) and
+ * are NOT stored columns — the same convention InvoiceResponse.renterName uses.
+ *
+ * `invoiceStatus` / `invoiceTotalAmount` / `invoicePaidAmount` are derived via
+ * computeInvoiceSummary on the parent invoice, so a row can show "how much of
+ * that invoice is now settled" without a second request.
+ */
+export type InvoicePaymentListItem = InvoicePaymentResponse & {
+  leaseId: string;
+  renterId: string;
+  renterName: string;
+  buildingId: string;
+  buildingName: string;
+  apartmentUnitNumber: string;
+  invoiceDueDate: string;
+  invoiceTotalAmount: string;
+  invoicePaidAmount: string;
+  invoiceStatus: InvoiceStatus;
+};
+
+/**
+ * Query params for GET /invoice-payments. All optional; unknown/blank values are
+ * ignored. `q` is a case-insensitive contains match over renter name, unit
+ * number and payment notes. `from`/`to` bound `paidAt` (inclusive).
+ */
+export type InvoicePaymentListQuery = {
+  invoiceId?: string;
+  buildingId?: string;
+  renterId?: string;
+  method?: InvoicePaymentMethod;
+  from?: string;
+  to?: string;
+  q?: string;
+  page?: number;
+  limit?: number;
+};
+
+/** One row of the "collected by payment method" breakdown. */
+export type RentPaymentMethodBreakdown = {
+  method: InvoicePaymentMethod;
+  amount: string;
+  count: number;
+};
+
+/**
+ * GET /invoice-payments/summary — headline numbers for the rent-payments
+ * register, computed over the SAME filter set as the list (minus paging) so the
+ * tiles always describe exactly the rows shown.
+ *
+ * - `totalCollected` / `count`: Σ InvoicePayment.amount within the filters.
+ * - `mtdCollected` / `mtdCount`: the same, narrowed to the current UTC month
+ *   (ignores any from/to so the tile keeps a stable meaning).
+ * - `outstandingTotal`: Σ (invoice total − invoice paid) over invoices with a
+ *   non-zero balance, derived via computeInvoiceSummary — i.e. rent still owed,
+ *   the natural counterpart to what has been collected. Building-scoped for a
+ *   supervisor exactly like the list.
+ * - `byMethod`: descending by amount; methods with no payments are omitted.
+ */
+export type RentPaymentSummaryResponse = {
+  totalCollected: string;
+  count: number;
+  mtdCollected: string;
+  mtdCount: number;
+  outstandingTotal: string;
+  outstandingInvoices: number;
+  byMethod: RentPaymentMethodBreakdown[];
+};
+
 // ── Support Tickets ───────────────────────────────────────────────────────────
 // A tenant (or any user) opens a support request. There is no threaded chat: the
 // platform acknowledges receipt, the opener gets an acknowledgment notification,
@@ -1108,6 +1179,8 @@ export type TenantMaintenanceRequestView = {
   priority: MaintenanceRequestPriority;
   unitNumber: string;
   createdAt: string;
+  /** Last time staff touched the request — the tenant's progress signal. */
+  updatedAt: string;
 };
 
 /** Lifetime balance across all of the tenant's invoices. */

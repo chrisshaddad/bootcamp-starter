@@ -24,19 +24,63 @@ export class InvoicePaymentsController {
     private readonly orgScope: OrgScopeService,
   ) {}
 
+  /**
+   * Org-wide rent-payment register (paginated). Also serves the invoice-detail
+   * payment list via `invoiceId`. A supervisor is narrowed to their assigned
+   * buildings inside the service.
+   */
   @Roles(Role.ORG_ADMIN, Role.FINANCE, Role.SUPERVISOR)
   @Get()
   async getInvoicePayments(
     @CurrentUser() user: AuthenticatedUser,
     @Query('invoiceId') invoiceId?: string,
+    @Query('buildingId') buildingId?: string,
+    @Query('renterId') renterId?: string,
+    @Query('method') method?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('q') q?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
     const { orgId, role } = await this.orgScope.resolveForCaller(user);
-    return this.invoicePaymentsService.findAll(
-      orgId,
-      user.sub,
-      role,
+    return this.invoicePaymentsService.findAll(orgId, user.sub, role, {
       invoiceId,
-    );
+      buildingId,
+      renterId,
+      method,
+      from,
+      to,
+      q,
+      page: page ? Number(page) : undefined,
+      limit: limit ? Number(limit) : undefined,
+    });
+  }
+
+  /**
+   * Declared BEFORE `:id` — Nest matches routes in declaration order, so the
+   * dynamic param would otherwise swallow `/summary`.
+   */
+  @Roles(Role.ORG_ADMIN, Role.FINANCE, Role.SUPERVISOR)
+  @Get('summary')
+  async getInvoicePaymentSummary(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('buildingId') buildingId?: string,
+    @Query('renterId') renterId?: string,
+    @Query('method') method?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('q') q?: string,
+  ) {
+    const { orgId, role } = await this.orgScope.resolveForCaller(user);
+    return this.invoicePaymentsService.summary(orgId, user.sub, role, {
+      buildingId,
+      renterId,
+      method,
+      from,
+      to,
+      q,
+    });
   }
 
   @Roles(Role.ORG_ADMIN, Role.FINANCE, Role.SUPERVISOR)

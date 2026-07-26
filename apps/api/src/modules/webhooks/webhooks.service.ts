@@ -192,10 +192,15 @@ export class WebhooksService {
     }
 
     const status = this.mapSubscriptionStatus(subscription.status);
-    // current_period_end removed in Stripe v22 basil API; fall back to billing_cycle_anchor
+    // `current_period_end` was moved off the top-level Subscription in Stripe's
+    // basil API (2025-08) and now lives on each subscription ITEM. Read it from
+    // the item; keep the legacy top-level as a fallback for accounts still on an
+    // older API version. Do NOT fall back to `billing_cycle_anchor` — that is the
+    // period START/anchor, so it produced a currentPeriodEnd ≈ now (bug), which
+    // is worse than a null. A missing period end is stored as null (schema allows).
     const periodEndRaw =
-      (subscription as any).current_period_end ??
-      (subscription as any).billing_cycle_anchor ??
+      (subscription as { current_period_end?: number }).current_period_end ??
+      subscription.items?.data?.[0]?.current_period_end ??
       null;
     const currentPeriodEnd = periodEndRaw
       ? new Date(periodEndRaw * 1000)

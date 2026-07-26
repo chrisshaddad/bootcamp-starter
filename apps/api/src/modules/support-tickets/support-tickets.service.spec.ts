@@ -20,13 +20,20 @@ describe('SupportTicketsService', () => {
       },
     };
     const timeline = { emit: jest.fn().mockResolvedValue(undefined) };
-    const notifications = { enqueue: jest.fn().mockResolvedValue(undefined) };
+    const notifications = {
+      enqueue: jest.fn().mockResolvedValue(undefined),
+      enqueueMany: jest.fn().mockResolvedValue(undefined),
+    };
+    const orgRecipients = {
+      getOrgAdminUserIds: jest.fn().mockResolvedValue([adminId]),
+    };
     const service = new SupportTicketsService(
       prisma,
       timeline as any,
       notifications as any,
+      orgRecipients as any,
     );
-    return { service, prisma, timeline, notifications };
+    return { service, prisma, timeline, notifications, orgRecipients };
   }
 
   const ticketRow = (o: Partial<Record<string, unknown>> = {}) => ({
@@ -110,6 +117,31 @@ describe('SupportTicketsService', () => {
         }),
       );
       expect(result.data.status).toBe('acknowledged');
+    });
+
+    // The opener gets an acknowledgment; the ADMINS get the actionable one.
+    // Previously only the opener was notified, so nobody was ever alerted.
+    it('also notifies the org admins, excluding the opener', async () => {
+      const { service, prisma, notifications, orgRecipients } = makeService();
+      prisma.supportTicket.create.mockResolvedValue(ticketRow());
+
+      await service.create(orgId, tenantId, {
+        subject: 'Broken lift',
+        description: 'Stuck on 3',
+      } as any);
+
+      expect(orgRecipients.getOrgAdminUserIds).toHaveBeenCalledWith(
+        orgId,
+        tenantId,
+      );
+      expect(notifications.enqueueMany).toHaveBeenCalledWith(
+        [adminId],
+        expect.objectContaining({
+          orgId,
+          type: 'support_ticket.created',
+          data: expect.objectContaining({ ticketId: 'ticket-1' }),
+        }),
+      );
     });
   });
 

@@ -78,6 +78,7 @@ export const PORTAL_FALLBACK: Record<'en' | 'ar', PortalDict> = {
       created: 'Request submitted.',
       createError: 'Something went wrong. Please try again.',
       unit: 'Unit',
+      updated: 'Updated',
       status: {
         open: 'Open',
         in_progress: 'In progress',
@@ -150,7 +151,8 @@ export const PORTAL_FALLBACK: Record<'en' | 'ar', PortalDict> = {
       notLinkedTitle: 'لم يتم ربط حسابك بعد',
       notLinkedDesc:
         'لم نتمكّن من العثور على عقد إيجار مرتبط بحسابك. سيقوم مدير العقار بربط وحدتك قريباً — يرجى المراجعة لاحقاً.',
-      loadError: 'تعذّر تحميل تفاصيل منزلك. يرجى تحديث الصفحة والمحاولة مرة أخرى.',
+      loadError:
+        'تعذّر تحميل تفاصيل منزلك. يرجى تحديث الصفحة والمحاولة مرة أخرى.',
       viewSupport: 'تحتاج شيئاً؟ تواصل مع الدعم',
       historyTitle: 'وحداتك السكنية',
       current: 'الحالي',
@@ -168,7 +170,8 @@ export const PORTAL_FALLBACK: Record<'en' | 'ar', PortalDict> = {
       title: 'الوحدات المتاحة',
       subtitle: 'الوحدات الشاغرة في مجتمعك.',
       empty: 'لا توجد وحدات متاحة حالياً. يرجى المراجعة لاحقاً.',
-      loadError: 'تعذّر تحميل الوحدات المتاحة. يرجى تحديث الصفحة والمحاولة مرة أخرى.',
+      loadError:
+        'تعذّر تحميل الوحدات المتاحة. يرجى تحديث الصفحة والمحاولة مرة أخرى.',
       floor: 'الطابق',
       bedrooms: 'غرف النوم',
       bathrooms: 'الحمّامات',
@@ -181,10 +184,12 @@ export const PORTAL_FALLBACK: Record<'en' | 'ar', PortalDict> = {
       new: 'طلب جديد',
       noLease: 'تحتاج إلى عقد إيجار نشط قبل أن تتمكّن من فتح طلب صيانة.',
       empty: 'لا توجد لديك طلبات بعد.',
-      emptyActive: 'لا توجد لديك طلبات بعد. افتح طلباً عندما تحتاج إلى المساعدة.',
+      emptyActive:
+        'لا توجد لديك طلبات بعد. افتح طلباً عندما تحتاج إلى المساعدة.',
       created: 'تم إرسال الطلب.',
       createError: 'حدث خطأ ما. يرجى المحاولة مرة أخرى.',
       unit: 'الوحدة',
+      updated: 'آخر تحديث',
       status: {
         open: 'مفتوح',
         in_progress: 'قيد التنفيذ',
@@ -212,7 +217,8 @@ export const PORTAL_FALLBACK: Record<'en' | 'ar', PortalDict> = {
     },
     profile: {
       changePassword: 'تغيير كلمة المرور',
-      changePasswordHint: 'حدّث كلمة المرور التي تستخدمها لتسجيل الدخول إلى البوابة.',
+      changePasswordHint:
+        'حدّث كلمة المرور التي تستخدمها لتسجيل الدخول إلى البوابة.',
     },
     comingSoon: {
       badge: 'قريباً',
@@ -220,7 +226,8 @@ export const PORTAL_FALLBACK: Record<'en' | 'ar', PortalDict> = {
       availableUnitsDesc:
         'تصفّح الوحدات المتاحة في مجتمعك. هذه الميزة في طريقها إليك — ستتمكّن قريباً من استكشاف المنازل المتاحة هنا.',
       supportTitle: 'الدعم والطلبات',
-      supportDesc: 'قدّم طلبات الصيانة وتابع تقدّمها. نُجهّز هذه المساحة من أجلك.',
+      supportDesc:
+        'قدّم طلبات الصيانة وتابع تقدّمها. نُجهّز هذه المساحة من أجلك.',
       profileTitle: 'ملفك الشخصي',
       profileDesc: 'اعرض وأدر بيانات التواصل وحسابك. قريباً.',
     },

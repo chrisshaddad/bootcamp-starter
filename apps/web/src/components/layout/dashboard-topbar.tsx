@@ -50,6 +50,7 @@ const PAGE_TITLE_MAP: Record<string, string> = {
   tasks: 'tasks',
   expenses: 'expenses',
   invoices: 'invoices',
+  'rent-payments': 'rentPayments',
   billing: 'billing',
   timeline: 'timeline',
   support: 'support',

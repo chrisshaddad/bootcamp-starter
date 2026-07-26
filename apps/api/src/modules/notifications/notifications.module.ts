@@ -6,6 +6,7 @@ import { NotificationsService } from './notifications.service';
 import { NotificationsProcessor } from './notifications.processor';
 import { NotificationsDeadLetterService } from './notifications-dead-letter.service';
 import { NotificationEmailService } from './notification-email.service';
+import { OrgRecipientsService } from './org-recipients.service';
 import {
   NOTIFICATIONS_DEAD_LETTER_QUEUE,
   NOTIFICATIONS_QUEUE,
@@ -25,7 +26,8 @@ import {
     NotificationsProcessor,
     NotificationsDeadLetterService,
     NotificationEmailService,
+    OrgRecipientsService,
   ],
-  exports: [NotificationsService],
+  exports: [NotificationsService, OrgRecipientsService],
 })
 export class NotificationsModule {}

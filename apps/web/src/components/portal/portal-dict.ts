@@ -75,6 +75,8 @@ export type PortalDict = {
     created: string;
     createError: string;
     unit: string;
+    /** Prefix for the "last touched by staff" line on a request card. */
+    updated: string;
     status: {
       open: string;
       in_progress: string;

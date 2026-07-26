@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 
 import { federatedLogout } from '@/auth/federated-logout';
+import { NotificationsBell } from '@/components/layout/notifications-bell';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -40,7 +41,10 @@ type Props = {
   children: ReactNode;
 };
 
-function buildNavItems(locale: string, t: ReturnType<typeof getPortalDict>): NavItem[] {
+function buildNavItems(
+  locale: string,
+  t: ReturnType<typeof getPortalDict>,
+): NavItem[] {
   const base = `/${locale}/portal`;
   return [
     { key: 'home', label: t.nav.home, href: base, icon: HomeIcon },
@@ -88,7 +92,10 @@ export function PortalShell({ locale, dict, userName, children }: Props) {
         className="sticky top-0 z-30 border-b border-border/70 bg-background/70 backdrop-blur-md supports-[backdrop-filter]:bg-background/60"
         style={{ paddingTop: 'env(safe-area-inset-top)' }}
       >
-        <div className="mx-auto flex h-16 w-full max-w-3xl items-center gap-3 px-4">
+        {/* Wider than the content column (max-w-3xl) on purpose: the brand, four
+            nav pills, the bell and the account chip do not fit in 768px, which
+            is what forced "Available units" to wrap onto two lines. */}
+        <div className="mx-auto flex h-16 w-full max-w-5xl items-center gap-3 px-4">
           {/* Brand */}
           <Link
             href={homeHref}
@@ -107,8 +114,11 @@ export function PortalShell({ locale, dict, userName, children }: Props) {
             </span>
           </Link>
 
-          {/* Desktop nav */}
-          <nav className="mx-auto hidden items-center gap-1 md:flex">
+          {/* Desktop nav. Appears at `lg` — between `md` and `lg` there is not
+              enough width for labelled pills, so tablets keep the roomier
+              bottom tab bar instead of a cramped top row. `shrink-0` +
+              `whitespace-nowrap` stop multi-word labels from wrapping. */}
+          <nav className="mx-auto hidden shrink-0 items-center gap-1 lg:flex">
             {items.map((item) => {
               const active = isActive(item.href);
               const Icon = item.icon;
@@ -118,21 +128,23 @@ export function PortalShell({ locale, dict, userName, children }: Props) {
                   href={item.href}
                   aria-current={active ? 'page' : undefined}
                   className={[
-                    'flex h-10 items-center gap-2 rounded-full px-3.5 text-sm font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60',
+                    'flex h-10 shrink-0 items-center gap-2 rounded-full px-3.5 text-sm font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60',
                     active
                       ? 'bg-amber-100/80 text-amber-900 dark:bg-amber-400/15 dark:text-amber-200'
                       : 'text-muted-foreground hover:bg-foreground/5 hover:text-foreground',
                   ].join(' ')}
                 >
-                  <Icon className="size-4" />
+                  <Icon className="size-4 shrink-0" />
                   {item.label}
                 </Link>
               );
             })}
           </nav>
 
-          {/* Account menu */}
-          <div className="ms-auto md:ms-0">
+          {/* Bell + account menu */}
+          <div className="ms-auto flex shrink-0 items-center gap-1 lg:ms-0">
+            {/* Tenants have no /dashboard inbox, so the panel IS their history. */}
+            <NotificationsBell locale={locale} dict={dict} surface="portal" />
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
@@ -186,14 +198,14 @@ export function PortalShell({ locale, dict, userName, children }: Props) {
 
       {/* ── Content ────────────────────────────────────────────────────────── */}
       {/* Extra bottom padding on mobile clears the fixed tab bar + safe area. */}
-      <main className="mx-auto w-full max-w-3xl flex-1 px-4 pt-6 pb-28 md:pb-12">
+      <main className="mx-auto w-full max-w-3xl flex-1 px-4 pt-6 pb-28 lg:pb-12">
         {children}
       </main>
 
       {/* ── Mobile bottom tab bar ──────────────────────────────────────────── */}
       <nav
         aria-label={t.brandSubtitle}
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-border/70 bg-background/85 backdrop-blur-md md:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-border/70 bg-background/85 backdrop-blur-md lg:hidden"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         <div className="mx-auto grid max-w-3xl grid-cols-4">
@@ -222,7 +234,11 @@ export function PortalShell({ locale, dict, userName, children }: Props) {
                 >
                   <Icon className="size-5" />
                 </span>
-                <span className="truncate">{item.label}</span>
+                {/* `w-full` so truncation engages — a centred flex child sizes
+                    to its content and would otherwise overflow the column. */}
+                <span className="w-full truncate text-center">
+                  {item.label}
+                </span>
               </Link>
             );
           })}

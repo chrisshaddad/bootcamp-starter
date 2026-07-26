@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bell, CheckCheck } from 'lucide-react';
+import { Bell, CheckCheck, ChevronRightIcon } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -13,6 +13,11 @@ import {
 } from '@/store/api/endpoints/notifications.api';
 import type { NotificationResponse } from '@/types/api';
 import type { Dictionary } from '@/i18n/get-dictionary';
+import { getNotificationHref } from '@/lib/notification-target';
+import {
+  getNotificationContent,
+  type NotificationContent,
+} from '@/lib/notification-content';
 
 type Props = {
   locale: string;
@@ -37,30 +42,11 @@ function useRelativeTime(locale: string) {
       if (absSec < 60) return rtf.format(Math.round(diffSec), 'second');
       if (absSec < 3600) return rtf.format(Math.round(diffSec / 60), 'minute');
       if (absSec < 86400) return rtf.format(Math.round(diffSec / 3600), 'hour');
-      if (absSec < 604800) return rtf.format(Math.round(diffSec / 86400), 'day');
+      if (absSec < 604800)
+        return rtf.format(Math.round(diffSec / 86400), 'day');
       return abs.format(new Date(iso));
     };
   }, [locale]);
-}
-
-// Maps a notification to the page it originated from, when derivable. Kept
-// deliberately conservative — only ticket-related notifications currently
-// have a known destination; everything else falls back to mark-read-only.
-function getNotificationTarget(
-  notification: NotificationResponse,
-  locale: string,
-): string | null {
-  const data = notification.data;
-  const hasTicketId =
-    !!data &&
-    typeof data === 'object' &&
-    'ticketId' in data &&
-    typeof (data as Record<string, unknown>).ticketId === 'string';
-  const type = notification.type.toLowerCase();
-  if (type.includes('support') || type.includes('ticket') || hasTicketId) {
-    return `/${locale}/dashboard/support`;
-  }
-  return null;
 }
 
 export function NotificationsPage({ locale, dict }: Props) {
@@ -130,15 +116,17 @@ export function NotificationsPage({ locale, dict }: Props) {
       ) : (
         <ul className="flex flex-col gap-3">
           {notifications.map((n) => {
-            const target = getNotificationTarget(n, locale);
+            const href = getNotificationHref(n, locale, 'dashboard');
             return (
               <NotificationCard
                 key={n.id}
                 notification={n}
+                content={getNotificationContent(n, dict)}
                 timeLabel={formatRelative(n.createdAt)}
+                hasTarget={!!href}
                 onActivate={() => {
-                  markRead(n.id);
-                  if (target) router.push(target);
+                  if (!n.readAt) markRead(n.id);
+                  if (href) router.push(href);
                 }}
               />
             );
@@ -151,11 +139,15 @@ export function NotificationsPage({ locale, dict }: Props) {
 
 function NotificationCard({
   notification,
+  content,
   timeLabel,
+  hasTarget,
   onActivate,
 }: {
   notification: NotificationResponse;
+  content: NotificationContent;
   timeLabel: string;
+  hasTarget: boolean;
   onActivate: () => void;
 }) {
   const isUnread = !notification.readAt;
@@ -169,26 +161,35 @@ function NotificationCard({
         />
       )}
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-foreground">
-          {notification.title}
-        </p>
-        {notification.body && (
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            {notification.body}
-          </p>
+        <p className="text-sm font-medium text-foreground">{content.title}</p>
+        {content.body && (
+          <p className="mt-0.5 text-sm text-muted-foreground">{content.body}</p>
         )}
         <p className="mt-1 text-xs text-muted-foreground">{timeLabel}</p>
       </div>
+      {hasTarget && (
+        <ChevronRightIcon
+          aria-hidden="true"
+          className="mt-0.5 size-4 shrink-0 text-muted-foreground rtl:rotate-180"
+        />
+      )}
     </div>
   );
 
-  if (isUnread) {
+  // Clickable whenever there is something to do — mark-read (unread) and/or
+  // open the source record. Read rows with a destination stay navigable.
+  if (isUnread || hasTarget) {
     return (
       <li>
         <button
           type="button"
           onClick={onActivate}
-          className="flex w-full flex-col rounded-xl border border-s-2 border-s-teal-500 bg-teal-500/5 p-4 text-start transition-colors hover:bg-teal-500/10 focus-visible:bg-teal-500/10 focus-visible:outline-none"
+          className={[
+            'flex w-full flex-col rounded-xl border border-s-2 p-4 text-start transition-colors focus-visible:outline-none',
+            isUnread
+              ? 'border-s-teal-500 bg-teal-500/5 hover:bg-teal-500/10 focus-visible:bg-teal-500/10'
+              : 'bg-card hover:bg-foreground/5 focus-visible:bg-foreground/5',
+          ].join(' ')}
         >
           {inner}
         </button>
@@ -196,7 +197,5 @@ function NotificationCard({
     );
   }
 
-  return (
-    <li className="rounded-xl border bg-card p-4">{inner}</li>
-  );
+  return <li className="rounded-xl border bg-card p-4">{inner}</li>;
 }
