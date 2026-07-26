@@ -51,6 +51,20 @@ export class NotificationsService {
     }
   }
 
+  /**
+   * Fan a single notification out to several recipients. Same best-effort
+   * contract as {@link enqueue}: a failing recipient never blocks the others,
+   * and an empty recipient list is a no-op.
+   */
+  async enqueueMany(
+    userIds: string[],
+    job: Omit<NotificationJobData, 'userId'>,
+  ): Promise<void> {
+    await Promise.all(
+      userIds.map((userId) => this.enqueue({ ...job, userId })),
+    );
+  }
+
   /** Persist a notification row — invoked by the queue worker. */
   async persist(job: NotificationJobData): Promise<void> {
     await this.prisma.notification.create({

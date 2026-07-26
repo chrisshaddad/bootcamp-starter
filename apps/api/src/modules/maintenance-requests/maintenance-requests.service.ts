@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '@/infrastructure/prisma/prisma.service';
 import { BuildingAccessService } from '@/common/building-access/building-access.service';
 import { TimelineService } from '@/modules/timeline/timeline.service';
+import { NotificationsService } from '@/modules/notifications/notifications.service';
 import { Role } from '@/common/enums';
 import {
   MaintenanceRequestDetailResponse,
@@ -22,6 +23,14 @@ const INCLUDE = {
   apartment: { select: { unitNumber: true } },
   renter: { select: { fullName: true } },
 } as const;
+
+/** Human phrasing for a status, used in tenant-facing notification copy. */
+const STATUS_LABELS: Record<string, string> = {
+  open: 'open',
+  in_progress: 'in progress',
+  resolved: 'resolved',
+  closed: 'closed',
+};
 
 type MaintenanceRequestRow = {
   id: string;
@@ -46,6 +55,7 @@ export class MaintenanceRequestsService {
     private readonly prisma: PrismaService,
     private readonly buildingAccess: BuildingAccessService,
     private readonly timeline: TimelineService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   private assertOrgAdmin(callerRole: Role): void {
@@ -192,6 +202,7 @@ export class MaintenanceRequestsService {
 
     const existing = await this.prisma.maintenanceRequest.findFirst({
       where: { id: requestId, orgId },
+      include: { renter: { select: { renterUserId: true } } },
     });
     if (!existing) {
       throw new NotFoundException('Maintenance request not found.');
@@ -224,6 +235,27 @@ export class MaintenanceRequestsService {
       targetId: requestId,
       metadata: { changes: Object.keys(dto) },
     });
+
+    // Close the loop with the tenant. Without this the tenant portal shows a
+    // stale badge and the reporter has no way to follow their own request.
+    // Only a REAL status transition is worth a notification (editing a note or
+    // the priority is not), and never notify the actor about their own change.
+    const statusChanged = request.status !== existing.status;
+    const tenantUserId = existing.renter.renterUserId;
+    if (statusChanged && tenantUserId && tenantUserId !== actorId) {
+      await this.notifications.enqueue({
+        orgId,
+        userId: tenantUserId,
+        type: `maintenance_request.${request.status}`,
+        title: `Maintenance request ${STATUS_LABELS[request.status] ?? request.status}`,
+        body: `Your request "${request.title}" is now ${STATUS_LABELS[request.status] ?? request.status}.`,
+        data: {
+          requestId,
+          status: request.status,
+          requestTitle: request.title,
+        },
+      });
+    }
 
     return { data: this.formatMaintenanceRequest(request) };
   }

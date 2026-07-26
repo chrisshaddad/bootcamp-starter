@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '@/infrastructure/prisma/prisma.service';
 import { TimelineService } from '@/modules/timeline/timeline.service';
 import { NotificationsService } from '@/modules/notifications/notifications.service';
+import { OrgRecipientsService } from '@/modules/notifications/org-recipients.service';
 import { Role } from '@/common/enums';
 import {
   SupportTicketCategory,
@@ -50,6 +51,7 @@ export class SupportTicketsService {
     private readonly prisma: PrismaService,
     private readonly timeline: TimelineService,
     private readonly notifications: NotificationsService,
+    private readonly orgRecipients: OrgRecipientsService,
   ) {}
 
   private format(t: SupportTicketRow): SupportTicketResponse {
@@ -147,7 +149,26 @@ export class SupportTicketsService {
       type: 'support_ticket.acknowledged',
       title: 'Support ticket received',
       body: `We've received your ticket "${ticket.subject}" and will follow up shortly.`,
-      data: { ticketId: ticket.id, category: ticket.category },
+      data: {
+        ticketId: ticket.id,
+        category: ticket.category,
+        subject: ticket.subject,
+      },
+    });
+
+    // …and tell the org's admins there is something to action. The opener is
+    // excluded — they already got the acknowledgment above.
+    const admins = await this.orgRecipients.getOrgAdminUserIds(orgId, callerId);
+    await this.notifications.enqueueMany(admins, {
+      orgId,
+      type: 'support_ticket.created',
+      title: 'New support ticket',
+      body: `"${ticket.subject}" (${ticket.category}) was opened and needs a response.`,
+      data: {
+        ticketId: ticket.id,
+        category: ticket.category,
+        subject: ticket.subject,
+      },
     });
 
     return { data: this.format(ticket) };
@@ -201,7 +222,11 @@ export class SupportTicketsService {
         type: `support_ticket.${dto.status}`,
         title: `Support ticket ${dto.status}`,
         body: `Your ticket "${ticket.subject}" is now ${dto.status}.`,
-        data: { ticketId: ticket.id, status: dto.status },
+        data: {
+          ticketId: ticket.id,
+          status: dto.status,
+          subject: ticket.subject,
+        },
       });
     }
 

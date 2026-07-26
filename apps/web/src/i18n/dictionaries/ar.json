@@ -444,7 +444,29 @@
     "unread": "غير مقروء",
     "loadError": "تعذّر تحميل الإشعارات.",
     "pageSubtitle": "كل ما تم إشعارك به.",
-    "viewAll": "عرض كل الإشعارات"
+    "viewAll": "عرض كل الإشعارات",
+    "types": {
+      "maintenanceRequestCreated": {
+        "title": "طلب صيانة جديد",
+        "body": "{renterName} (الوحدة {unitNumber}) أبلغ عن: «{requestTitle}»."
+      },
+      "maintenanceRequestStatus": {
+        "title": "طلب الصيانة: {status}",
+        "body": "طلبك «{requestTitle}» الآن {status}."
+      },
+      "supportTicketCreated": {
+        "title": "تذكرة دعم جديدة",
+        "body": "تم فتح «{subject}» وتحتاج إلى رد."
+      },
+      "supportTicketAcknowledged": {
+        "title": "تم استلام تذكرة الدعم",
+        "body": "استلمنا تذكرتك «{subject}» وسنتابع معك قريباً."
+      },
+      "supportTicketStatus": {
+        "title": "تذكرة الدعم: {status}",
+        "body": "تذكرتك «{subject}» الآن {status}."
+      }
+    }
   },
   "buildings": {
     "shared": {
@@ -1614,6 +1636,7 @@
       "created": "تم إرسال الطلب.",
       "createError": "حدث خطأ ما. يرجى المحاولة مرة أخرى.",
       "unit": "الوحدة",
+      "updated": "آخر تحديث",
       "status": {
         "open": "مفتوح",
         "in_progress": "قيد التنفيذ",

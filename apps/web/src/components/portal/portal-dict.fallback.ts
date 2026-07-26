@@ -78,6 +78,7 @@ export const PORTAL_FALLBACK: Record<'en' | 'ar', PortalDict> = {
       created: 'Request submitted.',
       createError: 'Something went wrong. Please try again.',
       unit: 'Unit',
+      updated: 'Updated',
       status: {
         open: 'Open',
         in_progress: 'In progress',
@@ -185,6 +186,7 @@ export const PORTAL_FALLBACK: Record<'en' | 'ar', PortalDict> = {
       created: 'تم إرسال الطلب.',
       createError: 'حدث خطأ ما. يرجى المحاولة مرة أخرى.',
       unit: 'الوحدة',
+      updated: 'آخر تحديث',
       status: {
         open: 'مفتوح',
         in_progress: 'قيد التنفيذ',

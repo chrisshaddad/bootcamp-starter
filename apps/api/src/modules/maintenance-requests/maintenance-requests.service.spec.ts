@@ -39,12 +39,17 @@ describe('MaintenanceRequestsService', () => {
       ...overrides.buildingAccess,
     };
     const timeline = { emit: jest.fn().mockResolvedValue(undefined) };
+    const notifications = {
+      enqueue: jest.fn().mockResolvedValue(undefined),
+      enqueueMany: jest.fn().mockResolvedValue(undefined),
+    };
     const service = new MaintenanceRequestsService(
       prisma,
       buildingAccess as any,
       timeline as any,
+      notifications as any,
     );
-    return { service, prisma, buildingAccess, timeline };
+    return { service, prisma, buildingAccess, timeline, notifications };
   }
 
   const requestRow = (overrides: Partial<Record<string, unknown>> = {}) => ({
@@ -329,6 +334,87 @@ describe('MaintenanceRequestsService', () => {
       );
 
       expect(result.data.status).toBe('closed');
+    });
+
+    // The tenant portal is read-only over this data, so the notification is the
+    // ONLY thing that tells a reporter their request moved. Regression guard.
+    it('notifies the linked tenant when the status actually changes', async () => {
+      const { service, prisma, notifications } = makeService({
+        maintenanceRequest: {
+          findFirst: jest.fn().mockResolvedValue(
+            requestRow({
+              status: 'open',
+              renter: { fullName: 'Jane Doe', renterUserId: 'kc-tenant-1' },
+            }),
+          ),
+        },
+      });
+      prisma.maintenanceRequest.update.mockResolvedValue(
+        requestRow({ status: 'in_progress' }),
+      );
+
+      await service.update(orgId, actorId, Role.ORG_ADMIN, 'mr-1', {
+        status: 'in_progress',
+      });
+
+      expect(notifications.enqueue).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orgId,
+          userId: 'kc-tenant-1',
+          type: 'maintenance_request.in_progress',
+          // `requestId` deep-links; `requestTitle`/`status` are the render
+          // params the web UI substitutes into the localized copy.
+          data: {
+            requestId: 'mr-1',
+            status: 'in_progress',
+            requestTitle: 'Leaky faucet',
+          },
+        }),
+      );
+    });
+
+    it('does not notify when the status is unchanged (note/priority edits are silent)', async () => {
+      const { service, prisma, notifications } = makeService({
+        maintenanceRequest: {
+          findFirst: jest.fn().mockResolvedValue(
+            requestRow({
+              status: 'open',
+              renter: { fullName: 'Jane Doe', renterUserId: 'kc-tenant-1' },
+            }),
+          ),
+        },
+      });
+      prisma.maintenanceRequest.update.mockResolvedValue(
+        requestRow({ status: 'open', notes: 'Plumber booked' }),
+      );
+
+      await service.update(orgId, actorId, Role.ORG_ADMIN, 'mr-1', {
+        notes: 'Plumber booked',
+      });
+
+      expect(notifications.enqueue).not.toHaveBeenCalled();
+    });
+
+    it('stays silent when the renter has no linked portal login', async () => {
+      const { service, prisma, notifications } = makeService({
+        maintenanceRequest: {
+          findFirst: jest.fn().mockResolvedValue(
+            requestRow({
+              status: 'open',
+              renter: { fullName: 'Jane Doe', renterUserId: null },
+            }),
+          ),
+        },
+      });
+      prisma.maintenanceRequest.update.mockResolvedValue(
+        requestRow({ status: 'resolved' }),
+      );
+
+      await service.update(orgId, actorId, Role.ORG_ADMIN, 'mr-1', {
+        status: 'resolved',
+      });
+
+      expect(notifications.enqueue).not.toHaveBeenCalled();
     });
 
     it('throws NotFoundException for a request in a different org', async () => {

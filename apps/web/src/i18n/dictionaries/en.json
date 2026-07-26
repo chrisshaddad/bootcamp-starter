@@ -444,7 +444,29 @@
     "unread": "unread",
     "loadError": "Couldn't load notifications.",
     "pageSubtitle": "Everything you've been notified about.",
-    "viewAll": "View all notifications"
+    "viewAll": "View all notifications",
+    "types": {
+      "maintenanceRequestCreated": {
+        "title": "New maintenance request",
+        "body": "{renterName} (unit {unitNumber}) reported: \"{requestTitle}\"."
+      },
+      "maintenanceRequestStatus": {
+        "title": "Maintenance request: {status}",
+        "body": "Your request \"{requestTitle}\" is now {status}."
+      },
+      "supportTicketCreated": {
+        "title": "New support ticket",
+        "body": "\"{subject}\" was opened and needs a response."
+      },
+      "supportTicketAcknowledged": {
+        "title": "Support ticket received",
+        "body": "We received your ticket \"{subject}\" and will follow up shortly."
+      },
+      "supportTicketStatus": {
+        "title": "Support ticket: {status}",
+        "body": "Your ticket \"{subject}\" is now {status}."
+      }
+    }
   },
   "buildings": {
     "shared": {
@@ -1614,6 +1636,7 @@
       "created": "Request submitted.",
       "createError": "Something went wrong. Please try again.",
       "unit": "Unit",
+      "updated": "Updated",
       "status": {
         "open": "Open",
         "in_progress": "In progress",

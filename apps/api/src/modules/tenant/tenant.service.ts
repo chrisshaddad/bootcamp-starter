@@ -6,6 +6,8 @@ import {
 import { PrismaService } from '@/infrastructure/prisma/prisma.service';
 import { LeaseStatusService } from '@/common/lease-status/lease-status.service';
 import { TimelineService } from '@/modules/timeline/timeline.service';
+import { NotificationsService } from '@/modules/notifications/notifications.service';
+import { OrgRecipientsService } from '@/modules/notifications/org-recipients.service';
 import { computeInvoiceSummary } from '@/common/invoice-summary/compute-invoice-summary';
 import type {
   InvoiceStatus,
@@ -46,6 +48,7 @@ type RequestRow = {
   status: string;
   priority: string;
   createdAt: Date;
+  updatedAt: Date;
   apartment: { unitNumber: string };
 };
 
@@ -63,6 +66,8 @@ export class TenantService {
     private readonly prisma: PrismaService,
     private readonly leaseStatus: LeaseStatusService,
     private readonly timeline: TimelineService,
+    private readonly notifications: NotificationsService,
+    private readonly orgRecipients: OrgRecipientsService,
   ) {}
 
   private money(value: number): string {
@@ -108,6 +113,9 @@ export class TenantService {
       priority: request.priority as MaintenanceRequestPriority,
       unitNumber: request.apartment.unitNumber,
       createdAt: request.createdAt.toISOString(),
+      // Lets the portal show "Updated 5 minutes ago" — the tenant's only signal
+      // that staff have moved the request along.
+      updatedAt: request.updatedAt.toISOString(),
     };
   }
 
@@ -185,6 +193,7 @@ export class TenantService {
           status: true,
           priority: true,
           createdAt: true,
+          updatedAt: true,
           apartment: { select: { unitNumber: true } },
         },
         orderBy: { createdAt: 'desc' },
@@ -307,6 +316,7 @@ export class TenantService {
         status: true,
         priority: true,
         createdAt: true,
+        updatedAt: true,
         apartment: { select: { unitNumber: true } },
       },
     });
@@ -321,6 +331,25 @@ export class TenantService {
         title: created.title,
         apartmentId: current.apartmentId,
         viaTenantPortal: true,
+      },
+    });
+
+    // Tell the org's admins — otherwise a tenant-opened request sits unseen
+    // until someone happens to load the Tasks page. `data.requestId` deep-links
+    // the notification; the remaining `data` fields are the render params the
+    // web UI substitutes into the localized copy (`title`/`body` below are the
+    // English fallback, used for email and for unknown types).
+    const admins = await this.orgRecipients.getOrgAdminUserIds(orgId, userId);
+    await this.notifications.enqueueMany(admins, {
+      orgId,
+      type: 'maintenance_request.created',
+      title: 'New maintenance request',
+      body: `${renter.fullName} (unit ${created.apartment.unitNumber}) reported: "${created.title}".`,
+      data: {
+        requestId: created.id,
+        requestTitle: created.title,
+        renterName: renter.fullName,
+        unitNumber: created.apartment.unitNumber,
       },
     });
 

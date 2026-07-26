@@ -1179,6 +1179,8 @@ export type TenantMaintenanceRequestView = {
   priority: MaintenanceRequestPriority;
   unitNumber: string;
   createdAt: string;
+  /** Last time staff touched the request — the tenant's progress signal. */
+  updatedAt: string;
 };
 
 /** Lifetime balance across all of the tenant's invoices. */

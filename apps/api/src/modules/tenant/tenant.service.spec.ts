@@ -39,13 +39,22 @@ describe('TenantService', () => {
       },
     };
     const timeline = { emit: jest.fn().mockResolvedValue(undefined) };
+    const notifications = {
+      enqueue: jest.fn().mockResolvedValue(undefined),
+      enqueueMany: jest.fn().mockResolvedValue(undefined),
+    };
+    const orgRecipients = {
+      getOrgAdminUserIds: jest.fn().mockResolvedValue(['kc-sub-admin-1']),
+    };
     const leaseStatus = new LeaseStatusService();
     const service = new TenantService(
       prisma as any,
       leaseStatus,
       timeline as any,
+      notifications as any,
+      orgRecipients as any,
     );
-    return { service, prisma, timeline };
+    return { service, prisma, timeline, notifications, orgRecipients };
   }
 
   const renter = { id: 'renter-1', fullName: 'Jane Doe', email: null, phone: null };
@@ -117,6 +126,7 @@ describe('TenantService', () => {
               status: 'open',
               priority: 'high',
               createdAt: now,
+              updatedAt: now,
               apartment: { unitNumber: '4B' },
             },
           ]),
@@ -245,6 +255,7 @@ describe('TenantService', () => {
         status: 'open',
         priority: 'medium',
         createdAt: now,
+        updatedAt: now,
         apartment: { unitNumber: '4B' },
       });
       const { service, prisma, timeline } = makeService({
@@ -299,6 +310,7 @@ describe('TenantService', () => {
         status: 'open',
         priority: 'urgent',
         createdAt: now,
+        updatedAt: now,
         apartment: { unitNumber: '4B' },
       });
       const { service } = makeService({
@@ -315,6 +327,47 @@ describe('TenantService', () => {
       );
 
       expect(create.mock.calls[0][0].data.priority).toBe('urgent');
+    });
+
+    // Without this fan-out a tenant-opened request sits unseen until an admin
+    // happens to open the Tasks page. Regression guard.
+    it('notifies the org admins, excluding the reporting tenant', async () => {
+      const create = jest.fn().mockResolvedValue({
+        id: 'mr-11',
+        title: 'No hot water',
+        description: null,
+        status: 'open',
+        priority: 'high',
+        createdAt: now,
+        updatedAt: now,
+        apartment: { unitNumber: '4B' },
+      });
+      const { service, notifications, orgRecipients } = makeService({
+        renter: { findFirst: jest.fn().mockResolvedValue(renter) },
+        lease: { findMany: jest.fn().mockResolvedValue([leaseRow()]) },
+        maintenanceRequest: { create },
+      });
+
+      await service.createMaintenanceRequest(
+        orgId,
+        sub,
+        { title: 'No hot water' },
+        now,
+      );
+
+      // The caller is excluded so a self-serve action never notifies its actor.
+      expect(orgRecipients.getOrgAdminUserIds).toHaveBeenCalledWith(orgId, sub);
+      expect(notifications.enqueueMany).toHaveBeenCalledWith(
+        ['kc-sub-admin-1'],
+        expect.objectContaining({
+          orgId,
+          type: 'maintenance_request.created',
+          data: expect.objectContaining({
+            requestId: 'mr-11',
+            unitNumber: '4B',
+          }),
+        }),
+      );
     });
   });
 });
