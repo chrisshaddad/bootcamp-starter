@@ -77,7 +77,12 @@ export function PatronDashboard({
                   key={i}
                   className="flex items-center justify-between py-2.5 text-sm"
                 >
-                  <span className="text-foreground">{rental.bookTitle}</span>
+                  <div className="flex flex-col">
+                    <span className="text-foreground">{rental.bookTitle}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {rental.libraryName}
+                    </span>
+                  </div>
                   <span className="text-muted-foreground">
                     Due {formatDueDate(rental.dueDate)}
                   </span>
