@@ -181,6 +181,30 @@ export function useInstitution(
 }
 
 /**
+ * Actions on an institution by id, without mounting the full detail hook —
+ * for inline approve/reject on a list (e.g. the pending-approvals queue).
+ */
+export function useInstitutionActions() {
+  const approve = useCallback(async (id: string) => {
+    const result = await apiPatch<InstitutionActionResponse>(
+      `/institutions/${id}/approve`,
+    );
+    invalidateInstitutionsList();
+    return result;
+  }, []);
+
+  const reject = useCallback(async (id: string) => {
+    const result = await apiPatch<InstitutionActionResponse>(
+      `/institutions/${id}/reject`,
+    );
+    invalidateInstitutionsList();
+    return result;
+  }, []);
+
+  return { approve, reject };
+}
+
+/**
  * Hook for creating a new institution together with its first admin user
  */
 export function useCreateInstitution() {
