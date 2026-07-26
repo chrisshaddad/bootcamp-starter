@@ -5,3 +5,4 @@ export * from './update-student.request';
 export * from './student-action.response';
 export * from './update-student.response';
 export * from './quizzes';
+export * from './assignments';
