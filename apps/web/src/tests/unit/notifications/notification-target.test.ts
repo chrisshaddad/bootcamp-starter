@@ -32,7 +32,9 @@ describe('getNotificationHref', () => {
   it('falls back to the Tasks list when the payload carries no requestId', () => {
     const n = notification({ type: 'maintenance_request.resolved', data: {} });
 
-    expect(getNotificationHref(n, 'en', 'dashboard')).toBe('/en/dashboard/tasks');
+    expect(getNotificationHref(n, 'en', 'dashboard')).toBe(
+      '/en/dashboard/tasks',
+    );
   });
 
   it('sends an admin to the support inbox for ticket notifications', () => {
@@ -95,7 +97,10 @@ describe('getNotificationHref', () => {
   });
 
   it('sends a tenant lease notification to portal home, and leaves invoices unclickable', () => {
-    const lease = notification({ type: 'lease.created', data: { leaseId: 'l-1' } });
+    const lease = notification({
+      type: 'lease.created',
+      data: { leaseId: 'l-1' },
+    });
     const invoice = notification({
       type: 'invoice.issued',
       data: { invoiceId: 'inv-1' },

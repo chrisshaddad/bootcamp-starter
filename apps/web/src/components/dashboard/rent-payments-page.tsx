@@ -88,8 +88,7 @@ const STATUS_STYLES: Record<InvoiceStatus, string> = {
 
 // ── Record-payment form ──────────────────────────────────────────────────────
 
-type RecordErrors =
-  Dictionary['rentPayments']['dialog']['record']['errors'];
+type RecordErrors = Dictionary['rentPayments']['dialog']['record']['errors'];
 
 function buildPaymentSchema(errors: RecordErrors) {
   return z.object({
@@ -145,11 +144,12 @@ export function RentPaymentsPage({
   const t = dict.rentPayments;
   const money = useMoney(locale);
   const dateFormatter = useMemo(
-    () => new Intl.DateTimeFormat(locale === 'ar' ? 'ar' : 'en', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    }),
+    () =>
+      new Intl.DateTimeFormat(locale === 'ar' ? 'ar' : 'en', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      }),
     [locale],
   );
   const formatDate = (iso: string) => dateFormatter.format(new Date(iso));
@@ -169,7 +169,10 @@ export function RentPaymentsPage({
 
   // Debounce the free-text box so typing doesn't fire a request per keystroke.
   useEffect(() => {
-    const id = setTimeout(() => setSearch(searchInput.trim()), SEARCH_DEBOUNCE_MS);
+    const id = setTimeout(
+      () => setSearch(searchInput.trim()),
+      SEARCH_DEBOUNCE_MS,
+    );
     return () => clearTimeout(id);
   }, [searchInput]);
 
@@ -859,9 +862,7 @@ export function RentPaymentsPage({
                 type="submit"
                 disabled={creating || payableInvoices.length === 0}
               >
-                {creating
-                  ? t.dialog.record.submitting
-                  : t.dialog.record.submit}
+                {creating ? t.dialog.record.submitting : t.dialog.record.submit}
               </Button>
             </DialogFooter>
           </form>

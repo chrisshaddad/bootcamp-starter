@@ -192,7 +192,10 @@ export class InvoicePaymentsService {
     return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
   }
 
-  private parseDate(value: string | undefined, field: string): Date | undefined {
+  private parseDate(
+    value: string | undefined,
+    field: string,
+  ): Date | undefined {
     if (!value) return undefined;
     const parsed = new Date(value);
     if (Number.isNaN(parsed.getTime())) {
@@ -326,10 +329,9 @@ export class InvoicePaymentsService {
       this.prisma.invoicePayment.count({ where }),
     ]);
 
-    const buildingNameById = await this.buildingNamesFor(
-      orgId,
-      [...new Set(rows.map((r) => r.invoice.buildingId))],
-    );
+    const buildingNameById = await this.buildingNamesFor(orgId, [
+      ...new Set(rows.map((r) => r.invoice.buildingId)),
+    ]);
 
     return {
       items: rows.map((r) => this.formatListItem(r, buildingNameById)),

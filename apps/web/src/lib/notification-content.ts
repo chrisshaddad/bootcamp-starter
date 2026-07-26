@@ -83,7 +83,8 @@ export function getNotificationContent(
 
   if (type.startsWith('maintenance_request.')) {
     const requestTitle = str(data, 'requestTitle');
-    const status = str(data, 'status') ?? type.slice('maintenance_request.'.length);
+    const status =
+      str(data, 'status') ?? type.slice('maintenance_request.'.length);
     if (!requestTitle || !status) return fallback;
     return build('maintenanceRequestStatus', {
       requestTitle,
@@ -91,7 +92,10 @@ export function getNotificationContent(
     });
   }
 
-  if (type === 'support_ticket.created' || type === 'support_ticket.acknowledged') {
+  if (
+    type === 'support_ticket.created' ||
+    type === 'support_ticket.acknowledged'
+  ) {
     const subject = str(data, 'subject');
     if (!subject) return fallback;
     const category = str(data, 'category');

@@ -208,9 +208,8 @@ describe('InvoicePaymentsService', () => {
         },
       });
 
-      const [row] = (
-        await service.findAll(orgId, callerId, Role.ORG_ADMIN, {})
-      ).items;
+      const [row] = (await service.findAll(orgId, callerId, Role.ORG_ADMIN, {}))
+        .items;
 
       expect(row).toEqual(
         expect.objectContaining({
@@ -238,9 +237,8 @@ describe('InvoicePaymentsService', () => {
         },
       });
 
-      const [row] = (
-        await service.findAll(orgId, callerId, Role.ORG_ADMIN, {})
-      ).items;
+      const [row] = (await service.findAll(orgId, callerId, Role.ORG_ADMIN, {}))
+        .items;
 
       expect(row.buildingName).toBe(buildingId);
     });
@@ -334,7 +332,9 @@ describe('InvoicePaymentsService', () => {
       const { service } = makeService();
 
       await expect(
-        service.findAll(orgId, callerId, Role.ORG_ADMIN, { from: 'not-a-date' }),
+        service.findAll(orgId, callerId, Role.ORG_ADMIN, {
+          from: 'not-a-date',
+        }),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
   });

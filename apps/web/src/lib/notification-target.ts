@@ -69,7 +69,8 @@ export function getNotificationHref(
       : `/${locale}/dashboard/tasks`;
   }
   if (isTicket) return `/${locale}/dashboard/support`;
-  if (isInvoice && invoiceId) return `/${locale}/dashboard/invoices/${invoiceId}`;
+  if (isInvoice && invoiceId)
+    return `/${locale}/dashboard/invoices/${invoiceId}`;
   if (isLease) return `/${locale}/dashboard/leases`;
   return null;
 }

@@ -39,8 +39,9 @@ export const invoicePaymentsApi = baseApi.injectEndpoints({
         url: `/invoice-payments?invoiceId=${encodeURIComponent(invoiceId)}&limit=100`,
         method: 'GET',
       }),
-      transformResponse: (response: PaginatedResponse<InvoicePaymentListItem>) =>
-        response?.items ?? [],
+      transformResponse: (
+        response: PaginatedResponse<InvoicePaymentListItem>,
+      ) => response?.items ?? [],
       providesTags: (result, _error, invoiceId) =>
         result
           ? [
@@ -85,8 +86,7 @@ export const invoicePaymentsApi = baseApi.injectEndpoints({
       }),
       transformResponse: (
         response:
-          | RentPaymentSummaryResponse
-          | ApiEnvelope<RentPaymentSummaryResponse>,
+          RentPaymentSummaryResponse | ApiEnvelope<RentPaymentSummaryResponse>,
       ) => unwrap(response),
       providesTags: [{ type: 'InvoicePayment', id: 'SUMMARY' }],
     }),
