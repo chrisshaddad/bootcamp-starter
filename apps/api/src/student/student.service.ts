@@ -22,7 +22,7 @@ import type {
 } from '@repo/contracts';
 import { PrismaService } from '../database/prisma.service';
 import { randomUUID } from 'node:crypto';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { extname, join } from 'node:path';
 interface StoredQuizOption {
   id: string;
@@ -780,7 +780,9 @@ export class StudentService {
         ? {
             id: submission.id,
             contentText: submission.contentText,
-            fileUrl: submission.fileUrl,
+            fileUrl: submission.fileUrl
+              ? `/student/submissions/${submission.id}/file`
+              : null,
             submittedAt: submission.submittedAt.toISOString(),
             status: submission.status,
             teacherNote: submission.teacherNote,
@@ -864,34 +866,75 @@ export class StudentService {
     }
 
     const contentText = input.contentText?.trim() || null;
-    const fileUrl = input.fileUrl?.trim() || null;
+    const fileKey = input.fileKey?.trim() || null;
 
-    if (!contentText && !fileUrl) {
-      throw new BadRequestException('Provide a written response or a file URL');
+    if (!contentText && !fileKey) {
+      throw new BadRequestException(
+        'Provide a written response or upload a file',
+      );
+    }
+
+    if (fileKey) {
+      const expectedPrefix = `assignments/${assignmentId}/${studentId}/`;
+
+      if (
+        !fileKey.startsWith(expectedPrefix) ||
+        fileKey.includes('..') ||
+        fileKey.includes('\\')
+      ) {
+        throw new BadRequestException(
+          'The uploaded file does not belong to this assignment',
+        );
+      }
+
+      const absoluteFilePath = join(process.cwd(), 'uploads', fileKey);
+
+      try {
+        await access(absoluteFilePath);
+      } catch {
+        throw new BadRequestException('The uploaded file could not be found');
+      }
     }
 
     const status =
       assignment.dueAt && now > assignment.dueAt ? 'late' : 'submitted';
 
-    const submission = await this.prisma.submission.create({
-      data: {
-        assignmentId,
-        studentId,
-        contentText,
-        fileUrl,
-        submittedAt: now,
-        status,
-      },
-      select: {
-        id: true,
-        assignmentId: true,
-        studentId: true,
-        contentText: true,
-        fileUrl: true,
-        submittedAt: true,
-        status: true,
-      },
-    });
+    let submission;
+
+    try {
+      submission = await this.prisma.submission.create({
+        data: {
+          assignmentId,
+          studentId,
+          contentText,
+          fileUrl: fileKey,
+          submittedAt: now,
+          status,
+        },
+        select: {
+          id: true,
+          assignmentId: true,
+          studentId: true,
+          contentText: true,
+          fileUrl: true,
+          submittedAt: true,
+          status: true,
+        },
+      });
+    } catch (error) {
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException(
+          'You have already submitted this assignment',
+        );
+      }
+
+      throw error;
+    }
 
     return {
       ...submission,
@@ -979,30 +1022,118 @@ export class StudentService {
       );
     }
 
+    if (!this.hasValidFileSignature(file, extension)) {
+      throw new BadRequestException(
+        'The uploaded file content does not match a supported file type',
+      );
+    }
+
+    const storedFileName = `${randomUUID()}${extension}`;
+
+    const fileKey = [
+      'assignments',
+      assignmentId,
+      studentId,
+      storedFileName,
+    ].join('/');
+
     const uploadDirectory = join(
       process.cwd(),
       'uploads',
       'assignments',
       assignmentId,
+      studentId,
     );
 
     await mkdir(uploadDirectory, {
       recursive: true,
     });
 
-    const storedFileName = `${randomUUID()}${extension}`;
-    const filePath = join(uploadDirectory, storedFileName);
-
-    await writeFile(filePath, file.buffer);
+    await writeFile(join(uploadDirectory, storedFileName), file.buffer);
 
     return {
-      fileUrl: `http://localhost:3001/uploads/assignments/${assignmentId}/${storedFileName}`,
+      fileKey,
       originalName: file.originalname,
       mimeType: file.mimetype,
       size: file.size,
     };
   }
+  async getSubmissionFile(
+    studentId: string,
+    submissionId: string,
+  ): Promise<{
+    buffer: Buffer;
+    fileName: string;
+    mimeType: string;
+  }> {
+    const submission = await this.prisma.submission.findFirst({
+      where: {
+        id: submissionId,
+        studentId,
+      },
+      select: {
+        id: true,
+        fileUrl: true,
+      },
+    });
 
+    if (!submission?.fileUrl) {
+      throw new NotFoundException('Submitted file was not found');
+    }
+
+    const expectedPrefix = `assignments/`;
+
+    if (
+      !submission.fileUrl.startsWith(expectedPrefix) ||
+      submission.fileUrl.includes('..') ||
+      submission.fileUrl.includes('\\')
+    ) {
+      throw new NotFoundException('Submitted file was not found');
+    }
+
+    const absoluteFilePath = join(process.cwd(), 'uploads', submission.fileUrl);
+
+    let buffer: Buffer;
+
+    try {
+      buffer = await readFile(absoluteFilePath);
+    } catch {
+      throw new NotFoundException('Submitted file was not found');
+    }
+
+    const extension = extname(submission.fileUrl).toLowerCase();
+
+    return {
+      buffer,
+      fileName: `submission-${submission.id}${extension}`,
+      mimeType: this.getFileMimeType(extension),
+    };
+  }
+  private getFileMimeType(extension: string): string {
+    switch (extension) {
+      case '.pdf':
+        return 'application/pdf';
+
+      case '.docx':
+        return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+      case '.jpg':
+      case '.jpeg':
+        return 'image/jpeg';
+
+      case '.png':
+        return 'image/png';
+
+      case '.gif':
+        return 'image/gif';
+
+      case '.webp':
+        return 'image/webp';
+
+      default:
+        return 'application/octet-stream';
+    }
+  }
   private parseCorrectOptionId(value: unknown): string | null {
     if (
       typeof value !== 'object' ||
@@ -1099,5 +1230,61 @@ export class StudentService {
 
       return [parsedOption];
     });
+  }
+  private hasValidFileSignature(
+    file: Express.Multer.File,
+    extension: string,
+  ): boolean {
+    const buffer = file.buffer;
+
+    if (extension === '.pdf') {
+      return buffer.subarray(0, 5).toString('ascii') === '%PDF-';
+    }
+
+    if (extension === '.jpg' || extension === '.jpeg') {
+      return (
+        buffer.length >= 3 &&
+        buffer[0] === 0xff &&
+        buffer[1] === 0xd8 &&
+        buffer[2] === 0xff
+      );
+    }
+
+    if (extension === '.png') {
+      const pngSignature = Buffer.from([
+        0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+      ]);
+
+      return (
+        buffer.length >= pngSignature.length &&
+        buffer.subarray(0, pngSignature.length).equals(pngSignature)
+      );
+    }
+
+    if (extension === '.gif') {
+      const signature = buffer.subarray(0, 6).toString('ascii');
+
+      return signature === 'GIF87a' || signature === 'GIF89a';
+    }
+
+    if (extension === '.webp') {
+      return (
+        buffer.length >= 12 &&
+        buffer.subarray(0, 4).toString('ascii') === 'RIFF' &&
+        buffer.subarray(8, 12).toString('ascii') === 'WEBP'
+      );
+    }
+
+    if (extension === '.docx') {
+      return (
+        buffer.length >= 4 &&
+        buffer[0] === 0x50 &&
+        buffer[1] === 0x4b &&
+        buffer[2] === 0x03 &&
+        buffer[3] === 0x04
+      );
+    }
+
+    return false;
   }
 }

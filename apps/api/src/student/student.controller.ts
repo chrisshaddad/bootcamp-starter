@@ -8,6 +8,7 @@ import {
   Post,
   UploadedFile,
   UseInterceptors,
+  StreamableFile,
 } from '@nestjs/common';
 import {
   submitAssignmentRequestSchema,
@@ -59,6 +60,24 @@ export class StudentController {
     input: SubmitAssignmentRequest,
   ): Promise<SubmitAssignmentResponse> {
     return this.studentService.submitAssignment(studentId, assignmentId, input);
+  }
+
+  @Get('submissions/:submissionId/file')
+  async downloadSubmissionFile(
+    @CurrentUser('id') studentId: string,
+    @Param('submissionId', new ParseUUIDPipe({ version: '4' }))
+    submissionId: string,
+  ): Promise<StreamableFile> {
+    const file = await this.studentService.getSubmissionFile(
+      studentId,
+      submissionId,
+    );
+
+    return new StreamableFile(file.buffer, {
+      type: file.mimeType,
+      disposition: `inline; filename="${file.fileName}"`,
+      length: file.buffer.length,
+    });
   }
 
   @Get('quizzes')

@@ -8,16 +8,16 @@ export const submitAssignmentRequestSchema = z
       .max(10000, 'Submission text cannot exceed 10,000 characters')
       .optional(),
 
-    fileUrl: z.string().trim().url('File URL must be a valid URL').optional(),
+    fileKey: z.string().trim().min(1).optional(),
   })
   .superRefine((value, context) => {
     const hasText = Boolean(value.contentText?.trim());
-    const hasFile = Boolean(value.fileUrl?.trim());
+    const hasFile = Boolean(value.fileKey?.trim());
 
     if (!hasText && !hasFile) {
       context.addIssue({
         code: 'custom',
-        message: 'Provide a written response or a file URL',
+        message: 'Provide a written response or upload a file',
         path: ['contentText'],
       });
     }

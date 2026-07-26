@@ -22,7 +22,13 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { ApiError, apiPost, apiPostFormData, fetcher } from '@/lib/api';
+import {
+  API_URL,
+  ApiError,
+  apiPost,
+  apiPostFormData,
+  fetcher,
+} from '@/lib/api';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
@@ -165,7 +171,7 @@ export default function StudentAssignmentDetailPage() {
     setIsSubmitting(true);
 
     try {
-      let uploadedFileUrl: string | undefined;
+      let uploadedFileKey: string | undefined;
 
       if (selectedFile) {
         const formData = new FormData();
@@ -177,14 +183,14 @@ export default function StudentAssignmentDetailPage() {
             formData,
           );
 
-        uploadedFileUrl = uploadResponse.fileUrl;
+        uploadedFileKey = uploadResponse.fileKey;
       }
 
       await apiPost<SubmitAssignmentResponse>(
         `/student/assignments/${assignmentId}/submit`,
         {
           contentText: trimmedText || undefined,
-          fileUrl: uploadedFileUrl,
+          fileKey: uploadedFileKey,
         },
       );
 
@@ -438,7 +444,7 @@ export default function StudentAssignmentDetailPage() {
                     </p>
 
                     <a
-                      href={assignment.submission.fileUrl}
+                      href={`${API_URL}${assignment.submission.fileUrl}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="mt-2 inline-flex items-center gap-2 text-sm font-medium text-primary-base hover:underline"
