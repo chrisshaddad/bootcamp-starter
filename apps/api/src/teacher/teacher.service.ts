@@ -22,6 +22,8 @@ import type {
   DeleteTeacherQuizResponse,
   UpdateTeacherQuizRequest,
 } from '@repo/contracts';
+import { readFile } from 'node:fs/promises';
+import { extname, join } from 'node:path';
 import { PrismaService } from '../database/prisma.service';
 @Injectable()
 export class TeacherService {
@@ -917,6 +919,9 @@ export class TeacherService {
 
     return submissions.map((submission) => ({
       ...submission,
+      fileUrl: submission.fileUrl
+        ? `/teacher/submissions/${submission.id}/file`
+        : null,
       submittedAt: submission.submittedAt.toISOString(),
       grade: submission.grade
         ? {
@@ -927,6 +932,74 @@ export class TeacherService {
         : null,
     }));
   }
+  async getSubmissionFile(
+    teacherId: string,
+    organizationId: string | null,
+    submissionId: string,
+  ): Promise<{
+    buffer: Buffer;
+    fileName: string;
+    mimeType: string;
+  }> {
+    if (!organizationId) {
+      throw new ForbiddenException(
+        'Teacher account is not assigned to an organization',
+      );
+    }
+
+    const submission = await this.prisma.submission.findFirst({
+      where: {
+        id: submissionId,
+        assignment: {
+          type: 'assignment',
+          createdById: teacherId,
+          course: {
+            organizationId,
+          },
+        },
+      },
+      select: {
+        id: true,
+        fileUrl: true,
+      },
+    });
+
+    if (!submission?.fileUrl) {
+      throw new NotFoundException('Submitted file was not found');
+    }
+
+    if (
+      !submission.fileUrl.startsWith('assignments/') ||
+      submission.fileUrl.includes('..') ||
+      submission.fileUrl.includes('\\')
+    ) {
+      throw new NotFoundException('Submitted file was not found');
+    }
+
+    const absoluteFilePath = join(process.cwd(), 'uploads', submission.fileUrl);
+
+    let buffer: Buffer;
+
+    try {
+      buffer = await readFile(absoluteFilePath);
+    } catch (error) {
+      this.logger.error(
+        `Failed to read submission file ${submissionId}`,
+        error instanceof Error ? error.stack : String(error),
+      );
+
+      throw new NotFoundException('Submitted file was not found');
+    }
+
+    const extension = extname(submission.fileUrl).toLowerCase();
+
+    return {
+      buffer,
+      fileName: `submission-${submission.id}${extension}`,
+      mimeType: this.getSubmissionFileMimeType(extension),
+    };
+  }
+
   async gradeSubmission(
     teacherId: string,
     organizationId: string | null,
@@ -1185,6 +1258,32 @@ export class TeacherService {
       type: 'assignment',
       maxScore: assignment.maxScore.toNumber(),
     };
+  }
+
+  private getSubmissionFileMimeType(extension: string): string {
+    switch (extension) {
+      case '.pdf':
+        return 'application/pdf';
+
+      case '.docx':
+        return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+      case '.jpg':
+      case '.jpeg':
+        return 'image/jpeg';
+
+      case '.png':
+        return 'image/png';
+
+      case '.gif':
+        return 'image/gif';
+
+      case '.webp':
+        return 'image/webp';
+
+      default:
+        return 'application/octet-stream';
+    }
   }
 
   async deleteAssignment(

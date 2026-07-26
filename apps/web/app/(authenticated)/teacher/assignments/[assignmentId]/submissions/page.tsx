@@ -26,7 +26,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ApiError, apiPatch, fetcher } from '@/lib/api';
+import { API_URL, ApiError, apiPatch, fetcher } from '@/lib/api';
 
 function formatDate(value: string) {
   const date = new Date(value);
@@ -430,7 +430,7 @@ export default function TeacherAssignmentSubmissionsPage() {
 
                   {submission.fileUrl ? (
                     <a
-                      href={submission.fileUrl}
+                      href={`${API_URL}${submission.fileUrl}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="mt-2 inline-flex items-center gap-2 text-sm font-medium text-primary-base hover:underline"
