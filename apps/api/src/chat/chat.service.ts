@@ -17,9 +17,13 @@ import type {
   ChatReferencedBook,
 } from '@repo/contracts';
 
-// A Google-maintained alias for the current recommended Flash model, rather
-// than a pinned version string that Google can (and did) deprecate.
-const MODEL = 'gemini-flash-latest';
+// A Google-maintained alias for the current recommended Flash-Lite model,
+// rather than a pinned version string that Google can (and did) deprecate.
+// Using -lite over gemini-flash-latest: the latter now resolves to a
+// "thinking" model with a much stricter free-tier daily quota (20
+// requests/day), which this chat feature blows through in a handful of
+// messages since each tool-calling turn costs 2+ Gemini calls.
+const MODEL = 'gemini-flash-lite-latest';
 const MAX_TOOL_ITERATIONS = 3;
 const MAX_RESULTS = 20;
 const DEFAULT_RESULTS = 10;
