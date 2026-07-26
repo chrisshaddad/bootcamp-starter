@@ -6,9 +6,9 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  StreamableFile,
   UploadedFile,
   UseInterceptors,
-  StreamableFile,
 } from '@nestjs/common';
 import {
   submitAssignmentRequestSchema,
@@ -111,29 +111,6 @@ export class StudentController {
       storage: memoryStorage(),
       limits: {
         fileSize: 10 * 1024 * 1024,
-      },
-      fileFilter: (_request, file, callback) => {
-        const allowedMimeTypes = new Set([
-          'application/pdf',
-          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-          'image/jpeg',
-          'image/png',
-          'image/gif',
-          'image/webp',
-        ]);
-
-        if (!allowedMimeTypes.has(file.mimetype)) {
-          callback(
-            new BadRequestException(
-              'Only PDF, DOCX, JPG, JPEG, PNG, GIF, and WEBP files are allowed',
-            ),
-            false,
-          );
-
-          return;
-        }
-
-        callback(null, true);
       },
     }),
   )

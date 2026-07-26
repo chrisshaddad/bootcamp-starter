@@ -938,6 +938,9 @@ export class StudentService {
 
     return {
       ...submission,
+      fileUrl: submission.fileUrl
+        ? `/student/submissions/${submission.id}/file`
+        : null,
       submittedAt: submission.submittedAt.toISOString(),
     };
   }
