@@ -1,5 +1,6 @@
 'use client';
 
+import { AlertCircle } from 'lucide-react';
 import { useUser } from '@/hooks/use-auth';
 import {
   useDashboardSummary,
@@ -9,6 +10,7 @@ import {
 import { StaffDashboard } from '@/components/dashboard/staff-dashboard';
 import { PatronDashboard } from '@/components/dashboard/patron-dashboard';
 import { SuperAdminDashboard } from '@/components/dashboard/super-admin-dashboard';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { UserResponse } from '@repo/contracts';
 
@@ -25,6 +27,23 @@ function LoadingSkeleton() {
         <Skeleton className="h-64 rounded-xl" />
         <Skeleton className="h-64 rounded-xl" />
       </div>
+    </div>
+  );
+}
+
+// Without this, an error (API down, 500, etc.) leaves `summary` undefined
+// forever and the page gets stuck showing LoadingSkeleton with no way out.
+function ErrorState({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-card py-16 text-center">
+      <AlertCircle className="h-8 w-8 text-error" />
+      <p className="text-sm text-muted-foreground">
+        Couldn&apos;t load your dashboard. The server may be temporarily
+        unavailable.
+      </p>
+      <Button variant="outline" size="sm" onClick={onRetry}>
+        Try again
+      </Button>
     </div>
   );
 }
@@ -47,6 +66,9 @@ export default function DashboardPage() {
 
   const body = (() => {
     if (user.role === 'ORG_ADMIN' || user.role === 'LIBRARIAN') {
+      if (staff.error) {
+        return <ErrorState onRetry={() => staff.mutate()} />;
+      }
       return staff.summary ? (
         <StaffDashboard summary={staff.summary} />
       ) : (
@@ -54,12 +76,8 @@ export default function DashboardPage() {
       );
     }
     if (user.role === 'MEMBER') {
-      if (patron.error?.status === 400) {
-        return (
-          <p className="text-sm text-muted-foreground">
-            Select a library from My Libraries to see your activity here.
-          </p>
-        );
+      if (patron.error) {
+        return <ErrorState onRetry={() => patron.mutate()} />;
       }
       return patron.summary ? (
         <PatronDashboard summary={patron.summary} />
@@ -68,6 +86,9 @@ export default function DashboardPage() {
       );
     }
     if (user.role === 'SUPER_ADMIN') {
+      if (superAdmin.error) {
+        return <ErrorState onRetry={() => superAdmin.mutate()} />;
+      }
       return superAdmin.summary ? (
         <SuperAdminDashboard summary={superAdmin.summary} />
       ) : (

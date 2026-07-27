@@ -227,6 +227,117 @@ async function seedTechCorpMemberHistory(
   return { rentals, reservations };
 }
 
+// TechCorp's org-wide staff views (Overdue, Reservations) and the dashboard's
+// 14-day trend both need more than one member's activity to look real. This
+// backs the "TC-EXT-*" bulk catalog's on-loan copies with real rentals spread
+// across the org's other members (not just TC-0001), plus a batch of
+// reservations against the same bulk books.
+const BULK_ACTIVE_COUNT = 16; // remaining "TC-EXT-*" on-loan copies go OVERDUE
+const BULK_ORG_RESERVATION_COUNT = 10;
+
+async function seedTechCorpOrgWideActivity(
+  prisma: PrismaClient,
+): Promise<{ rentals: number; reservations: number }> {
+  const organization = await prisma.organization.findUnique({
+    where: { slug: 'techcorp-solutions' },
+  });
+  if (!organization) return { rentals: 0, reservations: 0 };
+
+  const [onLoanCopies, members, staff, bulkBooks] = await Promise.all([
+    prisma.bookCopy.findMany({
+      where: {
+        organizationId: organization.id,
+        barcode: { startsWith: 'TC-EXT-' },
+        status: 'ON_LOAN',
+      },
+      orderBy: { barcode: 'asc' },
+    }),
+    prisma.libraryMember.findMany({
+      where: { organizationId: organization.id },
+      orderBy: { libraryCardNumber: 'asc' },
+    }),
+    prisma.user.findFirst({
+      where: {
+        organizationId: organization.id,
+        email: 'librarian@techcorp.example.com',
+      },
+    }),
+    // The bulk catalog's books, identified by their "TC-EXT-*" copies
+    // (publisherId is no longer a reliable signal now that bulk books have
+    // real publishers too).
+    prisma.book.findMany({
+      where: {
+        organizationId: organization.id,
+        copies: { some: { barcode: { startsWith: 'TC-EXT-' } } },
+      },
+      orderBy: { title: 'asc' },
+    }),
+  ]);
+
+  let rentals = 0;
+  let reservations = 0;
+
+  if (onLoanCopies.length > 0 && members.length > 0 && staff) {
+    for (let i = 0; i < onLoanCopies.length; i++) {
+      const member = members[i % members.length];
+      const active = i < BULK_ACTIVE_COUNT;
+      const rentedAt = active
+        ? daysFromNow(-(1 + (i % 10)))
+        : daysFromNow(-(20 + (i % 15)));
+      const dueDate = active
+        ? daysFromNow(14 - (i % 10))
+        : daysFromNow(-(6 + (i % 10)));
+
+      await prisma.rental.create({
+        data: {
+          organizationId: organization.id,
+          bookCopyId: onLoanCopies[i].id,
+          memberId: member.id,
+          staffId: staff.id,
+          rentedAt,
+          dueDate,
+          status: active ? 'ACTIVE' : 'OVERDUE',
+          fineAmount: active ? '0.00' : '2.50',
+          finePaid: false,
+        },
+      });
+      rentals += 1;
+    }
+  }
+
+  if (bulkBooks.length > 0 && members.length > 0) {
+    for (let i = 0; i < BULK_ORG_RESERVATION_COUNT; i++) {
+      const book = bulkBooks[i % bulkBooks.length];
+      // Offset from the members used for rentals above so the same person
+      // isn't always both renting and reserving in this seed.
+      const member = members[(i + BULK_ACTIVE_COUNT) % members.length];
+      const status =
+        BULK_RESERVATION_STATUS_CYCLE[i % BULK_RESERVATION_STATUS_CYCLE.length];
+      const reservedAt = daysFromNow(-(1 + i * 2));
+
+      await prisma.reservation.create({
+        data: {
+          organizationId: organization.id,
+          bookId: book.id,
+          memberId: member.id,
+          reservedAt,
+          expiresAt: daysFromNow(-(1 + i * 2) + 7),
+          status,
+          notifiedAt:
+            status === 'READY_FOR_PICKUP' || status === 'FULFILLED'
+              ? reservedAt
+              : undefined,
+          fulfilledAt: status === 'FULFILLED' ? reservedAt : undefined,
+          cancelledAt: status === 'CANCELLED' ? reservedAt : undefined,
+        },
+      });
+      reservations += 1;
+    }
+  }
+
+  return { rentals, reservations };
+}
+
 export async function seedCirculation(prisma: PrismaClient) {
   console.log('Seeding circulation...');
 
@@ -356,6 +467,15 @@ export async function seedCirculation(prisma: PrismaClient) {
   if (bulk.rentals || bulk.reservations) {
     console.log(
       `  Added TC-0001 history volume: ${bulk.rentals} rentals, ${bulk.reservations} reservations`,
+    );
+  }
+
+  const orgWide = await seedTechCorpOrgWideActivity(prisma);
+  seededRentals += orgWide.rentals;
+  seededReservations += orgWide.reservations;
+  if (orgWide.rentals || orgWide.reservations) {
+    console.log(
+      `  Added TechCorp org-wide activity: ${orgWide.rentals} rentals, ${orgWide.reservations} reservations`,
     );
   }
 

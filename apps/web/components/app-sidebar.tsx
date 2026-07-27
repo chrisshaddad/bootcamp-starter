@@ -140,6 +140,7 @@ const patronNavGroups: NavGroup[] = [
   {
     label: 'Main',
     items: [
+      { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
       { title: 'Discover', url: '/discover', icon: Compass },
       { title: 'My Libraries', url: '/my-libraries', icon: Library },
       { title: 'Cart', url: '/cart', icon: ShoppingCart },

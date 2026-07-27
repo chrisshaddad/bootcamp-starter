@@ -14,26 +14,26 @@ import type {
  */
 export function useDashboardSummary() {
   const { isStaff } = useCurrentOrg();
-  const { data, error, isLoading } = useSWR<DashboardSummaryResponse, ApiError>(
-    isStaff ? '/dashboard/summary' : null,
-  );
+  const { data, error, isLoading, mutate } = useSWR<
+    DashboardSummaryResponse,
+    ApiError
+  >(isStaff ? '/dashboard/summary' : null);
 
-  return { summary: data, isLoading, error };
+  return { summary: data, isLoading, error, mutate };
 }
 
 /**
- * Patron (MEMBER) dashboard summary, scoped to their membership in the
- * active organization.
+ * Patron (MEMBER) dashboard summary - aggregated across every library the
+ * patron holds a membership at, not just the session's active one.
  */
 export function usePortalDashboardSummary() {
-  const { organizationId, role } = useCurrentOrg();
-  const enabled = role === 'MEMBER' && !!organizationId;
-  const { data, error, isLoading } = useSWR<
+  const { role } = useCurrentOrg();
+  const { data, error, isLoading, mutate } = useSWR<
     PortalDashboardSummaryResponse,
     ApiError
-  >(enabled ? '/portal/dashboard/summary' : null);
+  >(role === 'MEMBER' ? '/portal/dashboard/summary' : null);
 
-  return { summary: data, isLoading, error };
+  return { summary: data, isLoading, error, mutate };
 }
 
 /**
@@ -41,10 +41,10 @@ export function usePortalDashboardSummary() {
  */
 export function useOrganizationSummary() {
   const { role } = useCurrentOrg();
-  const { data, error, isLoading } = useSWR<
+  const { data, error, isLoading, mutate } = useSWR<
     OrganizationSummaryResponse,
     ApiError
   >(role === 'SUPER_ADMIN' ? '/organizations/summary' : null);
 
-  return { summary: data, isLoading, error };
+  return { summary: data, isLoading, error, mutate };
 }
