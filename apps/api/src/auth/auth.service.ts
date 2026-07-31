@@ -508,6 +508,7 @@ export class AuthService {
     }
 
     const updatePayload: {
+      hasSeenDashboardTour?: boolean;
       developerProfile?: {
         update: {
           displayName?: string;
@@ -537,6 +538,10 @@ export class AuthService {
         };
       };
     } = {};
+
+    if (data.hasSeenDashboardTour !== undefined) {
+      updatePayload.hasSeenDashboardTour = data.hasSeenDashboardTour;
+    }
 
     if (user.accountType === 'DEVELOPER') {
       updatePayload.developerProfile = {
@@ -580,6 +585,7 @@ export class AuthService {
       email: updatedUser.email,
       accountType: updatedUser.accountType,
       isConfirmed: updatedUser.isConfirmed,
+      hasSeenDashboardTour: updatedUser.hasSeenDashboardTour,
       developerProfile: updatedUser.developerProfile
         ? {
             id: updatedUser.developerProfile.id,

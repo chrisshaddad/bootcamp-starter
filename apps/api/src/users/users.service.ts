@@ -19,13 +19,16 @@ import {
   VerificationStatus,
 } from '@repo/db';
 import { normalizeMediaUrl } from '../common/utils/normalize-media-url';
+
 @Injectable()
 export class UsersService {
   constructor(private readonly prisma: DatabaseService) {}
+
   private getSafeSelect() {
     return {
       id: true,
       accountType: true,
+      hasSeenDashboardTour: true,
       developerProfile: {
         select: {
           id: true,
@@ -52,6 +55,7 @@ export class UsersService {
       },
     };
   }
+
   async exploreUsers(query: UsersExploreQuery) {
     const skip = (query.page - 1) * query.limit;
     const take = query.limit;
@@ -143,6 +147,7 @@ export class UsersService {
       },
     };
   }
+
   async getUserById(id: string) {
     const user = await this.prisma.user.findUnique({
       where: { id },
@@ -155,6 +160,7 @@ export class UsersService {
 
     return user;
   }
+
   async getUserBySlug(slug: string) {
     const user = await this.prisma.user.findFirst({
       where: { developerProfile: { publicSlug: slug } },
@@ -308,6 +314,15 @@ export class UsersService {
     }
 
     try {
+      if (data.hasSeenDashboardTour !== undefined) {
+        await this.prisma.user.update({
+          where: { id: userId },
+          data: {
+            hasSeenDashboardTour: data.hasSeenDashboardTour,
+          },
+        });
+      }
+
       if (user.accountType === 'DEVELOPER' && user.developerProfile) {
         await this.prisma.developerProfile.update({
           where: { id: user.developerProfile.id },

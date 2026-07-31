@@ -6,6 +6,8 @@ const optionalUrlSchema = z
   .nullish();
 
 export const updateProfileRequestSchema = z.object({
+  hasSeenDashboardTour: z.boolean().optional(),
+
   // Developer Profile fields
   displayName: z.string().min(1, 'Display name is required').optional(),
   publicSlug: z

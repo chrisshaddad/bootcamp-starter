@@ -36,6 +36,7 @@ export const userResponseSchema = z.object({
   email: z.string().email(),
   accountType: accountTypeSchema,
   isConfirmed: z.boolean(),
+  hasSeenDashboardTour: z.boolean().optional(),
   developerProfile: developerProfileSchema.nullable().optional(),
   hiringProfile: hiringProfileSchema.nullable().optional(),
 });
