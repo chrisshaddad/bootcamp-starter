@@ -15,7 +15,10 @@ import {
 import type { Response } from 'express';
 import { MembersService } from './members.service';
 import { Roles, CurrentUser, Public } from '../auth/decorators';
-import { SESSION_COOKIE_NAME } from '../auth/guards/auth.guard';
+import {
+  SESSION_COOKIE_NAME,
+  SESSION_COOKIE_SET_OPTIONS,
+} from '../auth/session-cookie';
 import { ZodValidationPipe } from '../common/pipes';
 import type { User } from '@repo/db';
 import {
@@ -35,8 +38,6 @@ import {
   type MemberListResponse,
   type MemberUpdateRequest,
 } from '@repo/contracts';
-
-const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 @Controller('members')
 export class MembersController {
@@ -74,13 +75,7 @@ export class MembersController {
       body.token,
     );
 
-    response.cookie(SESSION_COOKIE_NAME, sessionId, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: SESSION_MAX_AGE_MS,
-      path: '/',
-    });
+    response.cookie(SESSION_COOKIE_NAME, sessionId, SESSION_COOKIE_SET_OPTIONS);
 
     return { user };
   }

@@ -39,6 +39,12 @@ export function useUser(options: UseUserOptions = {}): UseUserReturn {
   const pathname = usePathname();
   const { data, error, isLoading, mutate } = useSWR<UserResponse, ApiError>(
     '/auth/me',
+    {
+      // Service startup can briefly make the API unavailable in development.
+      // Retry transient failures, but not a confirmed invalid session.
+      shouldRetryOnError: (requestError) => requestError.status !== 401,
+      revalidateOnFocus: true,
+    },
   );
 
   // Redirect to login if session is invalid (401 Unauthorized)

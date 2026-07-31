@@ -12,10 +12,12 @@ import {
 import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import { CurrentUser, Public } from './decorators';
+import type { AuthenticatedRequest } from './guards/auth.guard';
 import {
   SESSION_COOKIE_NAME,
-  type AuthenticatedRequest,
-} from './guards/auth.guard';
+  SESSION_COOKIE_OPTIONS,
+  SESSION_COOKIE_SET_OPTIONS,
+} from './session-cookie';
 import {
   magicLinkRequestSchema,
   magicLinkVerifyRequestSchema,
@@ -26,8 +28,6 @@ import {
 import type { User, MemberRole } from '@repo/db';
 import { ZodValidationPipe } from '../common/pipes';
 import { PrismaService } from '../database/prisma.service';
-
-const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 @Controller('auth')
 export class AuthController {
@@ -57,13 +57,7 @@ export class AuthController {
     );
 
     // Set session cookie
-    response.cookie(SESSION_COOKIE_NAME, sessionId, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: SESSION_MAX_AGE_MS,
-      path: '/',
-    });
+    response.cookie(SESSION_COOKIE_NAME, sessionId, SESSION_COOKIE_SET_OPTIONS);
 
     return { user };
   }
@@ -81,12 +75,7 @@ export class AuthController {
     }
 
     // Clear session cookie
-    response.clearCookie(SESSION_COOKIE_NAME, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-    });
+    response.clearCookie(SESSION_COOKIE_NAME, SESSION_COOKIE_OPTIONS);
 
     return { success: true };
   }
