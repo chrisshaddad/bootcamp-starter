@@ -43,6 +43,7 @@ const ORG_ADMINS: Prisma.UserCreateManyInput[] = [
 const FEATURED_ATTENDEES: Prisma.UserCreateManyInput[] = [
   { email: 'member@techcorp.example.com', name: 'Alex Rivera' },
   { email: 'member@greenenergy.example.com', name: 'Jordan Lee' },
+  { email: 'member@datasync.example.com', name: 'Casey Quinn' },
   { email: 'presenter@techcorp.example.com', name: 'Alex Lee' },
   { email: 'presenter2@techcorp.example.com', name: 'Priya Nair' },
   { email: 'presenter@greenenergy.example.com', name: 'Sam Ortiz' },
@@ -84,6 +85,17 @@ const GREEN_ATTENDEE_NAMES = [
   ['Drew', 'Keller'],
 ] as const;
 
+const DATASYNC_ATTENDEE_NAMES = [
+  ['Riley', 'Moss'],
+  ['Quinn', 'Hart'],
+  ['Sage', 'Winter'],
+  ['Morgan', 'Lee'],
+  ['Avery', 'Cross'],
+  ['Jamie', 'Frost'],
+  ['Taylor', 'Blake'],
+  ['Cameron', 'Voss'],
+] as const;
+
 function attendeeEmail(first: string, last: string, domain: string): string {
   return `${first.toLowerCase()}.${last.toLowerCase()}@${domain}`;
 }
@@ -99,6 +111,10 @@ const GENERATED_ATTENDEES: Prisma.UserCreateManyInput[] = [
   })),
   ...GREEN_ATTENDEE_NAMES.map(([first, last]) => ({
     email: attendeeEmail(first, last, 'greenenergy.example.com'),
+    name: attendeeName(first, last),
+  })),
+  ...DATASYNC_ATTENDEE_NAMES.map(([first, last]) => ({
+    email: attendeeEmail(first, last, 'datasync.example.com'),
     name: attendeeName(first, last),
   })),
 ];
@@ -124,6 +140,13 @@ export const GREEN_ATTENDEE_EMAILS = [
     attendeeEmail(first, last, 'greenenergy.example.com'),
   ),
   'presenter@greenenergy.example.com',
+];
+
+export const DATASYNC_ATTENDEE_EMAILS = [
+  'member@datasync.example.com',
+  ...DATASYNC_ATTENDEE_NAMES.map(([first, last]) =>
+    attendeeEmail(first, last, 'datasync.example.com'),
+  ),
 ];
 
 async function upsertUsers(
@@ -194,5 +217,17 @@ export const DEMO_ORG_USER_LINKS: {
   ).map((u) => ({
     email: u.email,
     organizationName: 'Green Energy Partners',
+  })),
+  ...FEATURED_ATTENDEES.filter((u) => u.email.includes('datasync')).map(
+    (u) => ({
+      email: u.email,
+      organizationName: 'DataSync Analytics',
+    }),
+  ),
+  ...GENERATED_ATTENDEES.filter((u) =>
+    u.email.endsWith('@datasync.example.com'),
+  ).map((u) => ({
+    email: u.email,
+    organizationName: 'DataSync Analytics',
   })),
 ];

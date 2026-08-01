@@ -4,7 +4,11 @@ import {
   AttendanceStatus,
   EventStatus,
 } from '../../src/generated/prisma/client';
-import { GREEN_ATTENDEE_EMAILS, TECHCORP_ATTENDEE_EMAILS } from './seedUsers';
+import {
+  DATASYNC_ATTENDEE_EMAILS,
+  GREEN_ATTENDEE_EMAILS,
+  TECHCORP_ATTENDEE_EMAILS,
+} from './seedUsers';
 
 interface OrgRef {
   organizationName: string;
@@ -524,6 +528,20 @@ function rotateEmails(
   return result;
 }
 
+function attendeeEmailsForOrg(organizationName: string): string[] {
+  switch (organizationName) {
+    case TECHCORP.organizationName:
+      return TECHCORP_ATTENDEE_EMAILS;
+    case GREEN.organizationName:
+      return GREEN_ATTENDEE_EMAILS;
+    case DATASYNC.organizationName:
+      return DATASYNC_ATTENDEE_EMAILS;
+    default:
+      return [];
+  }
+}
+
+/** Registers attendees for every seeded event (varies pool rotation and count). */
 function buildAttendees(): AttendeeSeed[] {
   const pastStatuses = [
     AttendanceStatus.ATTENDED,
@@ -532,100 +550,30 @@ function buildAttendees(): AttendeeSeed[] {
     AttendanceStatus.SKIPPED,
     AttendanceStatus.PENDING,
   ];
-
-  const specs: Array<{
-    eventSeedKey: string;
-    emails: string[];
-    start: number;
-    count: number;
-    upcoming?: boolean;
-  }> = [
-    {
-      eventSeedKey: 'techcorp-onboarding-session',
-      emails: TECHCORP_ATTENDEE_EMAILS,
-      start: 0,
-      count: 12,
-    },
-    {
-      eventSeedKey: 'techcorp-q1-planning',
-      emails: TECHCORP_ATTENDEE_EMAILS,
-      start: 3,
-      count: 14,
-    },
-    {
-      eventSeedKey: 'techcorp-retro-feb',
-      emails: TECHCORP_ATTENDEE_EMAILS,
-      start: 6,
-      count: 10,
-    },
-    {
-      eventSeedKey: 'techcorp-partner-meetup',
-      emails: TECHCORP_ATTENDEE_EMAILS,
-      start: 1,
-      count: 8,
-    },
-    {
-      eventSeedKey: 'techcorp-leadership-workshop',
-      emails: TECHCORP_ATTENDEE_EMAILS,
-      start: 0,
-      count: 9,
-      upcoming: true,
-    },
-    {
-      eventSeedKey: 'techcorp-team-sync-meeting',
-      emails: TECHCORP_ATTENDEE_EMAILS,
-      start: 4,
-      count: 11,
-      upcoming: true,
-    },
-    {
-      eventSeedKey: 'techcorp-product-demo-day',
-      emails: TECHCORP_ATTENDEE_EMAILS,
-      start: 2,
-      count: 15,
-      upcoming: true,
-    },
-    {
-      eventSeedKey: 'green-energy-sustainability-camp',
-      emails: GREEN_ATTENDEE_EMAILS,
-      start: 0,
-      count: 10,
-    },
-    {
-      eventSeedKey: 'green-energy-grid-workshop',
-      emails: GREEN_ATTENDEE_EMAILS,
-      start: 2,
-      count: 8,
-    },
-    {
-      eventSeedKey: 'green-energy-renewable-seminar',
-      emails: GREEN_ATTENDEE_EMAILS,
-      start: 1,
-      count: 9,
-      upcoming: true,
-    },
-    {
-      eventSeedKey: 'green-energy-field-visit',
-      emails: GREEN_ATTENDEE_EMAILS,
-      start: 3,
-      count: 7,
-      upcoming: true,
-    },
-  ];
-
+  const now = new Date();
   const attendees: AttendeeSeed[] = [];
-  for (const spec of specs) {
-    const emails = rotateEmails(spec.emails, spec.start, spec.count);
-    emails.forEach((userEmail, index) => {
+
+  EVENTS.forEach((event, eventIndex) => {
+    const emails = attendeeEmailsForOrg(event.organizationName);
+    if (emails.length === 0) {
+      return;
+    }
+
+    const count = Math.min(emails.length, 5 + (eventIndex % 8));
+    const start = eventIndex % emails.length;
+    const isUpcoming = event.startsAt.getTime() > now.getTime();
+
+    rotateEmails(emails, start, count).forEach((userEmail, index) => {
       attendees.push({
-        eventSeedKey: spec.eventSeedKey,
+        eventSeedKey: event.seedKey,
         userEmail,
-        attendanceStatus: spec.upcoming
+        attendanceStatus: isUpcoming
           ? AttendanceStatus.PENDING
           : pastStatuses[index % pastStatuses.length],
       });
     });
-  }
+  });
+
   return attendees;
 }
 
