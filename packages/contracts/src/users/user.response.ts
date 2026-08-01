@@ -28,6 +28,7 @@ export const hiringProfileSchema = z.object({
     'FREELANCE_CLIENT',
   ]),
   jobTitle: z.string().nullable().optional(),
+  linkedinUrl: z.string().nullable().optional(),
   organizationWebsiteUrl: z.string().nullable().optional(),
 });
 

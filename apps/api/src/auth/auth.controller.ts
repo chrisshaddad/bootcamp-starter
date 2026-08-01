@@ -102,6 +102,7 @@ interface PopulatedUser {
     organizationName: string;
     organizationType: 'COMPANY' | 'AGENCY' | 'INDIVIDUAL' | 'FREELANCE_CLIENT';
     jobTitle?: string | null;
+    linkedinUrl?: string | null;
     organizationWebsiteUrl?: string | null;
   } | null;
 }
@@ -308,6 +309,7 @@ export class AuthController {
             organizationName: user.hiringProfile.organizationName,
             organizationType: user.hiringProfile.organizationType,
             jobTitle: user.hiringProfile.jobTitle ?? null,
+            linkedinUrl: user.hiringProfile.linkedinUrl ?? null,
             organizationWebsiteUrl:
               user.hiringProfile.organizationWebsiteUrl ?? null,
           }
@@ -336,14 +338,10 @@ export class AuthController {
       {
         storage: diskStorage({
           destination: PROFILE_PICTURES_DIR,
-          // No extension yet — the real type is only known once we've inspected
-          // the file's actual bytes below, since mimetype/originalname are
-          // client-supplied and can be spoofed.
           filename: (_req, _file, callback) => callback(null, randomUUID()),
         }),
         limits: { fileSize: PROFILE_PICTURE_MAX_SIZE_BYTES },
         fileFilter: (_req, file, callback) => {
-          // Cheap early rejection only — not trusted for the actual save below.
           if (
             !(PROFILE_PICTURE_ALLOWED_MIME_TYPES as readonly string[]).includes(
               file.mimetype,

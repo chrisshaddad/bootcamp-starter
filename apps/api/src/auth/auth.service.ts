@@ -442,9 +442,6 @@ export class AuthService {
       },
     });
 
-    // Resetting the password is the primary account-recovery path, so any
-    // session from before the reset (including one held by an attacker who
-    // triggered the compromise) must not survive it.
     await this.sessionService.deleteAllUserSessions(magicLink.userId);
     const sessionId = await this.sessionService.createSession(magicLink.userId);
 
@@ -534,6 +531,7 @@ export class AuthService {
             | 'INDIVIDUAL'
             | 'FREELANCE_CLIENT';
           jobTitle?: string | null;
+          linkedinUrl?: string | null;
           organizationWebsiteUrl?: string | null;
         };
       };
@@ -566,6 +564,7 @@ export class AuthService {
           organizationName: data.organizationName,
           organizationType: data.organizationType,
           jobTitle: data.jobTitle,
+          linkedinUrl: data.linkedinUrl,
           organizationWebsiteUrl: data.organizationWebsiteUrl,
         },
       };
@@ -627,6 +626,9 @@ export class AuthService {
             organizationName: updatedUser.hiringProfile.organizationName,
             organizationType: updatedUser.hiringProfile.organizationType,
             jobTitle: updatedUser.hiringProfile.jobTitle ?? null,
+            linkedinUrl:
+              (updatedUser.hiringProfile as { linkedinUrl?: string | null })
+                .linkedinUrl ?? null,
             organizationWebsiteUrl:
               (
                 updatedUser.hiringProfile as {
