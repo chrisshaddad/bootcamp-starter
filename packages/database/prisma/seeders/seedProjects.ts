@@ -1,228 +1,249 @@
 import { PrismaClient } from '../../src/generated/prisma/client';
+import {
+  legacySeedRepositoryIds,
+  projectCatalog,
+  technologySeeds,
+} from './projectCatalog';
+
+const DAY_IN_MS = 24 * 60 * 60 * 1000;
+
+function daysAgo(days: number): Date {
+  return new Date(Date.now() - days * DAY_IN_MS);
+}
 
 export async function seedProjects(prisma: PrismaClient) {
-  console.log('Seeding technologies, repositories, and projects...');
+  console.log('Seeding technologies, repositories, and showcase projects...');
 
-  // 1. Seed Technologies
-  const technologies = [
-    { name: 'TypeScript', slug: 'typescript', category: 'LANGUAGE' as const },
-    { name: 'Node.js', slug: 'nodejs', category: 'LANGUAGE' as const },
-    { name: 'NestJS', slug: 'nestjs', category: 'FRAMEWORK' as const },
-    { name: 'Next.js', slug: 'nextjs', category: 'FRAMEWORK' as const },
-    { name: 'PostgreSQL', slug: 'postgresql', category: 'DATABASE' as const },
-    { name: 'Redis', slug: 'redis', category: 'DATABASE' as const },
-    { name: 'Docker', slug: 'docker', category: 'DEVOPS' as const },
-  ];
-
-  const techMap: Record<string, string> = {};
-
-  for (const tech of technologies) {
-    const createdTech = await prisma.technology.upsert({
-      where: { slug: tech.slug },
-      update: {},
-      create: tech,
-    });
-    techMap[tech.slug] = createdTech.id;
-  }
-
-  // 2. Fetch a specific developer user to create projects
-  const devUser = await prisma.user.findUnique({
-    where: { email: 'dev.sarah@example.com' },
+  // Remove the original fake repositories so rerunning this upgraded seed does
+  // not leave the two placeholder projects beside the real demo catalog.
+  await prisma.repository.deleteMany({
+    where: { githubRepoId: { in: legacySeedRepositoryIds } },
   });
 
-  if (!devUser) {
-    throw new Error(
-      'No developer found with email dev.sarah@example.com. Seed users first.',
-    );
-  }
-  const devProfile = await prisma.developerProfile.findUnique({
-    where: { userId: devUser.id },
-  });
-  if (!devProfile?.githubUserId || !devProfile.githubUsername) {
-    throw new Error('Seed developer must have a GitHub identity.');
-  }
+  const technologyIds = new Map<string, string>();
 
-  // 3. Seed Repository and Project
-  const reposAndProjects = [
-    {
-      githubRepoId: BigInt(83921102),
-      fullName: 'sarahchen/enterprise-nest-api',
-      ownerLogin: 'sarahchen',
-      repoName: 'enterprise-nest-api',
-      htmlUrl: 'https://github.com/sarahchen/enterprise-nest-api',
-      defaultBranch: 'main',
-      title: 'Enterprise NestJS Boilerplate',
-      slug: 'enterprise-nestjs-boilerplate',
-      shortDescription:
-        'A production-ready NestJS API boilerplate with advanced caching and background workers.',
-      fullDescription:
-        'This project demonstrates industry-grade patterns for Node.js, leveraging PostgreSQL with Prisma, Redis with BullMQ, and Docker containerization. It contains robust logging and modular architecture principles.',
-      deploymentUrl: 'https://api-demo.sarahchen.dev',
-      status: 'PUBLISHED' as const,
-      techSlugs: [
-        'typescript',
-        'nodejs',
-        'nestjs',
-        'postgresql',
-        'redis',
-        'docker',
-      ],
-    },
-    {
-      githubRepoId: BigInt(94301292),
-      fullName: 'sarahchen/tailwindcss-v4-playground',
-      ownerLogin: 'sarahchen',
-      repoName: 'tailwindcss-v4-playground',
-      htmlUrl: 'https://github.com/sarahchen/tailwindcss-v4-playground',
-      defaultBranch: 'main',
-      title: 'Tailwind v4 Sandbox',
-      slug: 'tailwindcss-v4-sandbox',
-      shortDescription:
-        'An experimental Next.js layout showcasing Tailwind CSS v4 features.',
-      fullDescription:
-        'Explore the new compilation engine, custom utilities, and CSS-first configuration features of Tailwind v4 inside a modern Next.js 16 App Router interface.',
-      deploymentUrl: 'https://tailwind4.sarahchen.dev',
-      status: 'PUBLISHED' as const,
-      techSlugs: ['typescript', 'nextjs'],
-    },
-  ];
-
-  for (const item of reposAndProjects) {
-    // Upsert Repository
-    const repo = await prisma.repository.upsert({
-      where: { githubRepoId: item.githubRepoId },
+  for (const technology of technologySeeds) {
+    const savedTechnology = await prisma.technology.upsert({
+      where: { slug: technology.slug },
       update: {
-        ownerGithubUserId: devProfile.githubUserId,
-        ownerType: 'User',
-        isFork: false,
+        name: technology.name,
+        category: technology.category,
       },
-      create: {
-        githubRepoId: item.githubRepoId,
-        fullName: item.fullName,
-        ownerLogin: item.ownerLogin,
-        ownerGithubUserId: devProfile.githubUserId,
-        ownerType: 'User',
-        repoName: item.repoName,
-        htmlUrl: item.htmlUrl,
-        defaultBranch: item.defaultBranch,
+      create: technology,
+    });
+    technologyIds.set(technology.slug, savedTechnology.id);
+  }
+
+  const developerEmails = [
+    ...new Set(
+      projectCatalog.flatMap((item) => [
+        item.ownerEmail,
+        ...(item.collaborators?.map((collaborator) => collaborator.email) ??
+          []),
+      ]),
+    ),
+  ];
+  const developers = await prisma.user.findMany({
+    where: { email: { in: developerEmails } },
+    include: { developerProfile: true },
+  });
+  const developersByEmail = new Map(
+    developers.map((developer) => [developer.email, developer]),
+  );
+
+  for (const item of projectCatalog) {
+    const owner = developersByEmail.get(item.ownerEmail);
+    if (!owner?.developerProfile?.githubUserId) {
+      throw new Error(
+        `Seed developer ${item.ownerEmail} must have a GitHub identity.`,
+      );
+    }
+
+    // The catalog points to real public repositories. Demo ownership is
+    // intentionally assigned to the seeded developers for portfolio content;
+    // live GitHub import and collaborator verification still require OAuth.
+    const repository = await prisma.repository.upsert({
+      where: { githubRepoId: item.repository.githubRepoId },
+      update: {
+        fullName: item.repository.fullName,
+        ownerLogin: item.repository.ownerLogin,
+        ownerGithubUserId: item.repository.ownerGithubUserId,
+        ownerType: item.repository.ownerType,
+        repoName: item.repository.repoName,
+        htmlUrl: item.repository.htmlUrl,
+        isFork: false,
+        defaultBranch: item.repository.defaultBranch,
         visibility: 'PUBLIC',
+        lastSyncedAt: new Date(),
+      },
+      create: {
+        ...item.repository,
         isFork: false,
+        visibility: 'PUBLIC',
+        lastSyncedAt: new Date(),
       },
     });
 
-    // Upsert Project
+    const publishedAt = daysAgo(item.publishedDaysAgo);
     const project = await prisma.project.upsert({
-      where: { repositoryId: repo.id },
+      where: { repositoryId: repository.id },
       update: {
-        createdByUserId: devUser.id,
+        createdByUserId: owner.id,
         title: item.title,
         slug: item.slug,
+        logoUrl: item.logoUrl,
         shortDescription: item.shortDescription,
         fullDescription: item.fullDescription,
         deploymentUrl: item.deploymentUrl,
-        status: item.status,
-        githubOwnershipVerifiedAt: new Date(),
+        status: 'PUBLISHED',
+        githubOwnershipVerifiedAt: publishedAt,
+        publishedAt,
+        moderatedAt: null,
+        moderationReason: null,
+        moderatedByUserId: null,
       },
       create: {
-        repositoryId: repo.id,
-        createdByUserId: devUser.id,
+        repositoryId: repository.id,
+        createdByUserId: owner.id,
         title: item.title,
         slug: item.slug,
+        logoUrl: item.logoUrl,
         shortDescription: item.shortDescription,
         fullDescription: item.fullDescription,
         deploymentUrl: item.deploymentUrl,
-        status: item.status,
-        githubOwnershipVerifiedAt: new Date(),
+        status: 'PUBLISHED',
+        githubOwnershipVerifiedAt: publishedAt,
+        createdAt: daysAgo(item.publishedDaysAgo + 3),
+        publishedAt,
       },
     });
 
     await prisma.projectMember.upsert({
       where: {
-        projectId_userId: { projectId: project.id, userId: devUser.id },
+        projectId_userId: { projectId: project.id, userId: owner.id },
       },
       update: {
-        githubUserId: devProfile.githubUserId,
-        githubUsername: devProfile.githubUsername,
+        githubUserId: owner.developerProfile.githubUserId,
+        githubUsername: owner.developerProfile.githubUsername,
         role: 'OWNER',
+        contributionRoleLabel: 'Project owner',
+        contributionSummary:
+          'Led product direction, architecture, and delivery for the project.',
         verificationStatus: 'VERIFIED',
         verificationSource: 'GITHUB_OWNER',
-        verifiedAt: new Date(),
+        verifiedAt: publishedAt,
+        addedByUserId: owner.id,
       },
       create: {
         projectId: project.id,
-        userId: devUser.id,
-        githubUserId: devProfile.githubUserId,
-        githubUsername: devProfile.githubUsername,
+        userId: owner.id,
+        githubUserId: owner.developerProfile.githubUserId,
+        githubUsername: owner.developerProfile.githubUsername,
         role: 'OWNER',
+        contributionRoleLabel: 'Project owner',
+        contributionSummary:
+          'Led product direction, architecture, and delivery for the project.',
         verificationStatus: 'VERIFIED',
         verificationSource: 'GITHUB_OWNER',
-        verifiedAt: new Date(),
-        addedByUserId: devUser.id,
+        verifiedAt: publishedAt,
+        addedByUserId: owner.id,
       },
     });
 
-    // Link Technologies (Idempotent cleanup & recreate)
+    for (const collaboratorSeed of item.collaborators ?? []) {
+      const collaborator = developersByEmail.get(collaboratorSeed.email);
+      if (!collaborator?.developerProfile?.githubUserId) {
+        throw new Error(
+          `Seed collaborator ${collaboratorSeed.email} must have a GitHub identity.`,
+        );
+      }
+
+      await prisma.projectMember.upsert({
+        where: {
+          projectId_userId: {
+            projectId: project.id,
+            userId: collaborator.id,
+          },
+        },
+        update: {
+          githubUserId: collaborator.developerProfile.githubUserId,
+          githubUsername: collaborator.developerProfile.githubUsername,
+          role: collaboratorSeed.role,
+          contributionRoleLabel: collaboratorSeed.contributionRoleLabel,
+          contributionSummary: collaboratorSeed.contributionSummary,
+          githubPermission:
+            collaboratorSeed.role === 'EDITOR' ? 'push' : 'pull',
+          githubRoleName: collaboratorSeed.role === 'EDITOR' ? 'write' : 'read',
+          verificationStatus: 'VERIFIED',
+          verificationSource: 'GITHUB_COLLABORATOR',
+          verifiedAt: publishedAt,
+          addedByUserId: owner.id,
+        },
+        create: {
+          projectId: project.id,
+          userId: collaborator.id,
+          githubUserId: collaborator.developerProfile.githubUserId,
+          githubUsername: collaborator.developerProfile.githubUsername,
+          role: collaboratorSeed.role,
+          contributionRoleLabel: collaboratorSeed.contributionRoleLabel,
+          contributionSummary: collaboratorSeed.contributionSummary,
+          githubPermission:
+            collaboratorSeed.role === 'EDITOR' ? 'push' : 'pull',
+          githubRoleName: collaboratorSeed.role === 'EDITOR' ? 'write' : 'read',
+          verificationStatus: 'VERIFIED',
+          verificationSource: 'GITHUB_COLLABORATOR',
+          verifiedAt: publishedAt,
+          addedByUserId: owner.id,
+        },
+      });
+    }
+
     await prisma.projectTechnology.deleteMany({
       where: { projectId: project.id },
     });
+    await prisma.projectTechnology.createMany({
+      data: item.techSlugs.map((slug, index) => {
+        const technologyId = technologyIds.get(slug);
+        if (!technologyId) {
+          throw new Error(
+            `Unknown technology slug "${slug}" for ${item.title}.`,
+          );
+        }
+        return {
+          projectId: project.id,
+          technologyId,
+          source: 'SCANNER' as const,
+          evidence: `Detected from ${item.repository.fullName} repository metadata and source files.`,
+          detectedAt: publishedAt,
+          isPrimary: index < 4,
+          sortOrder: index,
+        };
+      }),
+    });
 
-    for (const slug of item.techSlugs) {
-      const techId = techMap[slug];
-      if (techId) {
-        await prisma.projectTechnology.create({
-          data: {
-            projectId: project.id,
-            technologyId: techId,
-            source: 'MANUAL',
-            isPrimary: true,
-          },
-        });
-      }
-    }
+    const mediaKeyPrefix = `seed/${item.slug}/`;
+    await prisma.projectMedia.deleteMany({
+      where: {
+        projectId: project.id,
+        storageKey: { startsWith: mediaKeyPrefix },
+      },
+    });
+    await prisma.projectMedia.createMany({
+      data: item.media.map((media, index) => ({
+        projectId: project.id,
+        uploadedByUserId: owner.id,
+        mediaType: 'IMAGE' as const,
+        storageKey: `${mediaKeyPrefix}${index + 1}`,
+        publicUrl: media.publicUrl,
+        caption: media.caption,
+        sortOrder: index,
+      })),
+    });
+
     console.log(
-      `  Created/Updated project: ${project.title} (${project.status})`,
+      `  Created/updated ${project.title} with ${item.media.length} media item(s).`,
     );
   }
 
-  const availableRepositories = [
-    {
-      githubRepoId: BigInt(77770001),
-      fullName: 'sarahchen/manual-project-test-api',
-      ownerLogin: 'sarahchen',
-      repoName: 'manual-project-test-api',
-      htmlUrl: 'https://github.com/sarahchen/manual-project-test-api',
-      defaultBranch: 'main',
-    },
-  ];
-
-  for (const repo of availableRepositories) {
-    await prisma.repository.upsert({
-      where: { githubRepoId: repo.githubRepoId },
-      update: {
-        fullName: repo.fullName,
-        ownerLogin: repo.ownerLogin,
-        ownerGithubUserId: devProfile.githubUserId,
-        ownerType: 'User',
-        repoName: repo.repoName,
-        htmlUrl: repo.htmlUrl,
-        defaultBranch: repo.defaultBranch,
-        visibility: 'PUBLIC',
-        isFork: false,
-      },
-      create: {
-        githubRepoId: repo.githubRepoId,
-        fullName: repo.fullName,
-        ownerLogin: repo.ownerLogin,
-        ownerGithubUserId: devProfile.githubUserId,
-        ownerType: 'User',
-        repoName: repo.repoName,
-        htmlUrl: repo.htmlUrl,
-        defaultBranch: repo.defaultBranch,
-        visibility: 'PUBLIC',
-        isFork: false,
-      },
-    });
-  }
-
-  console.log('Technologies, repositories, and projects seeded.');
+  console.log(`Seeded ${projectCatalog.length} real-world showcase projects.`);
 }

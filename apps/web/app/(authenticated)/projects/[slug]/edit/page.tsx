@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, Controller, type SubmitErrorHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import {
@@ -198,6 +198,17 @@ export default function EditProjectPage() {
     }
   };
 
+  const onInvalid: SubmitErrorHandler<UpdateProjectRequest> = (formErrors) => {
+    const firstError = Object.values(formErrors).find(
+      (fieldError) => typeof fieldError?.message === 'string',
+    );
+    toast.error(
+      typeof firstError?.message === 'string'
+        ? firstError.message
+        : 'Please review the form and try again.',
+    );
+  };
+
   const handleMediaSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
@@ -380,7 +391,7 @@ export default function EditProjectPage() {
       </div>
 
       <form
-        onSubmit={handleSubmit(onSubmit)}
+        onSubmit={handleSubmit(onSubmit, onInvalid)}
         className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_280px]"
       >
         <div className="space-y-5">
@@ -451,6 +462,11 @@ export default function EditProjectPage() {
           <div className="space-y-2">
             <Label htmlFor="shortDescription">Short description</Label>
             <Textarea id="shortDescription" {...register('shortDescription')} />
+            {errors.shortDescription && (
+              <p className="text-destructive text-sm">
+                {errors.shortDescription.message}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -460,6 +476,11 @@ export default function EditProjectPage() {
               className="min-h-32"
               {...register('fullDescription')}
             />
+            {errors.fullDescription && (
+              <p className="text-destructive text-sm">
+                {errors.fullDescription.message}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -592,9 +613,15 @@ export default function EditProjectPage() {
                     render={({ field }) => (
                       <Select
                         value={field.value || project.status}
-                        onValueChange={field.onChange}
+                        onValueChange={(value) =>
+                          field.onChange(value || project.status)
+                        }
                       >
-                        <SelectTrigger id="status" className="w-full">
+                        <SelectTrigger
+                          id="status"
+                          className="w-full"
+                          aria-invalid={!!errors.status}
+                        >
                           <SelectValue placeholder="Select status">
                             {PROJECT_STATUS_LABELS[
                               field.value || project.status
@@ -609,6 +636,11 @@ export default function EditProjectPage() {
                       </Select>
                     )}
                   />
+                  {errors.status && (
+                    <p className="text-destructive text-sm">
+                      {errors.status.message}
+                    </p>
+                  )}
                 </div>
               )}
               <div className="space-y-2">
