@@ -146,39 +146,7 @@ export default function SignupPage() {
           )}
         </div>
 
-        {accountType === 'DEVELOPER' ? (
-          <>
-            <div className="space-y-2">
-              <Label htmlFor="displayName">Display name</Label>
-              <Input
-                id="displayName"
-                placeholder="Ada Lovelace"
-                aria-invalid={!!errors.displayName}
-                {...register('displayName')}
-              />
-              {errors.displayName && (
-                <p className="text-sm text-destructive">
-                  {errors.displayName.message}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="publicSlug">Public handle</Label>
-              <Input
-                id="publicSlug"
-                placeholder="ada-lovelace"
-                aria-invalid={!!errors.publicSlug}
-                {...register('publicSlug')}
-              />
-              {errors.publicSlug && (
-                <p className="text-sm text-destructive">
-                  {errors.publicSlug.message}
-                </p>
-              )}
-            </div>
-          </>
-        ) : (
+        {accountType === 'HIRING' && (
           <>
             <div className="space-y-2">
               <Label htmlFor="organizationName">Organization name</Label>

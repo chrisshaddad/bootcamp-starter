@@ -106,6 +106,13 @@ export class AuthService {
 
     const passwordHash = hashPassword(data.password);
 
+    // Extract fallbacks cleanly to ensure strict type safety
+    const emailPrefix = data.email.split('@')[0];
+    const fallbackName =
+      emailPrefix && emailPrefix.length > 0 ? emailPrefix : 'Developer';
+    const displayName = data.displayName?.trim() || fallbackName;
+    const publicSlug = data.publicSlug?.trim() || `dev-${crypto.randomUUID()}`;
+
     const user = await this.prisma.user.create({
       data: {
         email: data.email,
@@ -116,8 +123,8 @@ export class AuthService {
           data.accountType === 'DEVELOPER'
             ? {
                 create: {
-                  displayName: data.displayName!,
-                  publicSlug: data.publicSlug!,
+                  displayName,
+                  publicSlug,
                 },
               }
             : undefined,

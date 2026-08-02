@@ -105,7 +105,9 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
     }
   };
 
-  const handleNextStep = async () => {
+  const handleNextStep = async (e?: React.MouseEvent) => {
+    e?.preventDefault(); // <--- ADD THIS LINE
+
     if (isDev && displayName && !publicSlug) {
       setValue('publicSlug', slugify(displayName), { shouldValidate: true });
     }
