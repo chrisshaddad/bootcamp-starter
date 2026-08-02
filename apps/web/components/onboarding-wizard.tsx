@@ -12,7 +12,7 @@ import {
   type UserResponse,
 } from '@repo/contracts';
 import { useAuth } from '@/hooks/use-auth';
-import { ApiError } from '@/lib/api';
+import { fetcher, ApiError } from '@/lib/api';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,20 +43,55 @@ const ORGANIZATION_TYPES = [
   { value: 'FREELANCE_CLIENT', label: 'Freelance Client' },
 ] as const;
 
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+}
+
+// Convert "john.doe" or "john_doe" to "John Doe"
+function formatCleanName(rawName?: string | null): string {
+  if (!rawName) return '';
+  return rawName
+    .replace(/[._-]+/g, ' ')
+    .split(' ')
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+// Ensure initial slug is clean and without punctuation
+function formatCleanSlug(
+  rawName?: string | null,
+  rawSlug?: string | null,
+): string {
+  if (rawSlug && !rawSlug.startsWith('dev-')) {
+    return slugify(rawSlug);
+  }
+  return slugify(rawName || '');
+}
+
 export function OnboardingWizard({ user }: OnboardingWizardProps) {
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCheckingSlug, setIsCheckingSlug] = useState(false);
   const router = useRouter();
   const { updateProfile } = useAuth();
 
   const isDev = user.accountType === 'DEVELOPER';
 
-  const slugify = (text: string) =>
-    text
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '');
+  // Compute clean initial values for developer profile
+  const initialDisplayName = isDev
+    ? formatCleanName(user.developerProfile?.displayName)
+    : '';
+  const initialSlug = isDev
+    ? formatCleanSlug(
+        user.developerProfile?.displayName,
+        user.developerProfile?.publicSlug,
+      )
+    : '';
 
   const {
     register,
@@ -64,14 +99,15 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
     control,
     trigger,
     setValue,
+    setError,
     watch,
     formState: { errors },
   } = useForm<UpdateProfileRequest>({
     resolver: zodResolver(updateProfileRequestSchema),
     defaultValues: isDev
       ? {
-          displayName: user.developerProfile?.displayName ?? '',
-          publicSlug: user.developerProfile?.publicSlug ?? '',
+          displayName: initialDisplayName,
+          publicSlug: initialSlug,
           headline: user.developerProfile?.headline ?? '',
           bio: user.developerProfile?.bio ?? '',
           location: user.developerProfile?.location ?? '',
@@ -84,7 +120,6 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
           jobTitle: user.hiringProfile?.jobTitle ?? '',
           organizationWebsiteUrl:
             user.hiringProfile?.organizationWebsiteUrl ?? '',
-          // Use specific type cast instead of 'any'
           linkedinUrl:
             (user.hiringProfile as { linkedinUrl?: string | null })
               ?.linkedinUrl ?? '',
@@ -106,7 +141,7 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
   };
 
   const handleNextStep = async (e?: React.MouseEvent) => {
-    e?.preventDefault(); // <--- ADD THIS LINE
+    e?.preventDefault();
 
     if (isDev && displayName && !publicSlug) {
       setValue('publicSlug', slugify(displayName), { shouldValidate: true });
@@ -119,21 +154,48 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
     console.log('[DEBUG] Wizard - Validating Step 1:', fieldsToValidate);
     const isValid = await trigger(fieldsToValidate);
 
-    if (isValid) {
-      setStep(2);
-    } else {
+    if (!isValid) {
       console.log('[DEBUG] Wizard - Validation failed on Step 1');
-    }
-  };
-
-  const onSubmit = async (data: UpdateProfileRequest) => {
-    // 1. Trap premature submissions (e.g. user hits "Enter" on their keyboard during Step 1)
-    if (step === 1) {
-      handleNextStep();
       return;
     }
 
-    // 2. Validate Step 2 fields explicitly, including checking URL formats
+    // Verify handle uniqueness against the API when pressing Continue
+    if (isDev && publicSlug) {
+      if (publicSlug !== user.developerProfile?.publicSlug) {
+        setIsCheckingSlug(true);
+        try {
+          const existing = await fetcher<{ id: string }>(
+            `/users/slug/${encodeURIComponent(publicSlug)}`,
+          );
+          if (existing && existing.id !== user.id) {
+            setError('publicSlug', {
+              type: 'manual',
+              message:
+                'This public handle is already taken. Please try another.',
+            });
+            setIsCheckingSlug(false);
+            return;
+          }
+        } catch (err) {
+          // If 404, the handle is available!
+          if (err instanceof ApiError && err.status !== 404) {
+            console.error('[DEBUG] Slug check error:', err);
+          }
+        } finally {
+          setIsCheckingSlug(false);
+        }
+      }
+    }
+
+    setStep(2);
+  };
+
+  const onSubmit = async (data: UpdateProfileRequest) => {
+    if (step === 1) {
+      await handleNextStep();
+      return;
+    }
+
     const step2Fields: Path<UpdateProfileRequest>[] = isDev
       ? ['headline', 'bio', 'location', 'linkedinUrl', 'personalWebsiteUrl']
       : ['jobTitle', 'organizationWebsiteUrl', 'linkedinUrl'];
@@ -144,7 +206,6 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
       return;
     }
 
-    // 3. Ensure strictly required Step 2 fields are actually filled
     const step2RequiredValue = isDev ? data.headline : data.jobTitle;
     if (!step2RequiredValue || step2RequiredValue.trim() === '') {
       toast.error(
@@ -157,15 +218,11 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
     setIsSubmitting(true);
     try {
       await updateProfile(data);
-
-      console.log(
-        '[DEBUG] 4. Wizard - Setup complete! Redirecting to dashboard...',
-      );
       toast.success('Profile completed!');
       router.replace('/dashboard');
     } catch (error) {
       if (error instanceof ApiError && error.status === 409) {
-        toast.error('That public slug is already taken. Try another one.');
+        toast.error('That public handle is already taken. Try another one.');
         setStep(1);
       } else {
         toast.error(
@@ -222,7 +279,7 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="publicSlug">
-                  Public Profile URL Slug{' '}
+                  Public Profile Handle{' '}
                   <span className="text-destructive">*</span>
                 </Label>
                 <div className="flex items-center">
@@ -230,7 +287,7 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
                     {typeof window !== 'undefined'
                       ? window.location.host
                       : 'site.com'}
-                    /
+                    /developers/
                   </span>
                   <Input
                     id="publicSlug"
@@ -434,21 +491,30 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
             <div />
           ) : (
             <Button
+              key="back-btn"
               type="button"
               variant="outline"
               onClick={() => setStep(1)}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isCheckingSlug}
             >
               <ArrowLeft className="mr-2 h-4 w-4" /> Back
             </Button>
           )}
 
           {step === 1 ? (
-            <Button type="button" onClick={handleNextStep}>
+            <Button
+              key="continue-btn"
+              type="button"
+              onClick={handleNextStep}
+              disabled={isCheckingSlug}
+            >
+              {isCheckingSlug ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
               Continue <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           ) : (
-            <Button type="submit" disabled={isSubmitting}>
+            <Button key="submit-btn" type="submit" disabled={isSubmitting}>
               {isSubmitting ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : null}
