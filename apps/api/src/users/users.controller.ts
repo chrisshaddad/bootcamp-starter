@@ -63,7 +63,7 @@ export class UsersController {
   }
 
   @Get('slug/:slug')
-  @Roles(AccountType.HIRING, AccountType.SUPER_ADMIN) // 4. Restrict to Recruiter/Admin
+  //@Roles(AccountType.HIRING, AccountType.SUPER_ADMIN) // 4. Restrict to Recruiter/Admin
   @ApiOperation({ summary: 'Get a developer by their public slug' })
   async getUserBySlug(@Param('slug') slug: string) {
     const user = await this.usersService.getUserBySlug(slug);

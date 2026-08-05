@@ -19,22 +19,7 @@ export const signupRequestSchema = z
       .optional(),
   })
   .superRefine((data, ctx) => {
-    if (data.accountType === 'DEVELOPER') {
-      if (!data.displayName || data.displayName.trim().length === 0) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Display name is required for Developers',
-          path: ['displayName'],
-        });
-      }
-      if (!data.publicSlug || data.publicSlug.trim().length === 0) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Public slug is required for Developers',
-          path: ['publicSlug'],
-        });
-      }
-    } else if (data.accountType === 'HIRING') {
+    if (data.accountType === 'HIRING') {
       if (!data.organizationName || data.organizationName.trim().length === 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,

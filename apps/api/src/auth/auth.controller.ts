@@ -70,9 +70,42 @@ import {
   signupRequestSchema as signupRequestOpenApiSchema,
   updateProfileRequestSchema as updateProfileRequestOpenApiSchema,
 } from '../common/swagger/schemas';
+import type { AccountType } from '@repo/db';
 
 const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const PROFILE_PICTURES_DIR = join(process.cwd(), 'uploads', 'profile-pictures');
+
+interface PopulatedUser {
+  id: string;
+  email: string;
+  accountType: AccountType;
+  isConfirmed: boolean;
+  hasSeenDashboardTour: boolean;
+  developerProfile?: {
+    id: string;
+    publicSlug: string;
+    displayName: string;
+    headline?: string | null;
+    bio?: string | null;
+    location?: string | null;
+    profilePictureUrl?: string | null;
+    profilePictureOriginalUrl?: string | null;
+    profilePictureCropZoom?: number | null;
+    profilePictureCropX?: number | null;
+    profilePictureCropY?: number | null;
+    githubUsername?: string | null;
+    linkedinUrl?: string | null;
+    personalWebsiteUrl?: string | null;
+  } | null;
+  hiringProfile?: {
+    id: string;
+    organizationName: string;
+    organizationType: 'COMPANY' | 'AGENCY' | 'INDIVIDUAL' | 'FREELANCE_CLIENT';
+    jobTitle?: string | null;
+    linkedinUrl?: string | null;
+    organizationWebsiteUrl?: string | null;
+  } | null;
+}
 
 type ProfilePictureFiles = {
   file?: Express.Multer.File[];
@@ -240,13 +273,13 @@ export class AuthController {
   @ApiOperation({ summary: 'Get the current authenticated user' })
   @ApiResponse({ status: 200, description: 'Current user profile' })
   @ApiResponse({ status: 401, description: 'Missing or invalid session' })
-  getCurrentUser(@CurrentUser() user: UserResponse): UserResponse {
-    // Explicitly mapping true database schema fields to contract shape
+  getCurrentUser(@CurrentUser() user: PopulatedUser): UserResponse {
     return {
       id: user.id,
       email: user.email,
       accountType: user.accountType,
       isConfirmed: user.isConfirmed,
+      hasSeenDashboardTour: user.hasSeenDashboardTour,
       developerProfile: user.developerProfile
         ? {
             id: user.developerProfile.id,
@@ -276,6 +309,7 @@ export class AuthController {
             organizationName: user.hiringProfile.organizationName,
             organizationType: user.hiringProfile.organizationType,
             jobTitle: user.hiringProfile.jobTitle ?? null,
+            linkedinUrl: user.hiringProfile.linkedinUrl ?? null,
             organizationWebsiteUrl:
               user.hiringProfile.organizationWebsiteUrl ?? null,
           }
@@ -304,14 +338,10 @@ export class AuthController {
       {
         storage: diskStorage({
           destination: PROFILE_PICTURES_DIR,
-          // No extension yet — the real type is only known once we've inspected
-          // the file's actual bytes below, since mimetype/originalname are
-          // client-supplied and can be spoofed.
           filename: (_req, _file, callback) => callback(null, randomUUID()),
         }),
         limits: { fileSize: PROFILE_PICTURE_MAX_SIZE_BYTES },
         fileFilter: (_req, file, callback) => {
-          // Cheap early rejection only — not trusted for the actual save below.
           if (
             !(PROFILE_PICTURE_ALLOWED_MIME_TYPES as readonly string[]).includes(
               file.mimetype,
@@ -377,7 +407,7 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Missing or invalid session' })
   @HttpCode(HttpStatus.OK)
   async updateProfile(
-    @CurrentUser() user: UserResponse,
+    @CurrentUser() user: PopulatedUser,
     @Body(new ZodValidationPipe(updateProfileRequestSchema))
     body: UpdateProfileRequest,
   ) {
@@ -391,7 +421,7 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Current password is incorrect' })
   @HttpCode(HttpStatus.OK)
   async changePassword(
-    @CurrentUser() user: UserResponse,
+    @CurrentUser() user: PopulatedUser,
     @Body(new ZodValidationPipe(changePasswordRequestSchema))
     body: ChangePasswordRequest,
   ): Promise<SuccessResponse> {
@@ -405,7 +435,7 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Password is incorrect' })
   @HttpCode(HttpStatus.OK)
   async deactivateAccount(
-    @CurrentUser() user: UserResponse,
+    @CurrentUser() user: PopulatedUser,
     @Body(new ZodValidationPipe(deactivateAccountRequestSchema))
     body: DeactivateAccountRequest,
     @Res({ passthrough: true }) response: Response,

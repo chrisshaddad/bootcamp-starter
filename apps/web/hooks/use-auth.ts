@@ -120,8 +120,18 @@ export function useAuth() {
 
   const updateProfile = useCallback(
     async (data: UpdateProfileRequest) => {
+      console.log('[DEBUG] 1. Submitting PATCH /auth/profile...');
       const result = await apiPatch<UserResponse>('/auth/profile', data);
-      mutate();
+
+      console.log(
+        '[DEBUG] 2. Profile saved. Awaiting SWR re-fetch for /auth/me...',
+      );
+      // This forces the code to pause until the network tab shows "me" is finished
+      await mutate();
+
+      console.log(
+        '[DEBUG] 3. SWR re-fetch finished. Cache is now 100% updated.',
+      );
       return result;
     },
     [mutate],
