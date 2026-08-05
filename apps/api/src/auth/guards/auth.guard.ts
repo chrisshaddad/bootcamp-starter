@@ -5,12 +5,11 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import type { User } from '@repo/db';
 import { SessionService } from '../session.service';
 import { IS_PUBLIC_KEY } from '../decorators';
-
-const SESSION_COOKIE_NAME = 'bootcamp_starter_session';
+import { SESSION_COOKIE_NAME, SESSION_COOKIE_OPTIONS } from '../session-cookie';
 
 export interface AuthenticatedRequest extends Request {
   user?: User;
@@ -35,7 +34,8 @@ export class AuthGuard implements CanActivate {
       return true;
     }
 
-    const request = context.switchToHttp().getRequest<Request>();
+    const httpContext = context.switchToHttp();
+    const request = httpContext.getRequest<Request>();
     const sessionId = this.extractSessionId(request);
 
     if (!sessionId) {
@@ -45,6 +45,8 @@ export class AuthGuard implements CanActivate {
     const user = await this.sessionService.validateSession(sessionId);
 
     if (!user) {
+      const response = httpContext.getResponse<Response>();
+      response.clearCookie(SESSION_COOKIE_NAME, SESSION_COOKIE_OPTIONS);
       throw new UnauthorizedException('Invalid or expired session');
     }
 
@@ -67,5 +69,3 @@ export class AuthGuard implements CanActivate {
     return undefined;
   }
 }
-
-export { SESSION_COOKIE_NAME };
