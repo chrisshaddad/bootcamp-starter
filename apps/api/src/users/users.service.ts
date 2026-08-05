@@ -19,10 +19,16 @@ import {
   VerificationStatus,
 } from '@repo/db';
 import { normalizeMediaUrl } from '../common/utils/normalize-media-url';
+import { AiService } from '../ai/ai.service';
+
+const MAX_COSINE_DISTANCE = 0.65; // Cosine distance threshold for semantic matches
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: DatabaseService) {}
+  constructor(
+    private readonly prisma: DatabaseService,
+    private readonly aiService: AiService
+  ) {}
 
   private getSafeSelect() {
     return {
@@ -56,51 +62,47 @@ export class UsersService {
     };
   }
 
+  async enhanceProfile(headline: string, bio: string) {
+    return this.aiService.enhanceProfile(bio, headline);
+  }
+
   async exploreUsers(query: UsersExploreQuery) {
     const skip = (query.page - 1) * query.limit;
     const take = query.limit;
+    
+    let userIds: string[] | undefined = undefined;
 
+    // Vector Semantic Search using <=> (Cosine Distance) with threshold 0.65
+    if (query.search && query.search.trim().length > 0) {
+      const embedding = await this.aiService.generateEmbedding(query.search.trim());
+      if (embedding.length > 0) {
+        const vectorString = `[${embedding.join(',')}]`;
+        const matches = await this.prisma.$queryRaw<{ userId: string }[]>`
+          SELECT "userId" FROM "DeveloperProfile"
+          WHERE embedding IS NOT NULL
+            AND (embedding <=> ${vectorString}::vector) < ${MAX_COSINE_DISTANCE}
+          ORDER BY embedding <=> ${vectorString}::vector
+          LIMIT ${take} OFFSET ${skip}
+        `;
+        if (matches.length > 0) {
+          userIds = matches.map((m) => m.userId);
+        }
+      }
+    }
+
+    // Fallback to keyword search if vector search didn't yield matches
     const where: Prisma.UserWhereInput = {
       isConfirmed: true,
-      ...(query.search
+      ...(userIds ? { id: { in: userIds } } : {}),
+      ...(!userIds && query.search
         ? {
             OR: [
-              {
-                developerProfile: {
-                  displayName: { contains: query.search, mode: 'insensitive' },
-                },
-              },
-              {
-                developerProfile: {
-                  headline: { contains: query.search, mode: 'insensitive' },
-                },
-              },
-              {
-                developerProfile: {
-                  bio: { contains: query.search, mode: 'insensitive' },
-                },
-              },
-              {
-                developerProfile: {
-                  githubUsername: {
-                    contains: query.search,
-                    mode: 'insensitive',
-                  },
-                },
-              },
-              {
-                hiringProfile: {
-                  organizationName: {
-                    contains: query.search,
-                    mode: 'insensitive',
-                  },
-                },
-              },
-              {
-                hiringProfile: {
-                  jobTitle: { contains: query.search, mode: 'insensitive' },
-                },
-              },
+              { developerProfile: { displayName: { contains: query.search, mode: 'insensitive' } } },
+              { developerProfile: { headline: { contains: query.search, mode: 'insensitive' } } },
+              { developerProfile: { bio: { contains: query.search, mode: 'insensitive' } } },
+              { developerProfile: { githubUsername: { contains: query.search, mode: 'insensitive' } } },
+              { hiringProfile: { organizationName: { contains: query.search, mode: 'insensitive' } } },
+              { hiringProfile: { jobTitle: { contains: query.search, mode: 'insensitive' } } },
             ],
           }
         : {}),
@@ -123,21 +125,28 @@ export class UsersService {
       ];
     }
 
+    const prismaSkip = userIds ? 0 : skip;
+    const prismaTake = userIds ? userIds.length : take;
+
     const [totalItems, users] = await Promise.all([
       this.prisma.user.count({ where }),
       this.prisma.user.findMany({
         where,
-        orderBy,
-        skip,
-        take,
+        orderBy: userIds ? undefined : orderBy,
+        skip: prismaSkip,
+        take: prismaTake,
         select: this.getSafeSelect(),
       }),
     ]);
 
+    const sortedUsers = userIds
+      ? userIds.map(id => users.find(u => u.id === id)).filter(Boolean)
+      : users;
+
     const totalPages = Math.ceil(totalItems / query.limit);
 
     return {
-      data: users,
+      data: sortedUsers as typeof users,
       meta: {
         totalItems,
         currentPage: query.page,
@@ -337,6 +346,19 @@ export class UsersService {
             profilePictureUrl: data.profilePictureUrl,
           },
         });
+
+        // Update Developer Profile AI Embedding
+        const combinedText = `${data.displayName || ''} ${data.headline || ''} ${data.bio || ''} ${data.location || ''}`;
+        const embedding = await this.aiService.generateEmbedding(combinedText);
+        if (embedding.length > 0) {
+          const vectorString = `[${embedding.join(',')}]`;
+          await this.prisma.$executeRaw`
+            UPDATE "DeveloperProfile"
+            SET embedding = ${vectorString}::vector
+            WHERE "userId" = ${userId}
+          `;
+        }
+
       } else if (user.accountType === 'HIRING' && user.hiringProfile) {
         await this.prisma.hiringProfile.update({
           where: { id: user.hiringProfile.id },

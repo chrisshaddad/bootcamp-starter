@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { SidebarTrigger } from '@/components/ui/sidebar';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 export function TopNavbar() {
   const { user } = useUser({ redirectOnUnauthenticated: false });
@@ -46,8 +47,10 @@ export function TopNavbar() {
         <SidebarTrigger className="text-muted-foreground hover:bg-accent hover:text-accent-foreground -ml-1 h-9 w-9" />
       </div>
 
-      {/* Right Section - User */}
+      {/* Right Section - Theme Toggle & User */}
       <div className="flex items-center gap-3">
+        <ThemeToggle />
+
         {/* User Dropdown */}
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Manrope } from 'next/font/google';
+import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/sonner';
 import { SWRProvider } from '@/lib/swr-provider';
 import { NavigationHistoryTracker } from '@/components/navigation-history-tracker';
@@ -22,13 +23,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" suppressHydrationWarning>
       <body className={`${manrope.variable} font-sans antialiased`}>
-        <SWRProvider>
-          <NavigationHistoryTracker />
-          {children}
-          <Toaster richColors position="top-right" />
-        </SWRProvider>
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+          <SWRProvider>
+            <NavigationHistoryTracker />
+            {children}
+            <Toaster richColors position="top-right" />
+          </SWRProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -41,6 +41,14 @@ export const githubRepositoryAnalysisPreviewResponseSchema =
     detectedTechnologies: z.array(githubDetectedTechnologySchema),
     inspectedFiles: z.array(z.string()),
     missingOptionalFiles: z.array(z.string()),
+    aiPitch: z
+      .object({
+        title: z.string(),
+        shortDescription: z.string(),
+        fullDescription: z.string(),
+      })
+      .nullable()
+      .optional(),
   });
 
 export type GithubRepositoryAnalysisPreviewResponse = z.infer<

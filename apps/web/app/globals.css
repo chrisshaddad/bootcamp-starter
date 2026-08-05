@@ -18,17 +18,12 @@ a {
   display: none;
 }
 
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
-  }
+.dark .imgLight {
+  display: none;
+}
 
-  .imgLight {
-    display: none;
-  }
-  .imgDark {
-    display: unset;
-  }
+.dark .imgDark {
+  display: block;
 }
 
 @theme inline {
@@ -77,19 +72,12 @@ a {
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  /* Primary Colors (Blue) */
-  --color-primary-base: #2f78ee;
-  --color-primary-400: #5c95f1;
-  --color-primary-300: #8bb4f5;
-  --color-primary-200: #c2d9fa;
-  --color-primary-100: #e5eefd;
-
-  /* Secondary Colors (Yellow) */
-  --color-secondary-base: #ffd023;
-  --color-secondary-400: #ffde65;
-  --color-secondary-300: #ffeca7;
-  --color-secondary-200: #fff6d3;
-  --color-secondary-100: #fffae9;
+  /* Dynamic Primary Color Scale */
+  --color-primary-base: var(--primary-base);
+  --color-primary-400: var(--primary-400);
+  --color-primary-300: var(--primary-300);
+  --color-primary-200: var(--primary-200);
+  --color-primary-100: var(--primary-100);
 
   /* Alert - Success */
   --color-success: #0caf60;
@@ -118,23 +106,23 @@ a {
   --color-gray-800: #1f2937;
   --color-gray-900: #111827;
 
-  /* Additional Colors */
+  /* Additional Palette Colors */
   --color-white: #ffffff;
-  --color-orange: #fe964a;
+  --color-orange: #f97316;
   --color-blue: #2f78ee;
   --color-purple: #8c62ff;
 
   /* Typography - Font Sizes */
-  --font-size-xs: 0.625rem; /* 10px */
-  --font-size-sm: 0.75rem; /* 12px */
-  --font-size-base: 0.875rem; /* 14px */
-  --font-size-lg: 1rem; /* 16px */
-  --font-size-xl: 1.125rem; /* 18px */
-  --font-size-2xl: 1.25rem; /* 20px */
-  --font-size-3xl: 1.5rem; /* 24px */
-  --font-size-4xl: 2rem; /* 32px */
-  --font-size-5xl: 2.5rem; /* 40px */
-  --font-size-6xl: 3rem; /* 48px */
+  --font-size-xs: 0.625rem;
+  --font-size-sm: 0.75rem;
+  --font-size-base: 0.875rem;
+  --font-size-lg: 1rem;
+  --font-size-xl: 1.125rem;
+  --font-size-2xl: 1.25rem;
+  --font-size-3xl: 1.5rem;
+  --font-size-4xl: 2rem;
+  --font-size-5xl: 2.5rem;
+  --font-size-6xl: 3rem;
 
   /* Line Heights */
   --line-height-tight: 1.2;
@@ -144,43 +132,56 @@ a {
   --line-height-loose: 1.6;
 }
 
+/* Light Theme - Clean White Background + Vibrant Orange Accents */
 :root {
   --radius: 0.625rem;
 
-  /* Light Theme - Updated with Humanline Design System */
   --background: #ffffff;
-  --foreground: #111827;
+  --foreground: #09090b;
   --card: #ffffff;
-  --card-foreground: #111827;
+  --card-foreground: #09090b;
   --popover: #ffffff;
-  --popover-foreground: #111827;
-  --primary: #2f78ee;
+  --popover-foreground: #09090b;
+
+  --primary: #f97316;
   --primary-foreground: #ffffff;
-  --secondary: #ffd023;
-  --secondary-foreground: #111827;
-  --muted: #f1f2f4;
-  --muted-foreground: #687588;
-  --accent: #e5eefd;
-  --accent-foreground: #2f78ee;
-  --destructive: #e03137;
-  --border: #e9eaec;
-  --input: #e9eaec;
-  --ring: #2f78ee;
-  --chart-1: #2f78ee;
-  --chart-2: #ffd023;
-  --chart-3: #27a376;
-  --chart-4: #8c62ff;
-  --chart-5: #fe964a;
+  --primary-base: #f97316;
+  --primary-400: #fb923c;
+  --primary-300: #fdba74;
+  --primary-200: #fed7aa;
+  --primary-100: #ffedd5;
+
+  --secondary: #fff7ed;
+  --secondary-foreground: #9a3412;
+
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+
+  --accent: #ffedd5;
+  --accent-foreground: #c2410c;
+
+  --destructive: #ef4444;
+  --border: #e4e4e7;
+  --input: #e4e4e7;
+  --ring: #f97316;
+
+  --chart-1: #f97316;
+  --chart-2: #06b6d4;
+  --chart-3: #10b981;
+  --chart-4: #8b5cf6;
+  --chart-5: #ec4899;
+
   --sidebar: #fafafa;
-  --sidebar-foreground: #111827;
-  --sidebar-primary: #2f78ee;
+  --sidebar-foreground: #09090b;
+  --sidebar-primary: #f97316;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #e5eefd;
-  --sidebar-accent-foreground: #2f78ee;
-  --sidebar-border: #e9eaec;
-  --sidebar-ring: #2f78ee;
+  --sidebar-accent: #ffedd5;
+  --sidebar-accent-foreground: #c2410c;
+  --sidebar-border: #e4e4e7;
+  --sidebar-ring: #f97316;
 }
 
+/* Dark Theme - Current Theme Preserved */
 .dark {
   --background: #111827;
   --foreground: #fafafa;
@@ -188,23 +189,35 @@ a {
   --card-foreground: #fafafa;
   --popover: #1f2937;
   --popover-foreground: #fafafa;
+
   --primary: #2f78ee;
   --primary-foreground: #ffffff;
+  --primary-base: #2f78ee;
+  --primary-400: #5c95f1;
+  --primary-300: #8bb4f5;
+  --primary-200: #c2d9fa;
+  --primary-100: #e5eefd;
+
   --secondary: #ffd023;
   --secondary-foreground: #111827;
+
   --muted: #323b49;
   --muted-foreground: #a0aec0;
+
   --accent: #1e3a63;
   --accent-foreground: #ffffff;
+
   --destructive: #e03137;
   --border: #323b49;
   --input: #323b49;
   --ring: #2f78ee;
+
   --chart-1: #5c95f1;
   --chart-2: #ffde65;
   --chart-3: #55c790;
   --chart-4: #8c62ff;
   --chart-5: #fe964a;
+
   --sidebar: #1f2937;
   --sidebar-foreground: #fafafa;
   --sidebar-primary: #2f78ee;
@@ -223,7 +236,6 @@ a {
     @apply bg-background text-foreground;
   }
 
-  /* Heading Styles - Manrope Bold */
   h1 {
     @apply text-6xl font-bold leading-tight tracking-tight;
     letter-spacing: -0.5px;
@@ -244,100 +256,5 @@ a {
   }
   h6 {
     @apply text-xl font-bold leading-normal;
-  }
-}
-
-/* Utility Classes for Typography */
-@layer utilities {
-  /* Body XLarge */
-  .text-body-xl {
-    @apply text-xl leading-relaxed;
-  }
-  .text-body-xl-bold {
-    @apply text-xl font-bold leading-relaxed;
-  }
-  .text-body-xl-semibold {
-    @apply text-xl font-semibold leading-relaxed;
-  }
-  .text-body-xl-medium {
-    @apply text-xl font-medium leading-relaxed;
-  }
-  .text-body-xl-regular {
-    @apply text-xl font-normal leading-relaxed;
-  }
-
-  /* Body Large */
-  .text-body-lg {
-    @apply text-lg leading-relaxed tracking-wide;
-  }
-  .text-body-lg-bold {
-    @apply text-lg font-bold leading-relaxed;
-    letter-spacing: 0.3px;
-  }
-  .text-body-lg-semibold {
-    @apply text-lg font-semibold leading-relaxed;
-    letter-spacing: 0.3px;
-  }
-  .text-body-lg-medium {
-    @apply text-lg font-medium leading-relaxed;
-    letter-spacing: 0.2px;
-  }
-  .text-body-lg-regular {
-    @apply text-lg font-normal leading-relaxed;
-    letter-spacing: 0.2px;
-  }
-
-  /* Body Medium */
-  .text-body-md {
-    @apply text-base leading-loose;
-  }
-  .text-body-md-bold {
-    @apply text-base font-bold leading-loose;
-    letter-spacing: 0.2px;
-  }
-  .text-body-md-semibold {
-    @apply text-base font-semibold leading-loose;
-  }
-  .text-body-md-medium {
-    @apply text-base font-medium leading-loose;
-  }
-  .text-body-md-regular {
-    @apply text-base font-normal leading-loose;
-  }
-
-  /* Body Small */
-  .text-body-sm {
-    @apply text-sm leading-loose;
-  }
-  .text-body-sm-bold {
-    @apply text-sm font-bold leading-loose;
-    letter-spacing: 0.2px;
-  }
-  .text-body-sm-semibold {
-    @apply text-sm font-semibold leading-loose;
-  }
-  .text-body-sm-medium {
-    @apply text-sm font-medium leading-loose;
-  }
-  .text-body-sm-regular {
-    @apply text-sm font-normal leading-loose;
-  }
-
-  /* Body XSmall */
-  .text-body-xs {
-    @apply text-xs leading-loose;
-  }
-  .text-body-xs-bold {
-    @apply text-xs font-bold leading-loose;
-    letter-spacing: 0.2px;
-  }
-  .text-body-xs-semibold {
-    @apply text-xs font-semibold leading-loose;
-  }
-  .text-body-xs-medium {
-    @apply text-xs font-medium leading-loose;
-  }
-  .text-body-xs-regular {
-    @apply text-xs font-normal leading-loose;
   }
 }

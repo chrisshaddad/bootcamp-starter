@@ -2,7 +2,7 @@ name: bootcamp-starter
 
 services:
   postgres:
-    image: postgres:18
+    image: pgvector/pgvector:pg16
     container_name: postgres
     environment:
       POSTGRES_USER: postgres

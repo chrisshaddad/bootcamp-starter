@@ -1,11 +1,13 @@
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
+  previewFeatures = ["postgresqlExtensions"] 
 }
 
 datasource db {
   provider = "postgresql"
   schemas  = ["private", "public"]
+  extensions = [vector]
 }
 
 model User {
@@ -61,6 +63,7 @@ model DeveloperProfile {
   headline    String?
   bio         String? @db.Text
   location    String?
+  embedding Unsupported("vector(384)")? // Updated from 1536 to 384
 
   profilePictureUrl         String?
   profilePictureOriginalUrl String?
@@ -162,6 +165,7 @@ model Repository {
 
 model Project {
   id String @id @default(uuid())
+  embedding Unsupported("vector(384)")? // Updated from 1536 to 384
 
   repositoryId    String @unique
   createdByUserId String

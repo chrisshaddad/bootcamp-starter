@@ -17,6 +17,8 @@ import { AdminModule } from './admin/admin.module';
 import { SettingsModule } from './settings/settings.module';
 import { SavedCandidatesModule } from './saved-candidates/saved-candidates.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { AiModule } from './ai/ai.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot(),
@@ -26,6 +28,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
       },
     }),
     DatabaseModule,
+    AiModule,
     AuthModule,
     MailModule,
     OrganizationsModule,

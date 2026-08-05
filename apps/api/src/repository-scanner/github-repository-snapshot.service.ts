@@ -8,8 +8,10 @@ import type { ParsedGithubRepository } from '../github/github.types';
 import { parseGithubRepositoryUrl } from '../github/github-url.parser';
 import { analyzeRepositorySnapshot } from './repository-analyzer';
 import type { RepositorySnapshotFile } from './repository-scanner.types';
+import { AiService } from '../ai/ai.service';
 
 const ROOT_ANALYSIS_FILE_PATHS = [
+  'README.md',
   'package.json',
   'Dockerfile',
   'docker-compose.yml',
@@ -49,12 +51,23 @@ const MAX_CONCURRENT_FILE_REQUESTS = 4;
 export class GithubRepositorySnapshotService {
   private readonly logger = new Logger(GithubRepositorySnapshotService.name);
 
-  constructor(private readonly githubService: GithubService) {}
+  constructor(
+    private readonly githubService: GithubService,
+    private readonly aiService: AiService,
+  ) {}
 
   /** Builds an analysis preview from GitHub metadata and selected source/config files. */
   async previewRepositoryAnalysis(
     repositoryUrl: string,
-  ): Promise<GithubRepositoryAnalysisPreviewResponse> {
+  ): Promise<
+    GithubRepositoryAnalysisPreviewResponse & {
+      aiPitch?: {
+        title: string;
+        shortDescription: string;
+        fullDescription: string;
+      } | null;
+    }
+  > {
     const repository = parseGithubRepositoryUrl(repositoryUrl);
     this.logger.debug(
       `Starting GitHub analysis preview for ${repository.owner}/${repository.repo}`,
@@ -78,6 +91,14 @@ export class GithubRepositorySnapshotService {
       files,
     });
 
+    // --- AI Summarization ---
+    const readmeFile = files.find(
+      (f) => f.path.toLowerCase() === 'readme.md',
+    );
+    const aiPitch = await this.aiService.summarizeRepository(
+      readmeFile?.content || null,
+    );
+
     this.logger.debug(
       `Completed GitHub analysis preview for ${preview.repository.fullName}: ${detectedTechnologies.length} technologies, ${inspectedFiles.length} files inspected`,
     );
@@ -87,6 +108,7 @@ export class GithubRepositorySnapshotService {
       detectedTechnologies,
       inspectedFiles,
       missingOptionalFiles,
+      aiPitch,
     };
   }
 
