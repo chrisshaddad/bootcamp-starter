@@ -7,6 +7,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import type { User } from '@repo/db';
+import { AuthService } from '../auth.service';
 import { SessionService } from '../session.service';
 import { IS_PUBLIC_KEY } from '../decorators';
 
@@ -23,6 +24,7 @@ export class AuthGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
     private readonly sessionService: SessionService,
+    private readonly authService: AuthService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -47,6 +49,23 @@ export class AuthGuard implements CanActivate {
 
     if (!session) {
       throw new UnauthorizedException('Invalid or expired session');
+    }
+
+    // verifyMagicLink already refuses to mint a session for staff of a
+    // non-ACTIVE library, so this only fires when a library is rejected or
+    // suspended *while* its staff are signed in. Revoke the session rather
+    // than 403-ing every subsequent request: the client already knows how to
+    // handle a 401 (bounce to /login), and /auth/magic-link will then email
+    // them the reason they can't get back in.
+    const blocking = await this.authService.findBlockingOrganization(
+      session.user,
+    );
+
+    if (blocking) {
+      await this.sessionService.deleteSession(sessionId);
+      throw new UnauthorizedException(
+        `${blocking.name} is no longer active on NextShelf.`,
+      );
     }
 
     // Attach user, session ID, and active org to the request for later use

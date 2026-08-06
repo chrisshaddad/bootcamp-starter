@@ -8,6 +8,10 @@ import {
   invitationEmail,
   dueReminderEmail,
   membershipClaimEmail,
+  organizationRegistrationReceivedEmail,
+  organizationApprovedEmail,
+  organizationStatusNoticeEmail,
+  type OrganizationBlockedStatus,
 } from './templates';
 
 interface SendMagicLinkJobData {
@@ -41,11 +45,34 @@ interface SendMembershipClaimJobData {
   claimLink: string;
 }
 
+interface SendOrgRegistrationReceivedJobData {
+  email: string;
+  adminName: string;
+  organizationName: string;
+}
+
+interface SendOrgApprovedJobData {
+  email: string;
+  adminName: string;
+  organizationName: string;
+  signInLink: string;
+}
+
+interface SendOrgStatusNoticeJobData {
+  email: string;
+  adminName: string;
+  organizationName: string;
+  status: OrganizationBlockedStatus;
+}
+
 type MailJobData =
   | SendMagicLinkJobData
   | SendInvitationJobData
   | SendDueReminderJobData
-  | SendMembershipClaimJobData;
+  | SendMembershipClaimJobData
+  | SendOrgRegistrationReceivedJobData
+  | SendOrgApprovedJobData
+  | SendOrgStatusNoticeJobData;
 
 const FROM_ADDRESS = 'no-reply@nextshelf.local';
 
@@ -73,6 +100,19 @@ export class MailProcessor extends WorkerHost {
       case MAIL_JOBS.SEND_MEMBERSHIP_CLAIM:
         await this.handleSendMembershipClaim(
           job.data as SendMembershipClaimJobData,
+        );
+        break;
+      case MAIL_JOBS.SEND_ORG_REGISTRATION_RECEIVED:
+        await this.handleSendOrgRegistrationReceived(
+          job.data as SendOrgRegistrationReceivedJobData,
+        );
+        break;
+      case MAIL_JOBS.SEND_ORG_APPROVED:
+        await this.handleSendOrgApproved(job.data as SendOrgApprovedJobData);
+        break;
+      case MAIL_JOBS.SEND_ORG_STATUS_NOTICE:
+        await this.handleSendOrgStatusNotice(
+          job.data as SendOrgStatusNoticeJobData,
         );
         break;
       default:
@@ -187,6 +227,67 @@ export class MailProcessor extends WorkerHost {
     } else {
       this.logger.error(`Failed to send membership claim email to ${email}`);
       throw new Error(`Failed to send email to ${email}`);
+    }
+  }
+
+  private async handleSendOrgRegistrationReceived(
+    data: SendOrgRegistrationReceivedJobData,
+  ): Promise<void> {
+    const { email, adminName, organizationName } = data;
+    const { subject, text, html } = organizationRegistrationReceivedEmail({
+      adminName,
+      organizationName,
+    });
+
+    await this.send(email, { subject, text, html }, 'org registration');
+  }
+
+  private async handleSendOrgApproved(
+    data: SendOrgApprovedJobData,
+  ): Promise<void> {
+    const { email, adminName, organizationName, signInLink } = data;
+    const { subject, text, html } = organizationApprovedEmail({
+      adminName,
+      organizationName,
+      signInLink,
+    });
+
+    await this.send(email, { subject, text, html }, 'org approval');
+  }
+
+  private async handleSendOrgStatusNotice(
+    data: SendOrgStatusNoticeJobData,
+  ): Promise<void> {
+    const { email, adminName, organizationName, status } = data;
+    const { subject, text, html } = organizationStatusNoticeEmail({
+      adminName,
+      organizationName,
+      status,
+    });
+
+    await this.send(email, { subject, text, html }, 'org status notice');
+  }
+
+  /**
+   * Send + log + throw-on-failure, shared by the organization handlers.
+   * (The older handlers above predate this and still inline the same shape.)
+   */
+  private async send(
+    to: string,
+    content: { subject: string; text: string; html: string },
+    label: string,
+  ): Promise<void> {
+    const success = await this.mailService.sendEmail({
+      to,
+      from: FROM_ADDRESS,
+      ...content,
+    });
+
+    if (success) {
+      this.logger.log(`${label} email sent successfully to ${to}`);
+    } else {
+      this.logger.error(`Failed to send ${label} email to ${to}`);
+      throw new Error(`Failed to send email to ${to}`);
     }
   }
 }

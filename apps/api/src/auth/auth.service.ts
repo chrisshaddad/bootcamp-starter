@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -10,12 +11,32 @@ import * as crypto from 'crypto';
 import { PrismaService } from '../database/prisma.service';
 import { SessionService } from './session.service';
 import { MAIL_QUEUE, MAIL_JOBS } from '../mail/mail.constants';
+import type { OrganizationBlockedStatus } from '../mail/templates';
 import type { PatronRegisterResponse } from '@repo/contracts';
 
 const MAGIC_LINK_EXPIRY_MINUTES = 15;
 // Invitation links live longer than login links (7 days) — the copy in
 // invitation.email.ts states this window, so keep them in sync.
 const INVITATION_EXPIRY_MINUTES = 7 * 24 * 60;
+
+/**
+ * What a staff member is told when their library isn't ACTIVE. A library only
+ * gains access once a SUPER_ADMIN approves it, and loses it again if the
+ * library is rejected or suspended — so these cover every non-ACTIVE status.
+ */
+const BLOCKED_ORGANIZATION_MESSAGE: Record<
+  OrganizationBlockedStatus,
+  (organizationName: string) => string
+> = {
+  PENDING: (org) =>
+    `${org} is still awaiting approval by a NextShelf administrator. We'll email you a sign-in link as soon as it's approved.`,
+  REJECTED: (org) =>
+    `${org} was not approved by a NextShelf administrator, so it can't be accessed. Contact support if you think this is a mistake.`,
+  SUSPENDED: (org) =>
+    `${org} has been suspended by a NextShelf administrator. Contact support to restore access.`,
+  INACTIVE: (org) =>
+    `${org} is not currently active on NextShelf. Contact support to reactivate it.`,
+};
 
 @Injectable()
 export class AuthService {
@@ -53,6 +74,53 @@ export class AuthService {
     await this.requestMagicLink(email);
 
     return { id: user.id, name: user.name, email: user.email };
+  }
+
+  /**
+   * A library's staff (ORG_ADMIN / LIBRARIAN) may only use NextShelf while
+   * their library is ACTIVE — i.e. after a SUPER_ADMIN has approved it, and
+   * for as long as it isn't rejected or suspended. Returns the offending
+   * library when access should be denied, or null when it's allowed.
+   *
+   * SUPER_ADMINs and patrons are never blocked here: neither carries a
+   * User.organizationId (a patron's library links live in LibraryMember, and
+   * are gated separately by setActiveOrganization).
+   */
+  async findBlockingOrganization(user: {
+    role: string;
+    organizationId: string | null;
+  }): Promise<{ name: string; status: OrganizationBlockedStatus } | null> {
+    if (user.role === 'SUPER_ADMIN' || !user.organizationId) {
+      return null;
+    }
+
+    const organization = await this.prisma.organization.findUnique({
+      where: { id: user.organizationId },
+      select: { name: true, status: true },
+    });
+
+    if (!organization || organization.status === 'ACTIVE') {
+      return null;
+    }
+
+    return { name: organization.name, status: organization.status };
+  }
+
+  /**
+   * Reject the request outright when the caller's library isn't ACTIVE, with
+   * a message explaining which of the non-ACTIVE states it's in.
+   */
+  async assertOrganizationAccess(user: {
+    role: string;
+    organizationId: string | null;
+  }): Promise<void> {
+    const blocking = await this.findBlockingOrganization(user);
+
+    if (blocking) {
+      throw new ForbiddenException(
+        BLOCKED_ORGANIZATION_MESSAGE[blocking.status](blocking.name),
+      );
+    }
   }
 
   /**
@@ -98,6 +166,27 @@ export class AuthService {
     if (!user) {
       // Don't reveal if user exists - still return success
       this.logger.warn(`Magic link requested for non-existent email: ${email}`);
+      return { success: true };
+    }
+
+    // Staff of a library that isn't ACTIVE can't sign in (verifyMagicLink
+    // would reject them), so don't mint a link that's guaranteed to fail.
+    // They still get *an* email — one that explains why — which keeps this
+    // endpoint's "always answer 'check your email'" non-disclosure intact
+    // while giving a real person a real answer.
+    const blocking = await this.findBlockingOrganization(user);
+
+    if (blocking) {
+      await this.mailQueue.add(MAIL_JOBS.SEND_ORG_STATUS_NOTICE, {
+        email: user.email,
+        adminName: user.name,
+        organizationName: blocking.name,
+        status: blocking.status,
+      });
+
+      this.logger.warn(
+        `Magic link suppressed for user ${user.id}: organization is ${blocking.status}`,
+      );
       return { success: true };
     }
 
@@ -178,6 +267,76 @@ export class AuthService {
   }
 
   /**
+   * Acknowledge a brand-new library registration. Deliberately carries NO
+   * sign-in link: the library is PENDING and its admin can't sign in until a
+   * SUPER_ADMIN approves it, at which point sendOrganizationApproved() sends
+   * the link that actually works.
+   */
+  async sendOrganizationRegistrationReceived(
+    adminEmail: string,
+    adminName: string,
+    organizationName: string,
+  ): Promise<void> {
+    await this.mailQueue.add(MAIL_JOBS.SEND_ORG_REGISTRATION_RECEIVED, {
+      email: adminEmail,
+      adminName,
+      organizationName,
+    });
+
+    this.logger.log(
+      `Registration acknowledgement queued for ${organizationName}`,
+    );
+  }
+
+  /**
+   * Tell a library's owning admin that it's been approved, and give them
+   * their first sign-in link. Uses the long invitation expiry rather than the
+   * 15-minute login expiry — approval is asynchronous, so the admin isn't
+   * waiting at the keyboard for it.
+   */
+  async sendOrganizationApproved(
+    admin: { id: string; email: string; name: string },
+    organizationName: string,
+  ): Promise<void> {
+    const signInLink = await this.issueMagicLinkToken(
+      admin.id,
+      INVITATION_EXPIRY_MINUTES,
+    );
+
+    await this.mailQueue.add(MAIL_JOBS.SEND_ORG_APPROVED, {
+      email: admin.email,
+      adminName: admin.name,
+      organizationName,
+      signInLink,
+    });
+
+    this.logger.log(
+      `Approval email queued for organization ${organizationName}`,
+    );
+  }
+
+  /**
+   * Tell a library's owning admin that it's in a non-ACTIVE state (currently
+   * used when a SUPER_ADMIN rejects one). No sign-in link, by definition.
+   */
+  async sendOrganizationStatusNotice(
+    admin: { email: string; name: string },
+    organizationName: string,
+    status: OrganizationBlockedStatus,
+  ): Promise<void> {
+    await this.mailQueue.add(MAIL_JOBS.SEND_ORG_STATUS_NOTICE, {
+      email: admin.email,
+      adminName: admin.name,
+      organizationName,
+      status,
+    });
+
+    this.logger.log(
+      `Status notice (${status}) queued for organization ${organizationName}`,
+    );
+  }
+
+  /**
    * Verify a magic link token and create a session
    * Returns the session ID on success
    */
@@ -204,6 +363,12 @@ export class AuthService {
     if (magicLink.expiresAt < new Date()) {
       throw new NotFoundException('This magic link has expired');
     }
+
+    // A library's staff get no session until a SUPER_ADMIN has approved the
+    // library (and lose it again if it's rejected/suspended). Checked before
+    // the token is consumed, so a link that lands minutes before approval
+    // still works on a retry rather than being burned.
+    await this.assertOrganizationAccess(magicLink.user);
 
     // Mark as used
     await this.prisma.magicLink.update({
@@ -248,9 +413,20 @@ export class AuthService {
   ): Promise<void> {
     const membership = await this.prisma.libraryMember.findFirst({
       where: { organizationId, userId },
+      select: {
+        membershipStatus: true,
+        organization: { select: { status: true } },
+      },
     });
 
-    if (!membership || membership.membershipStatus !== 'ACTIVE') {
+    // Both halves have to hold: the patron's membership must be ACTIVE *and*
+    // the library itself must be ACTIVE. A suspended library is closed to its
+    // patrons too, not just its staff.
+    if (
+      !membership ||
+      membership.membershipStatus !== 'ACTIVE' ||
+      membership.organization.status !== 'ACTIVE'
+    ) {
       throw new NotFoundException(
         'No active membership found for this library',
       );
