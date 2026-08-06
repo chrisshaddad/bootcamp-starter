@@ -113,90 +113,6 @@ export class UsersService {
     const skip = (query.page - 1) * query.limit;
     const take = query.limit;
 
-    let userIds: string[] | undefined = undefined;
-
-    if (query.search && query.search.trim().length > 0) {
-      const cleanedText = cleanSearchQuery(query.search);
-      const embedding = await this.aiService.generateEmbedding(cleanedText);
-
-      if (embedding.length > 0) {
-        const vectorString = `[${embedding.join(',')}]`;
-        const matches = await this.prisma.$queryRaw<{ userId: string }[]>`
-          SELECT "userId" FROM "DeveloperProfile"
-          WHERE embedding IS NOT NULL
-            AND (embedding <=> ${vectorString}::vector) < ${MAX_COSINE_DISTANCE}
-          ORDER BY embedding <=> ${vectorString}::vector
-          LIMIT ${take} OFFSET ${skip}
-        `;
-        if (matches.length > 0) {
-          userIds = matches.map((m) => m.userId);
-        }
-      }
-    }
-
-    const cleanedSearchForKeyword = query.search
-      ? cleanSearchQuery(query.search)
-      : '';
-
-    const where: Prisma.UserWhereInput = {
-      isConfirmed: true,
-      ...(userIds ? { id: { in: userIds } } : {}),
-      ...(!userIds && cleanedSearchForKeyword
-        ? {
-            OR: [
-              {
-                developerProfile: {
-                  displayName: {
-                    contains: cleanedSearchForKeyword,
-                    mode: 'insensitive',
-                  },
-                },
-              },
-              {
-                developerProfile: {
-                  headline: {
-                    contains: cleanedSearchForKeyword,
-                    mode: 'insensitive',
-                  },
-                },
-              },
-              {
-                developerProfile: {
-                  bio: {
-                    contains: cleanedSearchForKeyword,
-                    mode: 'insensitive',
-                  },
-                },
-              },
-              {
-                developerProfile: {
-                  githubUsername: {
-                    contains: cleanedSearchForKeyword,
-                    mode: 'insensitive',
-                  },
-                },
-              },
-              {
-                hiringProfile: {
-                  organizationName: {
-                    contains: cleanedSearchForKeyword,
-                    mode: 'insensitive',
-                  },
-                },
-              },
-              {
-                hiringProfile: {
-                  jobTitle: {
-                    contains: cleanedSearchForKeyword,
-                    mode: 'insensitive',
-                  },
-                },
-              },
-            ],
-          }
-        : {}),
-    };
-
     let orderBy:
       | Prisma.UserOrderByWithRelationInput
       | Prisma.UserOrderByWithRelationInput[] = [
@@ -214,25 +130,158 @@ export class UsersService {
       ];
     }
 
-    const prismaSkip = userIds ? 0 : skip;
-    const prismaTake = userIds ? userIds.length : take;
+    // 1. Simple pagination if no search is provided
+    if (!query.search || query.search.trim().length === 0) {
+      const where: Prisma.UserWhereInput = { isConfirmed: true };
+      const [totalItems, users] = await Promise.all([
+        this.prisma.user.count({ where }),
+        this.prisma.user.findMany({
+          where,
+          orderBy,
+          skip,
+          take,
+          select: this.getSafeSelect(),
+        }),
+      ]);
 
-    const [totalItems, users] = await Promise.all([
-      this.prisma.user.count({ where }),
-      this.prisma.user.findMany({
-        where,
-        orderBy: userIds ? undefined : orderBy,
-        skip: prismaSkip,
-        take: prismaTake,
-        select: this.getSafeSelect(),
-      }),
-    ]);
+      const totalPages = Math.ceil(totalItems / query.limit);
+      return {
+        data: users,
+        meta: {
+          totalItems,
+          currentPage: query.page,
+          totalPages,
+          hasNextPage: query.page < totalPages,
+          hasPreviousPage: query.page > 1,
+        },
+      };
+    }
 
-    const sortedUsers = userIds
-      ? userIds.map((id) => users.find((u) => u.id === id)).filter(Boolean)
-      : users;
+    const searchText = query.search.trim();
+    const cleanedText = cleanSearchQuery(searchText);
 
+    // 2. Keyword Matches (Exact searches like display names have maximum priority)
+    const keywordMatches = await this.prisma.user.findMany({
+      where: {
+        isConfirmed: true,
+        OR: [
+          {
+            developerProfile: {
+              displayName: { contains: searchText, mode: 'insensitive' },
+            },
+          },
+          {
+            developerProfile: {
+              headline: { contains: searchText, mode: 'insensitive' },
+            },
+          },
+          {
+            developerProfile: {
+              bio: { contains: searchText, mode: 'insensitive' },
+            },
+          },
+          {
+            developerProfile: {
+              githubUsername: { contains: searchText, mode: 'insensitive' },
+            },
+          },
+          {
+            developerProfile: {
+              publicSlug: { contains: searchText, mode: 'insensitive' },
+            },
+          },
+          {
+            hiringProfile: {
+              organizationName: { contains: searchText, mode: 'insensitive' },
+            },
+          },
+          {
+            hiringProfile: {
+              jobTitle: { contains: searchText, mode: 'insensitive' },
+            },
+          },
+        ],
+      },
+      select: { id: true },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+
+    const keywordIds = keywordMatches.map((m) => m.id);
+
+    // 3. AI Vector Matches (Lower Priority)
+    let vectorIds: string[] = [];
+    if (cleanedText.length > 0) {
+      try {
+        const embedding = await this.aiService.generateEmbedding(cleanedText);
+        if (embedding.length > 0) {
+          const vectorString = `[${embedding.join(',')}]`;
+          const matches = await this.prisma.$queryRaw<{ userId: string }[]>`
+            SELECT dp."userId" FROM "DeveloperProfile" dp
+            JOIN "User" u ON dp."userId" = u.id
+            WHERE dp.embedding IS NOT NULL
+              AND u."isConfirmed" = true
+              AND (dp.embedding <=> ${vectorString}::vector) < ${MAX_COSINE_DISTANCE}
+            ORDER BY dp.embedding <=> ${vectorString}::vector
+            LIMIT 100
+          `;
+          vectorIds = matches.map((m) => m.userId);
+        }
+      } catch (error) {
+        // Fallback gracefully
+      }
+    }
+
+    // Combine IDs (Keywords first, then broader vector matches)
+    const combinedIds = Array.from(new Set([...keywordIds, ...vectorIds]));
+    const totalItems = combinedIds.length;
     const totalPages = Math.ceil(totalItems / query.limit);
+
+    if (totalItems === 0) {
+      return {
+        data: [],
+        meta: {
+          totalItems: 0,
+          currentPage: query.page,
+          totalPages: 0,
+          hasNextPage: false,
+          hasPreviousPage: false,
+        },
+      };
+    }
+
+    const paginatedIds = combinedIds.slice(skip, skip + take);
+
+    // If explicit sorting (alphabetical, oldest) is requested, sort the entire combined set
+    if (query.sort && query.sort !== 'newest') {
+      const sortedUsers = await this.prisma.user.findMany({
+        where: { id: { in: combinedIds } },
+        orderBy,
+        skip,
+        take,
+        select: this.getSafeSelect(),
+      });
+      return {
+        data: sortedUsers,
+        meta: {
+          totalItems,
+          currentPage: query.page,
+          totalPages,
+          hasNextPage: query.page < totalPages,
+          hasPreviousPage: query.page > 1,
+        },
+      };
+    }
+
+    // Default Sort (Relevance: Exact Keyword Matches -> Broad AI Semantic Matches)
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: paginatedIds } },
+      select: this.getSafeSelect(),
+    });
+
+    const sortedUsers = paginatedIds
+      .map((id) => users.find((u) => u.id === id))
+      .filter(Boolean);
 
     return {
       data: sortedUsers as typeof users,
@@ -261,7 +310,9 @@ export class UsersService {
 
   async getUserBySlug(slug: string) {
     const user = await this.prisma.user.findFirst({
-      where: { developerProfile: { publicSlug: slug } },
+      where: {
+        developerProfile: { publicSlug: { equals: slug, mode: 'insensitive' } },
+      },
       select: this.getSafeSelect(),
     });
 
@@ -279,7 +330,7 @@ export class UsersService {
       where: {
         accountType: AccountType.DEVELOPER,
         isConfirmed: true,
-        developerProfile: { publicSlug: slug },
+        developerProfile: { publicSlug: { equals: slug, mode: 'insensitive' } },
       },
       select: {
         id: true,
@@ -437,15 +488,20 @@ export class UsersService {
         });
 
         // Update Developer Profile AI Embedding
-        const combinedText = `${data.displayName || ''} ${data.headline || ''} ${data.bio || ''} ${data.location || ''}`;
-        const embedding = await this.aiService.generateEmbedding(combinedText);
-        if (embedding.length > 0) {
-          const vectorString = `[${embedding.join(',')}]`;
-          await this.prisma.$executeRaw`
-            UPDATE "DeveloperProfile"
-            SET embedding = ${vectorString}::vector
-            WHERE "userId" = ${userId}
-          `;
+        try {
+          const combinedText = `${data.displayName || ''} ${data.headline || ''} ${data.bio || ''} ${data.location || ''}`;
+          const embedding =
+            await this.aiService.generateEmbedding(combinedText);
+          if (embedding.length > 0) {
+            const vectorString = `[${embedding.join(',')}]`;
+            await this.prisma.$executeRaw`
+              UPDATE "DeveloperProfile"
+              SET embedding = ${vectorString}::vector
+              WHERE "userId" = ${userId}
+            `;
+          }
+        } catch (error) {
+          // Profile update succeeds even if embedding API fails
         }
       } else if (user.accountType === 'HIRING' && user.hiringProfile) {
         await this.prisma.hiringProfile.update({

@@ -34,7 +34,7 @@ export class UsersController {
   }
 
   @Public()
-  @Get('slug/:slug')
+  @Get('developers/:slug') // Changed from 'slug/:slug'
   async getUserBySlug(@Param('slug') slug: string) {
     return this.usersService.getDeveloperPublicProfile(slug);
   }

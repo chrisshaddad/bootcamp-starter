@@ -14,9 +14,7 @@ export class AiService {
   }
 
   // Feature 1: Repo Summarizer (Powered by OpenAI gpt-5.4-nano)
-  async summarizeRepository(
-    readmeContent: string | null,
-  ): Promise<{
+  async summarizeRepository(readmeContent: string | null): Promise<{
     title: string;
     shortDescription: string;
     fullDescription: string;
