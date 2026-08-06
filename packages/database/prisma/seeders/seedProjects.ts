@@ -12,18 +12,42 @@ function daysAgo(days: number): Date {
   return new Date(Date.now() - days * DAY_IN_MS);
 }
 
+// Global pipeline reference for local vector embeddings
+let extractor: any = null;
+
+async function generateLocalEmbedding(text: string): Promise<number[]> {
+  try {
+    if (!extractor) {
+      const { pipeline } = await (eval(
+        'import("@xenova/transformers")',
+      ) as Promise<typeof import('@xenova/transformers')>);
+      extractor = await pipeline(
+        'feature-extraction',
+        'Xenova/all-MiniLM-L6-v2',
+      );
+    }
+    const output = await extractor(text, { pooling: 'mean', normalize: true });
+    return Array.from(output.data);
+  } catch (error) {
+    console.warn('Could not generate local vector embedding:', error);
+    return [];
+  }
+}
+
 export async function seedProjects(
   prisma: PrismaClient,
   objectStorage: SeedObjectStorage,
 ) {
-  console.log('Seeding technologies, repositories, and showcase projects...');
+  console.log(
+    'Seeding technologies, repositories, and showcase projects with vectors...',
+  );
 
-  // Remove the original fake repositories so rerunning this upgraded seed does
-  // not leave the two placeholder projects beside the real demo catalog.
+  // Remove legacy seed repos if re-running
   await prisma.repository.deleteMany({
     where: { githubRepoId: { in: legacySeedRepositoryIds } },
   });
 
+  // 1. Seed Technologies
   const technologyIds = new Map<string, string>();
 
   for (const technology of technologySeeds) {
@@ -38,6 +62,7 @@ export async function seedProjects(
     technologyIds.set(technology.slug, savedTechnology.id);
   }
 
+  // 2. Resolve Developers (Alex & Sarah)
   const developerEmails = [
     ...new Set(
       projectCatalog.flatMap((item) => [
@@ -47,19 +72,22 @@ export async function seedProjects(
       ]),
     ),
   ];
+
   const developers = await prisma.user.findMany({
     where: { email: { in: developerEmails } },
     include: { developerProfile: true },
   });
+
   const developersByEmail = new Map(
     developers.map((developer) => [developer.email, developer]),
   );
 
+  // 3. Seed Catalog Projects & Embeddings
   for (const item of projectCatalog) {
     const owner = developersByEmail.get(item.ownerEmail);
     if (!owner?.developerProfile?.githubUserId) {
       throw new Error(
-        `Seed developer ${item.ownerEmail} must have a GitHub identity.`,
+        `Seed developer ${item.ownerEmail} must have a GitHub identity. Seed users first.`,
       );
     }
 
@@ -140,6 +168,20 @@ export async function seedProjects(
       },
     });
 
+    // --- Generate and attach pgvector Embedding ---
+    const textToEmbed = `${item.title} ${item.shortDescription || ''} ${item.fullDescription || ''}`;
+    const embedding = await generateLocalEmbedding(textToEmbed);
+
+    if (embedding.length > 0) {
+      const vectorString = JSON.stringify(embedding);
+      await prisma.$executeRaw`
+        UPDATE "Project"
+        SET "embedding" = ${vectorString}::vector
+        WHERE "id" = ${project.id}
+      `;
+    }
+
+    // Upsert Owner Membership
     await prisma.projectMember.upsert({
       where: {
         projectId_userId: { projectId: project.id, userId: owner.id },
@@ -172,6 +214,7 @@ export async function seedProjects(
       },
     });
 
+    // Upsert Collaborator Memberships
     for (const collaboratorSeed of item.collaborators ?? []) {
       const collaborator = developersByEmail.get(collaboratorSeed.email);
       if (!collaborator?.developerProfile?.githubUserId) {
@@ -220,6 +263,7 @@ export async function seedProjects(
       });
     }
 
+    // Sync Technologies
     await prisma.projectTechnology.deleteMany({
       where: { projectId: project.id },
     });
@@ -243,28 +287,33 @@ export async function seedProjects(
       }),
     });
 
+    // Sync Media
     await prisma.projectMedia.deleteMany({
       where: {
         projectId: project.id,
         storageKey: { startsWith: mediaKeyPrefix },
       },
     });
-    await prisma.projectMedia.createMany({
-      data: storedMedia.map((media, index) => ({
-        projectId: project.id,
-        uploadedByUserId: owner.id,
-        mediaType: 'IMAGE' as const,
-        storageKey: media.storageKey,
-        publicUrl: media.publicUrl,
-        caption: media.caption,
-        sortOrder: index,
-      })),
-    });
+    if (storedMedia.length > 0) {
+      await prisma.projectMedia.createMany({
+        data: storedMedia.map((media, index) => ({
+          projectId: project.id,
+          uploadedByUserId: owner.id,
+          mediaType: 'IMAGE' as const,
+          storageKey: media.storageKey,
+          publicUrl: media.publicUrl,
+          caption: media.caption,
+          sortOrder: index,
+        })),
+      });
+    }
 
     console.log(
-      `  Created/updated ${project.title} with ${item.media.length} media item(s).`,
+      `  [Vector Seeded] ${project.title} (Owner: ${item.ownerEmail})`,
     );
   }
 
-  console.log(`Seeded ${projectCatalog.length} real-world showcase projects.`);
+  console.log(
+    `Successfully seeded ${projectCatalog.length} projects with pgvector embeddings.`,
+  );
 }

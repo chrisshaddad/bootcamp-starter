@@ -34,6 +34,7 @@ import {
 import { GithubRepositorySnapshotService } from '../repository-scanner/github-repository-snapshot.service';
 import { GithubService } from '../github/github.service';
 import { ProjectAccessService } from './project-access.service';
+import { AiService } from '../ai/ai.service';
 
 const GITHUB_API_UNAVAILABLE_MESSAGE =
   'GitHub API is currently unavailable. Please try again later.';
@@ -41,6 +42,8 @@ const REPOSITORY_PROJECT_CONFLICT_MESSAGE =
   'This repository is already linked to a project.';
 const PROJECT_SLUG_CONFLICT_MESSAGE =
   'A project with this slug already exists.';
+
+const MAX_COSINE_DISTANCE = 0.78; // Cosine distance threshold for semantic matches
 
 const verifiedProjectMembersQuery = {
   where: { verificationStatus: VerificationStatus.VERIFIED },
@@ -70,6 +73,7 @@ export class ProjectsService {
     private readonly githubRepositorySnapshotService: GithubRepositorySnapshotService,
     private readonly githubService: GithubService,
     private readonly projectAccess: ProjectAccessService,
+    private readonly aiService: AiService,
   ) {}
 
   private mapStatus(
@@ -120,7 +124,16 @@ export class ProjectsService {
       analysis.repository.lastPushedAt,
     );
     const importedAt = new Date();
-    const title = data.title ?? analysis.repository.repoName;
+
+    const title =
+      data.title ?? analysis.aiPitch?.title ?? analysis.repository.repoName;
+    const shortDescription =
+      data.shortDescription !== undefined
+        ? data.shortDescription
+        : (analysis.aiPitch?.shortDescription ??
+          analysis.repository.description);
+    const fullDescription =
+      data.fullDescription ?? analysis.aiPitch?.fullDescription ?? null;
 
     this.logger.log(
       'Importing GitHub repository ' +
@@ -179,17 +192,22 @@ export class ProjectsService {
             createdByUserId: userId,
             title,
             slug,
-            shortDescription:
-              data.shortDescription === undefined
-                ? analysis.repository.description
-                : data.shortDescription,
-            fullDescription: data.fullDescription ?? null,
+            shortDescription,
+            fullDescription,
             deploymentUrl: data.deploymentUrl ?? null,
             status: ProjectStatus.DRAFT,
             publishedAt: null,
             githubOwnershipVerifiedAt: importedAt,
           },
         });
+
+        // Save Vector Embedding
+        const textToEmbed = `${title} ${shortDescription || ''} ${fullDescription || ''}`;
+        const embedding = await this.aiService.generateEmbedding(textToEmbed);
+        if (embedding.length > 0) {
+          const vectorString = `[${embedding.join(',')}]`;
+          await tx.$executeRaw`UPDATE "Project" SET embedding = ${vectorString}::vector WHERE id = ${project.id}`;
+        }
 
         await tx.projectMember.create({
           data: {
@@ -511,6 +529,14 @@ export class ProjectsService {
           },
         });
 
+        // Save Vector Embedding
+        const textToEmbed = `${data.title} ${data.shortDescription || ''} ${data.fullDescription || ''}`;
+        const embedding = await this.aiService.generateEmbedding(textToEmbed);
+        if (embedding.length > 0) {
+          const vectorString = `[${embedding.join(',')}]`;
+          await tx.$executeRaw`UPDATE "Project" SET embedding = ${vectorString}::vector WHERE id = ${newProject.id}`;
+        }
+
         await tx.projectMember.create({
           data: {
             projectId: newProject.id,
@@ -615,9 +641,6 @@ export class ProjectsService {
           : undefined;
 
         if (verifiedRepository) {
-          // Projects created before verified collaborator memberships were
-          // added may not have an OWNER row yet. Repair that invariant using
-          // the GitHub identity verified before opening the transaction.
           await tx.projectMember.upsert({
             where: {
               projectId_userId: {
@@ -656,7 +679,7 @@ export class ProjectsService {
           publishedAt = null;
         }
 
-        return tx.project.update({
+        const updated = await tx.project.update({
           where: { id: projectId },
           data: {
             title: data.title,
@@ -670,6 +693,16 @@ export class ProjectsService {
             githubOwnershipVerifiedAt,
           },
         });
+
+        // Save Vector Embedding
+        const textToEmbed = `${updated.title} ${updated.shortDescription || ''} ${updated.fullDescription || ''}`;
+        const embedding = await this.aiService.generateEmbedding(textToEmbed);
+        if (embedding.length > 0) {
+          const vectorString = `[${embedding.join(',')}]`;
+          await tx.$executeRaw`UPDATE "Project" SET embedding = ${vectorString}::vector WHERE id = ${updated.id}`;
+        }
+
+        return updated;
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -749,19 +782,42 @@ export class ProjectsService {
     const skip = (query.page - 1) * query.limit;
     const take = query.limit;
 
-    // Split into individual terms so a query like "java react" (or "java and
-    // react") matches projects that mention/use *both*, not the literal
-    // phrase — each term just needs to show up somewhere (title, either
-    // description, or a technology name), but every term must be satisfied.
+    let projectIds: string[] | undefined = undefined;
+
+    // Vector Semantic Search using <=> (Cosine Distance) with threshold 0.65
+    if (query.search && query.search.trim().length > 0) {
+      const embedding = await this.aiService.generateEmbedding(
+        query.search.trim(),
+      );
+      if (embedding.length > 0) {
+        const vectorString = `[${embedding.join(',')}]`;
+        const matches = await this.prisma.$queryRaw<{ id: string }[]>`
+          SELECT id FROM "Project"
+          WHERE status = 'PUBLISHED'
+            AND embedding IS NOT NULL
+            AND (embedding <=> ${vectorString}::vector) < ${MAX_COSINE_DISTANCE}
+          ORDER BY embedding <=> ${vectorString}::vector
+          LIMIT ${take} OFFSET ${skip}
+        `;
+        if (matches.length > 0) {
+          projectIds = matches.map((m) => m.id);
+        }
+      }
+    }
+
+    // Fallback to keyword search if vector search didn't yield matches or vector is missing
     const MAX_SEARCH_TERMS = 10;
-    const searchTerms = (query.search ?? '')
-      .split(/[\s,]+/)
-      .map((term) => term.trim())
-      .filter(
-        (term) =>
-          term.length > 0 && !['and', 'or'].includes(term.toLowerCase()),
-      )
-      .slice(0, MAX_SEARCH_TERMS);
+    const searchTerms =
+      !projectIds && query.search
+        ? query.search
+            .split(/[\s,]+/)
+            .map((term) => term.trim())
+            .filter(
+              (term) =>
+                term.length > 0 && !['and', 'or'].includes(term.toLowerCase()),
+            )
+            .slice(0, MAX_SEARCH_TERMS)
+        : [];
 
     const andFilters: Prisma.ProjectWhereInput[] = [
       ...searchTerms.map((term) => ({
@@ -770,9 +826,7 @@ export class ProjectsService {
           {
             shortDescription: { contains: term, mode: 'insensitive' as const },
           },
-          {
-            fullDescription: { contains: term, mode: 'insensitive' as const },
-          },
+          { fullDescription: { contains: term, mode: 'insensitive' as const } },
           {
             technologies: {
               some: {
@@ -784,15 +838,15 @@ export class ProjectsService {
           },
         ],
       })),
-      ...query.technology.map((slug) => ({
+      ...(query.technology?.map((slug) => ({
         technologies: { some: { technology: { slug } } },
-      })),
+      })) || []),
     ];
 
     const where: Prisma.ProjectWhereInput = {
       status: ProjectStatus.PUBLISHED,
-      // 1. Filter by userId if it's passed in the query
       ...(query.userId ? { createdByUserId: query.userId } : {}),
+      ...(projectIds ? { id: { in: projectIds } } : {}),
       ...(andFilters.length > 0 ? { AND: andFilters } : {}),
     };
 
@@ -806,14 +860,16 @@ export class ProjectsService {
       orderBy = [{ title: 'asc' }, { id: 'asc' }];
     }
 
+    const prismaSkip = projectIds ? 0 : skip;
+    const prismaTake = projectIds ? projectIds.length : take;
+
     const [totalItems, projects] = await Promise.all([
       this.prisma.project.count({ where }),
       this.prisma.project.findMany({
         where,
-        orderBy,
-        skip,
-        take,
-        // 2. Select media so screenshots can be rendered on frontend cards
+        orderBy: projectIds ? undefined : orderBy,
+        skip: prismaSkip,
+        take: prismaTake,
         select: {
           id: true,
           title: true,
@@ -885,10 +941,16 @@ export class ProjectsService {
       }),
     ]);
 
+    const sortedProjects = projectIds
+      ? projectIds
+          .map((id) => projects.find((p) => p.id === id))
+          .filter(Boolean)
+      : projects;
+
     const totalPages = Math.ceil(totalItems / query.limit);
 
     return {
-      data: projects,
+      data: sortedProjects as typeof projects,
       meta: {
         totalItems,
         currentPage: query.page,
@@ -898,6 +960,7 @@ export class ProjectsService {
       },
     };
   }
+
   async addMedia(
     user: User,
     projectId: string,
@@ -974,10 +1037,6 @@ export class ProjectsService {
       return target;
     }
 
-    // If a prior race between two uploads left current and target tied on
-    // sortOrder, a straight swap is a no-op (both writes carry the same
-    // value). Decrementing the target's new value guarantees it lands
-    // strictly below current's, so it always becomes the new cover.
     const newCurrentSortOrder = target.sortOrder;
     let newTargetSortOrder = current.sortOrder;
     if (newCurrentSortOrder === newTargetSortOrder) {

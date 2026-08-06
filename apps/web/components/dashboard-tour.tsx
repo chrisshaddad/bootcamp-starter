@@ -3,7 +3,9 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { useUser, useAuth } from '@/hooks/use-auth';
+import { useSidebar } from '@/components/ui/sidebar';
 import { X } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import type { UserResponse } from '@repo/contracts';
 
 interface TourStep {
@@ -25,7 +27,7 @@ function getTourSteps(user: UserResponse | undefined): TourStep[] {
     content: 'Your central dashboard showing key stats and action cards.',
   });
 
-  // 2. Explore (Available to both roles but with different contexts)
+  // 2. Explore
   steps.push({
     id: 'tour-nav-explore',
     title: 'Explore Platform',
@@ -110,6 +112,8 @@ function getTourSteps(user: UserResponse | undefined): TourStep[] {
 export function DashboardTour() {
   const { user, isLoading } = useUser({ redirectOnUnauthenticated: false });
   const { updateProfile } = useAuth();
+  const { isMobile, setOpenMobile } = useSidebar();
+
   const [isActive, setIsActive] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
@@ -117,7 +121,7 @@ export function DashboardTour() {
   const boxRef = useRef<HTMLDivElement>(null);
   const [boxRect, setBoxRect] = useState<DOMRect | null>(null);
 
-  // 1. MEMOIZE TOUR STEPS (Properly depending on the whole user object)
+  // 1. MEMOIZE TOUR STEPS
   const tourSteps = useMemo(() => {
     return getTourSteps(user);
   }, [user]);
@@ -128,18 +132,11 @@ export function DashboardTour() {
 
     const tourKey = `hasSeenDashboardTour-${user.id}`;
     const hasSeenTourLocal = localStorage.getItem(tourKey);
-
-    // Using proper strongly typed access now that contracts are updated
     const hasSeenTourDb = user.hasSeenDashboardTour;
     const isTourComplete = hasSeenTourDb || hasSeenTourLocal === 'true';
 
-    console.log(
-      `[DEBUG] Tour Check - User: ${user.email} | DB: ${hasSeenTourDb ?? 'FALSE'} | LocalStorage: ${hasSeenTourLocal ?? 'FALSE'}`,
-    );
-
     if (!isTourComplete) {
       const timer = setTimeout(() => {
-        console.log(`[DEBUG] Tour Activating for user: ${user.email}`);
         setIsActive(true);
       }, 1200);
 
@@ -147,7 +144,41 @@ export function DashboardTour() {
     }
   }, [user, isLoading]);
 
-  // 3. OPTIMIZED POSITION UPDATES (Bails out of rendering if coordinates haven't changed)
+  // 3. PREVENT RADIX MOBILE SHEET FROM CLOSING WHEN CLICKING TOUR CARD
+  useEffect(() => {
+    if (!isActive || !isMobile) return;
+
+    const handlePointerDownCapture = (e: PointerEvent) => {
+      // Intercept clicks on the Tour box before Radix Sheet sees them as "outside clicks"
+      if (boxRef.current && boxRef.current.contains(e.target as Node)) {
+        e.stopPropagation();
+      }
+    };
+
+    window.addEventListener('pointerdown', handlePointerDownCapture, true);
+    return () => {
+      window.removeEventListener('pointerdown', handlePointerDownCapture, true);
+    };
+  }, [isActive, isMobile]);
+
+  // 4. AUTO-MANAGE MOBILE SIDEBAR DRAWER STABILITY
+  useEffect(() => {
+    if (!isActive || tourSteps.length === 0) return;
+
+    const step = tourSteps[currentStep];
+    if (!step) return;
+
+    if (isMobile) {
+      const isSidebarItem = step.id.startsWith('tour-nav-');
+      if (isSidebarItem) {
+        setOpenMobile(true);
+      } else {
+        setOpenMobile(false);
+      }
+    }
+  }, [currentStep, isActive, isMobile, setOpenMobile, tourSteps]);
+
+  // 5. COORDINATE POSITION UPDATES
   const updateRects = useCallback(() => {
     if (!isActive || tourSteps.length === 0) return;
 
@@ -162,14 +193,14 @@ export function DashboardTour() {
           prev.width === newBoxRect.width &&
           prev.height === newBoxRect.height
         ) {
-          return prev; // Coordinate identical, bail out of state update
+          return prev;
         }
         return newBoxRect;
       });
     }
 
     const step = tourSteps[currentStep];
-    if (!step) return; // Satisfies TypeScript index checking
+    if (!step) return;
 
     // Update Target Element Coordinates
     const el = document.getElementById(step.id);
@@ -183,7 +214,7 @@ export function DashboardTour() {
           prev.width === newTargetRect.width &&
           prev.height === newTargetRect.height
         ) {
-          return prev; // Coordinate identical, bail out of state update
+          return prev;
         }
         return newTargetRect;
       });
@@ -192,14 +223,35 @@ export function DashboardTour() {
     }
   }, [isActive, currentStep, tourSteps]);
 
+  // HIGH-PERFORMANCE 60FPS TRACKING (Zero idle CPU load)
   useEffect(() => {
     if (!isActive) return;
 
     updateRects();
-    const intervalId = setInterval(updateRects, 50);
 
-    return () => clearInterval(intervalId);
-  }, [isActive, updateRects]);
+    const handleUpdate = () => updateRects();
+    window.addEventListener('resize', handleUpdate);
+    window.addEventListener('scroll', handleUpdate, true);
+
+    // Track smoothly during drawer slide transitions (350ms)
+    let animationFrameId: number;
+    const startTime = performance.now();
+
+    const animateTracking = (now: number) => {
+      updateRects();
+      if (now - startTime < 350) {
+        animationFrameId = requestAnimationFrame(animateTracking);
+      }
+    };
+
+    animationFrameId = requestAnimationFrame(animateTracking);
+
+    return () => {
+      window.removeEventListener('resize', handleUpdate);
+      window.removeEventListener('scroll', handleUpdate, true);
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, [isActive, currentStep, updateRects]);
 
   const handleNext = () => {
     if (currentStep < tourSteps.length - 1) {
@@ -215,22 +267,20 @@ export function DashboardTour() {
     }
   };
 
-  // 4. DISMISS TOUR (Saves to both Database and LocalStorage fallback)
+  // 6. DISMISS TOUR
   const dismissTour = async () => {
     setIsActive(false);
 
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+
     if (user) {
-      // Step A: Immediately update localStorage for local responsiveness on this machine
       const tourKey = `hasSeenDashboardTour-${user.id}`;
       localStorage.setItem(tourKey, 'true');
 
-      // Step B: Save to the Postgres database so it persists across different browsers & devices!
       try {
-        console.log(
-          `[DEBUG] Tour Check - Syncing tour completion to Database for: ${user.email}`,
-        );
         await updateProfile({ hasSeenDashboardTour: true });
-        console.log(`[DEBUG] Tour Check - Successfully saved to database.`);
       } catch (error) {
         console.error(
           'Failed to sync tour completion state to database:',
@@ -242,7 +292,6 @@ export function DashboardTour() {
 
   const step = tourSteps[currentStep];
 
-  // Satisfies TypeScript index check for the rendering pass
   if (!isActive || isLoading || tourSteps.length === 0 || !step) return null;
 
   let pathD = '';
@@ -265,10 +314,11 @@ export function DashboardTour() {
   }
 
   return (
-    <div className="fixed inset-0 z-50 pointer-events-none">
+    <div className="fixed inset-0 z-[90] pointer-events-none">
+      {/* Target Spotlight Highlight */}
       {targetRect && (
         <div
-          className="absolute border-2 border-primary rounded-lg transition-all duration-300"
+          className="absolute border-2 border-primary rounded-lg transition-all duration-200"
           style={{
             top: targetRect.top - 4,
             left: targetRect.left - 4,
@@ -279,8 +329,8 @@ export function DashboardTour() {
         />
       )}
 
-      {/* SVG Arrow Layer (Configured using responsive Tailwind stroke/fill mapping) */}
-      <svg className="absolute inset-0 w-full h-full z-50 overflow-visible">
+      {/* SVG Arrow Layer */}
+      <svg className="absolute inset-0 w-full h-full z-[95] overflow-visible">
         <defs>
           <marker
             id="arrowhead"
@@ -300,25 +350,33 @@ export function DashboardTour() {
             strokeWidth="3"
             strokeDasharray="6,6"
             markerEnd="url(#arrowhead)"
-            className="stroke-primary transition-all duration-300"
+            className="stroke-primary transition-all duration-200"
           />
         )}
       </svg>
 
-      {/* Text Box (Rectangle at the bottom) */}
+      {/* Text Box Card (Elevated to z-[100] above the mobile drawer Sheet backdrop) */}
       <div
         ref={boxRef}
-        className="pointer-events-auto absolute bottom-8 left-1/2 -translate-x-1/2 w-[90%] max-w-md bg-card border shadow-2xl rounded-xl p-5 z-50 transition-all duration-300"
+        className={cn(
+          'pointer-events-auto absolute bottom-4 sm:bottom-8 left-1/2 -translate-x-1/2',
+          'w-[calc(100%-2rem)] max-w-md bg-card border shadow-2xl rounded-xl p-4 sm:p-5 z-[100] transition-all duration-300',
+        )}
       >
         <button
           onClick={dismissTour}
           className="absolute top-3 right-3 text-muted-foreground hover:text-foreground transition-colors"
+          aria-label="Close tour"
         >
           <X className="w-4 h-4" />
         </button>
 
-        <h3 className="font-semibold text-lg mb-2">{step.title}</h3>
-        <p className="text-muted-foreground text-sm mb-6">{step.content}</p>
+        <h3 className="font-semibold text-base sm:text-lg mb-1.5 sm:mb-2 pr-6">
+          {step.title}
+        </h3>
+        <p className="text-muted-foreground text-xs sm:text-sm mb-4 sm:mb-6 leading-relaxed">
+          {step.content}
+        </p>
 
         <div className="flex items-center justify-between">
           <div className="flex gap-1 max-w-[50%] flex-wrap">
@@ -334,7 +392,7 @@ export function DashboardTour() {
             ))}
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 shrink-0">
             <Button
               variant="outline"
               size="sm"

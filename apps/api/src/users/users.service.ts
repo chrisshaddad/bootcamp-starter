@@ -19,10 +19,27 @@ import {
   VerificationStatus,
 } from '@repo/db';
 import { normalizeMediaUrl } from '../common/utils/normalize-media-url';
+import { AiService } from '../ai/ai.service';
+
+const MAX_COSINE_DISTANCE = 0.78;
+
+const FILLER_WORDS_REGEX =
+  /\b(i|want|need|looking|for|a|an|the|show|me|find|developer|developers|engineer|engineers|some|can|you|get)\b/gi;
+
+function cleanSearchQuery(query: string): string {
+  const cleaned = query
+    .replace(FILLER_WORDS_REGEX, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return cleaned.length > 0 ? cleaned : query.trim();
+}
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: DatabaseService) {}
+  constructor(
+    private readonly prisma: DatabaseService,
+    private readonly aiService: AiService,
+  ) {}
 
   private getSafeSelect() {
     return {
@@ -56,55 +73,45 @@ export class UsersService {
     };
   }
 
+  async enhanceProfile(userId: string, headline: string, bio: string) {
+    // Fetch developer's projects & tech stack to pass as context to the AI
+    const userProjects = await this.prisma.project.findMany({
+      where: {
+        OR: [
+          { createdByUserId: userId },
+          {
+            members: {
+              some: { userId, verificationStatus: VerificationStatus.VERIFIED },
+            },
+          },
+        ],
+      },
+      select: {
+        title: true,
+        shortDescription: true,
+        technologies: {
+          select: {
+            technology: {
+              select: { name: true },
+            },
+          },
+        },
+      },
+      take: 5,
+    });
+
+    const projectsForAi = userProjects.map((p) => ({
+      title: p.title,
+      shortDescription: p.shortDescription,
+      technologies: p.technologies.map((t) => t.technology.name),
+    }));
+
+    return this.aiService.enhanceProfile(bio, headline, projectsForAi);
+  }
+
   async exploreUsers(query: UsersExploreQuery) {
     const skip = (query.page - 1) * query.limit;
     const take = query.limit;
-
-    const where: Prisma.UserWhereInput = {
-      isConfirmed: true,
-      ...(query.search
-        ? {
-            OR: [
-              {
-                developerProfile: {
-                  displayName: { contains: query.search, mode: 'insensitive' },
-                },
-              },
-              {
-                developerProfile: {
-                  headline: { contains: query.search, mode: 'insensitive' },
-                },
-              },
-              {
-                developerProfile: {
-                  bio: { contains: query.search, mode: 'insensitive' },
-                },
-              },
-              {
-                developerProfile: {
-                  githubUsername: {
-                    contains: query.search,
-                    mode: 'insensitive',
-                  },
-                },
-              },
-              {
-                hiringProfile: {
-                  organizationName: {
-                    contains: query.search,
-                    mode: 'insensitive',
-                  },
-                },
-              },
-              {
-                hiringProfile: {
-                  jobTitle: { contains: query.search, mode: 'insensitive' },
-                },
-              },
-            ],
-          }
-        : {}),
-    };
 
     let orderBy:
       | Prisma.UserOrderByWithRelationInput
@@ -123,21 +130,161 @@ export class UsersService {
       ];
     }
 
-    const [totalItems, users] = await Promise.all([
-      this.prisma.user.count({ where }),
-      this.prisma.user.findMany({
-        where,
+    // 1. Simple pagination if no search is provided
+    if (!query.search || query.search.trim().length === 0) {
+      const where: Prisma.UserWhereInput = { isConfirmed: true };
+      const [totalItems, users] = await Promise.all([
+        this.prisma.user.count({ where }),
+        this.prisma.user.findMany({
+          where,
+          orderBy,
+          skip,
+          take,
+          select: this.getSafeSelect(),
+        }),
+      ]);
+
+      const totalPages = Math.ceil(totalItems / query.limit);
+      return {
+        data: users,
+        meta: {
+          totalItems,
+          currentPage: query.page,
+          totalPages,
+          hasNextPage: query.page < totalPages,
+          hasPreviousPage: query.page > 1,
+        },
+      };
+    }
+
+    const searchText = query.search.trim();
+    const cleanedText = cleanSearchQuery(searchText);
+
+    // 2. Keyword Matches (Exact searches like display names have maximum priority)
+    const keywordMatches = await this.prisma.user.findMany({
+      where: {
+        isConfirmed: true,
+        OR: [
+          {
+            developerProfile: {
+              displayName: { contains: searchText, mode: 'insensitive' },
+            },
+          },
+          {
+            developerProfile: {
+              headline: { contains: searchText, mode: 'insensitive' },
+            },
+          },
+          {
+            developerProfile: {
+              bio: { contains: searchText, mode: 'insensitive' },
+            },
+          },
+          {
+            developerProfile: {
+              githubUsername: { contains: searchText, mode: 'insensitive' },
+            },
+          },
+          {
+            developerProfile: {
+              publicSlug: { contains: searchText, mode: 'insensitive' },
+            },
+          },
+          {
+            hiringProfile: {
+              organizationName: { contains: searchText, mode: 'insensitive' },
+            },
+          },
+          {
+            hiringProfile: {
+              jobTitle: { contains: searchText, mode: 'insensitive' },
+            },
+          },
+        ],
+      },
+      select: { id: true },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+
+    const keywordIds = keywordMatches.map((m) => m.id);
+
+    // 3. AI Vector Matches (Lower Priority)
+    let vectorIds: string[] = [];
+    if (cleanedText.length > 0) {
+      try {
+        const embedding = await this.aiService.generateEmbedding(cleanedText);
+        if (embedding.length > 0) {
+          const vectorString = `[${embedding.join(',')}]`;
+          const matches = await this.prisma.$queryRaw<{ userId: string }[]>`
+            SELECT dp."userId" FROM "DeveloperProfile" dp
+            JOIN "User" u ON dp."userId" = u.id
+            WHERE dp.embedding IS NOT NULL
+              AND u."isConfirmed" = true
+              AND (dp.embedding <=> ${vectorString}::vector) < ${MAX_COSINE_DISTANCE}
+            ORDER BY dp.embedding <=> ${vectorString}::vector
+            LIMIT 100
+          `;
+          vectorIds = matches.map((m) => m.userId);
+        }
+      } catch (error) {
+        // Fallback gracefully
+      }
+    }
+
+    // Combine IDs (Keywords first, then broader vector matches)
+    const combinedIds = Array.from(new Set([...keywordIds, ...vectorIds]));
+    const totalItems = combinedIds.length;
+    const totalPages = Math.ceil(totalItems / query.limit);
+
+    if (totalItems === 0) {
+      return {
+        data: [],
+        meta: {
+          totalItems: 0,
+          currentPage: query.page,
+          totalPages: 0,
+          hasNextPage: false,
+          hasPreviousPage: false,
+        },
+      };
+    }
+
+    const paginatedIds = combinedIds.slice(skip, skip + take);
+
+    // If explicit sorting (alphabetical, oldest) is requested, sort the entire combined set
+    if (query.sort && query.sort !== 'newest') {
+      const sortedUsers = await this.prisma.user.findMany({
+        where: { id: { in: combinedIds } },
         orderBy,
         skip,
         take,
         select: this.getSafeSelect(),
-      }),
-    ]);
+      });
+      return {
+        data: sortedUsers,
+        meta: {
+          totalItems,
+          currentPage: query.page,
+          totalPages,
+          hasNextPage: query.page < totalPages,
+          hasPreviousPage: query.page > 1,
+        },
+      };
+    }
 
-    const totalPages = Math.ceil(totalItems / query.limit);
+    // Default Sort (Relevance: Exact Keyword Matches -> Broad AI Semantic Matches)
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: paginatedIds } },
+      select: this.getSafeSelect(),
+    });
+
+    const sortedUsers = paginatedIds
+      .map((id) => users.find((u) => u.id === id))
+      .filter(Boolean);
 
     return {
-      data: users,
+      data: sortedUsers as typeof users,
       meta: {
         totalItems,
         currentPage: query.page,
@@ -163,7 +310,9 @@ export class UsersService {
 
   async getUserBySlug(slug: string) {
     const user = await this.prisma.user.findFirst({
-      where: { developerProfile: { publicSlug: slug } },
+      where: {
+        developerProfile: { publicSlug: { equals: slug, mode: 'insensitive' } },
+      },
       select: this.getSafeSelect(),
     });
 
@@ -181,7 +330,7 @@ export class UsersService {
       where: {
         accountType: AccountType.DEVELOPER,
         isConfirmed: true,
-        developerProfile: { publicSlug: slug },
+        developerProfile: { publicSlug: { equals: slug, mode: 'insensitive' } },
       },
       select: {
         id: true,
@@ -337,6 +486,23 @@ export class UsersService {
             profilePictureUrl: data.profilePictureUrl,
           },
         });
+
+        // Update Developer Profile AI Embedding
+        try {
+          const combinedText = `${data.displayName || ''} ${data.headline || ''} ${data.bio || ''} ${data.location || ''}`;
+          const embedding =
+            await this.aiService.generateEmbedding(combinedText);
+          if (embedding.length > 0) {
+            const vectorString = `[${embedding.join(',')}]`;
+            await this.prisma.$executeRaw`
+              UPDATE "DeveloperProfile"
+              SET embedding = ${vectorString}::vector
+              WHERE "userId" = ${userId}
+            `;
+          }
+        } catch (error) {
+          // Profile update succeeds even if embedding API fails
+        }
       } else if (user.accountType === 'HIRING' && user.hiringProfile) {
         await this.prisma.hiringProfile.update({
           where: { id: user.hiringProfile.id },

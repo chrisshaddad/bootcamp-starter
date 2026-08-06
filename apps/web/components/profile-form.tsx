@@ -5,7 +5,7 @@ import { mutate } from 'swr';
 import { useForm, useWatch, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Sparkles } from 'lucide-react';
 import {
   updateProfileRequestSchema,
   type UpdateProfileRequest,
@@ -13,7 +13,7 @@ import {
   type ProfilePictureUploadResponse,
 } from '@repo/contracts';
 import { useAuth } from '@/hooks/use-auth';
-import { ApiError, apiUpload } from '@/lib/api';
+import { ApiError, apiUpload, apiPost } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -46,6 +46,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploadingPicture, setIsUploadingPicture] = useState(false);
   const [isPictureEditorOpen, setIsPictureEditorOpen] = useState(false);
+  const [isEnhancing, setIsEnhancing] = useState(false);
   const { updateProfile } = useAuth();
   const isDeveloper = user.accountType === 'DEVELOPER';
 
@@ -54,6 +55,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
     handleSubmit,
     control,
     setValue,
+    getValues,
     formState: { errors },
   } = useForm<UpdateProfileRequest>({
     resolver: zodResolver(updateProfileRequestSchema),
@@ -77,8 +79,6 @@ export function ProfileForm({ user }: ProfileFormProps) {
         },
   });
 
-  // Fields signup doesn't collect yet — if any are still empty this reads as a
-  // first-time "complete your profile" pass rather than a routine edit.
   const isProfileIncomplete = isDeveloper
     ? !user.developerProfile?.headline &&
       !user.developerProfile?.bio &&
@@ -101,8 +101,6 @@ export function ProfileForm({ user }: ProfileFormProps) {
         '/auth/profile/picture',
         formData,
       );
-      // Photo edits are saved from their own dialog, matching the behavior of
-      // profile-focused products and avoiding a surprising second save step.
       await updateProfile({
         profilePictureUrl: result.profilePictureUrl,
         profilePictureOriginalUrl: result.profilePictureOriginalUrl,
@@ -115,7 +113,6 @@ export function ProfileForm({ user }: ProfileFormProps) {
         shouldValidate: true,
       });
 
-      // Reflect the new picture everywhere (navbar, sidebar, etc.) right away.
       await mutate(
         '/auth/me',
         (current?: UserResponse) =>
@@ -145,6 +142,31 @@ export function ProfileForm({ user }: ProfileFormProps) {
       return false;
     } finally {
       setIsUploadingPicture(false);
+    }
+  };
+
+  const handleEnhanceProfile = async () => {
+    setIsEnhancing(true);
+    try {
+      const values = getValues();
+      const data = await apiPost<{ headline: string; bio: string }>(
+        '/users/me/enhance',
+        {
+          headline: values.headline || '',
+          bio: values.bio || '',
+        },
+      );
+
+      setValue('headline', data.headline, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+      setValue('bio', data.bio, { shouldDirty: true, shouldValidate: true });
+      toast.success('Profile enhanced with AI!');
+    } catch {
+      toast.error('Unable to enhance profile right now.');
+    } finally {
+      setIsEnhancing(false);
     }
   };
 
@@ -192,7 +214,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
                   onClick={() => setIsPictureEditorOpen(true)}
                 >
                   {isUploadingPicture ? (
-                    <Loader2 className="animate-spin" />
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : null}
                   Edit photo
                 </Button>
@@ -227,6 +249,24 @@ export function ProfileForm({ user }: ProfileFormProps) {
                 {errors.profilePictureUrl.message}
               </p>
             )}
+          </div>
+
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-medium">About You</h3>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={handleEnhanceProfile}
+              disabled={isEnhancing}
+            >
+              {isEnhancing ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="mr-2 h-4 w-4 text-primary" />
+              )}
+              Enhance with AI
+            </Button>
           </div>
 
           <div className="grid gap-5 lg:grid-cols-2">
@@ -281,6 +321,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
             <Label htmlFor="bio">Bio</Label>
             <Textarea
               id="bio"
+              className="min-h-[100px]"
               placeholder="Tell us about yourself"
               aria-invalid={!!errors.bio}
               {...register('bio')}
@@ -426,10 +467,13 @@ export function ProfileForm({ user }: ProfileFormProps) {
         </>
       )}
 
-      <Button type="submit" disabled={isSubmitting || isUploadingPicture}>
+      <Button
+        type="submit"
+        disabled={isSubmitting || isUploadingPicture || isEnhancing}
+      >
         {isSubmitting ? (
           <>
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             Saving...
           </>
         ) : isProfileIncomplete ? (
