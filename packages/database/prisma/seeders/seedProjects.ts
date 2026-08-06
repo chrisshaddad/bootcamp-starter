@@ -1,14 +1,29 @@
 import { PrismaClient } from '../../src/generated/prisma/client';
+import {
+  legacySeedRepositoryIds,
+  projectCatalog,
+  technologySeeds,
+} from './projectCatalog';
 
+const DAY_IN_MS = 24 * 60 * 60 * 1000;
+
+function daysAgo(days: number): Date {
+  return new Date(Date.now() - days * DAY_IN_MS);
+}
+
+// Global pipeline reference for local vector embeddings
 let extractor: any = null;
 
 async function generateLocalEmbedding(text: string): Promise<number[]> {
   try {
     if (!extractor) {
-      const { pipeline } = await (eval('import("@xenova/transformers")') as Promise<
-        typeof import('@xenova/transformers')
-      >);
-      extractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
+      const { pipeline } = await (eval(
+        'import("@xenova/transformers")',
+      ) as Promise<typeof import('@xenova/transformers')>);
+      extractor = await pipeline(
+        'feature-extraction',
+        'Xenova/all-MiniLM-L6-v2',
+      );
     }
     const output = await extractor(text, { pooling: 'mean', normalize: true });
     return Array.from(output.data);
@@ -19,244 +34,262 @@ async function generateLocalEmbedding(text: string): Promise<number[]> {
 }
 
 export async function seedProjects(prisma: PrismaClient) {
-  console.log('Seeding technologies, repositories, and projects...');
+  console.log(
+    'Seeding technologies, repositories, and showcase projects with vectors...',
+  );
+
+  // Remove legacy seed repos if re-running
+  await prisma.repository.deleteMany({
+    where: { githubRepoId: { in: legacySeedRepositoryIds } },
+  });
 
   // 1. Seed Technologies
-  const technologies = [
-    { name: 'TypeScript', slug: 'typescript', category: 'LANGUAGE' as const },
-    { name: 'Node.js', slug: 'nodejs', category: 'LANGUAGE' as const },
-    { name: 'Python', slug: 'python', category: 'LANGUAGE' as const },
-    { name: 'Dart', slug: 'dart', category: 'LANGUAGE' as const },
-    { name: 'NestJS', slug: 'nestjs', category: 'FRAMEWORK' as const },
-    { name: 'Next.js', slug: 'nextjs', category: 'FRAMEWORK' as const },
-    { name: 'Flutter', slug: 'flutter', category: 'FRAMEWORK' as const },
-    { name: 'PyTorch', slug: 'pytorch', category: 'LIBRARY' as const },
-    { name: 'Three.js', slug: 'threejs', category: 'LIBRARY' as const },
-    { name: 'PostgreSQL', slug: 'postgresql', category: 'DATABASE' as const },
-    { name: 'Redis', slug: 'redis', category: 'DATABASE' as const },
-    { name: 'Docker', slug: 'docker', category: 'DEVOPS' as const },
-  ];
+  const technologyIds = new Map<string, string>();
 
-  const techMap: Record<string, string> = {};
-
-  for (const tech of technologies) {
-    const createdTech = await prisma.technology.upsert({
-      where: { slug: tech.slug },
-      update: {},
-      create: tech,
-    });
-    techMap[tech.slug] = createdTech.id;
-  }
-
-  // 2. Fetch developer user
-  const devUser = await prisma.user.findUnique({
-    where: { email: 'dev.sarah@example.com' },
-  });
-
-  if (!devUser) {
-    throw new Error(
-      'No developer found with email dev.sarah@example.com. Seed users first.',
-    );
-  }
-  const devProfile = await prisma.developerProfile.findUnique({
-    where: { userId: devUser.id },
-  });
-  if (!devProfile?.githubUserId || !devProfile.githubUsername) {
-    throw new Error('Seed developer must have a GitHub identity.');
-  }
-
-  // 3. Seed Distinct Repositories and Projects
-  const reposAndProjects = [
-    {
-      githubRepoId: BigInt(83921102),
-      fullName: 'sarahchen/enterprise-nest-api',
-      ownerLogin: 'sarahchen',
-      repoName: 'enterprise-nest-api',
-      htmlUrl: 'https://github.com/sarahchen/enterprise-nest-api',
-      defaultBranch: 'main',
-      title: 'Enterprise NestJS Boilerplate',
-      slug: 'enterprise-nestjs-boilerplate',
-      shortDescription:
-        'A production-ready NestJS API boilerplate with advanced caching and background workers.',
-      fullDescription:
-        'This project demonstrates industry-grade patterns for Node.js, leveraging PostgreSQL with Prisma, Redis with BullMQ, and Docker containerization. It contains robust logging and modular architecture principles.',
-      deploymentUrl: 'https://api-demo.sarahchen.dev',
-      status: 'PUBLISHED' as const,
-      techSlugs: ['typescript', 'nodejs', 'nestjs', 'postgresql', 'redis', 'docker'],
-    },
-    {
-      githubRepoId: BigInt(94301292),
-      fullName: 'sarahchen/tailwindcss-v4-playground',
-      ownerLogin: 'sarahchen',
-      repoName: 'tailwindcss-v4-playground',
-      htmlUrl: 'https://github.com/sarahchen/tailwindcss-v4-playground',
-      defaultBranch: 'main',
-      title: 'Tailwind v4 Sandbox',
-      slug: 'tailwindcss-v4-sandbox',
-      shortDescription:
-        'An experimental Next.js layout showcasing Tailwind CSS v4 features.',
-      fullDescription:
-        'Explore the new compilation engine, custom utilities, and CSS-first configuration features of Tailwind v4 inside a modern Next.js App Router interface.',
-      deploymentUrl: 'https://tailwind4.sarahchen.dev',
-      status: 'PUBLISHED' as const,
-      techSlugs: ['typescript', 'nextjs'],
-    },
-    {
-      githubRepoId: BigInt(55410191),
-      fullName: 'sarahchen/vision-object-detector',
-      ownerLogin: 'sarahchen',
-      repoName: 'vision-object-detector',
-      htmlUrl: 'https://github.com/sarahchen/vision-object-detector',
-      defaultBranch: 'main',
-      title: 'Realtime AI Vision Pipeline',
-      slug: 'realtime-ai-vision-pipeline',
-      shortDescription:
-        'Deep learning computer vision system for real-time video stream object classification.',
-      fullDescription:
-        'Powered by PyTorch and Python, this computer vision pipeline analyzes live camera feeds to detect objects, track movements, and compute confidence scores using neural network models.',
-      deploymentUrl: 'https://vision-demo.sarahchen.dev',
-      status: 'PUBLISHED' as const,
-      techSlugs: ['python', 'pytorch'],
-    },
-    {
-      githubRepoId: BigInt(66201948),
-      fullName: 'sarahchen/galaxy-procedural-3d',
-      ownerLogin: 'sarahchen',
-      repoName: 'galaxy-procedural-3d',
-      htmlUrl: 'https://github.com/sarahchen/galaxy-procedural-3d',
-      defaultBranch: 'main',
-      title: 'Procedural 3D Galaxy Engine',
-      slug: 'procedural-3d-galaxy-engine',
-      shortDescription:
-        'An interactive WebGL space simulation rendering infinite procedurally generated planets.',
-      fullDescription:
-        'Built with Three.js and custom GLSL particle shaders. Features real-time orbital physics, dynamic atmospheric lighting, and smooth WebGL canvas rendering.',
-      deploymentUrl: 'https://galaxy.sarahchen.dev',
-      status: 'PUBLISHED' as const,
-      techSlugs: ['typescript', 'threejs'],
-    },
-    {
-      githubRepoId: BigInt(77192039),
-      fullName: 'sarahchen/pulse-health-tracker',
-      ownerLogin: 'sarahchen',
-      repoName: 'pulse-health-tracker',
-      htmlUrl: 'https://github.com/sarahchen/pulse-health-tracker',
-      defaultBranch: 'main',
-      title: 'Pulse Mobile Fitness App',
-      slug: 'pulse-mobile-fitness-app',
-      shortDescription:
-        'Cross-platform mobile application for tracking heart rate and daily workout metrics.',
-      fullDescription:
-        'Written in Dart and Flutter, this mobile app connects via Bluetooth Low Energy (BLE) to smartwatches to stream live heart rate data and generate biometric fitness insights.',
-      deploymentUrl: 'https://pulse.sarahchen.dev',
-      status: 'PUBLISHED' as const,
-      techSlugs: ['dart', 'flutter'],
-    },
-  ];
-
-  for (const item of reposAndProjects) {
-    const repo = await prisma.repository.upsert({
-      where: { githubRepoId: item.githubRepoId },
+  for (const technology of technologySeeds) {
+    const savedTechnology = await prisma.technology.upsert({
+      where: { slug: technology.slug },
       update: {
-        ownerGithubUserId: devProfile.githubUserId,
-        ownerType: 'User',
-        isFork: false,
+        name: technology.name,
+        category: technology.category,
       },
-      create: {
-        githubRepoId: item.githubRepoId,
-        fullName: item.fullName,
-        ownerLogin: item.ownerLogin,
-        ownerGithubUserId: devProfile.githubUserId,
-        ownerType: 'User',
-        repoName: item.repoName,
-        htmlUrl: item.htmlUrl,
-        defaultBranch: item.defaultBranch,
+      create: technology,
+    });
+    technologyIds.set(technology.slug, savedTechnology.id);
+  }
+
+  // 2. Resolve Developers (Alex & Sarah)
+  const developerEmails = [
+    ...new Set(
+      projectCatalog.flatMap((item) => [
+        item.ownerEmail,
+        ...(item.collaborators?.map((collaborator) => collaborator.email) ??
+          []),
+      ]),
+    ),
+  ];
+
+  const developers = await prisma.user.findMany({
+    where: { email: { in: developerEmails } },
+    include: { developerProfile: true },
+  });
+
+  const developersByEmail = new Map(
+    developers.map((developer) => [developer.email, developer]),
+  );
+
+  // 3. Seed Catalog Projects & Embeddings
+  for (const item of projectCatalog) {
+    const owner = developersByEmail.get(item.ownerEmail);
+    if (!owner?.developerProfile?.githubUserId) {
+      throw new Error(
+        `Seed developer ${item.ownerEmail} must have a GitHub identity. Seed users first.`,
+      );
+    }
+
+    const repository = await prisma.repository.upsert({
+      where: { githubRepoId: item.repository.githubRepoId },
+      update: {
+        fullName: item.repository.fullName,
+        ownerLogin: item.repository.ownerLogin,
+        ownerGithubUserId: item.repository.ownerGithubUserId,
+        ownerType: item.repository.ownerType,
+        repoName: item.repository.repoName,
+        htmlUrl: item.repository.htmlUrl,
+        isFork: false,
+        defaultBranch: item.repository.defaultBranch,
         visibility: 'PUBLIC',
-        isFork: false,
-      },
-    });
-
-    const project = await prisma.project.upsert({
-      where: { repositoryId: repo.id },
-      update: {
-        createdByUserId: devUser.id,
-        title: item.title,
-        slug: item.slug,
-        shortDescription: item.shortDescription,
-        fullDescription: item.fullDescription,
-        deploymentUrl: item.deploymentUrl,
-        status: item.status,
-        githubOwnershipVerifiedAt: new Date(),
+        lastSyncedAt: new Date(),
       },
       create: {
-        repositoryId: repo.id,
-        createdByUserId: devUser.id,
-        title: item.title,
-        slug: item.slug,
-        shortDescription: item.shortDescription,
-        fullDescription: item.fullDescription,
-        deploymentUrl: item.deploymentUrl,
-        status: item.status,
-        githubOwnershipVerifiedAt: new Date(),
+        ...item.repository,
+        isFork: false,
+        visibility: 'PUBLIC',
+        lastSyncedAt: new Date(),
       },
     });
 
-    // Generate and save 384-dim Vector Embedding
+    const publishedAt = daysAgo(item.publishedDaysAgo);
+    const project = await prisma.project.upsert({
+      where: { repositoryId: repository.id },
+      update: {
+        createdByUserId: owner.id,
+        title: item.title,
+        slug: item.slug,
+        logoUrl: item.logoUrl,
+        shortDescription: item.shortDescription,
+        fullDescription: item.fullDescription,
+        deploymentUrl: item.deploymentUrl,
+        status: 'PUBLISHED',
+        githubOwnershipVerifiedAt: publishedAt,
+        publishedAt,
+        moderatedAt: null,
+        moderationReason: null,
+        moderatedByUserId: null,
+      },
+      create: {
+        repositoryId: repository.id,
+        createdByUserId: owner.id,
+        title: item.title,
+        slug: item.slug,
+        logoUrl: item.logoUrl,
+        shortDescription: item.shortDescription,
+        fullDescription: item.fullDescription,
+        deploymentUrl: item.deploymentUrl,
+        status: 'PUBLISHED',
+        githubOwnershipVerifiedAt: publishedAt,
+        createdAt: daysAgo(item.publishedDaysAgo + 3),
+        publishedAt,
+      },
+    });
+
+    // --- Generate and attach pgvector Embedding ---
     const textToEmbed = `${item.title} ${item.shortDescription || ''} ${item.fullDescription || ''}`;
     const embedding = await generateLocalEmbedding(textToEmbed);
+
     if (embedding.length > 0) {
       const vectorString = JSON.stringify(embedding);
       await prisma.$executeRaw`
         UPDATE "Project"
-        SET embedding = ${vectorString}::vector
-        WHERE id = ${project.id}
+        SET "embedding" = ${vectorString}::vector
+        WHERE "id" = ${project.id}
       `;
     }
 
+    // Upsert Owner Membership
     await prisma.projectMember.upsert({
       where: {
-        projectId_userId: { projectId: project.id, userId: devUser.id },
+        projectId_userId: { projectId: project.id, userId: owner.id },
       },
       update: {
-        githubUserId: devProfile.githubUserId,
-        githubUsername: devProfile.githubUsername,
+        githubUserId: owner.developerProfile.githubUserId,
+        githubUsername: owner.developerProfile.githubUsername,
         role: 'OWNER',
+        contributionRoleLabel: 'Project owner',
+        contributionSummary:
+          'Led product direction, architecture, and delivery for the project.',
         verificationStatus: 'VERIFIED',
         verificationSource: 'GITHUB_OWNER',
-        verifiedAt: new Date(),
+        verifiedAt: publishedAt,
+        addedByUserId: owner.id,
       },
       create: {
         projectId: project.id,
-        userId: devUser.id,
-        githubUserId: devProfile.githubUserId,
-        githubUsername: devProfile.githubUsername,
+        userId: owner.id,
+        githubUserId: owner.developerProfile.githubUserId,
+        githubUsername: owner.developerProfile.githubUsername,
         role: 'OWNER',
+        contributionRoleLabel: 'Project owner',
+        contributionSummary:
+          'Led product direction, architecture, and delivery for the project.',
         verificationStatus: 'VERIFIED',
         verificationSource: 'GITHUB_OWNER',
-        verifiedAt: new Date(),
-        addedByUserId: devUser.id,
+        verifiedAt: publishedAt,
+        addedByUserId: owner.id,
       },
     });
 
+    // Upsert Collaborator Memberships
+    for (const collaboratorSeed of item.collaborators ?? []) {
+      const collaborator = developersByEmail.get(collaboratorSeed.email);
+      if (!collaborator?.developerProfile?.githubUserId) {
+        throw new Error(
+          `Seed collaborator ${collaboratorSeed.email} must have a GitHub identity.`,
+        );
+      }
+
+      await prisma.projectMember.upsert({
+        where: {
+          projectId_userId: {
+            projectId: project.id,
+            userId: collaborator.id,
+          },
+        },
+        update: {
+          githubUserId: collaborator.developerProfile.githubUserId,
+          githubUsername: collaborator.developerProfile.githubUsername,
+          role: collaboratorSeed.role,
+          contributionRoleLabel: collaboratorSeed.contributionRoleLabel,
+          contributionSummary: collaboratorSeed.contributionSummary,
+          githubPermission:
+            collaboratorSeed.role === 'EDITOR' ? 'push' : 'pull',
+          githubRoleName: collaboratorSeed.role === 'EDITOR' ? 'write' : 'read',
+          verificationStatus: 'VERIFIED',
+          verificationSource: 'GITHUB_COLLABORATOR',
+          verifiedAt: publishedAt,
+          addedByUserId: owner.id,
+        },
+        create: {
+          projectId: project.id,
+          userId: collaborator.id,
+          githubUserId: collaborator.developerProfile.githubUserId,
+          githubUsername: collaborator.developerProfile.githubUsername,
+          role: collaboratorSeed.role,
+          contributionRoleLabel: collaboratorSeed.contributionRoleLabel,
+          contributionSummary: collaboratorSeed.contributionSummary,
+          githubPermission:
+            collaboratorSeed.role === 'EDITOR' ? 'push' : 'pull',
+          githubRoleName: collaboratorSeed.role === 'EDITOR' ? 'write' : 'read',
+          verificationStatus: 'VERIFIED',
+          verificationSource: 'GITHUB_COLLABORATOR',
+          verifiedAt: publishedAt,
+          addedByUserId: owner.id,
+        },
+      });
+    }
+
+    // Sync Technologies
     await prisma.projectTechnology.deleteMany({
       where: { projectId: project.id },
     });
+    await prisma.projectTechnology.createMany({
+      data: item.techSlugs.map((slug, index) => {
+        const technologyId = technologyIds.get(slug);
+        if (!technologyId) {
+          throw new Error(
+            `Unknown technology slug "${slug}" for ${item.title}.`,
+          );
+        }
+        return {
+          projectId: project.id,
+          technologyId,
+          source: 'SCANNER' as const,
+          evidence: `Detected from ${item.repository.fullName} repository metadata and source files.`,
+          detectedAt: publishedAt,
+          isPrimary: index < 4,
+          sortOrder: index,
+        };
+      }),
+    });
 
-    for (const slug of item.techSlugs) {
-      const techId = techMap[slug];
-      if (techId) {
-        await prisma.projectTechnology.create({
-          data: {
-            projectId: project.id,
-            technologyId: techId,
-            source: 'MANUAL',
-            isPrimary: true,
-          },
-        });
-      }
+    // Sync Media
+    const mediaKeyPrefix = `seed/${item.slug}/`;
+    await prisma.projectMedia.deleteMany({
+      where: {
+        projectId: project.id,
+        storageKey: { startsWith: mediaKeyPrefix },
+      },
+    });
+    if (item.media && item.media.length > 0) {
+      await prisma.projectMedia.createMany({
+        data: item.media.map((media, index) => ({
+          projectId: project.id,
+          uploadedByUserId: owner.id,
+          mediaType: 'IMAGE' as const,
+          storageKey: `${mediaKeyPrefix}${index + 1}`,
+          publicUrl: media.publicUrl,
+          caption: media.caption,
+          sortOrder: index,
+        })),
+      });
     }
-    console.log(`  Created/Updated project with vector: ${project.title}`);
+
+    console.log(
+      `  [Vector Seeded] ${project.title} (Owner: ${item.ownerEmail})`,
+    );
   }
 
-  console.log('5 Distinct projects seeded with vectors.');
+  console.log(
+    `Successfully seeded ${projectCatalog.length} projects with pgvector embeddings.`,
+  );
 }

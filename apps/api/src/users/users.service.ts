@@ -21,13 +21,24 @@ import {
 import { normalizeMediaUrl } from '../common/utils/normalize-media-url';
 import { AiService } from '../ai/ai.service';
 
-const MAX_COSINE_DISTANCE = 0.65; // Cosine distance threshold for semantic matches
+const MAX_COSINE_DISTANCE = 0.78;
+
+const FILLER_WORDS_REGEX =
+  /\b(i|want|need|looking|for|a|an|the|show|me|find|developer|developers|engineer|engineers|some|can|you|get)\b/gi;
+
+function cleanSearchQuery(query: string): string {
+  const cleaned = query
+    .replace(FILLER_WORDS_REGEX, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return cleaned.length > 0 ? cleaned : query.trim();
+}
 
 @Injectable()
 export class UsersService {
   constructor(
     private readonly prisma: DatabaseService,
-    private readonly aiService: AiService
+    private readonly aiService: AiService,
   ) {}
 
   private getSafeSelect() {
@@ -62,19 +73,52 @@ export class UsersService {
     };
   }
 
-  async enhanceProfile(headline: string, bio: string) {
-    return this.aiService.enhanceProfile(bio, headline);
+  async enhanceProfile(userId: string, headline: string, bio: string) {
+    // Fetch developer's projects & tech stack to pass as context to the AI
+    const userProjects = await this.prisma.project.findMany({
+      where: {
+        OR: [
+          { createdByUserId: userId },
+          {
+            members: {
+              some: { userId, verificationStatus: VerificationStatus.VERIFIED },
+            },
+          },
+        ],
+      },
+      select: {
+        title: true,
+        shortDescription: true,
+        technologies: {
+          select: {
+            technology: {
+              select: { name: true },
+            },
+          },
+        },
+      },
+      take: 5,
+    });
+
+    const projectsForAi = userProjects.map((p) => ({
+      title: p.title,
+      shortDescription: p.shortDescription,
+      technologies: p.technologies.map((t) => t.technology.name),
+    }));
+
+    return this.aiService.enhanceProfile(bio, headline, projectsForAi);
   }
 
   async exploreUsers(query: UsersExploreQuery) {
     const skip = (query.page - 1) * query.limit;
     const take = query.limit;
-    
+
     let userIds: string[] | undefined = undefined;
 
-    // Vector Semantic Search using <=> (Cosine Distance) with threshold 0.65
     if (query.search && query.search.trim().length > 0) {
-      const embedding = await this.aiService.generateEmbedding(query.search.trim());
+      const cleanedText = cleanSearchQuery(query.search);
+      const embedding = await this.aiService.generateEmbedding(cleanedText);
+
       if (embedding.length > 0) {
         const vectorString = `[${embedding.join(',')}]`;
         const matches = await this.prisma.$queryRaw<{ userId: string }[]>`
@@ -90,19 +134,64 @@ export class UsersService {
       }
     }
 
-    // Fallback to keyword search if vector search didn't yield matches
+    const cleanedSearchForKeyword = query.search
+      ? cleanSearchQuery(query.search)
+      : '';
+
     const where: Prisma.UserWhereInput = {
       isConfirmed: true,
       ...(userIds ? { id: { in: userIds } } : {}),
-      ...(!userIds && query.search
+      ...(!userIds && cleanedSearchForKeyword
         ? {
             OR: [
-              { developerProfile: { displayName: { contains: query.search, mode: 'insensitive' } } },
-              { developerProfile: { headline: { contains: query.search, mode: 'insensitive' } } },
-              { developerProfile: { bio: { contains: query.search, mode: 'insensitive' } } },
-              { developerProfile: { githubUsername: { contains: query.search, mode: 'insensitive' } } },
-              { hiringProfile: { organizationName: { contains: query.search, mode: 'insensitive' } } },
-              { hiringProfile: { jobTitle: { contains: query.search, mode: 'insensitive' } } },
+              {
+                developerProfile: {
+                  displayName: {
+                    contains: cleanedSearchForKeyword,
+                    mode: 'insensitive',
+                  },
+                },
+              },
+              {
+                developerProfile: {
+                  headline: {
+                    contains: cleanedSearchForKeyword,
+                    mode: 'insensitive',
+                  },
+                },
+              },
+              {
+                developerProfile: {
+                  bio: {
+                    contains: cleanedSearchForKeyword,
+                    mode: 'insensitive',
+                  },
+                },
+              },
+              {
+                developerProfile: {
+                  githubUsername: {
+                    contains: cleanedSearchForKeyword,
+                    mode: 'insensitive',
+                  },
+                },
+              },
+              {
+                hiringProfile: {
+                  organizationName: {
+                    contains: cleanedSearchForKeyword,
+                    mode: 'insensitive',
+                  },
+                },
+              },
+              {
+                hiringProfile: {
+                  jobTitle: {
+                    contains: cleanedSearchForKeyword,
+                    mode: 'insensitive',
+                  },
+                },
+              },
             ],
           }
         : {}),
@@ -140,7 +229,7 @@ export class UsersService {
     ]);
 
     const sortedUsers = userIds
-      ? userIds.map(id => users.find(u => u.id === id)).filter(Boolean)
+      ? userIds.map((id) => users.find((u) => u.id === id)).filter(Boolean)
       : users;
 
     const totalPages = Math.ceil(totalItems / query.limit);
@@ -358,7 +447,6 @@ export class UsersService {
             WHERE "userId" = ${userId}
           `;
         }
-
       } else if (user.accountType === 'HIRING' && user.hiringProfile) {
         await this.prisma.hiringProfile.update({
           where: { id: user.hiringProfile.id },

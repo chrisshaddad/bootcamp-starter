@@ -149,15 +149,21 @@ export function ProfileForm({ user }: ProfileFormProps) {
     setIsEnhancing(true);
     try {
       const values = getValues();
-      const data = await apiPost<{ headline: string; bio: string }>('/users/me/enhance', {
-        headline: values.headline || '',
-        bio: values.bio || '',
-      });
+      const data = await apiPost<{ headline: string; bio: string }>(
+        '/users/me/enhance',
+        {
+          headline: values.headline || '',
+          bio: values.bio || '',
+        },
+      );
 
-      setValue('headline', data.headline, { shouldDirty: true, shouldValidate: true });
+      setValue('headline', data.headline, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
       setValue('bio', data.bio, { shouldDirty: true, shouldValidate: true });
       toast.success('Profile enhanced with AI!');
-    } catch (error) {
+    } catch {
       toast.error('Unable to enhance profile right now.');
     } finally {
       setIsEnhancing(false);
@@ -461,7 +467,10 @@ export function ProfileForm({ user }: ProfileFormProps) {
         </>
       )}
 
-      <Button type="submit" disabled={isSubmitting || isUploadingPicture || isEnhancing}>
+      <Button
+        type="submit"
+        disabled={isSubmitting || isUploadingPicture || isEnhancing}
+      >
         {isSubmitting ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />

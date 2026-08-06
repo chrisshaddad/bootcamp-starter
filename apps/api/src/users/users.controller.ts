@@ -21,8 +21,11 @@ export class UsersController {
   }
 
   @Post('me/enhance')
-  async enhanceProfile(@Body() body: { headline: string; bio: string }) {
-    return this.usersService.enhanceProfile(body.headline, body.bio);
+  async enhanceProfile(
+    @CurrentUser() user: User,
+    @Body() body: { headline: string; bio: string },
+  ) {
+    return this.usersService.enhanceProfile(user.id, body.headline, body.bio);
   }
 
   @Get('me')

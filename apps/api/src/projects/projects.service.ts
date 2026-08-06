@@ -124,12 +124,16 @@ export class ProjectsService {
       analysis.repository.lastPushedAt,
     );
     const importedAt = new Date();
-    
-    const title = data.title ?? analysis.aiPitch?.title ?? analysis.repository.repoName;
-    const shortDescription = data.shortDescription !== undefined 
-      ? data.shortDescription 
-      : (analysis.aiPitch?.shortDescription ?? analysis.repository.description);
-    const fullDescription = data.fullDescription ?? analysis.aiPitch?.fullDescription ?? null;
+
+    const title =
+      data.title ?? analysis.aiPitch?.title ?? analysis.repository.repoName;
+    const shortDescription =
+      data.shortDescription !== undefined
+        ? data.shortDescription
+        : (analysis.aiPitch?.shortDescription ??
+          analysis.repository.description);
+    const fullDescription =
+      data.fullDescription ?? analysis.aiPitch?.fullDescription ?? null;
 
     this.logger.log(
       'Importing GitHub repository ' +
@@ -791,7 +795,9 @@ export class ProjectsService {
 
     // Vector Semantic Search using <=> (Cosine Distance) with threshold 0.65
     if (query.search && query.search.trim().length > 0) {
-      const embedding = await this.aiService.generateEmbedding(query.search.trim());
+      const embedding = await this.aiService.generateEmbedding(
+        query.search.trim(),
+      );
       if (embedding.length > 0) {
         const vectorString = `[${embedding.join(',')}]`;
         const matches = await this.prisma.$queryRaw<{ id: string }[]>`
@@ -810,21 +816,35 @@ export class ProjectsService {
 
     // Fallback to keyword search if vector search didn't yield matches or vector is missing
     const MAX_SEARCH_TERMS = 10;
-    const searchTerms = !projectIds && query.search
-      ? query.search
-          .split(/[\s,]+/)
-          .map((term) => term.trim())
-          .filter((term) => term.length > 0 && !['and', 'or'].includes(term.toLowerCase()))
-          .slice(0, MAX_SEARCH_TERMS)
-      : [];
+    const searchTerms =
+      !projectIds && query.search
+        ? query.search
+            .split(/[\s,]+/)
+            .map((term) => term.trim())
+            .filter(
+              (term) =>
+                term.length > 0 && !['and', 'or'].includes(term.toLowerCase()),
+            )
+            .slice(0, MAX_SEARCH_TERMS)
+        : [];
 
     const andFilters: Prisma.ProjectWhereInput[] = [
       ...searchTerms.map((term) => ({
         OR: [
           { title: { contains: term, mode: 'insensitive' as const } },
-          { shortDescription: { contains: term, mode: 'insensitive' as const } },
+          {
+            shortDescription: { contains: term, mode: 'insensitive' as const },
+          },
           { fullDescription: { contains: term, mode: 'insensitive' as const } },
-          { technologies: { some: { technology: { name: { contains: term, mode: 'insensitive' as const } } } } },
+          {
+            technologies: {
+              some: {
+                technology: {
+                  name: { contains: term, mode: 'insensitive' as const },
+                },
+              },
+            },
+          },
         ],
       })),
       ...(query.technology?.map((slug) => ({
@@ -931,7 +951,9 @@ export class ProjectsService {
     ]);
 
     const sortedProjects = projectIds
-      ? projectIds.map(id => projects.find(p => p.id === id)).filter(Boolean)
+      ? projectIds
+          .map((id) => projects.find((p) => p.id === id))
+          .filter(Boolean)
       : projects;
 
     const totalPages = Math.ceil(totalItems / query.limit);

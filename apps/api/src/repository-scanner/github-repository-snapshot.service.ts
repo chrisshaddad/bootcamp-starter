@@ -57,9 +57,7 @@ export class GithubRepositorySnapshotService {
   ) {}
 
   /** Builds an analysis preview from GitHub metadata and selected source/config files. */
-  async previewRepositoryAnalysis(
-    repositoryUrl: string,
-  ): Promise<
+  async previewRepositoryAnalysis(repositoryUrl: string): Promise<
     GithubRepositoryAnalysisPreviewResponse & {
       aiPitch?: {
         title: string;
@@ -92,9 +90,7 @@ export class GithubRepositorySnapshotService {
     });
 
     // --- AI Summarization ---
-    const readmeFile = files.find(
-      (f) => f.path.toLowerCase() === 'readme.md',
-    );
+    const readmeFile = files.find((f) => f.path.toLowerCase() === 'readme.md');
     const aiPitch = await this.aiService.summarizeRepository(
       readmeFile?.content || null,
     );
