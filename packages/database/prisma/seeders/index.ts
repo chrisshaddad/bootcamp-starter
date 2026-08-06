@@ -1,13 +1,17 @@
 import { prisma } from '../../src/client';
 import { seedUsers } from './seedUsers';
 import { seedProjects } from './seedProjects';
+import { SeedObjectStorage } from './seedObjectStorage';
 
 async function main() {
+  const objectStorage = new SeedObjectStorage();
+  await objectStorage.assertAvailable();
+
   // Seed users and profiles first
-  await seedUsers(prisma);
+  await seedUsers(prisma, objectStorage);
 
   // Seed projects, repositories, and technologies
-  await seedProjects(prisma);
+  await seedProjects(prisma, objectStorage);
 }
 
 main()

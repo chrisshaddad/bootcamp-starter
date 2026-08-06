@@ -95,9 +95,9 @@ export const updateProfileRequestSchema: ApiBodySchema = withExample(
     bio: 'I build SaaS apps.',
     location: 'Beirut, Lebanon',
     profilePictureUrl:
-      'http://localhost:3001/uploads/profile-pictures/example.png',
+      'http://localhost:9000/bootcamp-media/profile-pictures/example.png',
     profilePictureOriginalUrl:
-      'http://localhost:3001/uploads/profile-pictures/example-original.png',
+      'http://localhost:9000/bootcamp-media/profile-pictures/example-original.png',
     profilePictureCropZoom: 1.35,
     profilePictureCropX: 12,
     profilePictureCropY: -8,

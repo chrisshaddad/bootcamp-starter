@@ -112,7 +112,12 @@ function project({
     publishedAt: updatedAt,
     updatedAt,
     members,
-    media: [{ publicUrl: 'http://localhost:3001/uploads/cover.png' }],
+    media: [
+      {
+        publicUrl:
+          'http://localhost:9000/bootcamp-media/project-media/project/cover.png',
+      },
+    ],
     technologies: [
       {
         technology: {
