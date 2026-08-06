@@ -278,6 +278,35 @@ describe('ProjectsService GitHub import', () => {
     );
   });
 
+  it('does not revalidate GitHub ownership when editing an already-published project', async () => {
+    prisma.project.findUnique.mockResolvedValueOnce({
+      id: PROJECT_ID,
+      createdByUserId: USER_ID,
+      slug: 'next-js',
+      status: 'PUBLISHED',
+      publishedAt: CREATED_AT,
+      repository: { htmlUrl: 'https://github.com/vercel/next.js' },
+    });
+
+    await service.updateProject(
+      { id: USER_ID, accountType: 'DEVELOPER' } as never,
+      PROJECT_ID,
+      { title: 'Updated title', status: 'PUBLISHED' },
+    );
+
+    expect(githubService.verifyRepositoryOwnership).not.toHaveBeenCalled();
+    expect(tx.project.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          title: 'Updated title',
+          status: 'PUBLISHED',
+          publishedAt: undefined,
+          githubOwnershipVerifiedAt: undefined,
+        }),
+      }),
+    );
+  });
+
   it('loads only verified members for public project responses', async () => {
     prisma.project.findUnique.mockResolvedValue({
       id: PROJECT_ID,

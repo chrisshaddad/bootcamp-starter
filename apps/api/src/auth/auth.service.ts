@@ -106,6 +106,13 @@ export class AuthService {
 
     const passwordHash = hashPassword(data.password);
 
+    // Extract fallbacks cleanly to ensure strict type safety
+    const emailPrefix = data.email.split('@')[0];
+    const fallbackName =
+      emailPrefix && emailPrefix.length > 0 ? emailPrefix : 'Developer';
+    const displayName = data.displayName?.trim() || fallbackName;
+    const publicSlug = data.publicSlug?.trim() || `dev-${crypto.randomUUID()}`;
+
     const user = await this.prisma.user.create({
       data: {
         email: data.email,
@@ -116,8 +123,8 @@ export class AuthService {
           data.accountType === 'DEVELOPER'
             ? {
                 create: {
-                  displayName: data.displayName!,
-                  publicSlug: data.publicSlug!,
+                  displayName,
+                  publicSlug,
                 },
               }
             : undefined,
@@ -442,9 +449,6 @@ export class AuthService {
       },
     });
 
-    // Resetting the password is the primary account-recovery path, so any
-    // session from before the reset (including one held by an attacker who
-    // triggered the compromise) must not survive it.
     await this.sessionService.deleteAllUserSessions(magicLink.userId);
     const sessionId = await this.sessionService.createSession(magicLink.userId);
 
@@ -508,6 +512,7 @@ export class AuthService {
     }
 
     const updatePayload: {
+      hasSeenDashboardTour?: boolean;
       developerProfile?: {
         update: {
           displayName?: string;
@@ -533,10 +538,15 @@ export class AuthService {
             | 'INDIVIDUAL'
             | 'FREELANCE_CLIENT';
           jobTitle?: string | null;
+          linkedinUrl?: string | null;
           organizationWebsiteUrl?: string | null;
         };
       };
     } = {};
+
+    if (data.hasSeenDashboardTour !== undefined) {
+      updatePayload.hasSeenDashboardTour = data.hasSeenDashboardTour;
+    }
 
     if (user.accountType === 'DEVELOPER') {
       updatePayload.developerProfile = {
@@ -561,6 +571,7 @@ export class AuthService {
           organizationName: data.organizationName,
           organizationType: data.organizationType,
           jobTitle: data.jobTitle,
+          linkedinUrl: data.linkedinUrl,
           organizationWebsiteUrl: data.organizationWebsiteUrl,
         },
       };
@@ -580,6 +591,7 @@ export class AuthService {
       email: updatedUser.email,
       accountType: updatedUser.accountType,
       isConfirmed: updatedUser.isConfirmed,
+      hasSeenDashboardTour: updatedUser.hasSeenDashboardTour,
       developerProfile: updatedUser.developerProfile
         ? {
             id: updatedUser.developerProfile.id,
@@ -621,6 +633,9 @@ export class AuthService {
             organizationName: updatedUser.hiringProfile.organizationName,
             organizationType: updatedUser.hiringProfile.organizationType,
             jobTitle: updatedUser.hiringProfile.jobTitle ?? null,
+            linkedinUrl:
+              (updatedUser.hiringProfile as { linkedinUrl?: string | null })
+                .linkedinUrl ?? null,
             organizationWebsiteUrl:
               (
                 updatedUser.hiringProfile as {

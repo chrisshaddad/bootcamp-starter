@@ -5,177 +5,47 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  schemas  = ["public", "private"]
-}
-
-enum AccountType {
-  DEVELOPER
-  HIRING
-  SUPER_ADMIN
-
-  @@schema("public")
-}
-
-enum CandidateStatus {
-  SAVED
-  CONTACTED
-  REJECTED
-  ACCEPTED
-
-  @@schema("public")
-}
-
-enum AccountStatus {
-  ACTIVE
-  SUSPENDED
-  DEACTIVATED
-
-  @@schema("public")
-}
-
-enum AdminAuditAction {
-  ACCOUNT_SUSPENDED
-  ACCOUNT_REACTIVATED
-  PROJECT_ARCHIVED
-  PROJECT_SUSPENDED
-  PROJECT_RESTORED
-
-  @@schema("public")
-}
-
-enum AdminAuditTargetType {
-  USER
-  PROJECT
-
-  @@schema("public")
-}
-
-enum OrganizationType {
-  COMPANY
-  AGENCY
-  INDIVIDUAL
-  FREELANCE_CLIENT
-
-  @@schema("public")
-}
-
-enum ProjectStatus {
-  DRAFT
-  PUBLISHED
-  ARCHIVED
-  SUSPENDED
-
-  @@schema("public")
-}
-
-enum ProjectRoleKey {
-  OWNER
-  EDITOR
-  CONTRIBUTOR
-
-  @@schema("public")
-}
-
-enum VerificationStatus {
-  PENDING
-  VERIFIED
-  UNVERIFIED
-
-  @@schema("public")
-}
-
-enum VerificationSource {
-  GITHUB_OWNER
-  GITHUB_CONTRIBUTOR
-  GITHUB_COLLABORATOR
-  MANUAL_INVITE
-
-  @@schema("public")
-}
-
-enum ProjectInvitationStatus {
-  PENDING
-  ACCEPTED
-  DECLINED
-  CANCELED
-  EXPIRED
-
-  @@schema("public")
-}
-
-enum TechnologyCategory {
-  LANGUAGE
-  FRAMEWORK
-  LIBRARY
-  DATABASE
-  CLOUD
-  DEVOPS
-  TOOL
-  OTHER
-
-  @@schema("public")
-}
-
-enum ProjectTechnologySource {
-  SCANNER
-  MANUAL
-  BOTH
-
-  @@schema("public")
-}
-
-enum MediaType {
-  IMAGE
-  VIDEO
-  GIF
-  ARCHITECTURE_DIAGRAM
-
-  @@schema("public")
-}
-
-enum RepositoryVisibility {
-  PUBLIC
-  PRIVATE
-
-  @@schema("public")
+  schemas  = ["private", "public"]
 }
 
 model User {
-  id           String      @id @default(uuid())
-  email        String      @unique
+  id           String        @id @default(uuid())
+  email        String        @unique
   passwordHash String
   accountType  AccountType
   status       AccountStatus @default(ACTIVE)
-  isConfirmed  Boolean     @default(false)
+  isConfirmed  Boolean       @default(false)
 
-  suspendedAt      DateTime?
-  suspensionReason String?   @db.Text
-  deactivatedAt    DateTime?
+  suspendedAt          DateTime?
+  suspensionReason     String?   @db.Text
+  deactivatedAt        DateTime?
+  hasSeenDashboardTour Boolean   @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  developerProfile        DeveloperProfile?
-  hiringProfile           HiringProfile?
-  connectedAccount        ConnectedAccount?
-  notificationPreference  NotificationPreference?
+  developerProfile       DeveloperProfile?
+  hiringProfile          HiringProfile?
+  connectedAccount       ConnectedAccount?
+  notificationPreference NotificationPreference?
 
   sessions   Session[]
   magicLinks MagicLink[]
-  
-  savedCandidates       SavedCandidate[]    @relation("RecruiterSavedCandidates")
-  savedByRecruiters     SavedCandidate[]    @relation("CandidateSavedBy")
 
-  createdProjects     Project[]           @relation("ProjectCreator")
-  addedMembers        ProjectMember[]     @relation("MemberAddedBy")
-  projectMemberships  ProjectMember[]     @relation("UserProjectMemberships")
+  savedCandidates   SavedCandidate[] @relation("RecruiterSavedCandidates")
+  savedByRecruiters SavedCandidate[] @relation("CandidateSavedBy")
+
+  createdProjects            Project[]           @relation("ProjectCreator")
+  addedMembers               ProjectMember[]     @relation("MemberAddedBy")
+  projectMemberships         ProjectMember[]     @relation("UserProjectMemberships")
   sentProjectInvitations     ProjectInvitation[] @relation("ProjectInvitationsSent")
   receivedProjectInvitations ProjectInvitation[] @relation("ProjectInvitationsReceived")
-  uploadedMedia       ProjectMedia[]
-  savedProjects       SavedProject[]
-  addedTechnologies   ProjectTechnology[] @relation("ProjectTechAddedBy")
-  adminAuditLogs      AdminAuditLog[]     @relation("AdminAuditActor")
-  moderatedProjects   Project[]           @relation("ProjectModerator")
+  uploadedMedia              ProjectMedia[]
+  savedProjects              SavedProject[]
+  addedTechnologies          ProjectTechnology[] @relation("ProjectTechAddedBy")
+  adminAuditLogs             AdminAuditLog[]     @relation("AdminAuditActor")
+  moderatedProjects          Project[]           @relation("ProjectModerator")
+  analyticsVisits            AnalyticsVisit[]    @relation("AnalyticsDeveloper")
 
   @@index([accountType])
   @@index([status])
@@ -183,7 +53,7 @@ model User {
 }
 
 model DeveloperProfile {
-  id String @id @default(uuid())
+  id     String @id @default(uuid())
   userId String @unique
 
   publicSlug  String  @unique
@@ -192,13 +62,13 @@ model DeveloperProfile {
   bio         String? @db.Text
   location    String?
 
-  profilePictureUrl  String?
+  profilePictureUrl         String?
   profilePictureOriginalUrl String?
   profilePictureCropZoom    Float?
   profilePictureCropX       Float?
   profilePictureCropY       Float?
-  linkedinUrl        String?
-  personalWebsiteUrl String?
+  linkedinUrl               String?
+  personalWebsiteUrl        String?
 
   githubUserId      BigInt?   @unique
   githubUsername    String?   @unique
@@ -233,10 +103,10 @@ model ConnectedAccount {
   oauthState          String?
   oauthStateExpiresAt DateTime?
 
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@schema("private")
 }
@@ -296,8 +166,8 @@ model Project {
   repositoryId    String @unique
   createdByUserId String
 
-  title String
-  slug  String @unique
+  title            String
+  slug             String  @unique
   logoUrl          String?
   shortDescription String? @db.Text
   fullDescription  String? @db.Text
@@ -316,15 +186,16 @@ model Project {
   moderationReason  String?   @db.Text
   moderatedByUserId String?
 
-  repository Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
-  createdBy  User       @relation("ProjectCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  repository  Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  createdBy   User       @relation("ProjectCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
   moderatedBy User?      @relation("ProjectModerator", fields: [moderatedByUserId], references: [id], onDelete: SetNull)
 
-  members      ProjectMember[]
-  invitations  ProjectInvitation[]
-  technologies ProjectTechnology[]
-  media        ProjectMedia[]
-  savedByUsers SavedProject[]
+  members         ProjectMember[]
+  invitations     ProjectInvitation[]
+  technologies    ProjectTechnology[]
+  media           ProjectMedia[]
+  savedByUsers    SavedProject[]
+  analyticsVisits AnalyticsVisit[]
 
   @@index([status])
   @@index([createdByUserId])
@@ -350,6 +221,32 @@ model AdminAuditLog {
   @@index([action, createdAt])
   @@index([targetType, targetId, createdAt])
   @@index([createdAt])
+  @@schema("public")
+}
+
+model AnalyticsVisit {
+  id String @id @default(uuid())
+
+  eventType       AnalyticsEventType
+  targetKey       String
+  developerUserId String
+  projectId       String?
+
+  visitorHash        String
+  visitorAccountType AccountType?
+  referrerDomain     String?
+  dedupeKey          String       @unique
+
+  occurredAt DateTime @default(now())
+
+  developer User     @relation("AnalyticsDeveloper", fields: [developerUserId], references: [id], onDelete: Cascade)
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([developerUserId, occurredAt])
+  @@index([projectId, occurredAt])
+  @@index([eventType, occurredAt])
+  @@index([visitorAccountType, occurredAt])
+  @@index([visitorHash])
   @@schema("public")
 }
 
@@ -530,13 +427,6 @@ model Session {
   @@schema("private")
 }
 
-enum MagicLinkPurpose {
-  LOGIN
-  PASSWORD_RESET
-
-  @@schema("private")
-}
-
 model MagicLink {
   id        String           @id @default(uuid())
   userId    String
@@ -575,3 +465,148 @@ model SavedCandidate {
   @@schema("public")
 }
 
+enum AccountType {
+  DEVELOPER
+  HIRING
+  SUPER_ADMIN
+
+  @@schema("public")
+}
+
+enum AnalyticsEventType {
+  PORTFOLIO_VIEW
+  PROJECT_VIEW
+
+  @@schema("public")
+}
+
+enum CandidateStatus {
+  SAVED
+  CONTACTED
+  REJECTED
+  ACCEPTED
+
+  @@schema("public")
+}
+
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+
+  @@schema("public")
+}
+
+enum AdminAuditAction {
+  ACCOUNT_SUSPENDED
+  ACCOUNT_REACTIVATED
+  PROJECT_ARCHIVED
+  PROJECT_SUSPENDED
+  PROJECT_RESTORED
+
+  @@schema("public")
+}
+
+enum AdminAuditTargetType {
+  USER
+  PROJECT
+
+  @@schema("public")
+}
+
+enum OrganizationType {
+  COMPANY
+  AGENCY
+  INDIVIDUAL
+  FREELANCE_CLIENT
+
+  @@schema("public")
+}
+
+enum ProjectStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+  SUSPENDED
+
+  @@schema("public")
+}
+
+enum ProjectRoleKey {
+  OWNER
+  EDITOR
+  CONTRIBUTOR
+
+  @@schema("public")
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  UNVERIFIED
+
+  @@schema("public")
+}
+
+enum VerificationSource {
+  GITHUB_OWNER
+  GITHUB_CONTRIBUTOR
+  GITHUB_COLLABORATOR
+  MANUAL_INVITE
+
+  @@schema("public")
+}
+
+enum ProjectInvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  CANCELED
+  EXPIRED
+
+  @@schema("public")
+}
+
+enum TechnologyCategory {
+  LANGUAGE
+  FRAMEWORK
+  LIBRARY
+  DATABASE
+  CLOUD
+  DEVOPS
+  TOOL
+  OTHER
+
+  @@schema("public")
+}
+
+enum ProjectTechnologySource {
+  SCANNER
+  MANUAL
+  BOTH
+
+  @@schema("public")
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  GIF
+  ARCHITECTURE_DIAGRAM
+
+  @@schema("public")
+}
+
+enum RepositoryVisibility {
+  PUBLIC
+  PRIVATE
+
+  @@schema("public")
+}
+
+enum MagicLinkPurpose {
+  LOGIN
+  PASSWORD_RESET
+
+  @@schema("private")
+}

@@ -32,9 +32,11 @@ export async function seedUsers(prisma: PrismaClient) {
       displayName: 'Sarah Chen',
       githubUsername: 'sarahchen',
       githubUserId: BigInt(100001),
-      headline: 'Senior Full Stack Developer',
-      bio: 'Specialist in building highly scalable React & Node.js applications with Turborepos.',
-      location: 'San Francisco, CA',
+      headline: 'Senior Product Engineer · React, Next.js & Design Systems',
+      bio: 'Product-focused full-stack engineer who turns complex workflows into fast, accessible experiences. Sarah enjoys building design systems, collaborative tools, and polished SaaS products with TypeScript.',
+      location: 'San Francisco, California',
+      profilePictureUrl:
+        'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=512&h=512&q=85',
     },
     {
       email: 'dev.alex@example.com',
@@ -42,9 +44,11 @@ export async function seedUsers(prisma: PrismaClient) {
       displayName: 'Alex Koval',
       githubUsername: 'alexkoval',
       githubUserId: BigInt(100002),
-      headline: 'DevOps & Backend Engineer',
-      bio: 'Passionate about Docker orchestration, Postgres performance tuning, and Redis caching systems.',
+      headline: 'Staff Platform Engineer · APIs, Data & Infrastructure',
+      bio: 'Backend and platform engineer specializing in resilient APIs, data-intensive systems, and developer infrastructure. Alex works across PostgreSQL, Redis, containers, queues, observability, and cloud delivery.',
       location: 'Berlin, Germany',
+      profilePictureUrl:
+        'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=512&h=512&q=85',
     },
   ];
 
@@ -73,6 +77,11 @@ export async function seedUsers(prisma: PrismaClient) {
         headline: dev.headline,
         bio: dev.bio,
         location: dev.location,
+        profilePictureUrl: dev.profilePictureUrl,
+        profilePictureOriginalUrl: dev.profilePictureUrl,
+        profilePictureCropZoom: 1,
+        profilePictureCropX: 0,
+        profilePictureCropY: 0,
       },
       create: {
         userId: user.id,
@@ -83,6 +92,11 @@ export async function seedUsers(prisma: PrismaClient) {
         headline: dev.headline,
         bio: dev.bio,
         location: dev.location,
+        profilePictureUrl: dev.profilePictureUrl,
+        profilePictureOriginalUrl: dev.profilePictureUrl,
+        profilePictureCropZoom: 1,
+        profilePictureCropX: 0,
+        profilePictureCropY: 0,
       },
     });
   }

@@ -16,6 +16,7 @@ import { ProjectInvitationsModule } from './project-invitations/project-invitati
 import { AdminModule } from './admin/admin.module';
 import { SettingsModule } from './settings/settings.module';
 import { SavedCandidatesModule } from './saved-candidates/saved-candidates.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 @Module({
   imports: [
     ConfigModule.forRoot(),
@@ -37,6 +38,7 @@ import { SavedCandidatesModule } from './saved-candidates/saved-candidates.modul
     AdminModule,
     SettingsModule,
     SavedCandidatesModule,
+    AnalyticsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -15,7 +15,8 @@
         "GITHUB_CLIENT_ID",
         "GITHUB_CLIENT_SECRET",
         "GITHUB_TOKEN_ENCRYPTION_KEY",
-        "GITHUB_TOKEN"
+        "GITHUB_TOKEN",
+        "ANALYTICS_HASH_SECRET"
       ]
     },
     "lint": {
@@ -39,7 +40,8 @@
         "GITHUB_CLIENT_ID",
         "GITHUB_CLIENT_SECRET",
         "GITHUB_TOKEN_ENCRYPTION_KEY",
-        "GITHUB_TOKEN"
+        "GITHUB_TOKEN",
+        "ANALYTICS_HASH_SECRET"
       ]
     },
     "db:generate": {
@@ -47,17 +49,21 @@
     },
     "db:migrate": {
       "cache": false,
-      "persistent": true
+      "persistent": true,
+      "env": ["DATABASE_URL"]
     },
     "db:deploy": {
-      "cache": false
+      "cache": false,
+      "env": ["DATABASE_URL"]
     },
     "db:reset": {
       "cache": false,
-      "persistent": true
+      "persistent": true,
+      "env": ["DATABASE_URL"]
     },
     "db:seed": {
-      "cache": false
+      "cache": false,
+      "env": ["DATABASE_URL"]
     },
     "db:build": {
       "dependsOn": ["db:generate"],

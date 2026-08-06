@@ -55,8 +55,10 @@ export function ProjectCard({ project, savedState }: ProjectCardProps) {
   const creator = project.createdBy;
   const hasCollaborators = project.contributorCount > 1;
 
+  const [coverFailed, setCoverFailed] = useState(false);
   const [isEditingNote, setIsEditingNote] = useState(false);
   const [draftNote, setDraftNote] = useState(savedState?.note ?? '');
+  const coverMedia = coverFailed ? undefined : project.media[0];
 
   const startEditingNote = () => {
     setDraftNote(savedState?.note ?? '');
@@ -90,10 +92,22 @@ export function ProjectCard({ project, savedState }: ProjectCardProps) {
       )}
       <Link href={`/projects/${project.slug}`} className="flex flex-1 flex-col">
         <div
-          className="relative flex h-28 items-end p-3"
-          style={{ background: cover }}
+          className="relative flex h-36 items-end overflow-hidden p-3"
+          style={coverMedia ? undefined : { background: cover }}
         >
-          <span className="bg-success/20 text-success absolute top-3 right-3 rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wide uppercase">
+          {coverMedia && (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={coverMedia.publicUrl}
+                alt={coverMedia.caption ?? `${project.title} cover`}
+                onError={() => setCoverFailed(true)}
+                className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-black/10" />
+            </>
+          )}
+          <span className="bg-background/85 text-success-dark absolute top-3 right-3 z-[1] rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wide uppercase shadow-sm backdrop-blur">
             {project.status === 'PUBLISHED' ? 'Published' : project.status}
           </span>
           {project.logoUrl ? (
@@ -101,11 +115,11 @@ export function ProjectCard({ project, savedState }: ProjectCardProps) {
             <img
               src={project.logoUrl}
               alt={`${project.title} logo`}
-              className="border-card h-10 w-10 rounded-lg border-2 object-cover shadow-md"
+              className="border-card relative z-[1] h-10 w-10 rounded-lg border-2 bg-card object-cover shadow-md"
             />
           ) : (
             <span
-              className="flex h-10 w-10 items-center justify-center rounded-lg text-sm font-extrabold text-white shadow-md"
+              className="relative z-[1] flex h-10 w-10 items-center justify-center rounded-lg text-sm font-extrabold text-white shadow-md"
               style={{ backgroundColor: accent }}
             >
               {getInitials(project.title)}

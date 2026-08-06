@@ -11,10 +11,10 @@ import {
   ArrowRight,
   Check,
   Sparkles,
+  Compass,
   Bookmark,
   Users,
   StickyNote,
-  Compass,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -157,7 +157,9 @@ function DeveloperDashboard({
     error: projectsError,
   } = useProjects();
 
-  if (isProjectsLoading) return <DashboardSkeleton />;
+  if (isProjectsLoading) {
+    return <DashboardSkeleton />;
+  }
 
   if (projectsError) {
     return (
@@ -213,7 +215,7 @@ function DeveloperDashboard({
   const recentProjects = projects.slice(0, 3);
 
   return (
-    <div className="space-y-6">
+    <div id="tour-dashboard-main" className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -454,7 +456,7 @@ function RecruiterDashboard({
   const recentProjects = savedProjects.slice(0, 3);
 
   return (
-    <div className="space-y-6">
+    <div id="tour-dashboard-main" className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>

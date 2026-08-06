@@ -16,6 +16,7 @@ import {
   Activity,
   ScrollText,
   UserCheck,
+  ChartNoAxesCombined,
 } from 'lucide-react';
 import { useUser } from '@/hooks/use-auth';
 import { useInvitationPendingCount } from '@/hooks/use-project-invitations';
@@ -40,7 +41,6 @@ interface NavItem {
   disabled?: boolean;
 }
 
-// Navigation items for DEVELOPER / standard users
 const orgNavItems: NavItem[] = [
   {
     title: 'Dashboard',
@@ -63,13 +63,17 @@ const orgNavItems: NavItem[] = [
     icon: Mail,
   },
   {
+    title: 'Analytics',
+    url: '/analytics',
+    icon: ChartNoAxesCombined,
+  },
+  {
     title: 'Profile',
     url: '/profile',
     icon: UserCog,
   },
 ];
 
-// Navigation items specifically for RECRUITERS (HIRING role)
 const recruiterNavItems: NavItem[] = [
   {
     title: 'Dashboard',
@@ -103,7 +107,6 @@ const recruiterNavItems: NavItem[] = [
   },
 ];
 
-// Navigation items for SUPER_ADMIN role
 const superAdminNavItems: NavItem[] = [
   {
     title: 'Overview',
@@ -172,10 +175,13 @@ export function AppSidebar() {
     return pathname.startsWith(url);
   };
 
+  // Safe helper to generate programmatic CSS class IDs for tour targeting
+  const getTourId = (title: string) =>
+    `tour-nav-${title.toLowerCase().replace(/\s+/g, '-')}`;
+
   return (
     <Sidebar className="border-sidebar-border border-r">
       <SidebarHeader className="px-5 py-6">
-        {/* Logo */}
         <Link
           href={isSuperAdmin ? '/admin' : '/dashboard'}
           className="flex items-center gap-2.5"
@@ -190,7 +196,6 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="overflow-x-hidden px-3">
-        {/* Main Navigation */}
         <SidebarGroup>
           <SidebarGroupLabel className="text-sidebar-foreground/60 mb-2 px-2 text-xs font-medium uppercase tracking-wider">
             {isSuperAdmin ? 'Administration' : 'Main'}
@@ -200,6 +205,8 @@ export function AppSidebar() {
               {mainNavItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
+                    // Programmatically generated targeting ID
+                    id={getTourId(item.title)}
                     asChild={!item.disabled}
                     isActive={isActive(item.url)}
                     disabled={item.disabled}
@@ -239,7 +246,6 @@ export function AppSidebar() {
 
         <SidebarSeparator className="my-4" />
 
-        {/* Secondary Navigation */}
         <SidebarGroup>
           <SidebarGroupLabel className="text-sidebar-foreground/60 mb-2 px-2 text-xs font-medium uppercase tracking-wider">
             Support
@@ -249,6 +255,8 @@ export function AppSidebar() {
               {secondaryNavItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
+                    // Programmatically generated targeting ID for Settings etc.
+                    id={getTourId(item.title)}
                     asChild
                     isActive={isActive(item.url)}
                     className={cn(

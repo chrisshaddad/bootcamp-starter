@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, Controller, type SubmitErrorHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import {
@@ -57,6 +57,12 @@ import {
 import { ProjectInvitationsManager } from '@/components/project-invitations-manager';
 import { PROJECT_STATUS_LABELS } from '@/lib/project-status';
 
+type PendingImage = {
+  id: string;
+  file: File;
+  previewUrl: string;
+};
+
 export default function EditProjectPage() {
   const params = useParams<{ slug: string }>();
   const router = useRouter();
@@ -69,10 +75,14 @@ export default function EditProjectPage() {
   const uploadLogo = useUploadProjectLogo();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const previewUrlsRef = useRef(new Set<string>());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [pendingLogo, setPendingLogo] = useState<PendingImage | null>(null);
+  const [pendingMedia, setPendingMedia] = useState<PendingImage[]>([]);
+  const [pendingCoverMediaId, setPendingCoverMediaId] = useState<string | null>(
+    null,
+  );
   const [deletingMediaId, setDeletingMediaId] = useState<string | null>(null);
   const [settingCoverMediaId, setSettingCoverMediaId] = useState<string | null>(
     null,
@@ -129,6 +139,13 @@ export default function EditProjectPage() {
     if (formValues) reset(formValues);
   }, [formValues, reset]);
 
+  useEffect(
+    () => () => {
+      previewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+    },
+    [],
+  );
+
   const onSubmit = async (data: UpdateProjectRequest) => {
     if (!project) return;
     const allowedData = { ...data };
@@ -139,6 +156,28 @@ export default function EditProjectPage() {
     setIsSubmitting(true);
     try {
       await updateProject(project.id, allowedData);
+
+      if (pendingLogo) {
+        await uploadLogo(project.id, pendingLogo.file);
+      }
+
+      const nextSortOrder =
+        Math.max(-1, ...project.media.map((media) => media.sortOrder)) + 1;
+      const uploadedMedia = await Promise.all(
+        pendingMedia.map((media, index) =>
+          uploadMedia(project.id, media.file, {
+            sortOrder: nextSortOrder + index,
+          }),
+        ),
+      );
+
+      const pendingCoverIndex = pendingMedia.findIndex(
+        (media) => media.id === pendingCoverMediaId,
+      );
+      const pendingCover = uploadedMedia[pendingCoverIndex];
+      if (pendingCover) {
+        await setCoverMedia(project.id, pendingCover.id);
+      }
 
       toast.success('Project updated successfully');
       router.push('/projects');
@@ -159,25 +198,48 @@ export default function EditProjectPage() {
     }
   };
 
-  const handleMediaSelected = async (
-    e: React.ChangeEvent<HTMLInputElement>,
-  ) => {
+  const onInvalid: SubmitErrorHandler<UpdateProjectRequest> = (formErrors) => {
+    const firstError = Object.values(formErrors).find(
+      (fieldError) => typeof fieldError?.message === 'string',
+    );
+    toast.error(
+      typeof firstError?.message === 'string'
+        ? firstError.message
+        : 'Please review the form and try again.',
+    );
+  };
+
+  const handleMediaSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
-    if (!file || !project || isUploading) return;
+    if (!file) return;
 
-    setIsUploading(true);
-    try {
-      const nextSortOrder =
-        Math.max(-1, ...project.media.map((m) => m.sortOrder)) + 1;
-      await uploadMedia(project.id, file, { sortOrder: nextSortOrder });
-    } catch (error) {
-      toast.error(
-        error instanceof ApiError ? error.message : 'Unable to upload media',
-      );
-    } finally {
-      setIsUploading(false);
-    }
+    const previewUrl = URL.createObjectURL(file);
+    previewUrlsRef.current.add(previewUrl);
+    const id = crypto.randomUUID();
+    setPendingMedia((current) => {
+      if (project?.media.length === 0 && current.length === 0) {
+        setPendingCoverMediaId(id);
+      }
+      return [...current, { id, file, previewUrl }];
+    });
+  };
+
+  const removePendingMedia = (id: string) => {
+    setPendingMedia((current) => {
+      const image = current.find((item) => item.id === id);
+      if (image) {
+        URL.revokeObjectURL(image.previewUrl);
+        previewUrlsRef.current.delete(image.previewUrl);
+      }
+      const remaining = current.filter((item) => item.id !== id);
+      if (pendingCoverMediaId === id) {
+        setPendingCoverMediaId(
+          project?.media.length === 0 ? (remaining[0]?.id ?? null) : null,
+        );
+      }
+      return remaining;
+    });
   };
 
   const handleDeleteMedia = async (mediaId: string) => {
@@ -203,8 +265,13 @@ export default function EditProjectPage() {
   const handleSetCover = async (mediaId: string) => {
     if (!project || settingCoverMediaId) return;
     const current = project.media[0];
-    if (!current || current.id === mediaId) return;
+    if (!current) return;
+    if (current.id === mediaId) {
+      setPendingCoverMediaId(null);
+      return;
+    }
 
+    setPendingCoverMediaId(null);
     setSettingCoverMediaId(mediaId);
     try {
       await setCoverMedia(project.id, mediaId);
@@ -217,21 +284,18 @@ export default function EditProjectPage() {
     }
   };
 
-  const handleLogoSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
-    if (!file || !project || isUploadingLogo) return;
+    if (!file) return;
 
-    setIsUploadingLogo(true);
-    try {
-      await uploadLogo(project.id, file);
-    } catch (error) {
-      toast.error(
-        error instanceof ApiError ? error.message : 'Unable to upload logo',
-      );
-    } finally {
-      setIsUploadingLogo(false);
+    if (pendingLogo) {
+      URL.revokeObjectURL(pendingLogo.previewUrl);
+      previewUrlsRef.current.delete(pendingLogo.previewUrl);
     }
+    const previewUrl = URL.createObjectURL(file);
+    previewUrlsRef.current.add(previewUrl);
+    setPendingLogo({ id: crypto.randomUUID(), file, previewUrl });
   };
 
   const handleDeleteProject = async () => {
@@ -327,7 +391,7 @@ export default function EditProjectPage() {
       </div>
 
       <form
-        onSubmit={handleSubmit(onSubmit)}
+        onSubmit={handleSubmit(onSubmit, onInvalid)}
         className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_280px]"
       >
         <div className="space-y-5">
@@ -365,16 +429,14 @@ export default function EditProjectPage() {
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                disabled={isUploadingLogo}
+                disabled={isSubmitting}
                 onClick={() => logoInputRef.current?.click()}
                 aria-label={project.logoUrl ? 'Replace logo' : 'Add logo'}
                 className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-dashed text-muted-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-70"
               >
-                {isUploadingLogo ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : project.logoUrl ? (
+                {pendingLogo || project.logoUrl ? (
                   <img
-                    src={project.logoUrl}
+                    src={pendingLogo?.previewUrl ?? project.logoUrl ?? ''}
                     alt="Project logo"
                     className="h-full w-full object-cover"
                   />
@@ -391,7 +453,8 @@ export default function EditProjectPage() {
               />
               <p className="text-muted-foreground text-xs">
                 Square image works best — shown as a small badge on the project
-                card. Click to {project.logoUrl ? 'replace' : 'add'}.
+                card. Click to {project.logoUrl ? 'replace' : 'add'}; it will be
+                uploaded when you save changes.
               </p>
             </div>
           </div>
@@ -399,6 +462,11 @@ export default function EditProjectPage() {
           <div className="space-y-2">
             <Label htmlFor="shortDescription">Short description</Label>
             <Textarea id="shortDescription" {...register('shortDescription')} />
+            {errors.shortDescription && (
+              <p className="text-destructive text-sm">
+                {errors.shortDescription.message}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -408,14 +476,19 @@ export default function EditProjectPage() {
               className="min-h-32"
               {...register('fullDescription')}
             />
+            {errors.fullDescription && (
+              <p className="text-destructive text-sm">
+                {errors.fullDescription.message}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
             <Label>Media</Label>
-            {project.media.length > 0 && (
+            {(project.media.length > 0 || pendingMedia.length > 0) && (
               <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                 {project.media.map((media, index) => {
-                  const isCover = index === 0;
+                  const isCover = pendingCoverMediaId === null && index === 0;
                   const isSettingCover = settingCoverMediaId === media.id;
 
                   return (
@@ -461,6 +534,42 @@ export default function EditProjectPage() {
                     </div>
                   );
                 })}
+                {pendingMedia.map((media) => {
+                  const isCover = pendingCoverMediaId === media.id;
+
+                  return (
+                    <div key={media.id} className="group relative">
+                      <img
+                        src={media.previewUrl}
+                        alt="Selected project media"
+                        className="aspect-video w-full rounded-lg border object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removePendingMedia(media.id)}
+                        aria-label="Remove selected media"
+                        className="bg-background/90 text-foreground absolute top-1 right-1 flex h-6 w-6 items-center justify-center rounded-full border opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                      {isCover ? (
+                        <span className="bg-background/90 text-foreground absolute bottom-1 left-1 inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium">
+                          <Star className="h-2.5 w-2.5 fill-current" />
+                          Cover · Pending
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setPendingCoverMediaId(media.id)}
+                          className="bg-background/90 text-foreground absolute bottom-1 left-1 inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                        >
+                          <Star className="h-2.5 w-2.5" />
+                          Use as cover
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
             <input
@@ -472,21 +581,16 @@ export default function EditProjectPage() {
             />
             <button
               type="button"
-              disabled={isUploading}
+              disabled={isSubmitting}
               onClick={() => fileInputRef.current?.click()}
               className="w-full text-left disabled:cursor-not-allowed disabled:opacity-70"
             >
               <Card className="cursor-pointer border-dashed">
                 <CardContent className="flex flex-col items-center gap-1.5 py-6 text-center">
-                  {isUploading ? (
-                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                  ) : (
-                    <ImageIcon className="h-5 w-5 text-muted-foreground" />
-                  )}
+                  <ImageIcon className="h-5 w-5 text-muted-foreground" />
                   <p className="text-muted-foreground text-xs">
-                    {isUploading
-                      ? 'Uploading...'
-                      : 'Click to upload a screenshot (JPEG, PNG, WEBP, or GIF, up to 5MB)'}
+                    Click to select a screenshot (JPEG, PNG, WEBP, or GIF, up to
+                    5MB). It will be uploaded when you save changes.
                   </p>
                 </CardContent>
               </Card>
@@ -509,9 +613,15 @@ export default function EditProjectPage() {
                     render={({ field }) => (
                       <Select
                         value={field.value || project.status}
-                        onValueChange={field.onChange}
+                        onValueChange={(value) =>
+                          field.onChange(value || project.status)
+                        }
                       >
-                        <SelectTrigger id="status" className="w-full">
+                        <SelectTrigger
+                          id="status"
+                          className="w-full"
+                          aria-invalid={!!errors.status}
+                        >
                           <SelectValue placeholder="Select status">
                             {PROJECT_STATUS_LABELS[
                               field.value || project.status
@@ -526,6 +636,11 @@ export default function EditProjectPage() {
                       </Select>
                     )}
                   />
+                  {errors.status && (
+                    <p className="text-destructive text-sm">
+                      {errors.status.message}
+                    </p>
+                  )}
                 </div>
               )}
               <div className="space-y-2">

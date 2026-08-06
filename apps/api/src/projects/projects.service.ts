@@ -598,13 +598,15 @@ export class ProjectsService {
 
     const newStatus = data.status ? this.mapStatus(data.status) : undefined;
 
-    const verifiedRepository =
-      newStatus === ProjectStatus.PUBLISHED
-        ? await this.githubService.verifyRepositoryOwnership(
-            project.createdByUserId,
-            project.repository.htmlUrl,
-          )
-        : null;
+    const isPublishing =
+      newStatus === ProjectStatus.PUBLISHED &&
+      project.status !== ProjectStatus.PUBLISHED;
+    const verifiedRepository = isPublishing
+      ? await this.githubService.verifyRepositoryOwnership(
+          project.createdByUserId,
+          project.repository.htmlUrl,
+        )
+      : null;
 
     try {
       return await this.prisma.$transaction(async (tx) => {
