@@ -54,7 +54,7 @@ export default function RegisterPage() {
         data,
       );
       setResult(registered);
-      toast.success('Library registered! Check your email to sign in.');
+      toast.success("Library registered! We'll email you once it's approved.");
     } catch (error) {
       if (error instanceof ApiError) {
         toast.error(error.message);
@@ -114,7 +114,8 @@ export default function RegisterPage() {
 
           <p className="text-lg leading-normal text-white/85">
             Register your library to manage your catalog, members, and loans in
-            one place. We&apos;ll email you a magic link to get started.
+            one place. We&apos;ll email you a sign-in link once a NextShelf
+            administrator approves it.
           </p>
         </div>
       </div>
@@ -129,21 +130,22 @@ export default function RegisterPage() {
                   <CheckCircle2 className="h-7 w-7 text-white" />
                 </div>
                 <h2 className="text-2xl font-bold leading-[1.3] text-library-ink">
-                  Check your email
+                  Registration received
                 </h2>
                 <p className="text-base leading-normal text-muted-foreground">
-                  We sent a magic link to{' '}
-                  <span className="font-semibold text-library-ink">
-                    {result.adminEmail}
-                  </span>
-                  . Click it to sign in.
-                </p>
-                <p className="text-sm leading-[1.6] text-muted-foreground">
                   <span className="font-semibold text-library-ink">
                     {result.name}
                   </span>{' '}
-                  has been created and is pending approval by a NextShelf
-                  administrator before it goes live.
+                  is pending approval by a NextShelf administrator before it
+                  goes live.
+                </p>
+                <p className="text-sm leading-[1.6] text-muted-foreground">
+                  Once it&apos;s approved we&apos;ll email{' '}
+                  <span className="font-semibold text-library-ink">
+                    {result.adminEmail}
+                  </span>{' '}
+                  a link to sign in. There&apos;s nothing you need to do in the
+                  meantime.
                 </p>
                 <a
                   href="/login"
@@ -166,7 +168,8 @@ export default function RegisterPage() {
                     Register your library
                   </h2>
                   <p className="text-sm text-muted-foreground">
-                    We&apos;ll email you a magic link to get started.
+                    A NextShelf administrator reviews every new library before
+                    it goes live.
                   </p>
                 </div>
 

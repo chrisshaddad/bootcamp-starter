@@ -31,8 +31,9 @@ export class OrganizationsService {
    * Public library self-registration.
    *
    * Creates a PENDING Organization plus its owning ORG_ADMIN user (in one
-   * transaction) and emails that admin a magic link to sign in. The library
-   * stays PENDING until a SUPER_ADMIN approves it.
+   * transaction) and emails that admin an acknowledgement. The library stays
+   * PENDING — and its admin locked out — until a SUPER_ADMIN approves it, so
+   * no sign-in link is issued here; approve() sends that.
    */
   async register(
     dto: CreateOrganizationRequest,
@@ -92,9 +93,14 @@ export class OrganizationsService {
       return org;
     });
 
-    // Reuse the shared magic-link flow (token + Mailpit job); it also confirms
-    // the email on first verify. Runs after the txn so the user row exists.
-    await this.authService.requestMagicLink(adminEmail);
+    // Acknowledge the application only. Runs after the txn so the user row
+    // exists (the queued job just needs the address, but keep the ordering
+    // honest with the rest of the flow).
+    await this.authService.sendOrganizationRegistrationReceived(
+      adminEmail,
+      adminName,
+      organization.name,
+    );
 
     return { ...organization, adminEmail };
   }
@@ -323,7 +329,11 @@ export class OrganizationsService {
   }
 
   /**
-   * Approve an organization (set status to ACTIVE)
+   * Approve an organization (set status to ACTIVE).
+   *
+   * This is the moment the library gains access, so it's also the moment its
+   * owning admin gets their first working sign-in link (registration only
+   * acknowledged the application).
    */
   async approve(
     id: string,
@@ -378,11 +388,22 @@ export class OrganizationsService {
       },
     });
 
+    // Only on a real transition into ACTIVE - re-approving an already-active
+    // library shouldn't re-issue a sign-in link out of nowhere.
+    if (existing.status !== 'ACTIVE') {
+      await this.authService.sendOrganizationApproved(
+        organization.createdBy,
+        organization.name,
+      );
+    }
+
     return organization;
   }
 
   /**
-   * Reject an organization (set status to REJECTED)
+   * Reject an organization (set status to REJECTED).
+   * Notifies the applicant, who otherwise just silently stops being able to
+   * sign in.
    */
   async reject(id: string): Promise<OrganizationDetailResponse> {
     // Check if organization exists
@@ -431,6 +452,14 @@ export class OrganizationsService {
         },
       },
     });
+
+    if (existing.status !== 'REJECTED') {
+      await this.authService.sendOrganizationStatusNotice(
+        organization.createdBy,
+        organization.name,
+        'REJECTED',
+      );
+    }
 
     return organization;
   }
