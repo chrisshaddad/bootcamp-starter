@@ -1,6 +1,7 @@
 /// <reference types="node" />
 import { randomBytes, scryptSync } from 'node:crypto';
 import { PrismaClient } from '../../src/generated/prisma/client';
+import { SeedObjectStorage } from './seedObjectStorage';
 
 function hashPassword(password: string): string {
   const salt = randomBytes(16).toString('hex');
@@ -8,7 +9,10 @@ function hashPassword(password: string): string {
   return `${salt}:${derivedKey}`;
 }
 
-export async function seedUsers(prisma: PrismaClient) {
+export async function seedUsers(
+  prisma: PrismaClient,
+  objectStorage: SeedObjectStorage,
+) {
   const defaultPassword = 'Password123!';
   console.log('Seeding users and profiles...');
 
@@ -35,7 +39,7 @@ export async function seedUsers(prisma: PrismaClient) {
       headline: 'Senior Product Engineer · React, Next.js & Design Systems',
       bio: 'Product-focused full-stack engineer who turns complex workflows into fast, accessible experiences. Sarah enjoys building design systems, collaborative tools, and polished SaaS products with TypeScript.',
       location: 'San Francisco, California',
-      profilePictureUrl:
+      profilePictureSourceUrl:
         'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=512&h=512&q=85',
     },
     {
@@ -47,12 +51,16 @@ export async function seedUsers(prisma: PrismaClient) {
       headline: 'Staff Platform Engineer · APIs, Data & Infrastructure',
       bio: 'Backend and platform engineer specializing in resilient APIs, data-intensive systems, and developer infrastructure. Alex works across PostgreSQL, Redis, containers, queues, observability, and cloud delivery.',
       location: 'Berlin, Germany',
-      profilePictureUrl:
+      profilePictureSourceUrl:
         'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=512&h=512&q=85',
     },
   ];
 
   for (const dev of devs) {
+    const profilePictureUrl = await objectStorage.mirrorImage(
+      dev.profilePictureSourceUrl,
+      `seed/developers/${dev.publicSlug}/profile`,
+    );
     const user = await prisma.user.upsert({
       where: { email: dev.email },
       update: {
@@ -77,8 +85,8 @@ export async function seedUsers(prisma: PrismaClient) {
         headline: dev.headline,
         bio: dev.bio,
         location: dev.location,
-        profilePictureUrl: dev.profilePictureUrl,
-        profilePictureOriginalUrl: dev.profilePictureUrl,
+        profilePictureUrl,
+        profilePictureOriginalUrl: profilePictureUrl,
         profilePictureCropZoom: 1,
         profilePictureCropX: 0,
         profilePictureCropY: 0,
@@ -92,8 +100,8 @@ export async function seedUsers(prisma: PrismaClient) {
         headline: dev.headline,
         bio: dev.bio,
         location: dev.location,
-        profilePictureUrl: dev.profilePictureUrl,
-        profilePictureOriginalUrl: dev.profilePictureUrl,
+        profilePictureUrl,
+        profilePictureOriginalUrl: profilePictureUrl,
         profilePictureCropZoom: 1,
         profilePictureCropX: 0,
         profilePictureCropY: 0,
