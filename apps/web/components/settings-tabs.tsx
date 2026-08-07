@@ -686,7 +686,15 @@ function RecruiterSettingsTabs({ user }: SettingsTabsProps) {
   );
 }
 
+function AdminSettings({ user }: SettingsTabsProps) {
+  return <SecurityTab email={user.email} />;
+}
+
 export function SettingsTabs({ user }: SettingsTabsProps) {
+  if (user.accountType === 'SUPER_ADMIN') {
+    return <AdminSettings user={user} />;
+  }
+
   if (user.accountType === 'HIRING') {
     return <RecruiterSettingsTabs user={user} />;
   }
