@@ -42,7 +42,7 @@ export function ProjectListCard({
       {editHref && (
         <Link
           href={editHref}
-          className="absolute top-9 right-2.5 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-background/90 text-muted-foreground opacity-0 shadow-sm backdrop-blur-sm transition-opacity hover:bg-background hover:text-foreground group-hover:opacity-100 focus-visible:opacity-100"
+          className="absolute top-9 right-2.5 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-background/90 text-muted-foreground opacity-100 shadow-sm backdrop-blur-sm transition-opacity hover:bg-background hover:text-foreground [@media(hover:hover)_and_(pointer:fine)]:opacity-0 [@media(hover:hover)_and_(pointer:fine)]:group-hover:opacity-100 [@media(hover:hover)_and_(pointer:fine)]:focus-visible:opacity-100"
           aria-label="Edit"
         >
           <Pencil className="h-3.5 w-3.5" />
