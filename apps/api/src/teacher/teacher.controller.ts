@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  StreamableFile,
 } from '@nestjs/common';
 import type { User } from '@repo/db';
 import {
@@ -113,6 +114,23 @@ export class TeacherController {
       user.organizationId,
       assignmentId,
     );
+  }
+  @Get('submissions/:submissionId/file')
+  async downloadSubmissionFile(
+    @CurrentUser() user: User,
+    @Param('submissionId') submissionId: string,
+  ): Promise<StreamableFile> {
+    const file = await this.teacherService.getSubmissionFile(
+      user.id,
+      user.organizationId,
+      submissionId,
+    );
+
+    return new StreamableFile(file.buffer, {
+      type: file.mimeType,
+      disposition: `inline; filename="${file.fileName}"`,
+      length: file.buffer.length,
+    });
   }
   @Patch('quizzes/:quizId')
   async updateQuiz(
