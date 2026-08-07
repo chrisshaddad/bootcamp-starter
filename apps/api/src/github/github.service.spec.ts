@@ -47,8 +47,6 @@ describe('GithubService', () => {
   });
 
   it('should have database service injected', () => {
-    expect(
-      (service as any).prisma || (service as any).databaseService,
-    ).toBeDefined();
+    expect((service as unknown as { db: unknown }).db).toBe(databaseService);
   });
 });

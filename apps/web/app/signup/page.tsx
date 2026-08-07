@@ -14,24 +14,10 @@ import { ApiError } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 
 const ACCOUNT_TYPE_OPTIONS = [
   { value: 'DEVELOPER', label: 'Developer' },
   { value: 'HIRING', label: 'Recruiter / Hiring' },
-] as const;
-
-const ORGANIZATION_TYPE_OPTIONS = [
-  { value: 'COMPANY', label: 'Company' },
-  { value: 'AGENCY', label: 'Agency' },
-  { value: 'INDIVIDUAL', label: 'Individual' },
-  { value: 'FREELANCE_CLIENT', label: 'Freelance Client' },
 ] as const;
 
 export default function SignupPage() {
@@ -41,7 +27,6 @@ export default function SignupPage() {
   const {
     register,
     handleSubmit,
-    watch,
     control,
     formState: { errors },
   } = useForm<SignupRequest>({
@@ -49,8 +34,6 @@ export default function SignupPage() {
     defaultValues: { accountType: 'DEVELOPER' },
     shouldUnregister: true,
   });
-
-  const accountType = watch('accountType', 'DEVELOPER');
 
   const onSubmit = async (data: SignupRequest) => {
     setIsSubmitting(true);
@@ -145,55 +128,6 @@ export default function SignupPage() {
             </p>
           )}
         </div>
-
-        {accountType === 'HIRING' && (
-          <>
-            <div className="space-y-2">
-              <Label htmlFor="organizationName">Organization name</Label>
-              <Input
-                id="organizationName"
-                placeholder="Acme Inc."
-                aria-invalid={!!errors.organizationName}
-                {...register('organizationName')}
-              />
-              {errors.organizationName && (
-                <p className="text-sm text-destructive">
-                  {errors.organizationName.message}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="organizationType">Organization type</Label>
-              <Controller
-                control={control}
-                name="organizationType"
-                render={({ field }) => (
-                  <Select
-                    value={field.value ?? ''}
-                    onValueChange={field.onChange}
-                  >
-                    <SelectTrigger id="organizationType" className="w-full">
-                      <SelectValue placeholder="Select organization type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ORGANIZATION_TYPE_OPTIONS.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-              {errors.organizationType && (
-                <p className="text-sm text-destructive">
-                  {errors.organizationType.message}
-                </p>
-              )}
-            </div>
-          </>
-        )}
 
         <Button type="submit" className="h-12 w-full" disabled={isSubmitting}>
           {isSubmitting ? (
