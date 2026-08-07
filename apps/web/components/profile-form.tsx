@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Loader2, Sparkles } from 'lucide-react';
 import {
+  PROFILE_PICTURE_MAX_SIZE_BYTES,
   updateProfileRequestSchema,
   type UpdateProfileRequest,
   type UserResponse,
@@ -14,6 +15,7 @@ import {
 } from '@repo/contracts';
 import { useAuth } from '@/hooks/use-auth';
 import { ApiError, apiUpload, apiPost } from '@/lib/api';
+import { optimizeImageForUpload } from '@/lib/optimize-image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -94,9 +96,19 @@ export function ProfileForm({ user }: ProfileFormProps) {
   ) => {
     setIsUploadingPicture(true);
     try {
+      const [optimizedFile, optimizedOriginalFile] = await Promise.all([
+        optimizeImageForUpload(file, {
+          maxDimension: 512,
+          maxBytes: PROFILE_PICTURE_MAX_SIZE_BYTES,
+        }),
+        optimizeImageForUpload(originalFile, {
+          maxDimension: 2048,
+          maxBytes: PROFILE_PICTURE_MAX_SIZE_BYTES,
+        }),
+      ]);
       const formData = new FormData();
-      formData.append('file', file);
-      formData.append('originalFile', originalFile);
+      formData.append('file', optimizedFile);
+      formData.append('originalFile', optimizedOriginalFile);
       const result = await apiUpload<ProfilePictureUploadResponse>(
         '/auth/profile/picture',
         formData,

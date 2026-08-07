@@ -589,8 +589,9 @@ export default function EditProjectPage() {
                 <CardContent className="flex flex-col items-center gap-1.5 py-6 text-center">
                   <ImageIcon className="h-5 w-5 text-muted-foreground" />
                   <p className="text-muted-foreground text-xs">
-                    Click to select a screenshot (JPEG, PNG, WEBP, or GIF, up to
-                    5MB). It will be uploaded when you save changes.
+                    Click to select a screenshot (JPEG, PNG, WEBP, or GIF).
+                    Static images are optimized before upload; the final file
+                    limit is 5MB.
                   </p>
                 </CardContent>
               </Card>
