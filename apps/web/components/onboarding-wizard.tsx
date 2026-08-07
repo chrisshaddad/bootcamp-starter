@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, Controller, type Path } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -92,6 +92,12 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
         user.developerProfile?.publicSlug,
       )
     : '';
+  const slugWasManuallyEdited = useRef(
+    Boolean(
+      user.developerProfile?.publicSlug &&
+      !user.developerProfile.publicSlug.startsWith('dev-'),
+    ),
+  );
 
   const {
     register,
@@ -134,10 +140,18 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
     const name = e.target.value;
     setValue('displayName', name, { shouldValidate: true });
 
-    if (isDev) {
+    if (isDev && !slugWasManuallyEdited.current) {
       const generated = slugify(name);
       setValue('publicSlug', generated, { shouldValidate: true });
     }
+  };
+
+  const handlePublicSlugChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    slugWasManuallyEdited.current = true;
+    setValue('publicSlug', e.target.value, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
   };
 
   const handleNextStep = async (e?: React.MouseEvent) => {
@@ -151,11 +165,9 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
       ? ['displayName', 'publicSlug']
       : ['organizationName', 'organizationType'];
 
-    console.log('[DEBUG] Wizard - Validating Step 1:', fieldsToValidate);
     const isValid = await trigger(fieldsToValidate);
 
     if (!isValid) {
-      console.log('[DEBUG] Wizard - Validation failed on Step 1');
       return;
     }
 
@@ -202,7 +214,6 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
 
     const isStep2Valid = await trigger(step2Fields);
     if (!isStep2Valid) {
-      console.log('[DEBUG] Wizard - Validation failed on Step 2 URLs/Fields');
       return;
     }
 
@@ -214,7 +225,6 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
       return;
     }
 
-    console.log('[DEBUG] Wizard - Submission started...');
     setIsSubmitting(true);
     try {
       await updateProfile(data);
@@ -294,6 +304,7 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
                     className="rounded-l-none"
                     placeholder="jane-doe"
                     {...register('publicSlug')}
+                    onChange={handlePublicSlugChange}
                   />
                 </div>
                 {errors.publicSlug && (

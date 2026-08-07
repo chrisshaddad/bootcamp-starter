@@ -149,9 +149,9 @@ export default function NewProjectPage() {
                     className="flex flex-col overflow-hidden transition-colors hover:border-primary/50"
                   >
                     <CardHeader className="flex-1 pb-4">
-                      <div className="flex items-start justify-between gap-4">
+                      <div className="flex min-w-0 items-start justify-between gap-4">
                         <CardTitle
-                          className="truncate text-base font-semibold"
+                          className="min-w-0 flex-1 truncate text-base font-semibold"
                           title={repo.fullName}
                         >
                           {repo.name}
