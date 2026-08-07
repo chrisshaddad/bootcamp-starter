@@ -1,6 +1,4 @@
-import { join } from 'path';
 import { randomUUID } from 'crypto';
-import { readFileSync, unlinkSync, renameSync } from 'fs';
 import {
   Controller,
   Post,
@@ -25,7 +23,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { diskStorage } from 'multer';
+import { memoryStorage } from 'multer';
 import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import { CurrentUser, Public } from './decorators';
@@ -61,6 +59,8 @@ import {
   type SuccessResponse,
 } from '@repo/contracts';
 import { ZodValidationPipe } from '../common/pipes';
+import { ObjectStorageService } from '../storage/storage.service';
+import { imageContentType } from './utils/image-content-type';
 import {
   emailRequestSchema as emailRequestOpenApiSchema,
   loginRequestSchema as loginRequestOpenApiSchema,
@@ -73,7 +73,6 @@ import {
 import type { AccountType } from '@repo/db';
 
 const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
-const PROFILE_PICTURES_DIR = join(process.cwd(), 'uploads', 'profile-pictures');
 
 interface PopulatedUser {
   id: string;
@@ -111,19 +110,13 @@ type ProfilePictureFiles = {
   file?: Express.Multer.File[];
   originalFile?: Express.Multer.File[];
 };
-
-function safeUnlink(path: string) {
-  try {
-    unlinkSync(path);
-  } catch {
-    return;
-  }
-}
-
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly objectStorage: ObjectStorageService,
+  ) {}
 
   @Public()
   @Post('magic-link')
@@ -336,10 +329,7 @@ export class AuthController {
         { name: 'originalFile', maxCount: 1 },
       ],
       {
-        storage: diskStorage({
-          destination: PROFILE_PICTURES_DIR,
-          filename: (_req, _file, callback) => callback(null, randomUUID()),
-        }),
+        storage: memoryStorage(),
         limits: { fileSize: PROFILE_PICTURE_MAX_SIZE_BYTES },
         fileFilter: (_req, file, callback) => {
           if (
@@ -360,43 +350,42 @@ export class AuthController {
       },
     ),
   )
-  uploadProfilePicture(
+  async uploadProfilePicture(
     @UploadedFiles() files: ProfilePictureFiles | undefined,
-  ): ProfilePictureUploadResponse {
+  ): Promise<ProfilePictureUploadResponse> {
     const croppedFile = files?.file?.[0];
     const originalFile = files?.originalFile?.[0];
-    const uploadedFiles = [croppedFile, originalFile].filter(
-      (file): file is Express.Multer.File => Boolean(file),
-    );
-
     if (!croppedFile || !originalFile) {
-      uploadedFiles.forEach((file) => safeUnlink(file.path));
       throw new BadRequestException(
         'Both the cropped photo and original photo are required',
       );
     }
 
-    const croppedExtension = detectImageExtension(
-      readFileSync(croppedFile.path),
-    );
-    const originalExtension = detectImageExtension(
-      readFileSync(originalFile.path),
-    );
+    const croppedExtension = detectImageExtension(croppedFile.buffer);
+    const originalExtension = detectImageExtension(originalFile.buffer);
     if (!croppedExtension || !originalExtension) {
-      uploadedFiles.forEach((file) => safeUnlink(file.path));
       throw new BadRequestException('The uploaded file is not a valid image');
     }
 
-    const croppedFilename = `${croppedFile.filename}${croppedExtension}`;
-    const originalFilename = `${originalFile.filename}${originalExtension}`;
-    renameSync(croppedFile.path, join(PROFILE_PICTURES_DIR, croppedFilename));
-    renameSync(originalFile.path, join(PROFILE_PICTURES_DIR, originalFilename));
-
-    const apiUrl = process.env.API_URL ?? 'http://localhost:3001';
-    return {
-      profilePictureUrl: `${apiUrl}/uploads/profile-pictures/${croppedFilename}`,
-      profilePictureOriginalUrl: `${apiUrl}/uploads/profile-pictures/${originalFilename}`,
-    };
+    const cropped = await this.objectStorage.upload(
+      `profile-pictures/${randomUUID()}${croppedExtension}`,
+      croppedFile.buffer,
+      imageContentType(croppedExtension),
+    );
+    try {
+      const original = await this.objectStorage.upload(
+        `profile-pictures/${randomUUID()}${originalExtension}`,
+        originalFile.buffer,
+        imageContentType(originalExtension),
+      );
+      return {
+        profilePictureUrl: cropped.publicUrl,
+        profilePictureOriginalUrl: original.publicUrl,
+      };
+    } catch (error) {
+      await this.objectStorage.deleteMany([cropped.key]);
+      throw error;
+    }
   }
 
   @Patch('profile')

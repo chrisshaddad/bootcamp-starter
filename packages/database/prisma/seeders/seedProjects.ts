@@ -4,6 +4,7 @@ import {
   projectCatalog,
   technologySeeds,
 } from './projectCatalog';
+import { SeedObjectStorage } from './seedObjectStorage';
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
@@ -33,7 +34,10 @@ async function generateLocalEmbedding(text: string): Promise<number[]> {
   }
 }
 
-export async function seedProjects(prisma: PrismaClient) {
+export async function seedProjects(
+  prisma: PrismaClient,
+  objectStorage: SeedObjectStorage,
+) {
   console.log(
     'Seeding technologies, repositories, and showcase projects with vectors...',
   );
@@ -87,6 +91,27 @@ export async function seedProjects(prisma: PrismaClient) {
       );
     }
 
+    const mediaKeyPrefix = `seed/${item.slug}/`;
+    const [logoUrl, storedMedia] = await Promise.all([
+      objectStorage.mirrorImage(item.logoSourceUrl, `${mediaKeyPrefix}logo`),
+      Promise.all(
+        item.media.map(async (media, index) => {
+          const storageKey = `${mediaKeyPrefix}${index + 1}`;
+          return {
+            storageKey,
+            publicUrl: await objectStorage.mirrorImage(
+              media.sourceUrl,
+              storageKey,
+            ),
+            caption: media.caption,
+          };
+        }),
+      ),
+    ]);
+
+    // The catalog points to real public repositories. Demo ownership is
+    // intentionally assigned to the seeded developers for portfolio content;
+    // live GitHub import and collaborator verification still require OAuth.
     const repository = await prisma.repository.upsert({
       where: { githubRepoId: item.repository.githubRepoId },
       update: {
@@ -116,7 +141,7 @@ export async function seedProjects(prisma: PrismaClient) {
         createdByUserId: owner.id,
         title: item.title,
         slug: item.slug,
-        logoUrl: item.logoUrl,
+        logoUrl,
         shortDescription: item.shortDescription,
         fullDescription: item.fullDescription,
         deploymentUrl: item.deploymentUrl,
@@ -132,7 +157,7 @@ export async function seedProjects(prisma: PrismaClient) {
         createdByUserId: owner.id,
         title: item.title,
         slug: item.slug,
-        logoUrl: item.logoUrl,
+        logoUrl,
         shortDescription: item.shortDescription,
         fullDescription: item.fullDescription,
         deploymentUrl: item.deploymentUrl,
@@ -263,20 +288,19 @@ export async function seedProjects(prisma: PrismaClient) {
     });
 
     // Sync Media
-    const mediaKeyPrefix = `seed/${item.slug}/`;
     await prisma.projectMedia.deleteMany({
       where: {
         projectId: project.id,
         storageKey: { startsWith: mediaKeyPrefix },
       },
     });
-    if (item.media && item.media.length > 0) {
+    if (storedMedia.length > 0) {
       await prisma.projectMedia.createMany({
-        data: item.media.map((media, index) => ({
+        data: storedMedia.map((media, index) => ({
           projectId: project.id,
           uploadedByUserId: owner.id,
           mediaType: 'IMAGE' as const,
-          storageKey: `${mediaKeyPrefix}${index + 1}`,
+          storageKey: media.storageKey,
           publicUrl: media.publicUrl,
           caption: media.caption,
           sortOrder: index,

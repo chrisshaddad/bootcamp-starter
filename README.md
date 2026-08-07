@@ -11,6 +11,7 @@ A generic full-stack starter for bootcamp projects. Multi-tenant auth scaffoldin
 | Database    | PostgreSQL 18 via Prisma                                           |
 | Queue       | Redis + BullMQ                                                     |
 | Email (dev) | Mailpit                                                            |
+| Files (dev) | MinIO (S3-compatible object storage)                               |
 | Build       | Turborepo                                                          |
 | AI guidance | Single [`AGENTS.md`](AGENTS.md) for Claude / Cursor / Codex / etc. |
 
@@ -29,7 +30,7 @@ cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.example apps/web/.env
 cp packages/database/.env.example packages/database/.env
 
-# Start postgres + redis + mailpit
+# Start postgres + redis + mailpit + minio
 npm run services:init
 
 # Install
@@ -52,6 +53,8 @@ npm run dev
 - Web: <http://localhost:3000>
 - API: <http://localhost:3001>
 - Mailpit: <http://localhost:8025>
+- MinIO API: <http://localhost:9000>
+- MinIO console: <http://localhost:9001> (`bootcamp` / `bootcamp-secret`)
 
 ## Monorepo layout
 
@@ -94,7 +97,7 @@ Schema lives at [packages/database/prisma/schema.prisma](packages/database/prism
 
 ## Troubleshooting
 
-- **Port already in use** — postgres uses :5433, redis :6380, mailpit :8025/:1025. Stop the conflicting process or change ports in `docker-compose.yml`.
+- **Port already in use** — postgres uses :5433, redis :6380, mailpit :8025/:1025, and MinIO :9000/:9001. Stop the conflicting process or change ports in `docker-compose.yml`.
 - **`@repo/contracts` types not found** — run `npx tsc -p packages/contracts` once.
 - **Prisma client out of date** — `npx turbo run db:generate`.
 - **Docker volume cruft** — `docker compose down -v && npm run services:init` (wipes local DB data).

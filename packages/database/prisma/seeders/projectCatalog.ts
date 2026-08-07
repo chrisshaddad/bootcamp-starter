@@ -45,14 +45,14 @@ export interface ProjectCatalogItem {
   ownerEmail: string;
   title: string;
   slug: string;
-  logoUrl: string;
+  logoSourceUrl: string;
   shortDescription: string;
   fullDescription: string;
   deploymentUrl: string;
   publishedDaysAgo: number;
   techSlugs: string[];
   media: Array<{
-    publicUrl: string;
+    sourceUrl: string;
     caption: string;
   }>;
   collaborators?: Array<{
@@ -81,7 +81,7 @@ export const projectCatalog: ProjectCatalogItem[] = [
     ownerEmail: 'dev.alex@example.com',
     title: 'Excalidraw Collaborative Whiteboard',
     slug: 'excalidraw-collaborative-whiteboard',
-    logoUrl: 'https://avatars.githubusercontent.com/u/59452120?v=4',
+    logoSourceUrl: 'https://avatars.githubusercontent.com/u/59452120?v=4',
     shortDescription:
       'A local-first virtual whiteboard for sketching diagrams, wireframes, and ideas with real-time collaboration.',
     fullDescription:
@@ -98,12 +98,12 @@ export const projectCatalog: ProjectCatalogItem[] = [
     ],
     media: [
       {
-        publicUrl: 'https://excalidraw.com/og-image-3.png',
+        sourceUrl: 'https://excalidraw.com/og-image-3.png',
         caption:
           'Excalidraw’s hand-drawn visual language and collaborative canvas.',
       },
       {
-        publicUrl: liveScreenshot('https://excalidraw.com'),
+        sourceUrl: liveScreenshot('https://excalidraw.com'),
         caption:
           'The live editor with drawing tools, shapes, and an infinite canvas.',
       },
@@ -132,7 +132,7 @@ export const projectCatalog: ProjectCatalogItem[] = [
     ownerEmail: 'dev.sarah@example.com',
     title: 'Cal.diy Scheduling Platform',
     slug: 'cal-diy-scheduling-platform',
-    logoUrl: 'https://avatars.githubusercontent.com/u/79145102?v=4',
+    logoSourceUrl: 'https://avatars.githubusercontent.com/u/79145102?v=4',
     shortDescription:
       'Community-driven scheduling infrastructure for booking links, availability, calendars, and self-hosted workflows.',
     fullDescription:
@@ -153,7 +153,7 @@ export const projectCatalog: ProjectCatalogItem[] = [
     ],
     media: [
       {
-        publicUrl:
+        sourceUrl:
           'https://framerusercontent.com/images/pPSh5HDe1qaySb4R7xBgMHudhU.png',
         caption:
           'The scheduling platform’s booking, availability, and calendar experience.',
@@ -183,7 +183,7 @@ export const projectCatalog: ProjectCatalogItem[] = [
     ownerEmail: 'dev.sarah@example.com',
     title: 'shadcn/ui Component Platform',
     slug: 'shadcn-ui-component-platform',
-    logoUrl: 'https://avatars.githubusercontent.com/u/139895814?v=4',
+    logoSourceUrl: 'https://avatars.githubusercontent.com/u/139895814?v=4',
     shortDescription:
       'Accessible, beautifully designed components and a code distribution platform for building your own design system.',
     fullDescription:
@@ -203,13 +203,13 @@ export const projectCatalog: ProjectCatalogItem[] = [
     ],
     media: [
       {
-        publicUrl:
+        sourceUrl:
           'https://ui.shadcn.com/og?title=The%20Foundation%20for%20your%20Design%20System&description=Open%20Source.%20Open%20Code.',
         caption:
           'The shadcn/ui design-system foundation and open-code approach.',
       },
       {
-        publicUrl: liveScreenshot('https://ui.shadcn.com'),
+        sourceUrl: liveScreenshot('https://ui.shadcn.com'),
         caption:
           'The live component catalog, documentation, and registry experience.',
       },
@@ -229,7 +229,7 @@ export const projectCatalog: ProjectCatalogItem[] = [
     ownerEmail: 'dev.alex@example.com',
     title: 'Twenty Open-Source CRM',
     slug: 'twenty-open-source-crm',
-    logoUrl: 'https://avatars.githubusercontent.com/u/119600397?v=4',
+    logoSourceUrl: 'https://avatars.githubusercontent.com/u/119600397?v=4',
     shortDescription:
       'A modern, extensible CRM for managing companies, people, opportunities, workflows, and customer data.',
     fullDescription:
@@ -248,12 +248,12 @@ export const projectCatalog: ProjectCatalogItem[] = [
     ],
     media: [
       {
-        publicUrl: 'https://twenty.com/images/og/default.png',
+        sourceUrl: 'https://twenty.com/images/og/default.png',
         caption:
           'Twenty’s modern workspace for companies, people, and opportunities.',
       },
       {
-        publicUrl: liveScreenshot('https://twenty.com'),
+        sourceUrl: liveScreenshot('https://twenty.com'),
         caption:
           'The live Twenty product site and its open-source CRM positioning.',
       },
@@ -282,7 +282,7 @@ export const projectCatalog: ProjectCatalogItem[] = [
     ownerEmail: 'dev.sarah@example.com',
     title: 'Formbricks Experience Management',
     slug: 'formbricks-experience-management',
-    logoUrl: 'https://avatars.githubusercontent.com/u/105877416?v=4',
+    logoSourceUrl: 'https://avatars.githubusercontent.com/u/105877416?v=4',
     shortDescription:
       'A privacy-first platform for product surveys, website feedback, link surveys, and experience analysis.',
     fullDescription:
@@ -302,7 +302,7 @@ export const projectCatalog: ProjectCatalogItem[] = [
     ],
     media: [
       {
-        publicUrl: liveScreenshot('https://formbricks.com'),
+        sourceUrl: liveScreenshot('https://formbricks.com'),
         caption:
           'Formbricks’ privacy-first survey and experience-management platform.',
       },
@@ -331,7 +331,7 @@ export const projectCatalog: ProjectCatalogItem[] = [
     ownerEmail: 'dev.alex@example.com',
     title: 'NocoDB Low-Code Database',
     slug: 'nocodb-low-code-database',
-    logoUrl: 'https://avatars.githubusercontent.com/u/50206778?v=4',
+    logoSourceUrl: 'https://avatars.githubusercontent.com/u/50206778?v=4',
     shortDescription:
       'A self-hostable Airtable alternative that turns relational data into collaborative spreadsheet-style workflows.',
     fullDescription:
@@ -350,13 +350,13 @@ export const projectCatalog: ProjectCatalogItem[] = [
     ],
     media: [
       {
-        publicUrl:
+        sourceUrl:
           'https://cdn.prod.website-files.com/650a7aeba6c28976499496bb/686278d1c40e23ec5f1ac414_66245a0c0a05baffdf947012613f7c7b_Website%20Thumbnail.png',
         caption:
           'NocoDB’s collaborative, spreadsheet-style interface for relational data.',
       },
       {
-        publicUrl: liveScreenshot('https://nocodb.com'),
+        sourceUrl: liveScreenshot('https://nocodb.com'),
         caption:
           'The live NocoDB product site and self-hosted no-code platform.',
       },

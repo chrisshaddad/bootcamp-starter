@@ -10,6 +10,7 @@ import { AccountType, Prisma, type User } from '@repo/db';
 import { PrismaService } from '../database/prisma.service';
 import { GithubRepositorySnapshotService } from '../repository-scanner/github-repository-snapshot.service';
 import { GithubService } from '../github/github.service';
+import type { AiService } from '../ai/ai.service';
 import { ProjectsService } from './projects.service';
 import type { ProjectAccessService } from './project-access.service';
 
@@ -20,6 +21,9 @@ const REACT_ID = '00000000-0000-4000-8000-000000000004';
 const TYPESCRIPT_ID = '00000000-0000-4000-8000-000000000005';
 const MEMBER_ID = '00000000-0000-4000-8000-000000000006';
 const CREATED_AT = new Date('2026-07-10T10:00:00.000Z');
+const aiService = {
+  generateEmbedding: jest.fn().mockResolvedValue([]),
+} as unknown as AiService;
 
 describe('ProjectsService GitHub import', () => {
   let service: ProjectsService;
@@ -42,6 +46,7 @@ describe('ProjectsService GitHub import', () => {
           capabilities: { canPublish: true },
         }),
       } as unknown as ProjectAccessService,
+      aiService,
     );
   });
 
@@ -369,6 +374,7 @@ describe('ProjectsService public technology filters', () => {
       createSnapshotServiceMock() as unknown as GithubRepositorySnapshotService,
       {} as GithubService,
       {} as ProjectAccessService,
+      aiService,
     );
     const query = projectsExploreQuerySchema.parse({
       technology: ['react', 'typescript'],
@@ -426,6 +432,7 @@ describe('ProjectsService collaboration access', () => {
     {} as GithubRepositorySnapshotService,
     {} as GithubService,
     projectAccess as unknown as ProjectAccessService,
+    aiService,
   );
   const memberUser = {
     id: USER_ID,
@@ -499,6 +506,7 @@ describe('ProjectsService member removal', () => {
     {} as GithubRepositorySnapshotService,
     {} as GithubService,
     projectAccess as unknown as ProjectAccessService,
+    aiService,
   );
   const owner = {
     id: USER_ID,
