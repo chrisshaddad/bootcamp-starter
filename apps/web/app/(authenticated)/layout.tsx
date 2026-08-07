@@ -1,13 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useUser } from '@/hooks/use-auth';
 import { isProfileComplete } from '@/lib/profile';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/app-sidebar';
 import { TopNavbar } from '@/components/top-navbar';
-import { DashboardTour } from '@/components/dashboard-tour'; // <-- Import it here
+import { DashboardTour } from '@/components/dashboard-tour';
 import { Loader2 } from 'lucide-react';
 
 export default function DashboardLayout({
@@ -17,16 +17,34 @@ export default function DashboardLayout({
 }) {
   const { user, isLoading } = useUser({ redirectOnUnauthenticated: true });
   const router = useRouter();
+  const pathname = usePathname();
   const [isRedirecting, setIsRedirecting] = useState(false);
 
   useEffect(() => {
-    if (!isLoading && user) {
-      if (!isProfileComplete(user)) {
-        setIsRedirecting(true);
-        router.replace('/onboarding');
-      }
+    if (isLoading || !user) return;
+
+    if (!isProfileComplete(user)) {
+      setIsRedirecting(true);
+      router.replace('/onboarding');
+      return;
     }
-  }, [user, isLoading, router]);
+
+    const hasSeenTourLocally =
+      localStorage.getItem(`hasSeenDashboardTour-${user.id}`) === 'true';
+    const shouldStartTourOnDashboard =
+      user.accountType !== 'SUPER_ADMIN' &&
+      !user.hasSeenDashboardTour &&
+      !hasSeenTourLocally &&
+      pathname !== '/dashboard';
+
+    if (shouldStartTourOnDashboard) {
+      setIsRedirecting(true);
+      router.replace('/dashboard');
+      return;
+    }
+
+    setIsRedirecting(false);
+  }, [user, isLoading, pathname, router]);
 
   if (isLoading || isRedirecting || (user && !isProfileComplete(user))) {
     return (
@@ -46,8 +64,7 @@ export default function DashboardLayout({
         </main>
       </SidebarInset>
 
-      {/* Render the Tour Overlay */}
-      <DashboardTour />
+      {user?.accountType !== 'SUPER_ADMIN' && <DashboardTour />}
     </SidebarProvider>
   );
 }

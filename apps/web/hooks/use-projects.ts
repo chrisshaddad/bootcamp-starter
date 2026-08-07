@@ -23,6 +23,9 @@ import {
   projectsListResponseSchema,
   successResponseSchema,
 } from '@repo/contracts';
+import { optimizeImageForUpload } from '@/lib/optimize-image';
+
+const PROJECT_MEDIA_MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
 const PROJECTS_KEY = '/projects';
 const projectKey = (id: string) => `/projects/id/${id}`;
@@ -125,8 +128,12 @@ export function useUploadProjectMedia() {
       file: File,
       options?: Pick<ProjectMediaUploadRequest, 'caption' | 'sortOrder'>,
     ) => {
+      const optimizedFile = await optimizeImageForUpload(file, {
+        maxDimension: 2560,
+        maxBytes: PROJECT_MEDIA_MAX_UPLOAD_BYTES,
+      });
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', optimizedFile);
       formData.append('mediaType', 'IMAGE');
       if (options?.caption) formData.append('caption', options.caption);
       if (options?.sortOrder !== undefined) {
@@ -148,8 +155,12 @@ export function useUploadProjectMedia() {
 // after creation, before any component has rendered with that id yet.
 export function useUploadProjectLogo() {
   return useCallback(async (projectId: string, file: File) => {
+    const optimizedFile = await optimizeImageForUpload(file, {
+      maxDimension: 1024,
+      maxBytes: PROJECT_MEDIA_MAX_UPLOAD_BYTES,
+    });
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', optimizedFile);
 
     const project = projectResponseSchema.parse(
       await apiUpload<unknown>(`/projects/${projectId}/logo`, formData),

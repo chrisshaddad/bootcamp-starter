@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
-import { Search, Users } from 'lucide-react';
+import { Loader2, Search, Users } from 'lucide-react';
 import { fetcher, ApiError } from '@/lib/api';
 import { useUser } from '@/hooks/use-auth';
 import { Input } from '@/components/ui/input';
@@ -46,15 +46,18 @@ export default function ExploreUsersPage() {
     data,
     error,
     isLoading: isDataLoading,
+    isValidating,
   } = useSWR<ExploreUsersResponse, ApiError>(
     isAuthorized
       ? `/users/explore?page=1&limit=20${debouncedSearch ? `&search=${encodeURIComponent(debouncedSearch)}` : ''}`
       : null,
     fetcher,
+    { keepPreviousData: true },
   );
 
-  // Render Skeleton while checking authorization or loading data
-  if (isAuthLoading || (isAuthorized && isDataLoading)) {
+  // Only replace the page for its initial load. Search revalidation keeps the
+  // input mounted so typing focus and cursor position are preserved.
+  if (isAuthLoading || (isAuthorized && isDataLoading && !data)) {
     return (
       <div className="container mx-auto py-8 max-w-7xl space-y-8">
         <Skeleton className="h-12 w-64" />
@@ -85,10 +88,13 @@ export default function ExploreUsersPage() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search by name or profession..."
-            className="pl-9"
+            className="pr-9 pl-9"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
+          {isValidating && (
+            <Loader2 className="text-muted-foreground absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 animate-spin" />
+          )}
         </div>
       </div>
 

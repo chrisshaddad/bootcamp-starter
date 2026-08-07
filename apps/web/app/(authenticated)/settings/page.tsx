@@ -1,21 +1,13 @@
 'use client';
 
-import { Suspense, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SettingsTabs } from '@/components/settings-tabs';
 import { BackLink } from '@/components/back-link';
 import { useUser } from '@/hooks/use-auth';
 
 function SettingsContent() {
-  const router = useRouter();
   const { user, isLoading, error } = useUser();
-
-  useEffect(() => {
-    if (user?.accountType === 'SUPER_ADMIN') {
-      router.replace('/admin');
-    }
-  }, [router, user?.accountType]);
 
   if (error) {
     return (
@@ -25,7 +17,7 @@ function SettingsContent() {
     );
   }
 
-  if (isLoading || !user || user.accountType === 'SUPER_ADMIN') {
+  if (isLoading || !user) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-9 w-full max-w-md" />

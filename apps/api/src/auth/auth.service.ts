@@ -1,6 +1,7 @@
 import {
   Injectable,
   Logger,
+  BadRequestException,
   NotFoundException,
   ConflictException,
   ForbiddenException,
@@ -125,15 +126,6 @@ export class AuthService {
                 create: {
                   displayName,
                   publicSlug,
-                },
-              }
-            : undefined,
-        hiringProfile:
-          data.accountType === 'HIRING'
-            ? {
-                create: {
-                  organizationName: data.organizationName!,
-                  organizationType: data.organizationType!,
                 },
               }
             : undefined,
@@ -529,19 +521,33 @@ export class AuthService {
           personalWebsiteUrl?: string | null;
         };
       };
-      hiringProfile?: {
-        update: {
-          organizationName?: string;
-          organizationType?:
-            | 'COMPANY'
-            | 'AGENCY'
-            | 'INDIVIDUAL'
-            | 'FREELANCE_CLIENT';
-          jobTitle?: string | null;
-          linkedinUrl?: string | null;
-          organizationWebsiteUrl?: string | null;
-        };
-      };
+      hiringProfile?:
+        | {
+            update: {
+              organizationName?: string;
+              organizationType?:
+                | 'COMPANY'
+                | 'AGENCY'
+                | 'INDIVIDUAL'
+                | 'FREELANCE_CLIENT';
+              jobTitle?: string | null;
+              linkedinUrl?: string | null;
+              organizationWebsiteUrl?: string | null;
+            };
+          }
+        | {
+            create: {
+              organizationName: string;
+              organizationType:
+                | 'COMPANY'
+                | 'AGENCY'
+                | 'INDIVIDUAL'
+                | 'FREELANCE_CLIENT';
+              jobTitle?: string | null;
+              linkedinUrl?: string | null;
+              organizationWebsiteUrl?: string | null;
+            };
+          };
     } = {};
 
     if (data.hasSeenDashboardTour !== undefined) {
@@ -566,15 +572,33 @@ export class AuthService {
         },
       };
     } else if (user.accountType === 'HIRING') {
-      updatePayload.hiringProfile = {
-        update: {
-          organizationName: data.organizationName,
-          organizationType: data.organizationType,
-          jobTitle: data.jobTitle,
-          linkedinUrl: data.linkedinUrl,
-          organizationWebsiteUrl: data.organizationWebsiteUrl,
-        },
+      const hiringProfileData = {
+        organizationName: data.organizationName,
+        organizationType: data.organizationType,
+        jobTitle: data.jobTitle,
+        linkedinUrl: data.linkedinUrl,
+        organizationWebsiteUrl: data.organizationWebsiteUrl,
       };
+
+      if (user.hiringProfile) {
+        updatePayload.hiringProfile = {
+          update: hiringProfileData,
+        };
+      } else if (data.organizationName && data.organizationType) {
+        updatePayload.hiringProfile = {
+          create: {
+            organizationName: data.organizationName,
+            organizationType: data.organizationType,
+            jobTitle: data.jobTitle,
+            linkedinUrl: data.linkedinUrl,
+            organizationWebsiteUrl: data.organizationWebsiteUrl,
+          },
+        };
+      } else {
+        throw new BadRequestException(
+          'Organization name and type are required to create a hiring profile',
+        );
+      }
     }
 
     const updatedUser = await this.prisma.user.update({
