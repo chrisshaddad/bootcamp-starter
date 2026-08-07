@@ -7,7 +7,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 
-import { loginRequestSchema, type LoginRequest } from '@repo/contracts';
+import {
+  loginRequestSchema,
+  type ExploreProjectResponse,
+  type LoginRequest,
+} from '@repo/contracts';
 import { AuthShell } from '@/components/auth-shell';
 import { PasswordInput } from '@/components/password-input';
 import { useAuth } from '@/hooks/use-auth';
@@ -24,6 +28,38 @@ const THUMB_GRADIENTS = [
   'from-purple to-accent',
   'from-orange to-accent',
 ];
+
+function ProjectThumbnail({
+  project,
+  index,
+}: {
+  project: ExploreProjectResponse;
+  index: number;
+}) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const coverUrl = project.media[0]?.publicUrl;
+  const imageUrl = coverUrl ?? project.logoUrl;
+
+  return (
+    <div
+      className={`relative flex h-16 shrink-0 items-center justify-center overflow-hidden bg-gradient-to-br px-4 ${THUMB_GRADIENTS[index % THUMB_GRADIENTS.length]}`}
+    >
+      {imageUrl && !imageFailed && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={imageUrl}
+          alt={`${project.title} preview`}
+          onError={() => setImageFailed(true)}
+          className={
+            coverUrl
+              ? 'absolute inset-0 h-full w-full object-cover'
+              : 'h-10 w-10 rounded-md bg-white/90 object-contain p-1 shadow-sm'
+          }
+        />
+      )}
+    </div>
+  );
+}
 
 // Component to handle fetching & randomizing projects
 function RandomProjects() {
@@ -80,9 +116,7 @@ function RandomProjects() {
             className="block h-full"
           >
             <Card className="flex flex-col overflow-hidden py-0 border-white/10 shadow-[0_0_60px_-15px_rgba(47,120,238,0.15)] hover:border-primary/50 transition-colors h-full">
-              <div
-                className={`relative flex h-12 shrink-0 items-center bg-gradient-to-br px-4 ${THUMB_GRADIENTS[index % THUMB_GRADIENTS.length]}`}
-              />
+              <ProjectThumbnail project={project} index={index} />
 
               <div className="flex flex-1 flex-col gap-1.5 px-4 pt-3 pb-4">
                 <h4 className="text-sm font-semibold line-clamp-1">
