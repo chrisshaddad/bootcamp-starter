@@ -92,8 +92,6 @@ export async function optimizeImageForUpload(
       lastModified: file.lastModified,
     });
   } catch {
-    // Uploading the valid original is safer than blocking the user's save when
-    // a browser cannot decode or re-encode a supported image.
     return file;
   }
 }
