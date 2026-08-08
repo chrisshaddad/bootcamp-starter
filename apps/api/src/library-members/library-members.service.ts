@@ -4,9 +4,13 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { Prisma } from '@repo/db';
 import { PrismaService } from '../database/prisma.service';
 import { AuthService } from '../auth/auth.service';
+import { MAIL_JOBS, MAIL_QUEUE } from '../mail/mail.constants';
+import { getOrganizationStaffEmails } from '../mail/notification-recipients';
 import type {
   LibraryMemberResponse,
   LibraryMemberListResponse,
@@ -37,6 +41,7 @@ export class LibraryMembersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly authService: AuthService,
+    @InjectQueue(MAIL_QUEUE) private readonly mailQueue: Queue,
   ) {}
 
   /**
@@ -264,7 +269,7 @@ export class LibraryMembersService {
       attempt++
     ) {
       try {
-        return await this.prisma.libraryMember.create({
+        const libraryMember = await this.prisma.libraryMember.create({
           data: {
             organizationId: organization.id,
             userId,
@@ -276,6 +281,26 @@ export class LibraryMembersService {
           },
           include: libraryMemberWithOrganizationInclude,
         });
+
+        const staffEmails = await getOrganizationStaffEmails(
+          this.prisma,
+          organization.id,
+        );
+
+        await Promise.all(
+          staffEmails.map((email) =>
+            this.mailQueue.add(MAIL_JOBS.SEND_STAFF_BOOK_NOTICE, {
+              email,
+              organizationName: organization.name,
+              type: 'membership-request',
+              patronName: user.name,
+              patronEmail: user.email,
+              libraryCardNumber: libraryMember.libraryCardNumber,
+            }),
+          ),
+        );
+
+        return libraryMember;
       } catch (error) {
         const isCardNumberConflict =
           error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -320,12 +345,22 @@ export class LibraryMembersService {
     id: string,
   ): Promise<LibraryMemberWithOrganizationResponse> {
     const existing = await this.requirePending(organizationId, id);
-
-    return this.prisma.libraryMember.update({
+    const libraryMember = await this.prisma.libraryMember.update({
       where: { id: existing.id },
       data: { membershipStatus: 'ACTIVE' },
       include: libraryMemberWithOrganizationInclude,
     });
+
+    if (libraryMember.user?.email) {
+      await this.mailQueue.add(MAIL_JOBS.SEND_MEMBERSHIP_APPROVED, {
+        email: libraryMember.user.email,
+        patronName: libraryMember.user.name,
+        organizationName: libraryMember.organization.name,
+        browseLink: `${process.env.APP_URL}/browse`,
+      });
+    }
+
+    return libraryMember;
   }
 
   /**
@@ -337,12 +372,22 @@ export class LibraryMembersService {
     id: string,
   ): Promise<LibraryMemberWithOrganizationResponse> {
     const existing = await this.requirePending(organizationId, id);
-
-    return this.prisma.libraryMember.update({
+    const libraryMember = await this.prisma.libraryMember.update({
       where: { id: existing.id },
       data: { membershipStatus: 'CANCELLED' },
       include: libraryMemberWithOrganizationInclude,
     });
+
+    if (libraryMember.user?.email) {
+      await this.mailQueue.add(MAIL_JOBS.SEND_MEMBERSHIP_STATUS_NOTICE, {
+        email: libraryMember.user.email,
+        patronName: libraryMember.user.name,
+        organizationName: libraryMember.organization.name,
+        status: 'rejected',
+      });
+    }
+
+    return libraryMember;
   }
 
   /**
@@ -371,11 +416,22 @@ export class LibraryMembersService {
       );
     }
 
-    return this.prisma.libraryMember.update({
+    const libraryMember = await this.prisma.libraryMember.update({
       where: { id: existing.id },
       data: { membershipStatus: 'SUSPENDED' },
       include: libraryMemberWithOrganizationInclude,
     });
+
+    if (libraryMember.user?.email) {
+      await this.mailQueue.add(MAIL_JOBS.SEND_MEMBERSHIP_STATUS_NOTICE, {
+        email: libraryMember.user.email,
+        patronName: libraryMember.user.name,
+        organizationName: libraryMember.organization.name,
+        status: 'suspended',
+      });
+    }
+
+    return libraryMember;
   }
 
   private async requirePending(organizationId: string, id: string) {
@@ -414,6 +470,7 @@ export class LibraryMembersService {
   async remove(organizationId: string, id: string): Promise<void> {
     const existing = await this.prisma.libraryMember.findFirst({
       where: { id, organizationId },
+      include: libraryMemberWithOrganizationInclude,
     });
 
     if (!existing) {
@@ -428,6 +485,15 @@ export class LibraryMembersService {
       throw new ConflictException(
         `Cannot delete member "${existing.libraryCardNumber}" — they have ${rentals} rental record(s).`,
       );
+    }
+
+    if (existing.user?.email) {
+      await this.mailQueue.add(MAIL_JOBS.SEND_MEMBERSHIP_STATUS_NOTICE, {
+        email: existing.user.email,
+        patronName: existing.user.name,
+        organizationName: existing.organization.name,
+        status: 'ended',
+      });
     }
 
     await this.prisma.libraryMember.delete({ where: { id } });

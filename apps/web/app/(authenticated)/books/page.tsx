@@ -14,6 +14,7 @@ import type {
   BookCopyCondition,
   BookCreateRequest,
   BookResponse,
+  BookStockRow,
 } from '@repo/contracts';
 import { CONDITION_ORDER, CONDITION_LABELS } from '@/lib/book-condition';
 import { useBooks } from '@/hooks/use-books';
@@ -72,9 +73,8 @@ function emptyPriceRows(): PriceRows {
   return Object.fromEntries(CONDITION_ORDER.map((c) => [c, ''])) as PriceRows;
 }
 
-// Starting stock per condition, create-only ('' = no copies to add right
-// away). Ongoing stock changes go through the book detail page's copy
-// management, which handles individual barcodes.
+// Available stock per condition. On edit, this is hydrated from the saved
+// stock counts so the dialog shows the current inventory instead of blanks.
 type QuantityRows = Record<BookCopyCondition, string>;
 
 function emptyQuantityRows(): QuantityRows {
@@ -423,10 +423,11 @@ function BookDialog({
       rows[cp.condition] = cp.buyPrice;
     }
     setPriceRows(rows);
-    // Always blank - this input means "add N more copies", never "set stock
-    // to N", so it starts empty even when editing a book that already has
-    // copies.
-    setQuantityRows(emptyQuantityRows());
+    const stockRows = emptyQuantityRows();
+    for (const stock of book?.stockByCondition ?? []) {
+      stockRows[stock.condition] = String(stock.quantity);
+    }
+    setQuantityRows(stockRows);
   }, [open, book, form]);
 
   const onSubmit = async (values: BookCreateRequest) => {
@@ -437,19 +438,19 @@ function BookDialog({
       buyPrice: priceRows[condition].trim(),
     }));
 
-    const addCopies = CONDITION_ORDER.filter(
-      (condition) => quantityRows[condition].trim() !== '',
-    ).map((condition) => ({
-      condition,
-      quantity: Number(quantityRows[condition]),
-    }));
+    const stockByCondition: BookStockRow[] = CONDITION_ORDER.map(
+      (condition) => ({
+        condition,
+        quantity: Number(quantityRows[condition] || 0),
+      }),
+    );
 
     if (
-      addCopies.some(
-        (row) => !Number.isInteger(row.quantity) || row.quantity < 1,
+      stockByCondition.some(
+        (row) => !Number.isInteger(row.quantity) || row.quantity < 0,
       )
     ) {
-      toast.error('Stock to add must be a whole number of 1 or more');
+      toast.error('Stock must be a whole number of 0 or more');
       return;
     }
 
@@ -467,7 +468,7 @@ function BookDialog({
       // Always send the arrays so associations are replaced on edit.
       authorIds: values.authorIds ?? [],
       categoryIds: values.categoryIds ?? [],
-      ...(addCopies.length ? { addCopies } : {}),
+      stockByCondition,
     };
 
     try {
@@ -685,14 +686,12 @@ function BookDialog({
               )}
             />
             <FormItem>
-              <FormLabel>Sale price by condition</FormLabel>
+              <FormLabel>Sale price and stock by condition</FormLabel>
               <p className="text-sm text-muted-foreground">
                 Set a buy price for each condition you sell this book in. Leave
                 blank if it isn&apos;t for sale in that condition. Borrowing is
-                free — patrons only pay overdue or lost fines.{' '}
-                {book
-                  ? 'Add stock to create more copies (auto-barcoded) - this never removes existing copies; manage those individually from this book’s detail page.'
-                  : 'Optionally add starting stock - copies get auto-generated barcodes; edit them anytime from the book’s detail page.'}
+                free — patrons only pay overdue or lost fines. Stock values are
+                saved per condition.
               </p>
               <div className="space-y-2 rounded-md border border-border p-3">
                 <div className="grid grid-cols-3 gap-3 px-0.5">
@@ -727,8 +726,8 @@ function BookDialog({
                       type="number"
                       min={0}
                       step={1}
-                      placeholder={book ? 'Add qty' : 'Quantity'}
-                      aria-label={`${CONDITION_LABELS[condition]} ${book ? 'add stock' : 'starting stock'}`}
+                      placeholder="0"
+                      aria-label={`${CONDITION_LABELS[condition]} stock`}
                       value={quantityRows[condition]}
                       onChange={(e) =>
                         setQuantityRows((prev) => ({

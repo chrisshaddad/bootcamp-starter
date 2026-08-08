@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { dateSchema } from '../common';
 import { bookConditionPriceResponseSchema } from './book-condition-price.schema';
+import { bookStockRowSchema } from './book-stock.schema';
 
 const bookPublisherSummarySchema = z.object({
   id: z.uuid(),
@@ -37,5 +38,6 @@ export const bookResponseSchema = z.object({
   authors: z.array(bookAuthorSummarySchema),
   categories: z.array(bookCategorySummarySchema),
   availableCopies: z.number(),
+  stockByCondition: z.array(bookStockRowSchema),
 });
 export type BookResponse = z.infer<typeof bookResponseSchema>;

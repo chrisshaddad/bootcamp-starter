@@ -36,6 +36,7 @@ import { RequireRole } from '@/components/require-role';
 import { StatusBadge } from '@/components/status-badge';
 import { TablePagination } from '@/components/table-pagination';
 import { ClaimInviteDialog } from '@/components/claim-invite-dialog';
+import { useCurrentOrg } from '@/hooks/use-current-org';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -71,6 +72,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import { useOrganization } from '@/hooks/use-organizations';
 
 const PAGE_SIZE = 20;
 const ALL = 'all';
@@ -95,6 +97,18 @@ function toDateInput(value: unknown): string {
   const m = String(date.getMonth() + 1).padStart(2, '0');
   const d = String(date.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
+}
+
+function generatePreviewCardNumber(slug: string, sequence: number): string {
+  const prefix =
+    slug
+      .split('-')
+      .map((part) => part[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 3) || 'LIB';
+
+  return `${prefix}-${String(sequence).padStart(4, '0')}`;
 }
 
 export default function MembersPage() {
@@ -469,12 +483,27 @@ function MemberDialog({
   onCreate,
   onUpdate,
 }: MemberDialogProps) {
+  const { organizationId } = useCurrentOrg();
+  const { organization } = useOrganization(organizationId ?? '', {
+    enabled: !!organizationId,
+  });
+  const { total: previewMemberCount } = useLibraryMembers({
+    limit: 1,
+    enabled: open && !member,
+  });
+
+  const previewCardNumber =
+    member?.libraryCardNumber ??
+    (organization
+      ? generatePreviewCardNumber(
+          organization.slug,
+          (previewMemberCount ?? 0) + 1,
+        )
+      : generatePreviewCardNumber('lib', (previewMemberCount ?? 0) + 1));
+
   const form = useForm<MemberFormInput, unknown, LibraryMemberCreateRequest>({
     resolver: zodResolver(libraryMemberCreateRequestSchema),
     defaultValues: {
-      // undefined (not '') so the optional schema passes when left blank —
-      // '' would fail .min(1) and block the auto-generation path.
-      libraryCardNumber: undefined,
       membershipType: 'REGULAR',
       membershipStatus: 'ACTIVE',
     },
@@ -483,7 +512,6 @@ function MemberDialog({
   useEffect(() => {
     if (!open) return;
     form.reset({
-      libraryCardNumber: member?.libraryCardNumber ?? undefined,
       membershipType: member?.membershipType ?? 'REGULAR',
       membershipStatus: member?.membershipStatus ?? 'ACTIVE',
       membershipStartDate: member?.membershipStartDate
@@ -497,8 +525,6 @@ function MemberDialog({
 
   const onSubmit = async (values: LibraryMemberCreateRequest) => {
     const payload: LibraryMemberCreateRequest = {
-      // Blank ⇒ the API auto-generates a per-org card number.
-      libraryCardNumber: values.libraryCardNumber?.trim() || undefined,
       membershipType: values.membershipType,
       membershipStatus: values.membershipStatus,
       membershipStartDate: values.membershipStartDate,
@@ -529,31 +555,18 @@ function MemberDialog({
           <DialogDescription>
             {member
               ? "Update this member's details."
-              : 'Register a new patron. A card number is generated automatically if you leave it blank.'}
+              : 'Register a new patron. The library card number is generated automatically and cannot be edited.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="libraryCardNumber"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Library card number</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Auto-generated if left blank"
-                      {...field}
-                      value={field.value ?? ''}
-                      onChange={(e) =>
-                        field.onChange(e.target.value || undefined)
-                      }
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <FormItem>
+              <FormLabel>Library card number</FormLabel>
+              <FormControl>
+                <Input value={previewCardNumber} readOnly disabled />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}

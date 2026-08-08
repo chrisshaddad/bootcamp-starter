@@ -8,10 +8,17 @@ import {
   invitationEmail,
   dueReminderEmail,
   membershipClaimEmail,
+  membershipApprovedEmail,
+  membershipStatusNoticeEmail,
+  customerBookNoticeEmail,
+  staffBookNoticeEmail,
   organizationRegistrationReceivedEmail,
   organizationApprovedEmail,
   organizationStatusNoticeEmail,
   type OrganizationBlockedStatus,
+  type MembershipStatusNoticeType,
+  type CustomerBookNoticeType,
+  type StaffBookNoticeType,
 } from './templates';
 
 interface SendMagicLinkJobData {
@@ -45,6 +52,49 @@ interface SendMembershipClaimJobData {
   claimLink: string;
 }
 
+interface SendMembershipApprovedJobData {
+  email: string;
+  patronName: string;
+  organizationName: string;
+  browseLink: string;
+}
+
+interface SendMembershipStatusNoticeJobData {
+  email: string;
+  patronName: string;
+  organizationName: string;
+  status: MembershipStatusNoticeType;
+  browseLink?: string;
+}
+
+interface SendCustomerBookNoticeJobData {
+  email: string;
+  patronName: string;
+  organizationName: string;
+  type: CustomerBookNoticeType;
+  bookTitle?: string;
+  dueDate?: string;
+  itemTitles?: string[];
+  total?: string;
+  reason?: string;
+  actionLink?: string;
+  actionLabel?: string;
+}
+
+interface SendStaffBookNoticeJobData {
+  email: string;
+  staffName?: string;
+  organizationName: string;
+  type: StaffBookNoticeType;
+  patronName?: string;
+  patronEmail?: string;
+  libraryCardNumber?: string;
+  bookTitle?: string;
+  itemTitles?: string[];
+  total?: string;
+  dueDate?: string;
+}
+
 interface SendOrgRegistrationReceivedJobData {
   email: string;
   adminName: string;
@@ -70,6 +120,10 @@ type MailJobData =
   | SendInvitationJobData
   | SendDueReminderJobData
   | SendMembershipClaimJobData
+  | SendMembershipApprovedJobData
+  | SendMembershipStatusNoticeJobData
+  | SendCustomerBookNoticeJobData
+  | SendStaffBookNoticeJobData
   | SendOrgRegistrationReceivedJobData
   | SendOrgApprovedJobData
   | SendOrgStatusNoticeJobData;
@@ -100,6 +154,26 @@ export class MailProcessor extends WorkerHost {
       case MAIL_JOBS.SEND_MEMBERSHIP_CLAIM:
         await this.handleSendMembershipClaim(
           job.data as SendMembershipClaimJobData,
+        );
+        break;
+      case MAIL_JOBS.SEND_MEMBERSHIP_APPROVED:
+        await this.handleSendMembershipApproved(
+          job.data as SendMembershipApprovedJobData,
+        );
+        break;
+      case MAIL_JOBS.SEND_MEMBERSHIP_STATUS_NOTICE:
+        await this.handleSendMembershipStatusNotice(
+          job.data as SendMembershipStatusNoticeJobData,
+        );
+        break;
+      case MAIL_JOBS.SEND_CUSTOMER_BOOK_NOTICE:
+        await this.handleSendCustomerBookNotice(
+          job.data as SendCustomerBookNoticeJobData,
+        );
+        break;
+      case MAIL_JOBS.SEND_STAFF_BOOK_NOTICE:
+        await this.handleSendStaffBookNotice(
+          job.data as SendStaffBookNoticeJobData,
         );
         break;
       case MAIL_JOBS.SEND_ORG_REGISTRATION_RECEIVED:
@@ -228,6 +302,114 @@ export class MailProcessor extends WorkerHost {
       this.logger.error(`Failed to send membership claim email to ${email}`);
       throw new Error(`Failed to send email to ${email}`);
     }
+  }
+
+  private async handleSendMembershipApproved(
+    data: SendMembershipApprovedJobData,
+  ): Promise<void> {
+    const { email, patronName, organizationName, browseLink } = data;
+    const { subject, text, html } = membershipApprovedEmail({
+      patronName,
+      organizationName,
+      browseLink,
+    });
+
+    const success = await this.mailService.sendEmail({
+      to: email,
+      from: FROM_ADDRESS,
+      subject,
+      text,
+      html,
+    });
+
+    if (success) {
+      this.logger.log(
+        `Membership approval email sent successfully to ${email}`,
+      );
+    } else {
+      this.logger.error(`Failed to send membership approval email to ${email}`);
+      throw new Error(`Failed to send email to ${email}`);
+    }
+  }
+
+  private async handleSendMembershipStatusNotice(
+    data: SendMembershipStatusNoticeJobData,
+  ): Promise<void> {
+    const { email, patronName, organizationName, status, browseLink } = data;
+    const { subject, text, html } = membershipStatusNoticeEmail({
+      patronName,
+      organizationName,
+      status,
+      browseLink,
+    });
+
+    await this.send(email, { subject, text, html }, 'membership status');
+  }
+
+  private async handleSendCustomerBookNotice(
+    data: SendCustomerBookNoticeJobData,
+  ): Promise<void> {
+    const {
+      email,
+      patronName,
+      organizationName,
+      type,
+      bookTitle,
+      dueDate,
+      itemTitles,
+      total,
+      reason,
+      actionLink,
+      actionLabel,
+    } = data;
+
+    const { subject, text, html } = customerBookNoticeEmail({
+      patronName,
+      organizationName,
+      type,
+      bookTitle,
+      dueDate,
+      itemTitles,
+      total,
+      reason,
+      actionLink,
+      actionLabel,
+    });
+
+    await this.send(email, { subject, text, html }, 'customer notice');
+  }
+
+  private async handleSendStaffBookNotice(
+    data: SendStaffBookNoticeJobData,
+  ): Promise<void> {
+    const {
+      email,
+      staffName,
+      organizationName,
+      type,
+      patronName,
+      patronEmail,
+      libraryCardNumber,
+      bookTitle,
+      itemTitles,
+      total,
+      dueDate,
+    } = data;
+
+    const { subject, text, html } = staffBookNoticeEmail({
+      staffName,
+      organizationName,
+      type,
+      patronName,
+      patronEmail,
+      libraryCardNumber,
+      bookTitle,
+      itemTitles,
+      total,
+      dueDate,
+    });
+
+    await this.send(email, { subject, text, html }, 'staff notice');
   }
 
   private async handleSendOrgRegistrationReceived(

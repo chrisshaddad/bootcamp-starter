@@ -4,6 +4,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { Prisma } from '@repo/db';
 import { PrismaService } from '../database/prisma.service';
 import type {
@@ -15,6 +17,11 @@ import type {
   ReservationStatus,
 } from '@repo/contracts';
 import { DEFAULT_LOAN_DAYS, MS_PER_DAY } from './rentals.service';
+import { MAIL_JOBS, MAIL_QUEUE } from '../mail/mail.constants';
+import {
+  getMemberContact,
+  getOrganizationStaffEmails,
+} from '../mail/notification-recipients';
 
 const PICKUP_WINDOW_DAYS = 3;
 
@@ -25,7 +32,10 @@ const reservationInclude = {
 
 @Injectable()
 export class ReservationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @InjectQueue(MAIL_QUEUE) private readonly mailQueue: Queue,
+  ) {}
 
   /**
    * List reservations for an organization, optionally filtered by member, book, or status
@@ -84,8 +94,14 @@ export class ReservationsService {
     organizationId: string,
     data: ReservationCreateRequest,
   ): Promise<ReservationResponse> {
+    const organization = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { name: true },
+    });
+
     const book = await this.prisma.book.findFirst({
       where: { id: data.bookId, organizationId },
+      select: { title: true },
     });
 
     if (!book) {
@@ -110,7 +126,7 @@ export class ReservationsService {
       );
     }
 
-    return this.prisma.reservation.create({
+    const reservation = await this.prisma.reservation.create({
       data: {
         organizationId,
         bookId: data.bookId,
@@ -120,6 +136,26 @@ export class ReservationsService {
       },
       include: reservationInclude,
     });
+
+    const staffEmails = await getOrganizationStaffEmails(
+      this.prisma,
+      organizationId,
+    );
+
+    await Promise.all(
+      staffEmails.map((email) =>
+        this.mailQueue.add(MAIL_JOBS.SEND_STAFF_BOOK_NOTICE, {
+          email,
+          organizationName: organization?.name ?? 'your library',
+          type: 'reservation-created',
+          patronName: `Card ${member.libraryCardNumber}`,
+          libraryCardNumber: member.libraryCardNumber,
+          bookTitle: book.title,
+        }),
+      ),
+    );
+
+    return reservation;
   }
 
   /**
@@ -176,7 +212,30 @@ export class ReservationsService {
       });
     });
 
-    return this.findOne(organizationId, id);
+    const reservation = await this.findOne(organizationId, id);
+    const organization = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { name: true },
+    });
+    const memberContact = await getMemberContact(
+      this.prisma,
+      organizationId,
+      reservation.memberId,
+    );
+
+    if (memberContact.email) {
+      await this.mailQueue.add(MAIL_JOBS.SEND_CUSTOMER_BOOK_NOTICE, {
+        email: memberContact.email,
+        patronName: memberContact.name ?? 'there',
+        organizationName: organization?.name ?? 'your library',
+        type: 'pickup-ready',
+        bookTitle: reservation.book.title,
+        actionLink: `${process.env.APP_URL}/my-reservations`,
+        actionLabel: 'View reservations',
+      });
+    }
+
+    return reservation;
   }
 
   /**
@@ -223,7 +282,31 @@ export class ReservationsService {
       });
     });
 
-    return this.findOne(organizationId, id);
+    const reservation = await this.findOne(organizationId, id);
+    const organization = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { name: true },
+    });
+    const memberContact = await getMemberContact(
+      this.prisma,
+      organizationId,
+      reservation.memberId,
+    );
+
+    if (memberContact.email) {
+      await this.mailQueue.add(MAIL_JOBS.SEND_CUSTOMER_BOOK_NOTICE, {
+        email: memberContact.email,
+        patronName: memberContact.name ?? 'there',
+        organizationName: organization?.name ?? 'your library',
+        type: 'rental-accepted',
+        bookTitle: reservation.book.title,
+        dueDate: dueDate.toISOString(),
+        actionLink: `${process.env.APP_URL}/my-rentals`,
+        actionLabel: 'View rentals',
+      });
+    }
+
+    return reservation;
   }
 
   /**

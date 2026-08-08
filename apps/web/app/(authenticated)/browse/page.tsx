@@ -40,8 +40,11 @@ export default function BrowsePage() {
   const activeMemberships = (memberships ?? []).filter(
     (m) => m.membershipStatus === 'ACTIVE',
   );
+  const activeMembership = activeMemberships.find(
+    (m) => m.organization.id === user?.activeOrganizationId,
+  );
 
-  const hasActiveLibrary = !!user?.activeOrganizationId;
+  const hasActiveLibrary = !!activeMembership;
 
   // A patron with exactly one active library shouldn't have to visit My
   // Libraries and click Activate before they can browse - skip straight to
@@ -161,9 +164,7 @@ export default function BrowsePage() {
     );
   }
 
-  const activeLibraryName = activeMemberships.find(
-    (m) => m.organization.id === user?.activeOrganizationId,
-  )?.organization.name;
+  const activeLibraryName = activeMembership?.organization.name;
 
   return (
     <div className="space-y-6">

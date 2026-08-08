@@ -124,6 +124,40 @@ export class AuthService {
   }
 
   /**
+   * For members, the active organization in the session must still be an
+   * ACTIVE membership in an ACTIVE library. If the membership becomes
+   * pending/cancelled/suspended after login, portal browsing must stop until
+   * the user is admitted again or switches libraries.
+   */
+  async assertMemberActiveOrganizationAccess(
+    user: {
+      id: string;
+      role: string;
+    },
+    activeOrganizationId: string | null,
+  ): Promise<void> {
+    if (user.role !== 'MEMBER' || !activeOrganizationId) {
+      return;
+    }
+
+    const membership = await this.prisma.libraryMember.findFirst({
+      where: {
+        userId: user.id,
+        organizationId: activeOrganizationId,
+        membershipStatus: 'ACTIVE',
+        organization: { status: 'ACTIVE' },
+      },
+      select: { id: true },
+    });
+
+    if (!membership) {
+      throw new ForbiddenException(
+        'Select an active library membership before browsing books',
+      );
+    }
+  }
+
+  /**
    * Mint a fresh single-use magic-link token for a user (invalidating any
    * outstanding ones) and return the sign-in URL. Shared by the login flow and
    * the staff-invitation flow.

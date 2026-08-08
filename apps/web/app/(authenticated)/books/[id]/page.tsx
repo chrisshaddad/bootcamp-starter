@@ -271,6 +271,28 @@ function BookDetail() {
               </div>
             )}
           </div>
+          <div className="pt-3">
+            <span className="text-sm text-muted-foreground">
+              Stock by condition
+            </span>
+            <div className="mt-1 space-y-1">
+              {[...book.stockByCondition]
+                .sort(
+                  (a, b) =>
+                    CONDITION_ORDER.indexOf(a.condition) -
+                    CONDITION_ORDER.indexOf(b.condition),
+                )
+                .map((row) => (
+                  <div
+                    key={row.condition}
+                    className="flex justify-between text-sm text-foreground"
+                  >
+                    <span>{CONDITION_LABELS[row.condition]}</span>
+                    <span>{row.quantity}</span>
+                  </div>
+                ))}
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -309,7 +331,7 @@ function BookDetail() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Barcode</TableHead>
+                  <TableHead>SKU</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Condition</TableHead>
                   <TableHead>Acquired</TableHead>
@@ -479,7 +501,7 @@ function CopyDialog({
               name="barcode"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Barcode</FormLabel>
+                  <FormLabel>SKU</FormLabel>
                   <FormControl>
                     <Input placeholder="LIB-000123" {...field} />
                   </FormControl>

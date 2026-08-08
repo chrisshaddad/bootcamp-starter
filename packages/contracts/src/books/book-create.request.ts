@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { bookConditionPriceInputSchema } from './book-condition-price.schema';
 import { bookCopyConditionSchema } from '../book-copies';
+import { bookStockRowSchema } from './book-stock.schema';
 
 // Request for POST /books
 export const bookCreateRequestSchema = z.object({
@@ -30,6 +31,15 @@ export const bookCreateRequestSchema = z.object({
   // from "field sent as []" (explicitly clear associations).
   authorIds: z.array(z.uuid()).optional(),
   categoryIds: z.array(z.uuid()).optional(),
+  // Exact available stock by condition. When provided on update, the service
+  // reconciles the saved stock to match these quantities.
+  stockByCondition: z
+    .array(bookStockRowSchema)
+    .refine(
+      (rows) => new Set(rows.map((r) => r.condition)).size === rows.length,
+      'Each condition can appear at most once',
+    )
+    .optional(),
   // How many new physical copies to add at each condition - on create, this
   // stocks the book immediately; on update, it tops up whatever copies
   // already exist (it never removes/replaces copies - that stays a

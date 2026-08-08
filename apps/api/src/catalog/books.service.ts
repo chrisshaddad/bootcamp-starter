@@ -4,14 +4,41 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '@repo/db';
+import { Prisma, type BookCopyCondition } from '@repo/db';
 import { PrismaService } from '../database/prisma.service';
 import type {
   BookResponse,
   BookListResponse,
   BookCreateRequest,
   BookUpdateRequest,
+  BookStockRow,
 } from '@repo/contracts';
+
+const CONDITION_ORDER: BookCopyCondition[] = [
+  'NEW',
+  'GOOD',
+  'FAIR',
+  'POOR',
+  'DAMAGED',
+];
+
+type StockByConditionMap = Record<BookCopyCondition, number>;
+
+function emptyStockByCondition(): StockByConditionMap {
+  return Object.fromEntries(
+    CONDITION_ORDER.map((condition) => [condition, 0]),
+  ) as StockByConditionMap;
+}
+
+function stockRowsToMap(rows: BookStockRow[]): StockByConditionMap {
+  const stock = emptyStockByCondition();
+
+  for (const row of rows) {
+    stock[row.condition] = row.quantity;
+  }
+
+  return stock;
+}
 
 const bookInclude = {
   publisher: { select: { id: true, name: true } },
@@ -73,7 +100,17 @@ export class BooksService {
       this.prisma.book.count({ where }),
     ]);
 
-    return { books: books.map((book) => this.toResponse(book)), total };
+    const stockByBookId = await this.loadAvailableStockByCondition(
+      organizationId,
+      books.map((book) => book.id),
+    );
+
+    return {
+      books: books.map((book) =>
+        this.toResponse(book, stockByBookId.get(book.id)),
+      ),
+      total,
+    };
   }
 
   /**
@@ -89,7 +126,12 @@ export class BooksService {
       throw new NotFoundException(`Book with ID ${id} not found`);
     }
 
-    return this.toResponse(book);
+    const stockByBookId = await this.loadAvailableStockByCondition(
+      organizationId,
+      [book.id],
+    );
+
+    return this.toResponse(book, stockByBookId.get(book.id));
   }
 
   /**
@@ -103,6 +145,7 @@ export class BooksService {
       authorIds: rawAuthorIds = [],
       categoryIds: rawCategoryIds = [],
       conditionPrices = [],
+      stockByCondition,
       addCopies = [],
       ...bookFields
     } = data;
@@ -152,7 +195,11 @@ export class BooksService {
         });
       }
 
-      await this.addBookCopies(tx, organizationId, book.id, addCopies);
+      if (stockByCondition !== undefined) {
+        await this.setBookStock(tx, organizationId, book.id, stockByCondition);
+      } else {
+        await this.addBookCopies(tx, organizationId, book.id, addCopies);
+      }
 
       return book.id;
     });
@@ -182,6 +229,7 @@ export class BooksService {
       authorIds,
       categoryIds,
       conditionPrices,
+      stockByCondition,
       addCopies,
       ...bookFields
     } = data;
@@ -245,7 +293,9 @@ export class BooksService {
         }
       }
 
-      if (addCopies !== undefined) {
+      if (stockByCondition !== undefined) {
+        await this.setBookStock(tx, organizationId, id, stockByCondition);
+      } else if (addCopies !== undefined) {
         await this.addBookCopies(tx, organizationId, id, addCopies);
       }
     });
@@ -295,8 +345,12 @@ export class BooksService {
     await this.prisma.book.delete({ where: { id } });
   }
 
-  private toResponse(book: BookWithRelations): BookResponse {
+  private toResponse(
+    book: BookWithRelations,
+    stockByCondition?: StockByConditionMap,
+  ): BookResponse {
     const { _count, ...rest } = book;
+    const stock = stockByCondition ?? emptyStockByCondition();
 
     return {
       ...rest,
@@ -308,7 +362,101 @@ export class BooksService {
       authors: book.authors.map(({ author }) => author),
       categories: book.categories.map(({ category }) => category),
       availableCopies: _count.copies,
+      stockByCondition: CONDITION_ORDER.map((condition) => ({
+        condition,
+        quantity: stock[condition],
+      })),
     };
+  }
+
+  private async loadAvailableStockByCondition(
+    organizationId: string,
+    bookIds: string[],
+  ): Promise<Map<string, StockByConditionMap>> {
+    const stockByBookId = new Map<string, StockByConditionMap>();
+
+    if (bookIds.length === 0) {
+      return stockByBookId;
+    }
+
+    for (const bookId of bookIds) {
+      stockByBookId.set(bookId, emptyStockByCondition());
+    }
+
+    const grouped = await this.prisma.bookCopy.groupBy({
+      by: ['bookId', 'condition'],
+      where: {
+        organizationId,
+        bookId: { in: bookIds },
+        status: 'AVAILABLE',
+      },
+      _count: { _all: true },
+    });
+
+    for (const row of grouped) {
+      const stock = stockByBookId.get(row.bookId);
+      if (!stock) continue;
+      stock[row.condition] = row._count._all;
+    }
+
+    return stockByBookId;
+  }
+
+  private async setBookStock(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    bookId: string,
+    stockByCondition: NonNullable<BookCreateRequest['stockByCondition']>,
+  ): Promise<void> {
+    const target = stockRowsToMap(stockByCondition);
+    const currentCopies = await tx.bookCopy.findMany({
+      where: {
+        organizationId,
+        bookId,
+        status: 'AVAILABLE',
+      },
+      select: { id: true, condition: true },
+    });
+
+    const current = emptyStockByCondition();
+    for (const copy of currentCopies) {
+      current[copy.condition] += 1;
+    }
+
+    for (const condition of CONDITION_ORDER) {
+      const desired = target[condition];
+      const existing = current[condition];
+
+      if (desired < existing) {
+        const removable = await tx.bookCopy.findMany({
+          where: {
+            organizationId,
+            bookId,
+            condition,
+            status: 'AVAILABLE',
+            rentals: { none: {} },
+            purchases: { none: {} },
+          },
+          select: { id: true },
+          orderBy: { createdAt: 'asc' },
+          take: existing - desired,
+        });
+
+        if (removable.length < existing - desired) {
+          throw new ConflictException(
+            `Cannot reduce ${condition} stock below copies that already have rental or purchase history`,
+          );
+        }
+
+        await tx.bookCopy.deleteMany({
+          where: { id: { in: removable.map((copy) => copy.id) } },
+        });
+      } else if (desired > existing) {
+        await this.addBookCopies(tx, organizationId, bookId, [
+          { condition, quantity: desired - existing },
+        ]);
+      }
+    }
   }
 
   // A publisherId/authorId/categoryId is a globally-unique UUID, so a

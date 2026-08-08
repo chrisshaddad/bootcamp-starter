@@ -1,2 +1,2 @@
--- AlterTable
-ALTER TABLE "BookConditionPrice" DROP COLUMN "rentPrice";
+-- AlterTable (safe)
+ALTER TABLE "BookConditionPrice" DROP COLUMN IF EXISTS "rentPrice";

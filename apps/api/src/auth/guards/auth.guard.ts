@@ -68,6 +68,11 @@ export class AuthGuard implements CanActivate {
       );
     }
 
+    await this.authService.assertMemberActiveOrganizationAccess(
+      session.user,
+      session.activeOrganizationId,
+    );
+
     // Attach user, session ID, and active org to the request for later use
     const authRequest = request as AuthenticatedRequest;
     authRequest.user = session.user;
