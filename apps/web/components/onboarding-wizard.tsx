@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, Controller, type Path } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -77,10 +77,15 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCheckingSlug, setIsCheckingSlug] = useState(false);
+  const [profileHost, setProfileHost] = useState('site.com');
   const router = useRouter();
   const { updateProfile } = useAuth();
 
   const isDev = user.accountType === 'DEVELOPER';
+
+  useEffect(() => {
+    setProfileHost(window.location.host);
+  }, []);
 
   // Compute clean initial values for developer profile
   const initialDisplayName = isDev
@@ -245,21 +250,21 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
   };
 
   return (
-    <Card className="shadow-lg border-muted">
-      <CardHeader className="bg-muted/30 border-b pb-4 px-6 pt-6">
-        <div className="flex items-center justify-between text-sm font-medium">
+    <Card className="min-w-0 overflow-hidden border-muted shadow-lg">
+      <CardHeader className="border-b bg-muted/30 px-4 pt-5 pb-4 sm:px-6 sm:pt-6">
+        <div className="flex min-w-0 items-center justify-between text-xs font-medium sm:text-sm">
           <span
-            className={
-              step >= 1 ? 'text-primary font-semibold' : 'text-muted-foreground'
-            }
+            className={`shrink-0 whitespace-nowrap ${
+              step >= 1 ? 'font-semibold text-primary' : 'text-muted-foreground'
+            }`}
           >
             1. The Basics
           </span>
-          <div className="h-px bg-border flex-1 mx-4" />
+          <div className="mx-2 h-px min-w-3 flex-1 bg-border sm:mx-4" />
           <span
-            className={
-              step >= 2 ? 'text-primary font-semibold' : 'text-muted-foreground'
-            }
+            className={`shrink-0 whitespace-nowrap ${
+              step >= 2 ? 'font-semibold text-primary' : 'text-muted-foreground'
+            }`}
           >
             2. Details
           </span>
@@ -267,7 +272,7 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
       </CardHeader>
 
       <form onSubmit={handleSubmit(onSubmit)}>
-        <CardContent className="pt-6 space-y-6">
+        <CardContent className="min-w-0 space-y-6 px-4 pt-6 sm:px-6">
           {/* STEP 1: Required Fields */}
           {step === 1 && isDev && (
             <div className="space-y-4 animate-in fade-in duration-200">
@@ -292,16 +297,13 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
                   Public Profile Handle{' '}
                   <span className="text-destructive">*</span>
                 </Label>
-                <div className="flex items-center">
-                  <span className="bg-muted text-muted-foreground px-3 py-2 border border-r-0 rounded-l-md text-sm shrink-0">
-                    {typeof window !== 'undefined'
-                      ? window.location.host
-                      : 'site.com'}
-                    /developers/
+                <div className="flex min-w-0 flex-col sm:flex-row sm:items-stretch">
+                  <span className="flex min-w-0 items-center break-all rounded-t-md border border-b-0 bg-muted px-3 py-2 text-sm text-muted-foreground sm:max-w-[55%] sm:shrink-0 sm:truncate sm:whitespace-nowrap sm:rounded-l-md sm:rounded-tr-none sm:border-r-0 sm:border-b">
+                    {profileHost}/developers/
                   </span>
                   <Input
                     id="publicSlug"
-                    className="rounded-l-none"
+                    className="min-w-0 rounded-t-none sm:rounded-l-none sm:rounded-tr-[10px]"
                     placeholder="jane-doe"
                     {...register('publicSlug')}
                     onChange={handlePublicSlugChange}
@@ -342,7 +344,7 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
                   control={control}
                   render={({ field }) => (
                     <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger>
+                      <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select a type" />
                       </SelectTrigger>
                       <SelectContent>
@@ -497,14 +499,17 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
           )}
         </CardContent>
 
-        <CardFooter className="flex justify-between border-t bg-muted/10 pt-6">
-          {step === 1 ? (
-            <div />
-          ) : (
+        <CardFooter
+          className={`flex flex-col-reverse items-stretch gap-3 border-t bg-muted/10 px-4 pt-6 sm:flex-row sm:items-center sm:px-6 ${
+            step === 1 ? 'sm:justify-end' : 'sm:justify-between'
+          }`}
+        >
+          {step !== 1 && (
             <Button
               key="back-btn"
               type="button"
               variant="outline"
+              className="w-full sm:w-auto"
               onClick={() => setStep(1)}
               disabled={isSubmitting || isCheckingSlug}
             >
@@ -516,6 +521,7 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
             <Button
               key="continue-btn"
               type="button"
+              className="w-full sm:w-auto"
               onClick={handleNextStep}
               disabled={isCheckingSlug}
             >
@@ -525,7 +531,12 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
               Continue <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           ) : (
-            <Button key="submit-btn" type="submit" disabled={isSubmitting}>
+            <Button
+              key="submit-btn"
+              type="submit"
+              className="w-full sm:w-auto"
+              disabled={isSubmitting}
+            >
               {isSubmitting ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : null}
