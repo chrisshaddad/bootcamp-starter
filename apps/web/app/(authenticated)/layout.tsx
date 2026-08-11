@@ -59,7 +59,7 @@ export default function DashboardLayout({
       <AppSidebar />
       <SidebarInset className="h-svh min-h-0 overflow-hidden">
         <TopNavbar />
-        <main className="bg-background min-h-0 flex-1 overflow-y-auto p-6">
+        <main className="min-h-0 flex-1 overflow-y-auto bg-background p-4 sm:p-6">
           {children}
         </main>
       </SidebarInset>

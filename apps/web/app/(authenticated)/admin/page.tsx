@@ -173,11 +173,16 @@ export default function AdminOverviewPage() {
 
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between gap-4">
-            <CardTitle className="flex items-center gap-2">
+          <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle className="flex min-w-0 items-center gap-2">
               <ShieldCheck className="h-5 w-5" /> Recent moderation activity
             </CardTitle>
-            <Button asChild size="sm" variant="ghost" className="shrink-0">
+            <Button
+              asChild
+              size="sm"
+              variant="ghost"
+              className="w-full shrink-0 sm:w-auto"
+            >
               <Link href="/admin/logs">View all</Link>
             </Button>
           </div>
@@ -194,8 +199,8 @@ export default function AdminOverviewPage() {
                 className="border-border flex flex-col gap-2 border-b py-3 last:border-0 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="break-words text-sm font-medium">
                       {ACTION_LABELS[log.action]}
                     </span>
                     <StatusBadge tone="info">{log.targetType}</StatusBadge>
@@ -204,7 +209,7 @@ export default function AdminOverviewPage() {
                     {log.reason ?? 'No reason supplied'}
                   </p>
                 </div>
-                <div className="text-muted-foreground text-right text-xs">
+                <div className="text-left text-xs text-muted-foreground sm:text-right">
                   <div>{log.actor?.displayName ?? 'Deleted administrator'}</div>
                   <div>{new Date(log.createdAt).toLocaleString()}</div>
                 </div>
