@@ -1,0 +1,28 @@
+config:
+  aws:region: us-west-2
+  deployfolio-infrastructure:name: deployfolio
+  deployfolio-infrastructure:branchName: main
+  deployfolio-infrastructure:githubRepositoryUrl: https://github.com/AmzBG/Deployfolio
+  deployfolio-infrastructure:runtimeEnabled: true
+  deployfolio-infrastructure:imageTag: v1
+  deployfolio-infrastructure:databaseAdminCidr: 203.0.113.10/32
+  deployfolio-infrastructure:rdsInstanceClass: db.t4g.micro
+  deployfolio-infrastructure:rdsEngineVersion: '18'
+  deployfolio-infrastructure:cacheNodeType: cache.t4g.micro
+  deployfolio-infrastructure:valkeyEngineVersion: '8.2'
+  deployfolio-infrastructure:apiCpu: '256'
+  deployfolio-infrastructure:apiMemory: '512'
+  deployfolio-infrastructure:githubClientId: YOUR_GITHUB_OAUTH_CLIENT_ID
+  deployfolio-infrastructure:brevoSenderEmail: no-reply@example.com
+  deployfolio-infrastructure:brevoSenderName: Deployfolio
+  deployfolio-infrastructure:monthlyBudgetUsd: 15
+  deployfolio-infrastructure:budgetAlertEmail: you@example.com
+  deployfolio-infrastructure:forceDestroy: false
+  deployfolio-infrastructure:protectData: true
+  # Optional custom domains. domainName requires a public Route 53 hosted zone.
+  # deployfolio-infrastructure:domainName: example.com
+  # deployfolio-infrastructure:hostedZoneId: Z0123456789ABCDEF
+  # deployfolio-infrastructure:appSubdomain: app
+  # deployfolio-infrastructure:mediaSubdomain: media
+  # Secret values belong in the ignored .env.infrastructure file or encrypted
+  # Pulumi stack config, never in this example.
