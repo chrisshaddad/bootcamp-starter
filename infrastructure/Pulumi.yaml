@@ -1,0 +1,10 @@
+name: deployfolio-infrastructure
+description: Cost-conscious AWS production infrastructure for Deployfolio
+runtime:
+  name: nodejs
+  options:
+    typescript: true
+main: src/index.ts
+config:
+  aws:region:
+    value: us-west-2

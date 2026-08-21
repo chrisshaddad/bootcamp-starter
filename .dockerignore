@@ -1,0 +1,15 @@
+.git
+.github
+.turbo
+**/.env
+**/.env.*
+!**/.env.example
+**/.next
+**/dist
+**/node_modules
+**/uploads/*
+coverage
+docs
+infrastructure
+recording-assets
+*.log

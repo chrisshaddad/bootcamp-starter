@@ -10,13 +10,24 @@
         "DATABASE_URL",
         "REDIS_URL",
         "NODE_ENV",
+        "PORT",
         "NEXT_PUBLIC_API_URL",
         "API_URL",
+        "API_ORIGIN",
+        "EMAIL_PROVIDER",
+        "AWS_REGION",
+        "SES_FROM_EMAIL",
+        "BREVO_API_KEY",
+        "BREVO_FROM_EMAIL",
+        "BREVO_FROM_NAME",
+        "BREVO_SENDER_EMAIL",
+        "BREVO_SENDER_NAME",
         "GITHUB_CLIENT_ID",
         "GITHUB_CLIENT_SECRET",
         "GITHUB_TOKEN_ENCRYPTION_KEY",
         "GITHUB_TOKEN",
-        "ANALYTICS_HASH_SECRET"
+        "ANALYTICS_HASH_SECRET",
+        "OPENAI_API_KEY"
       ]
     },
     "lint": {
@@ -33,15 +44,26 @@
         "DATABASE_URL",
         "REDIS_URL",
         "NODE_ENV",
+        "PORT",
         "MAILPIT_URL",
         "APP_URL",
         "NEXT_PUBLIC_API_URL",
         "API_URL",
+        "API_ORIGIN",
+        "EMAIL_PROVIDER",
+        "AWS_REGION",
+        "SES_FROM_EMAIL",
+        "BREVO_API_KEY",
+        "BREVO_FROM_EMAIL",
+        "BREVO_FROM_NAME",
+        "BREVO_SENDER_EMAIL",
+        "BREVO_SENDER_NAME",
         "GITHUB_CLIENT_ID",
         "GITHUB_CLIENT_SECRET",
         "GITHUB_TOKEN_ENCRYPTION_KEY",
         "GITHUB_TOKEN",
-        "ANALYTICS_HASH_SECRET"
+        "ANALYTICS_HASH_SECRET",
+        "OPENAI_API_KEY"
       ]
     },
     "db:generate": {

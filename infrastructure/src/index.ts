@@ -1,0 +1,38 @@
+import * as aws from '@pulumi/aws';
+import * as pulumi from '@pulumi/pulumi';
+import { createBudget } from './budget';
+import { loadConfig } from './config';
+import { createApiService } from './container';
+import { createDataLayer } from './data';
+import { createFrontendApp, createFrontendBranch } from './frontend';
+import { createNetwork } from './network';
+import { createMediaStorage } from './storage';
+
+const config = loadConfig();
+const identity = aws.getCallerIdentityOutput({});
+const region = aws.getRegionOutput({});
+const network = createNetwork(config);
+const data = createDataLayer(config, network);
+const media = createMediaStorage(config);
+const frontend = createFrontendApp(config);
+const api = createApiService(config, network, data, media, frontend);
+const frontendBranch = createFrontendBranch(config, frontend, api.endpoint);
+createBudget(config);
+
+export const awsAccountId = identity.accountId;
+export const awsRegion = region.name;
+export const runtimeEnabled = config.runtimeEnabled;
+export const frontendAppId = frontend.app.id;
+export const frontendBranchName = frontendBranch.branchName;
+export const frontendUrl = frontend.appUrl;
+export const apiUrl = config.runtimeEnabled ? api.endpoint : undefined;
+export const apiRepositoryUrl = api.repository.repositoryUrl;
+export const apiImageTag = config.imageTag;
+export const ecsExpressServiceArn = api.service?.serviceArn;
+export const mediaBucketName = media.bucket.bucket;
+export const mediaUrl = media.publicUrl;
+export const databaseIdentifier = data.database.identifier;
+export const databaseEndpoint = data.database.endpoint;
+export const cacheIdentifier = data.cache?.replicationGroupId;
+export const pauseDatabaseCommand = pulumi.interpolate`aws rds stop-db-instance --db-instance-identifier ${data.database.identifier}`;
+export const resumeDatabaseCommand = pulumi.interpolate`aws rds start-db-instance --db-instance-identifier ${data.database.identifier}`;

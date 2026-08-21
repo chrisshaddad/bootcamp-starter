@@ -1,0 +1,23 @@
+version: 1
+applications:
+  - frontend:
+      phases:
+        preBuild:
+          commands:
+            - npm install --global npm@11.6.2
+            - npm --version
+            - npm ci
+        build:
+          commands:
+            - env | grep -e '^API_URL=' -e '^API_ORIGIN=' -e '^NEXT_PUBLIC_API_URL=' >> apps/web/.env.production || true
+            - npx turbo run build --filter=web
+      artifacts:
+        baseDirectory: apps/web/.next
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - node_modules/**/*
+          - apps/web/.next/cache/**/*
+      buildPath: /
+    appRoot: apps/web

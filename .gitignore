@@ -33,6 +33,12 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Pulumi local state, plaintext infrastructure secrets, and stack configuration
+infrastructure/.pulumi/
+infrastructure/.env.infrastructure
+infrastructure/Pulumi.*.yaml
+!infrastructure/Pulumi.production.yaml.example
+
 # Misc
 .DS_Store
 *.pem
