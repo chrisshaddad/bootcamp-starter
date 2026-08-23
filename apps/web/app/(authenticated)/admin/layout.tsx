@@ -23,5 +23,5 @@ export default function AdminLayout({
     return <Skeleton className="h-[520px] w-full rounded-xl" />;
   }
 
-  return children;
+  return <div className="min-w-0">{children}</div>;
 }

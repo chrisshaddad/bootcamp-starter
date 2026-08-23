@@ -12,12 +12,18 @@ export function AdminPageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-      <div>
-        <h1 className="text-foreground text-2xl font-bold">{title}</h1>
+    <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="min-w-0">
+        <h1 className="break-words text-2xl font-bold text-foreground">
+          {title}
+        </h1>
         <p className="text-muted-foreground mt-1 text-sm">{description}</p>
       </div>
-      {actions}
+      {actions && (
+        <div className="w-full shrink-0 [&>*]:w-full sm:w-auto sm:[&>*]:w-auto">
+          {actions}
+        </div>
+      )}
     </div>
   );
 }
@@ -64,11 +70,12 @@ export function Pagination({
 }) {
   if (totalPages <= 1) return null;
   return (
-    <div className="flex items-center justify-end gap-3 pt-4">
-      <span className="text-muted-foreground text-xs">
+    <div className="flex flex-wrap items-center justify-between gap-2 pt-4 sm:justify-end sm:gap-3">
+      <span className="w-full text-center text-xs text-muted-foreground sm:w-auto sm:text-left">
         Page {page} of {totalPages}
       </span>
       <Button
+        className="flex-1 sm:flex-none"
         variant="outline"
         size="sm"
         disabled={page <= 1}
@@ -77,6 +84,7 @@ export function Pagination({
         Previous
       </Button>
       <Button
+        className="flex-1 sm:flex-none"
         variant="outline"
         size="sm"
         disabled={page >= totalPages}

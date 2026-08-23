@@ -102,16 +102,23 @@ export default function AdminAccountsPage() {
         description="Track developer and hiring accounts, connections, activity, and access status."
       />
       <Card>
-        <CardContent className="space-y-5 pt-6">
+        <CardContent className="space-y-5 px-4 pt-6 sm:px-6">
           <div className="flex flex-col gap-3 lg:flex-row">
-            <form className="flex flex-1 gap-2" onSubmit={submitSearch}>
+            <form
+              className="flex flex-1 flex-col gap-2 sm:flex-row"
+              onSubmit={submitSearch}
+            >
               <Input
                 value={searchInput}
                 onChange={(event) => setSearchInput(event.target.value)}
                 placeholder="Search email, name, organization, or GitHub username"
                 aria-label="Search accounts"
               />
-              <Button type="submit" variant="outline">
+              <Button
+                type="submit"
+                variant="outline"
+                className="w-full sm:w-auto"
+              >
                 Search
               </Button>
             </form>
@@ -159,89 +166,189 @@ export default function AdminAccountsPage() {
               No accounts match these filters.
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Account</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Activity</TableHead>
-                    <TableHead>Joined</TableHead>
-                    <TableHead className="text-right">Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {response.data.map((account) => (
-                    <TableRow key={account.id}>
-                      <TableCell>
-                        <div className="font-medium">{account.displayName}</div>
-                        <div className="text-muted-foreground text-xs">
+            <>
+              <div className="grid gap-3 md:hidden">
+                {response.data.map((account) => (
+                  <article key={account.id} className="rounded-lg border p-4">
+                    <div className="flex min-w-0 items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="break-words font-medium">
+                          {account.displayName}
+                        </div>
+                        <div className="break-all text-xs text-muted-foreground">
                           {account.email}
                         </div>
                         {account.githubUsername && (
-                          <div className="text-primary-base text-xs">
+                          <div className="mt-1 break-all text-xs text-primary-base">
                             @{account.githubUsername}
                           </div>
                         )}
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge tone="info">
+                      </div>
+                      <StatusBadge
+                        tone={
+                          account.status === 'ACTIVE' ? 'success' : 'danger'
+                        }
+                      >
+                        {account.status}
+                      </StatusBadge>
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <div className="text-muted-foreground">Type</div>
+                        <div className="mt-1 font-medium">
                           {account.accountType.replace('_', ' ')}
-                        </StatusBadge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col items-start gap-1">
-                          <StatusBadge
-                            tone={
-                              account.status === 'ACTIVE' ? 'success' : 'danger'
-                            }
-                          >
-                            {account.status}
-                          </StatusBadge>
-                          {!account.isConfirmed && (
-                            <span className="text-warning-dark text-xs">
-                              Unconfirmed
-                            </span>
-                          )}
                         </div>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-xs">
-                        <div>{account.counts.ownedProjects} owned projects</div>
-                        <div>
-                          {account.counts.projectMemberships} collaborations
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground">Joined</div>
+                        <div className="mt-1 font-medium">
+                          {new Date(account.createdAt).toLocaleDateString()}
                         </div>
-                        <div>
-                          {account.counts.activeSessions} active sessions
+                      </div>
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-3 gap-2 rounded-md bg-muted/40 p-3 text-center text-xs">
+                      <div>
+                        <div className="font-semibold">
+                          {account.counts.ownedProjects}
                         </div>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-xs">
-                        {new Date(account.createdAt).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {account.accountType === 'SUPER_ADMIN' ? (
-                          <StatusBadge>Protected</StatusBadge>
-                        ) : (
-                          <Button
-                            size="sm"
-                            variant={
-                              account.status === 'ACTIVE'
-                                ? 'destructive'
-                                : 'outline'
-                            }
-                            onClick={() => setSelected(account)}
-                          >
-                            {account.status === 'ACTIVE'
-                              ? 'Suspend'
-                              : 'Reactivate'}
-                          </Button>
-                        )}
-                      </TableCell>
+                        <div className="text-muted-foreground">Owned</div>
+                      </div>
+                      <div>
+                        <div className="font-semibold">
+                          {account.counts.projectMemberships}
+                        </div>
+                        <div className="text-muted-foreground">Teams</div>
+                      </div>
+                      <div>
+                        <div className="font-semibold">
+                          {account.counts.activeSessions}
+                        </div>
+                        <div className="text-muted-foreground">Sessions</div>
+                      </div>
+                    </div>
+
+                    {!account.isConfirmed && (
+                      <p className="mt-3 text-xs text-warning-dark">
+                        Email unconfirmed
+                      </p>
+                    )}
+
+                    <div className="mt-4">
+                      {account.accountType === 'SUPER_ADMIN' ? (
+                        <StatusBadge>Protected</StatusBadge>
+                      ) : (
+                        <Button
+                          className="w-full"
+                          size="sm"
+                          variant={
+                            account.status === 'ACTIVE'
+                              ? 'destructive'
+                              : 'outline'
+                          }
+                          onClick={() => setSelected(account)}
+                        >
+                          {account.status === 'ACTIVE'
+                            ? 'Suspend'
+                            : 'Reactivate'}
+                        </Button>
+                      )}
+                    </div>
+                  </article>
+                ))}
+              </div>
+
+              <div className="hidden overflow-x-auto md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Account</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Activity</TableHead>
+                      <TableHead>Joined</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {response.data.map((account) => (
+                      <TableRow key={account.id}>
+                        <TableCell>
+                          <div className="font-medium">
+                            {account.displayName}
+                          </div>
+                          <div className="text-muted-foreground text-xs">
+                            {account.email}
+                          </div>
+                          {account.githubUsername && (
+                            <div className="text-primary-base text-xs">
+                              @{account.githubUsername}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <StatusBadge tone="info">
+                            {account.accountType.replace('_', ' ')}
+                          </StatusBadge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col items-start gap-1">
+                            <StatusBadge
+                              tone={
+                                account.status === 'ACTIVE'
+                                  ? 'success'
+                                  : 'danger'
+                              }
+                            >
+                              {account.status}
+                            </StatusBadge>
+                            {!account.isConfirmed && (
+                              <span className="text-warning-dark text-xs">
+                                Unconfirmed
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-xs">
+                          <div>
+                            {account.counts.ownedProjects} owned projects
+                          </div>
+                          <div>
+                            {account.counts.projectMemberships} collaborations
+                          </div>
+                          <div>
+                            {account.counts.activeSessions} active sessions
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-xs">
+                          {new Date(account.createdAt).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {account.accountType === 'SUPER_ADMIN' ? (
+                            <StatusBadge>Protected</StatusBadge>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant={
+                                account.status === 'ACTIVE'
+                                  ? 'destructive'
+                                  : 'outline'
+                              }
+                              onClick={() => setSelected(account)}
+                            >
+                              {account.status === 'ACTIVE'
+                                ? 'Suspend'
+                                : 'Reactivate'}
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           )}
           {response && (
             <Pagination

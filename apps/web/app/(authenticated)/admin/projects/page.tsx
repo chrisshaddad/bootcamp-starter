@@ -100,16 +100,23 @@ export default function AdminProjectsPage() {
         description="Review project ownership, publication state, collaborators, and moderation history."
       />
       <Card>
-        <CardContent className="space-y-5 pt-6">
+        <CardContent className="space-y-5 px-4 pt-6 sm:px-6">
           <div className="flex flex-col gap-3 lg:flex-row">
-            <form className="flex flex-1 gap-2" onSubmit={submitSearch}>
+            <form
+              className="flex flex-1 flex-col gap-2 sm:flex-row"
+              onSubmit={submitSearch}
+            >
               <Input
                 value={searchInput}
                 onChange={(event) => setSearchInput(event.target.value)}
                 placeholder="Search title, slug, repository, or owner email"
                 aria-label="Search projects"
               />
-              <Button type="submit" variant="outline">
+              <Button
+                type="submit"
+                variant="outline"
+                className="w-full sm:w-auto"
+              >
                 Search
               </Button>
             </form>
@@ -158,94 +165,182 @@ export default function AdminProjectsPage() {
               No projects match these filters.
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Project</TableHead>
-                    <TableHead>Owner</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Members</TableHead>
-                    <TableHead>Updated</TableHead>
-                    <TableHead className="text-right">Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {response.data.map((project) => {
-                    const canRestore = project.status === 'SUSPENDED';
-                    const ownerArchived =
-                      project.status === 'ARCHIVED' && !project.moderatedAt;
-                    return (
-                      <TableRow key={project.id}>
-                        <TableCell>
+            <>
+              <div className="grid gap-3 md:hidden">
+                {response.data.map((project) => {
+                  const canRestore = project.status === 'SUSPENDED';
+                  const ownerArchived =
+                    project.status === 'ARCHIVED' && !project.moderatedAt;
+                  return (
+                    <article key={project.id} className="rounded-lg border p-4">
+                      <div className="flex min-w-0 items-start justify-between gap-3">
+                        <div className="min-w-0">
                           <Link
                             href={`/projects/${project.id}/preview`}
-                            className="group inline-flex items-center gap-1 font-medium"
+                            className="inline-flex max-w-full items-center gap-1 break-words font-medium"
                           >
                             {project.title}
-                            <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100" />
+                            <ExternalLink className="h-3 w-3 shrink-0" />
                           </Link>
-                          <div className="text-muted-foreground text-xs">
+                          <div className="break-all text-xs text-muted-foreground">
                             {project.repositoryFullName}
                           </div>
-                          {project.moderationReason && (
-                            <div className="text-error mt-1 max-w-72 truncate text-xs">
-                              {project.moderationReason}
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">
+                        </div>
+                        <StatusBadge
+                          tone={
+                            project.status === 'PUBLISHED'
+                              ? 'success'
+                              : project.status === 'ARCHIVED' ||
+                                  project.status === 'SUSPENDED'
+                                ? 'danger'
+                                : 'warning'
+                          }
+                        >
+                          {project.status}
+                        </StatusBadge>
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
+                        <div className="min-w-0">
+                          <div className="text-muted-foreground">Owner</div>
+                          <div className="mt-1 break-words font-medium">
                             {project.owner.displayName}
                           </div>
-                          <div className="text-muted-foreground text-xs">
+                          <div className="break-all text-muted-foreground">
                             {project.owner.email}
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          <StatusBadge
-                            tone={
-                              project.status === 'PUBLISHED'
-                                ? 'success'
-                                : project.status === 'ARCHIVED' ||
-                                    project.status === 'SUSPENDED'
-                                  ? 'danger'
-                                  : 'warning'
-                            }
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground">Activity</div>
+                          <div className="mt-1 font-medium">
+                            {project.memberCount} members
+                          </div>
+                          <div className="text-muted-foreground">
+                            Updated{' '}
+                            {new Date(project.updatedAt).toLocaleDateString()}
+                          </div>
+                        </div>
+                      </div>
+
+                      {project.moderationReason && (
+                        <p className="mt-3 break-words rounded-md bg-error/5 p-3 text-xs text-error">
+                          {project.moderationReason}
+                        </p>
+                      )}
+
+                      <div className="mt-4">
+                        {ownerArchived ? (
+                          <StatusBadge>Owner archived</StatusBadge>
+                        ) : (
+                          <Button
+                            className="w-full"
+                            size="sm"
+                            variant={canRestore ? 'outline' : 'destructive'}
+                            onClick={() => setSelected(project)}
                           >
-                            {project.status}
-                          </StatusBadge>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {project.memberCount}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground text-xs">
-                          {new Date(project.updatedAt).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {ownerArchived ? (
-                            <StatusBadge>Owner archived</StatusBadge>
-                          ) : (
-                            <Button
-                              size="sm"
-                              variant={canRestore ? 'outline' : 'destructive'}
-                              onClick={() => setSelected(project)}
+                            {canRestore ? (
+                              <RotateCcw className="h-4 w-4" />
+                            ) : (
+                              <ShieldBan className="h-4 w-4" />
+                            )}
+                            {canRestore ? 'Restore' : 'Suspend'}
+                          </Button>
+                        )}
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+
+              <div className="hidden overflow-x-auto md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Project</TableHead>
+                      <TableHead>Owner</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Members</TableHead>
+                      <TableHead>Updated</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {response.data.map((project) => {
+                      const canRestore = project.status === 'SUSPENDED';
+                      const ownerArchived =
+                        project.status === 'ARCHIVED' && !project.moderatedAt;
+                      return (
+                        <TableRow key={project.id}>
+                          <TableCell>
+                            <Link
+                              href={`/projects/${project.id}/preview`}
+                              className="group inline-flex items-center gap-1 font-medium"
                             >
-                              {canRestore ? (
-                                <RotateCcw className="h-4 w-4" />
-                              ) : (
-                                <ShieldBan className="h-4 w-4" />
-                              )}
-                              {canRestore ? 'Restore' : 'Suspend'}
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
+                              {project.title}
+                              <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100" />
+                            </Link>
+                            <div className="text-muted-foreground text-xs">
+                              {project.repositoryFullName}
+                            </div>
+                            {project.moderationReason && (
+                              <div className="text-error mt-1 max-w-72 truncate text-xs">
+                                {project.moderationReason}
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">
+                              {project.owner.displayName}
+                            </div>
+                            <div className="text-muted-foreground text-xs">
+                              {project.owner.email}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <StatusBadge
+                              tone={
+                                project.status === 'PUBLISHED'
+                                  ? 'success'
+                                  : project.status === 'ARCHIVED' ||
+                                      project.status === 'SUSPENDED'
+                                    ? 'danger'
+                                    : 'warning'
+                              }
+                            >
+                              {project.status}
+                            </StatusBadge>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {project.memberCount}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-xs">
+                            {new Date(project.updatedAt).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {ownerArchived ? (
+                              <StatusBadge>Owner archived</StatusBadge>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant={canRestore ? 'outline' : 'destructive'}
+                                onClick={() => setSelected(project)}
+                              >
+                                {canRestore ? (
+                                  <RotateCcw className="h-4 w-4" />
+                                ) : (
+                                  <ShieldBan className="h-4 w-4" />
+                                )}
+                                {canRestore ? 'Restore' : 'Suspend'}
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           )}
           {response && (
             <Pagination
